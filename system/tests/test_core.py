@@ -1359,3 +1359,42 @@ class TemplateManageTests(BaseAppTest):
                                {"action": "delete", "template": tpl.pk})
         self.assertIn("/login", res.get("Location", ""))
         self.assertTrue(Template.objects.filter(pk=tpl.pk).exists())
+
+
+# ==========================================================================
+class ImportedAudioTests(TestCase):
+    """قوالب الدعوات بتيجي ومعاها ملف موسيقى — ما نتجاهلوش."""
+
+    def _zip(self, files):
+        import io as _io, zipfile
+        buf = _io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for n, d in files.items():
+                z.writestr(n, d)
+        return SimpleUploadedFile("t.zip", buf.getvalue(), "application/zip")
+
+    PAGE = ("<html><head><title>حفل</title></head><body>"
+            "<h1>محمد و فرح</h1>"
+            "<p>يتشرفان بدعوتكم لحضور حفل زفافهما في قاعة الياسمين</p>"
+            "</body></html>")
+
+    def test_audio_lands_in_the_music_library(self):
+        before = MusicTrack.objects.count()
+        templateimport.import_template(
+            self._zip({"index.html": self.PAGE, "media/Music.mp3": b"ID3fake"}),
+            name="قالب بموسيقى")
+        self.assertEqual(MusicTrack.objects.count(), before + 1)
+        track = MusicTrack.objects.latest("id")
+        self.assertIn("قالب بموسيقى", track.name)
+        self.assertTrue(track.url)
+
+    def test_template_without_audio_adds_nothing(self):
+        before = MusicTrack.objects.count()
+        templateimport.import_template(self._zip({"index.html": self.PAGE}))
+        self.assertEqual(MusicTrack.objects.count(), before)
+
+    def test_audio_does_not_become_a_block(self):
+        """الملف الصوتي أصل مستقل — مش قسم في الدعوة."""
+        tpl = templateimport.import_template(
+            self._zip({"index.html": self.PAGE, "media/x.mp3": b"ID3fake"}))
+        self.assertNotIn(".mp3", json.dumps(tpl.document))

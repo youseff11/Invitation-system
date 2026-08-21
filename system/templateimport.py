@@ -42,6 +42,7 @@ IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"}
 CSS_EXT = {".css"}
 HTML_EXT = {".html", ".htm"}
 FONT_EXT = {".woff2", ".woff", ".ttf", ".otf"}
+AUDIO_EXT = {".mp3", ".m4a", ".ogg", ".wav"}
 
 
 class ImportError_(Exception):
@@ -92,7 +93,7 @@ def _read_zip(raw: bytes) -> dict[str, bytes]:
             if not name:
                 continue
             ext = os.path.splitext(name)[1].lower()
-            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | FONT_EXT:
+            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | FONT_EXT | AUDIO_EXT:
                 continue          # لا js ولا أي حاجة بتتنفّذ
             if info.file_size > 8 * 1024 * 1024:
                 continue
@@ -292,6 +293,27 @@ def _rewrite_img_srcs(html: str, url_map: dict[str, str]) -> str:
 # ==========================================================================
 # الاستيراد
 # ==========================================================================
+def _store_audio(files: dict[str, bytes], label: str) -> int:
+    """يضيف أي ملف صوت في الأرشيف لمكتبة الموسيقى.
+
+    قوالب الدعوات بتيجي ومعاها ملف موسيقى في ``media/``. من غير الخطوة
+    دي الملف كان بيتتجاهل والمستخدم يرفعه بإيده تاني.
+    """
+    from django.core.files.base import ContentFile
+    from .models import MusicTrack
+
+    added = 0
+    for name, data in files.items():
+        if os.path.splitext(name)[1].lower() not in AUDIO_EXT or not data:
+            continue
+        base = os.path.basename(name)
+        track = MusicTrack(name=f"{label} — {os.path.splitext(base)[0]}"[:120],
+                           note="جاي مع قالب مستورد")
+        track.file.save(base, ContentFile(data), save=True)
+        added += 1
+    return added
+
+
 def _store_fonts(files: dict[str, bytes], url_map: dict[str, str]) -> None:
     """يخزّن خطوط الأرشيف عشان @font-face تفضل شغّالة.
 
@@ -463,13 +485,19 @@ def import_template(upload, *, name: str = "", category: str = "classic") -> Tem
         slug = f"{base}-{n}"
         n += 1
 
+    added_tracks = _store_audio(files, label)
+
     upload.seek(0)
-    return Template.objects.create(
+    tpl = Template.objects.create(
         name=label, slug=slug, category=category, source="import",
         source_file=upload,
         description="قالب مستورد من ملف — الأقسام قابلة للترتيب والإخفاء من المحرر.",
         document=document, is_active=True,
     )
+    # عدد المقطوعات اللي دخلت مع الاستيراد ده بالذات — العرض بيعرضها
+    # للمستخدم. مش عمود في الداتابيز، بيانات لحظة الاستيراد بس.
+    tpl.imported_tracks = added_tracks
+    return tpl
 
 
 def document_text_length(document: dict) -> int:

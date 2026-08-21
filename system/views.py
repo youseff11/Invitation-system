@@ -450,10 +450,12 @@ def dashboard_templates(request):
             messages.error(request, "تعذّر قراءة الملف. جرّب أرشيف ZIP فيه index.html.")
         else:
             chars = templateimport.document_text_length(tpl.document)
+            tracks = getattr(tpl, "imported_tracks", 0)
+            extra = f" ولقينا {tracks} ملف موسيقى ضفناهم للمكتبة." if tracks else ""
             messages.success(
                 request,
-                f"اتستورد «{tpl.name}» بـ{len(tpl.document.get('blocks', []))} قسم. "
-                "افتحه في المحرر وظبّطه.",
+                f"اتستورد «{tpl.name}» بـ{len(tpl.document.get('blocks', []))} قسم "
+                f"و{chars} حرف نص.{extra} افتحه في المحرر وظبّطه.",
             )
             # ملف صغير بيعدّي، بس ما نسيبوش المستخدم يكتشف بنفسه إنه شبه فاضي
             if chars < templateimport.MIN_VISIBLE_CHARS:
