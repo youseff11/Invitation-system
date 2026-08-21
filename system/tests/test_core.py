@@ -18,6 +18,8 @@ from system.sanitize import clean_html
 from system import cssscope, guestimport, images, templateimport, video
 from system.templatetags import invite as invite_tags
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.conf import settings
+from pathlib import Path
 
 
 # ==========================================================================
@@ -1890,3 +1892,330 @@ class IntroPlayButtonTests(BaseAppTest):
         field = next(f for f in B.editor_schema()["settings_fields"]
                      if f["key"] == "intro_video_start")
         self.assertEqual(field["default"], "auto")
+
+
+# ==========================================================================
+class FullBleedWidthTests(BaseAppTest):
+    """«ملء الشاشة» — القسم بيكسر حدود كارت الدعوة على أي مقاس جهاز."""
+
+    def setUp(self):
+        super().setUp()
+        # قسم الفيديو مربوط بميزة في الباقة — من غيرها بيتخفي من الصفحة
+        self.plan.features = list(self.plan.features) + ["video"]
+        self.plan.save(update_fields=["features"])
+
+    def _render(self, width):
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "vid-1",
+             "props": {"url": "/media/clip.mp4"},
+             "style": {"width": width}},
+        ]})
+        self.inv.document = doc
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_screen_width_is_an_offered_choice(self):
+        values = [o["value"] for o in B.WIDTH_CHOICES]
+        self.assertIn("screen", values)
+        # «كامل العرض» لسه موجود — ده عرض الكارت مش الشاشة
+        self.assertIn("full", values)
+
+    def test_screen_width_emits_its_class(self):
+        self.assertIn("lb--w-screen", self._render("screen"))
+
+    def test_full_is_not_screen(self):
+        body = self._render("full")
+        self.assertIn("lb--w-full", body)
+        self.assertNotIn("lb--w-screen", body)
+
+    def test_bogus_width_falls_back_to_normal(self):
+        self.assertIn("lb--w-normal", self._render("100vw"))
+
+    def _rule(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        i = css.index(".lb.lb--w-screen {")
+        return css[i:css.index("}", i)]
+
+    def test_breakout_happens_on_the_section_not_the_inner(self):
+        """‎.lb‎ عليه overflow:hidden — لو الخروج من ‎.lb-inner‎ يتقص."""
+        rule = self._rule()
+        self.assertIn("100vw", rule)
+        self.assertIn("calc(50% - 50vw)", rule)
+        self.assertNotIn(".lb-inner", rule)
+
+    def test_selector_outranks_the_mobile_padding_rule(self):
+        """‎@media(max-width:640px){.lb{padding-inline:18px}}‎ بيجي بعده في
+        الملف، وبنفس الأولوية كان بيكسب — فالفيديو كان بيفضل ٣٥٤ من ٣٩٠."""
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn(".lb.lb--w-screen {", css)
+        # الكلاس المكرّر لازم ييجي قبل قاعدة الموبايل عشان يبقى المقصود
+        self.assertIn("padding-inline: 0", self._rule())
+
+
+# ==========================================================================
+class VideoBlockSourceTests(BaseAppTest):
+    """قسم الفيديو — رفع ملف مش لينك بس، ونسبة عرض/ارتفاع."""
+
+    def setUp(self):
+        super().setUp()
+        # قسم الفيديو مربوط بميزة في الباقة — من غيرها بيتخفي من الصفحة
+        self.plan.features = list(self.plan.features) + ["video"]
+        self.plan.save(update_fields=["features"])
+
+    def _spec(self, key):
+        block = B.editor_schema()["blocks"]["video"]
+        return next(f for f in block["props"] if f["key"] == key)
+
+    def test_url_field_offers_upload_not_just_a_link(self):
+        spec = self._spec("url")
+        self.assertEqual(spec["type"], "media")
+        self.assertEqual(spec["media_kind"], "video")
+
+    def _render(self, props):
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "vid-1", "props": props},
+        ]})
+        self.inv.document = doc
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_uploaded_file_path_survives_normalisation(self):
+        body = self._render({"url": "/media/assets/2026/08/clip.webm"})
+        self.assertIn('data-video="/media/assets/2026/08/clip.webm"', body)
+
+    def test_youtube_link_still_works(self):
+        body = self._render({"url": "https://youtu.be/abc12345"})
+        self.assertIn("https://youtu.be/abc12345", body)
+
+    def test_aspect_default_is_16x9(self):
+        self.assertIn("lb-video--16x9", self._render({"url": "/media/c.mp4"}))
+
+    def test_aspect_choice_is_rendered(self):
+        self.assertIn("lb-video--9x16",
+                      self._render({"url": "/media/c.mp4", "aspect": "9x16"}))
+
+    def test_bogus_aspect_falls_back(self):
+        body = self._render({"url": "/media/c.mp4", "aspect": "gzip; rm -rf"})
+        self.assertIn("lb-video--16x9", body)
+        self.assertNotIn("rm -rf", body)
+
+    def test_media_field_still_blocks_javascript_scheme(self):
+        """الحقل كان type=url وليه فلتر. تحويله لـmedia ماينفعش يشيله."""
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "v-1",
+             "props": {"url": "javascript:alert(1)"}},
+        ]})
+        self.assertEqual(doc["blocks"][0]["props"]["url"], "")
+
+    def test_image_fields_block_it_too(self):
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "v-1",
+             "props": {"url": "/x.mp4", "poster": "vbscript:msgbox 1"}},
+        ]})
+        self.assertEqual(doc["blocks"][0]["props"]["poster"], "")
+
+    def test_inline_image_data_url_is_kept(self):
+        """المحرر بيولّد data:image عند القص — مانكسرهاش."""
+        tiny = ("data:image/png;base64,"
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "v-1", "props": {"url": "/x.mp4", "poster": tiny}},
+        ]})
+        self.assertEqual(doc["blocks"][0]["props"]["poster"], tiny)
+
+    def test_non_image_data_url_is_dropped(self):
+        doc = B.normalize_document({"blocks": [
+            {"type": "video", "id": "v-1",
+             "props": {"url": "data:text/html;base64,PHNjcmlwdD4="}},
+        ]})
+        self.assertEqual(doc["blocks"][0]["props"]["url"], "")
+
+
+# ==========================================================================
+class VideoUploadLimitTests(BaseAppTest):
+    """حد الفيديو أعلى من حد الصورة — مقطع فرح حقيقي بيعدّي ٨ ميجا."""
+
+    def _post(self, raw, name, ctype):
+        self.client.force_login(self.staff)
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/upload/",
+            {"file": SimpleUploadedFile(name, raw, ctype)},
+        )
+
+    def test_video_over_the_image_limit_is_accepted(self):
+        """قبل التعديل ده كان أي مقطع أكبر من ٨ ميجا بيترفض."""
+        import shutil, subprocess, tempfile, os
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg غير متاح")
+        path = tempfile.mktemp(suffix=".mp4")
+        # مقطع ضوضاء مش بينضغط — بيطلع أكبر من ٨ ميجا فعلاً
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi",
+             "-i", "nullsrc=size=640x360:rate=25:duration=2",
+             "-vf", "geq=random(1)*255:128:128", "-c:v", "libx264",
+             "-preset", "ultrafast", "-qp", "0", "-pix_fmt", "yuv420p", path],
+            check=True, timeout=180)
+        raw = open(path, "rb").read()
+        os.unlink(path)
+        if not (8 * 1024 * 1024 < len(raw) < video.MAX_UPLOAD_BYTES):
+            self.skipTest(f"المقطع المولَّد خرج بره النطاق المطلوب: {len(raw)}")
+        res = self._post(raw, "clip.mp4", "video/mp4").json()
+        self.assertTrue(res["ok"], res)
+
+    def test_video_over_its_own_limit_is_refused(self):
+        raw = b"\0" * (video.MAX_UPLOAD_BYTES + 1)
+        res = self._post(raw, "big.mp4", "video/mp4")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("٤٠", res.json()["error"])
+
+    def test_image_limit_did_not_change(self):
+        raw = b"\0" * (8 * 1024 * 1024 + 1)
+        res = self._post(raw, "big.png", "image/png")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("٨", res.json()["error"])
+
+    def test_intro_library_uses_the_same_limit(self):
+        """حدّين مختلفين لنفس الملف حسب مكان الرفع = ارتباك."""
+        from system.forms import IntroVideoForm
+        form = IntroVideoForm(
+            {"name": "x", "order": 0},
+            {"file": SimpleUploadedFile("a.mp4", b"\0" * (9 * 1024 * 1024), "video/mp4")},
+        )
+        form.is_valid()
+        self.assertNotIn("file", form.errors)
+
+
+# ==========================================================================
+class IntroPlayLabelTests(BaseAppTest):
+    """نص اختياري على زر تشغيل الافتتاحية."""
+
+    def _render(self, label=None):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"]["intro_video"] = "/media/x.mp4"
+        doc["settings"]["intro_video_start"] = "button"
+        if label is not None:
+            doc["settings"]["intro_play_label"] = label
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def _button(self, body):
+        i = body.index("data-intro-play")
+        start = body.rindex("<button", 0, i)
+        return body[start:body.index("</button>", start)]
+
+    def test_default_is_icon_only(self):
+        btn = self._button(self._render())
+        self.assertNotIn("lb-intro-play--label", btn)
+        self.assertNotIn("lb-intro-play-text", btn)
+        self.assertIn('aria-label="تشغيل الفيديو"', btn)
+
+    def test_label_appears_inside_the_button(self):
+        btn = self._button(self._render("اضغط لتشغيل الفيديو"))
+        self.assertIn("lb-intro-play--label", btn)
+        self.assertIn("اضغط لتشغيل الفيديو", btn)
+        # والأيقونة لسه موجودة جنب الكلام
+        self.assertIn("<svg", btn)
+
+    def test_label_replaces_the_generic_aria_label(self):
+        """قارئ الشاشة ماينفعش يقول حاجتين مختلفتين عن نفس الزر."""
+        btn = self._button(self._render("ابدأ العرض"))
+        self.assertIn('aria-label="ابدأ العرض"', btn)
+        self.assertNotIn('aria-label="تشغيل الفيديو"', btn)
+
+    def test_label_is_escaped(self):
+        btn = self._button(self._render('<img src=x onerror=alert(1)>'))
+        self.assertNotIn("<img", btn)
+        self.assertIn("&lt;img", btn)
+
+    def test_label_is_ignored_in_auto_mode(self):
+        doc = self.inv.document
+        doc["settings"].update({"intro_enabled": True, "intro_video": "/media/x.mp4",
+                                "intro_video_start": "auto",
+                                "intro_play_label": "ابدأ"})
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        self.assertNotIn("data-intro-play", body)
+
+    def test_field_default_is_empty(self):
+        field = next(f for f in B.editor_schema()["settings_fields"]
+                     if f["key"] == "intro_play_label")
+        self.assertEqual(field["default"], "")
+
+
+# ==========================================================================
+class VideoPlayerPathTests(TestCase):
+    """الملف المرفوع بيتركّب على طول، والطرف التالت بضغطة."""
+
+    def setUp(self):
+        self.js = (Path(settings.BASE_DIR) / "static/js/invite.js").read_text("utf-8")
+        i = self.js.index("function initVideo()")
+        self.body = self.js[i:self.js.index("\n  }\n", i)]
+
+    def test_local_file_does_not_wait_for_a_click(self):
+        """كانت ضغطة زيادة على ملف مالوش طرف تالت — ومع «زي ما هو»
+        كانت بتسيب شريط رفيع مكان الفيديو لحد ما يتضغط."""
+        self.assertIn("if (!yt && !vimeo) {", self.body)
+        guard = self.body.index("if (!yt && !vimeo) {")
+        click = self.body.index("lb-video-play")
+        self.assertLess(guard, click, "لازم المسار المحلي ييجي قبل زر الضغط")
+
+    def test_third_party_still_needs_a_click(self):
+        self.assertIn("lb-video-play", self.body)
+        self.assertIn("youtube-nocookie", self.js)
+
+    def test_natural_ratio_is_published_to_the_container(self):
+        self.assertIn("loadedmetadata", self.body)
+        self.assertIn("--vid-ratio", self.body)
+
+    def test_css_consumes_that_ratio_with_a_fallback(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        # المطلوب: الـCSS بيستهلك المتغيّر اللي الـJS بيكتبه وليه قيمة
+        # احتياطية — مش شكل المسافات نفسه
+        self.assertRegex(css, r"var\(--vid-ratio,\s*16\s*/\s*9\)")
+
+    def test_autoplay_is_still_muted(self):
+        """المتصفح بيمنع التشغيل التلقائي بصوت — ولو شلناها الفيديو
+        مش هيشتغل خالص بدل ما يشتغل صامت."""
+        seg = self.body[self.body.index("if (autoplay)"):]
+        self.assertIn("v.muted = true", seg[:200])
+
+
+# ==========================================================================
+class VideoHeightCapTests(TestCase):
+    """فيديو طولي بعرض الشاشة كان بيطلع ٢٥٦٠px ارتفاع على ديسك توب."""
+
+    def setUp(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        i = css.index(".lb-video {")
+        self.rule = css[i:css.index("}", i)]
+        self.css = css
+
+    def test_there_is_a_height_cap(self):
+        self.assertIn("max-width: calc(", self.rule)
+        self.assertIn("vh", self.rule)
+
+    def test_cap_is_on_width_so_the_ratio_survives(self):
+        """لو السقف كان على ‎max-height‎ النسبة كانت هتتكسر والفيديو
+        يتحط جوّه شرايط سودا بدل ما ياخد مقاسه."""
+        self.assertNotIn("max-height", self.rule)
+
+    def test_ratio_and_cap_read_the_same_variable(self):
+        """لو كل واحد ليه مصدر مختلف بيفترقوا عند أول تعديل."""
+        self.assertIn("aspect-ratio: var(--ar", self.rule)
+        self.assertIn("var(--ar", self.rule[self.rule.index("max-width"):])
+
+    def test_every_aspect_choice_sets_that_variable(self):
+        for key in ("16x9", "4x3", "1x1", "9x16", "auto"):
+            with self.subTest(key=key):
+                i = self.css.index(f".lb-video--{key} ")
+                self.assertIn("--ar:", self.css[i:self.css.index("}", i)])
+
+    def test_choices_in_python_match_the_classes_in_css(self):
+        spec = next(f for f in B.editor_schema()["blocks"]["video"]["props"]
+                    if f["key"] == "aspect")
+        for o in spec["options"]:
+            with self.subTest(o=o["value"]):
+                self.assertIn(f".lb-video--{o['value']} ", self.css)

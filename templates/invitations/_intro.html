@@ -24,11 +24,18 @@
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          playsinline preload="metadata"></video>
   <div class="lb-intro-veil"></div>
-  <button type="button" class="lb-intro-play" data-intro-play
-          aria-label="تشغيل الفيديو">
+  {% comment %}
+    الزر دايرة بعلامة تشغيل لوحدها لما مافيش نص. لو المستخدم كتب نص
+    بيتحوّل لكبسولة — والـaria-label بيبقى النص نفسه بدل الوصف العام،
+    عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
+  {% endcomment %}
+  <button type="button" data-intro-play
+          class="lb-intro-play{% if render.settings.intro_play_label %} lb-intro-play--label{% endif %}"
+          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M8 5.2v13.6L19 12 8 5.2Z"/>
     </svg>
+    {% if render.settings.intro_play_label %}<span class="lb-intro-play-text">{{ render.settings.intro_play_label }}</span>{% endif %}
   </button>
   {% else %}
   <video class="lb-intro-video" data-intro-video

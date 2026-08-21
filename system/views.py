@@ -41,9 +41,22 @@ from django.core.files.base import ContentFile
 from . import guestexport, guestimport, images, templateimport, video
 
 MAX_ASSET_BYTES = 8 * 1024 * 1024
+# الفيديو ليه حد أعلى لوحده: صورة بتنضغط لـ٩٨ كيلو، لكن مقطع فرح متصوّر
+# بالموبايل ٢٠ ثانية بيطلع ٢٥-٣٥ ميجا قبل الضغط. الحد الأصلي ٨ ميجا كان
+# بيرفض أي مقطع حقيقي. الملف بينضغط عندنا لـ٧٢٠p بعد الرفع، والحد ده
+# على الأصل قبل الضغط مش بعده.
+MAX_VIDEO_BYTES = video.MAX_UPLOAD_BYTES
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
 ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm"}
+
+# باقي رسايل المشروع بتستخدم الأرقام العربية، فالرقم المولَّد لازم يمشي
+# على نفس النسق — رسالة فيها «40» وسط كلام عربي بتبان غريبة.
+_AR_DIGITS = str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩")
+
+
+def _ar_num(n: int) -> str:
+    return str(n).translate(_AR_DIGITS)
 
 
 # ==========================================================================
@@ -819,11 +832,6 @@ def api_upload(request, pk):
     upload = request.FILES.get("file")
     if not upload:
         return JsonResponse({"ok": False, "error": "لم يصل أي ملف."}, status=400)
-    if upload.size > MAX_ASSET_BYTES:
-        return JsonResponse(
-            {"ok": False, "error": "حجم الملف أكبر من ٨ ميجابايت."}, status=400
-        )
-
     guessed = mimetypes.guess_type(upload.name)[0] or ""
     content_type = (getattr(upload, "content_type", "") or guessed).lower()
 
@@ -836,6 +844,15 @@ def api_upload(request, pk):
     else:
         return JsonResponse(
             {"ok": False, "error": "نوع الملف غير مسموح. ارفع صورة أو ملف صوت."},
+            status=400,
+        )
+
+    # فحص الحجم بعد ما نعرف النوع — الفيديو حده أعلى من الصورة
+    cap = MAX_VIDEO_BYTES if kind == "video" else MAX_ASSET_BYTES
+    if upload.size > cap:
+        return JsonResponse(
+            {"ok": False,
+             "error": f"حجم الملف أكبر من {_ar_num(cap // (1024 * 1024))} ميجابايت."},
             status=400,
         )
 

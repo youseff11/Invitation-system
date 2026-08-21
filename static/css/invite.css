@@ -137,6 +137,28 @@
 .lb--w-full   .lb-inner { max-width: none; }
 .lb--w-full   { padding-inline: 0; }
 
+/* ملء الشاشة: القسم بيكسر حدود كارت الدعوة ويمتد لعرض الشاشة كلها.
+   ٥٠٪ بتتحسب من عرض الكارت و٥٠vw من عرض الشاشة، فالفرق بينهم هو
+   بالظبط المسافة المطلوبة على كل ناحية — والحساب بيشتغل لوحده على أي
+   مقاس: على الموبايل الكارت = الشاشة فالهامش بيبقى صفر.
+   .lb عليه overflow:hidden، عشان كده الخروج لازم يكون من القسم نفسه
+   مش من .lb-inner اللي جواه — لو عملناه جوّه كان هيتقص. */
+/* ‎.lb.lb--w-screen‎ مش ‎.lb--w-screen‎ لوحدها عن قصد: تحت في ملف
+   الموبايل فيه ‎@media (max-width:640px){ .lb{padding-inline:18px} }‎،
+   وبنفس الأولوية اللي بعده بيكسب — فكان الفيديو بيفضل ٣٥٤px جوه شاشة
+   ٣٩٠px. الكلاس المكرّر بيرفع الأولوية فيكسب مهما كان الترتيب. */
+.lb.lb--w-screen {
+  width: 100vw;
+  max-width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: 0;
+  border-radius: 0;
+}
+.lb--w-screen .lb-inner { max-width: none; }
+/* الاستدارة والظل مالهمش لازمة لما الحافة بره الشاشة أصلاً */
+.lb--w-screen .lb-video,
+.lb--w-screen .lb-figure img { border-radius: 0; }
+
 .lb--hidden { display: none; }
 .lb-doc--editing .lb--hidden {
   display: block;
@@ -527,13 +549,32 @@
 /* ---------------------------------------------------------- الفيديو */
 .lb-video {
   width: 100%;
-  aspect-ratio: 16/9;
+  /* سقف للارتفاع، والنسبة بتفضل محفوظة لأن التحديد على العرض مش على
+     الارتفاع. من غير السطر ده فيديو طولي (٩:١٦) بعرض الشاشة على ديسك
+     توب ١٤٤٠ كان بيطلع ٢٥٦٠px ارتفاع — أطول من تلات شاشات.
+     ١٢٠vh مش ١٠٠: فيديو عريض ١٦:٩ يفضل ملء العرض بالظبط حتى على لابتوب
+     قصير (٧٦٨) وياخد شوية سكرول — ده شكل الـhero العادي. السقف بيمسك
+     الحالة الغلط بس (طولي على شاشة عريضة). */
+  max-width: calc(120vh * var(--ar, 16 / 9));
+  margin-inline: auto;
+  aspect-ratio: var(--ar, 16 / 9);
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--text);
   position: relative;
 }
 .lb-video iframe, .lb-video video { width: 100%; height: 100%; border: 0; display: block; }
+/* نسبة العرض للارتفاع — اختيار من المحرر. القيمة متغيّر واحد عشان
+   ‎aspect-ratio‎ و‎max-width‎ ما يفترقوش أبداً. */
+.lb-video--16x9 { --ar: 16 / 9; }
+.lb-video--4x3  { --ar: 4 / 3; }
+.lb-video--1x1  { --ar: 1; }
+.lb-video--9x16 { --ar: 9 / 16; }
+/* «زي ما هو»: النسبة الحقيقية مش معروفة قبل ما الملف يحمّل، فبنبدأ
+   بـ١٦:٩ مؤقتة والـJS بيكتب ‎--vid-ratio‎ من ‎videoWidth/videoHeight‎ أول
+   ما تيجي ترويسة الملف. كده مفيش شريط رفيع ولا قفزة كبيرة في التخطيط.
+   يوتيوب وفيميو بيفضلوا ١٦:٩ لأن الـiframe مالوش مقاس طبيعي أصلاً. */
+.lb-video--auto { --ar: var(--vid-ratio, 16 / 9); }
 .lb-video-play {
   position: absolute;
   inset: 0;
@@ -931,6 +972,29 @@
 }
 .lb-intro-play:hover { background: rgba(20, 18, 16, .72); transform: scale(1.06); }
 .lb-intro-play svg { inline-size: 34px; block-size: 34px; margin-inline-start: 5px; }
+
+/* لو المستخدم كتب نص على الزر بيتحوّل من دايرة لكبسولة.
+   inline-size:auto لازم تيجي هنا لأن الدايرة فوق مثبّتة ٨٨px — من
+   غيرها الكلام كان هيتكرمش جوّه ٨٨px ويخرج بره الحدود.
+   والـmax-inline-size عشان نص طويل ما يخرجش من الشاشة على الموبايل. */
+.lb-intro-play--label {
+  inline-size: auto; block-size: auto;
+  max-inline-size: min(86vw, 420px);
+  padding: 15px 26px;
+  border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 11px;
+  /* inset:0 + margin:auto بيوسّط العنصر — بيفضل شغّال مع العرض التلقائي
+     طالما العرض محدود بـmax-inline-size */
+  inset-inline: 0; inset-block: 0;
+  inline-size: fit-content; block-size: fit-content;
+}
+.lb-intro-play--label svg { inline-size: 24px; block-size: 24px; margin-inline-start: 0; }
+.lb-intro-play-text {
+  font: inherit; font-size: 15px; font-weight: 600;
+  line-height: 1.35; letter-spacing: .2px;
+  /* الكلام لو طويل ينزل سطر بدل ما يمدّ الزر لبره الشاشة */
+  white-space: normal; text-align: center;
+}
 /* نبضة خفيفة تلفت النظر إن فيه حاجة تتضغط */
 @media (prefers-reduced-motion: no-preference) {
   .is-awaiting-play .lb-intro-play { animation: lb-pulse 2.4s ease-in-out infinite; }

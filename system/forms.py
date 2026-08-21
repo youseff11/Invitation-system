@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from django import forms
 
+from . import video
 from .models import (
     Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan, Template,
 )
@@ -136,6 +137,9 @@ class IntroVideoForm(forms.ModelForm):
 
     def clean_file(self):
         f = self.cleaned_data.get("file")
-        if f and f.size > 8 * 1024 * 1024:
-            raise forms.ValidationError("حجم الفيديو أكبر من ٨ ميجابايت.")
+        cap = video.MAX_UPLOAD_BYTES
+        if f and f.size > cap:
+            mb = str(cap // (1024 * 1024)).translate(
+                str.maketrans("0123456789", "٠١٢٣٤٥٦٧٨٩"))
+            raise forms.ValidationError(f"حجم الفيديو أكبر من {mb} ميجابايت.")
         return f

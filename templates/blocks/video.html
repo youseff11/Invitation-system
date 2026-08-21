@@ -2,8 +2,8 @@
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
   {% if props.heading %}<h2 class="lb-heading">{{ props.heading }}</h2>{% endif %}
-  {% if props.url %}<div data-move="video" class="lb-video" data-video="{{ props.url }}"{% if props.poster %} data-poster="{{ props.poster }}"{% endif %}{% if props.autoplay %} data-autoplay="1"{% endif %}{% if props.loop %} data-loop="1"{% endif %}></div>
-  {% else %}<div class="lb-gempty">أضف رابط الفيديو من المحرر</div>{% endif %}
+  {% if props.url %}<div data-move="video" class="lb-video lb-video--{{ props.aspect|default:'16x9' }}" data-video="{{ props.url }}"{% if props.poster %} data-poster="{{ props.poster }}"{% endif %}{% if props.autoplay %} data-autoplay="1"{% endif %}{% if props.loop %} data-loop="1"{% endif %}></div>
+  {% else %}<div class="lb-gempty">ارفع فيديو أو الصق رابطه من المحرر</div>{% endif %}
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}

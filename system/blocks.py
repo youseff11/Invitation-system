@@ -151,6 +151,10 @@ WIDTH_CHOICES = [
     opt("normal", "عادي"),
     opt("wide", "عريض"),
     opt("full", "كامل العرض"),
+    # «كامل العرض» بيملأ عرض كارت الدعوة، و«ملء الشاشة» بيكسر حدود الكارت
+    # ويمتد لعرض الشاشة كلها — على أي جهاز. الفرق بيبان على الديسك توب
+    # لأن الكارت هناك ٧٢٠px والشاشة ممكن تبقى ١٤٤٠px.
+    opt("screen", "ملء الشاشة"),
 ]
 
 DIVIDER_CHOICES = [
@@ -513,9 +517,21 @@ register(
     "video", "فيديو", icon="▷", category="وسائط", feature="video",
     description="فيديو من يوتيوب أو ملف مرفوع",
     props=[
-        field("url", "رابط الفيديو", "url", ""),
+        # كان حقل رابط بس. بقى media عشان يظهر معاه زر رفع ومكتبة
+        # الفيديوهات — والخانة النصية جواه لسه بتقبل روابط يوتيوب/فيميو.
+        field("url", "الفيديو", "media", "", media_kind="video",
+              help_text="ارفع ملف من جهازك، أو اختار من المكتبة، أو الصق "
+                   "رابط يوتيوب/فيميو في الخانة."),
         field("poster", "صورة الغلاف", "image", ""),
         field("heading", "العنوان", "text", ""),
+        field("aspect", "نسبة العرض للارتفاع", "select", "16x9", options=[
+            opt("16x9", "١٦:٩ عريض"),
+            opt("4x3", "٤:٣"),
+            opt("1x1", "مربّع"),
+            opt("9x16", "٩:١٦ طولي (ريلز)"),
+            opt("auto", "زي ما هو في الملف"),
+        ], help_text="«زي ما هو» للملفات المرفوعة بس — يوتيوب وفيميو "
+             "بيفضلوا ١٦:٩ لأن المتصفح مابيعرفش مقاسهم قبل التحميل."),
         field("autoplay", "تشغيل تلقائي (صامت)", "toggle", False),
         field("loop", "تكرار", "toggle", False),
     ],
@@ -707,6 +723,10 @@ SETTINGS_FIELDS = [
           ],
           help_text="زر التشغيل ليه ميزة: لمسة الضيف بتسمح بالصوت من "
                "أول ثانية — التشغيل التلقائي لازم يبدأ صامت."),
+    field("intro_play_label", "نص على زر التشغيل", "text", "", group="الافتتاحية",
+          placeholder="مثال: اضغط لتشغيل الفيديو",
+          help_text="سيبها فاضية = الزر يفضل دايرة بعلامة تشغيل بس. لو "
+               "كتبت كلام الزر بيتحوّل لكبسولة والكلام جنب العلامة."),
     field("intro_video_sound", "زر صوت على الفيديو", "toggle", True,
           group="الافتتاحية",
           help_text="لو الفيديو فيه صوت، الزر ده بيخلي الضيف يشغّله بلمسة. "
@@ -849,7 +869,25 @@ def _coerce(value: Any, spec: dict) -> Any:
         from .sanitize import clean_html
         return clean_html(value if isinstance(value, str) else "")
 
-    # text / textarea / image / date / datetime / icon / gradient
+    if ftype in {"image", "media"}:
+        # دول مسارات ملفات زي url بالظبط، فبيتصفّوا بنفس الطريقة. الحقل
+        # كان type="url" وبقى "media" عشان يظهر معاه زر الرفع — من غير
+        # السطر ده كان الفلتر بتاع javascript: بيتشال معاه من غير ما يبان.
+        if not isinstance(value, str):
+            return default
+        val = value.strip()
+        if not val:
+            return ""
+        if re.match(r"^\s*(javascript|vbscript)\s*:", val, re.I):
+            return ""
+        # data: مسموح للصور المضمّنة بس (المحرر بيولّدها عند القص)
+        if re.match(r"^\s*data\s*:", val, re.I) and not re.match(
+            r"^\s*data:image/(png|jpeg|webp|gif);base64,", val, re.I
+        ):
+            return ""
+        return val[:5000]
+
+    # text / textarea / date / datetime / icon / gradient
     if value is None:
         return default
     return str(value)[:5000]

@@ -178,11 +178,26 @@
         holder.replaceChildren(frame);
       }
 
-      if (autoplay && !yt && !vimeo) {
+      /* الملف بتاعنا: بنركّب <video> على طول بمشغّل المتصفح نفسه.
+         قبل كده كنا بنحط زر تشغيل بديل ونستنى ضغطة — وده كان غلط
+         لسببين: ضغطة زيادة على ملف مالوش طرف تالت أصلاً، وإن الحاوية
+         بتفضل من غير مقاس لحد ما يتضغط. مع نسبة «زي ما هو» ده كان
+         بيسيب شريط رفيع مكان الفيديو لحد أول ضغطة. الحمل مش مشكلة:
+         preload=metadata بينزّل الترويسة بس، ولو فيه صورة غلاف
+         بنستخدم none والغلاف بيبان فوراً. */
+      if (!yt && !vimeo) {
         var v = doc.createElement("video");
-        v.src = url; v.muted = true; v.autoplay = true;
-        v.loop = loop; v.playsInline = true; v.controls = true;
+        v.src = url; v.loop = loop; v.playsInline = true; v.controls = true;
+        v.preload = poster ? "none" : "metadata";
         if (poster) v.poster = poster;
+        if (autoplay) { v.muted = true; v.autoplay = true; v.preload = "auto"; }
+        // النسبة الحقيقية مابتتعرفش غير من الملف — بنبلّغ بيها الحاوية
+        // عشان «زي ما هو» تاخد شكلها من غير قفزة في التخطيط
+        v.addEventListener("loadedmetadata", function () {
+          if (v.videoWidth && v.videoHeight) {
+            holder.style.setProperty("--vid-ratio", v.videoWidth + " / " + v.videoHeight);
+          }
+        });
         holder.replaceChildren(v);
         return;
       }
