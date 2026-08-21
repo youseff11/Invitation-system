@@ -226,6 +226,7 @@ BLOCK_REGISTRY: dict[str, dict] = {}
 # فبتفضل مظبوطة على أي مقاس شاشة من غير ما نخزّن موضع لكل جهاز.
 LAYOUT_MAX_X = 45.0    # cqw
 LAYOUT_MAX_Y = 40.0    # cqw
+_EL_SLOT = re.compile(r"^el-\d{1,4}$")
 _SLOT_RE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 
@@ -243,9 +244,16 @@ def _clean_layout(raw, allowed_slots: set[str]) -> dict:
         return {}
     out: dict[str, dict] = {}
     for slot, val in list(raw.items())[:60]:
-        if not isinstance(slot, str) or not _SLOT_RE.match(slot):
+        if not isinstance(slot, str):
             continue
-        if allowed_slots and slot not in allowed_slots and slot not in MOVABLE_PARTS:
+        # el-N بتتولّد تلقائياً لعناصر القوالب المستوردة — مفيش قايمة
+        # مسبقة ليها لأن محتوى القالب مش معروف قبل ما يترفع. لاحظ إن
+        # _SLOT_RE مابيسمحش بالشرطة، فلازم الفحص ده يجي **قبله**.
+        if _EL_SLOT.match(slot):
+            pass
+        elif not _SLOT_RE.match(slot):
+            continue
+        elif allowed_slots and slot not in allowed_slots and slot not in MOVABLE_PARTS:
             continue
         if not isinstance(val, dict):
             continue
@@ -258,6 +266,10 @@ def _clean_layout(raw, allowed_slots: set[str]) -> dict:
             continue
         dx = max(-LAYOUT_MAX_X, min(LAYOUT_MAX_X, dx))
         dy = max(-LAYOUT_MAX_Y, min(LAYOUT_MAX_Y, dy))
+        # 4.0 و4 نفس الحاجة — نخزّن الأنضف عشان الـCSS الناتج ما يبقاش
+        # فيه أصفار عشرية مالهاش لزوم
+        if dx == int(dx): dx = int(dx)
+        if dy == int(dy): dy = int(dy)
         if dx or dy:                      # الصفر مالوش لزوم نخزنه
             out[slot] = {"dx": dx, "dy": dy}
     return out
@@ -613,11 +625,13 @@ register(
 # ---- HTML مخصص (مخرج أمان للقوالب المستوردة) ----------------------------
 register(
     "custom_html", "كود HTML مخصص", icon="</>", category="متقدم",
-    description="لأجزاء القوالب المستوردة التي لم يتمكن المستورد من تفكيكها",
+    description="قسم من قالب مستورد. اضغط على أي نص في المعاينة واكتب فوقه، واسحب أي عنصر بالماوس، وغيّر الألوان من «ألوان القسم». الكود تحت للحالات المتقدمة.",
     props=[
-        field("html", "الكود", "html", "",
+        # المجموعة دي مقفولة افتراضياً. التعديل العادي بيتم من المعاينة
+        # مباشرة (اكتب فوق النص، اسحب العنصر) ومن مجموعة الألوان.
+        field("html", "الكود", "html", "", group="كود متقدّم",
               help_text="يمر عبر منقّي أمان — الوسوم الخطرة تُزال تلقائياً"),
-        field("css", "ستايل القسم", "textarea", "",
+        field("css", "ستايل القسم", "textarea", "", group="كود متقدّم",
               help_text="يُحصر داخل هذا القسم فقط — لن يؤثر على باقي الدعوة"),
     ],
 )
@@ -880,9 +894,16 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
         style_raw = item.get("style") if isinstance(item.get("style"), dict) else {}
         slots = {s["key"] for s in spec["props"]}
 
+        # اسم يكتبه المستخدم للقسم. مهم جداً للقوالب المستوردة: من غيره
+        # كل أقسامها بتظهر في القائمة باسم واحد «كود HTML مخصص» ومحدش
+        # يعرف أنهي واحد فيهم.
+        label = item.get("label")
+        label = label.strip()[:60] if isinstance(label, str) else ""
+
         blocks.append({
             "id": bid,
             "type": btype,
+            "label": label,
             "visible": bool(item.get("visible", True)),
             "locked": bool(item.get("locked", False)),
             "gated": bool(item.get("_gated", False)),

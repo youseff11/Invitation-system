@@ -894,3 +894,20 @@
 @media (max-width: 480px) {
   .lb-intro-sound { width: 38px; height: 38px; inset-block-start: 12px; inset-inline-end: 12px; }
 }
+
+/* -------------------------------- تلميحات التحرير داخل الأقسام المستوردة */
+.lb-doc--editing .lb-custom [data-lb-text]:hover {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 3px; cursor: text;
+}
+.lb-doc--editing .lb-custom [data-move]:not([data-lb-text]):hover {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px; cursor: grab;
+}
+.lb-doc--editing .lb-custom [data-move].lb-dragging { cursor: grabbing; }
+
+/* العنصر المحدَّد جوّه قسم مستورد */
+.lb-doc--editing .lb-el-picked {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}

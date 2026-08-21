@@ -1398,3 +1398,160 @@ class ImportedAudioTests(TestCase):
         tpl = templateimport.import_template(
             self._zip({"index.html": self.PAGE, "media/x.mp3": b"ID3fake"}))
         self.assertNotIn(".mp3", json.dumps(tpl.document))
+
+
+# ==========================================================================
+class BlockLabelTests(TestCase):
+    """اسم القسم في القائمة — من غيره القالب المستورد كله «كود HTML مخصص»."""
+
+    def _import(self, body):
+        page = f"<html><head><title>T</title></head><body>{body}</body></html>"
+        return templateimport.import_template(
+            SimpleUploadedFile("a.html", page.encode(), "text/html"))
+
+    LONG = "<p>يتشرفان بدعوتكم لحضور حفل زفافهما في قاعة الياسمين بالقاهرة</p>"
+
+    def test_heading_becomes_the_label(self):
+        tpl = self._import(f"<section><h2>قصتنا</h2>{self.LONG}</section>")
+        self.assertEqual(tpl.document["blocks"][0]["label"], "قصتنا")
+
+    def test_entities_are_decoded_in_the_label(self):
+        """«ليلى &amp; كريم» كان بيظهر بالكيان في القائمة."""
+        tpl = self._import(f"<header><h1>ليلى &amp; كريم</h1>{self.LONG}</header>")
+        self.assertEqual(tpl.document["blocks"][0]["label"], "ليلى & كريم")
+
+    def test_known_class_names_map_to_arabic(self):
+        tpl = self._import(f'<div class="preloader">{self.LONG}</div>')
+        self.assertEqual(tpl.document["blocks"][0]["label"], "شاشة التحميل")
+
+    def test_tag_name_is_the_next_fallback(self):
+        tpl = self._import(f"<footer>{self.LONG}</footer>")
+        self.assertEqual(tpl.document["blocks"][0]["label"], "الخاتمة")
+
+    def test_label_survives_normalisation(self):
+        doc = B.normalize_document({
+            "blocks": [{"id": "b1", "type": "text", "label": "قسمي أنا"}],
+        })
+        self.assertEqual(doc["blocks"][0]["label"], "قسمي أنا")
+
+    def test_label_is_trimmed_and_capped(self):
+        doc = B.normalize_document({
+            "blocks": [{"id": "b1", "type": "text", "label": "  " + "ط" * 200}],
+        })
+        self.assertEqual(len(doc["blocks"][0]["label"]), 60)
+
+    def test_non_string_label_is_ignored(self):
+        doc = B.normalize_document({
+            "blocks": [{"id": "b1", "type": "text", "label": {"x": 1}}],
+        })
+        self.assertEqual(doc["blocks"][0]["label"], "")
+
+
+# ==========================================================================
+class ImportedEditingTests(TestCase):
+    """تحرير القالب المستورد بصرياً — نص، موضع، لون — من غير ما تفتح الكود."""
+
+    def _import(self, body, css=""):
+        page = (f"<html><head><title>T</title>"
+                f"{'<style>' + css + '</style>' if css else ''}</head>"
+                f"<body>{body}</body></html>")
+        return templateimport.import_template(
+            SimpleUploadedFile("a.html", page.encode(), "text/html"))
+
+    LONG = "<p>يتشرفان بدعوتكم لحضور حفل زفافهما في قاعة الياسمين بالقاهرة</p>"
+
+    # ---- المواضع
+    def test_el_slots_survive_normalisation(self):
+        """el-N فيها شرطة، و_SLOT_RE مابيسمحش بيها — كانت بتتشال كلها."""
+        doc = B.normalize_document({"blocks": [{
+            "id": "imp-1", "type": "custom_html",
+            "layout": {"el-3": {"dx": -15.5, "dy": -10.3}},
+        }]})
+        self.assertEqual(doc["blocks"][0]["layout"],
+                         {"el-3": {"dx": -15.5, "dy": -10.3}})
+
+    def test_el_slot_renders_positioning_css(self):
+        doc = B.normalize_document({"blocks": [{
+            "id": "imp-1", "type": "custom_html",
+            "layout": {"el-3": {"dx": 4, "dy": -2}},
+        }]})
+        css = layout_css(doc["blocks"])
+        self.assertIn('#imp-1 [data-move="el-3"]{--dx:4cqw;--dy:-2cqw}', css)
+
+    def test_bogus_slot_names_are_still_refused(self):
+        doc = B.normalize_document({"blocks": [{
+            "id": "imp-1", "type": "custom_html",
+            "layout": {"../etc": {"dx": 1}, "el-": {"dx": 1},
+                       "el-12345678": {"dx": 1}, "EL-1": {"dx": 1}},
+        }]})
+        self.assertEqual(doc["blocks"][0]["layout"], {})
+
+    # ---- data-move لازم ينجو من المنقّي
+    def test_data_move_survives_sanitising(self):
+        """من غيره العنصر بيفقد ارتباطه بموضعه المحفوظ أول ما تحفظ."""
+        out = clean_html('<div data-move="el-7">نص</div>')
+        self.assertIn('data-move="el-7"', out)
+
+    def test_bad_data_move_value_is_dropped(self):
+        out = clean_html('<div data-move="a b&quot;c">نص</div>')
+        self.assertNotIn("data-move", out)
+
+    def test_other_data_attributes_are_still_stripped(self):
+        out = clean_html('<div data-track="spy" data-move="el-1">نص</div>')
+        self.assertNotIn("data-track", out)
+        self.assertIn("data-move", out)
+
+    # ---- الكود مش في الواجهة
+    def test_code_fields_sit_in_the_advanced_group(self):
+        """الكود مش المفروض يكون أول حاجة يشوفها اللي رفع قالب جاهز."""
+        spec = B.BLOCK_REGISTRY["custom_html"]
+        for f in spec["props"]:
+            if f["key"] in ("html", "css"):
+                self.assertEqual(f["group"], "كود متقدّم")
+
+    # ---- الألوان موجودة في الستايل عشان اللوحة تلاقيها
+    def test_imported_css_keeps_its_colours_for_the_picker(self):
+        tpl = self._import(f'<section class="s">{self.LONG}</section>',
+                           css=".s{color:#b08948;background:#faf6ef}")
+        stored = tpl.document["blocks"][0]["props"]["css"]
+        self.assertIn("#b08948", stored)
+        self.assertIn("#faf6ef", stored)
+
+
+# ==========================================================================
+class ElementStyleTests(TestCase):
+    """لوحة العنصر بتكتب style مضمّن — لازم ينجو من المنقّي كله."""
+
+    def test_font_and_size_survive(self):
+        out = clean_html(
+            '<h1 style="font-family:\'Great Vibes\', cursive;font-size:92px">ليلى</h1>')
+        self.assertIn("font-family", out)
+        self.assertIn("Great Vibes", out)
+        self.assertIn("font-size:92px", out)
+
+    def test_colour_weight_align_spacing_survive(self):
+        out = clean_html('<p style="color:#b08948;background-color:#fff;'
+                         'font-weight:700;text-align:center;letter-spacing:2px;'
+                         'line-height:1.6">نص</p>')
+        for want in ("color:#b08948", "background-color:#fff", "font-weight:700",
+                     "text-align:center", "letter-spacing:2px", "line-height:1.6"):
+            self.assertIn(want, out)
+
+    def test_hiding_an_element_survives(self):
+        self.assertIn("display:none", clean_html('<p style="display:none">نص</p>'))
+
+    def test_dangerous_style_is_still_dropped(self):
+        out = clean_html('<p style="font-size:20px;behavior:url(x.htc);'
+                         'width:expression(alert(1))">نص</p>')
+        self.assertIn("font-size:20px", out)
+        self.assertNotIn("behavior", out)
+        self.assertNotIn("expression", out)
+
+    def test_external_url_in_style_is_still_dropped(self):
+        """رابط خارجي في style بيسرّب زيارة الضيف لسيرفر تاني."""
+        out = clean_html('<p style="background-image:url(https://evil.test/x.png)">ن</p>')
+        self.assertNotIn("evil.test", out)
+
+    def test_our_own_media_url_is_allowed(self):
+        out = clean_html('<p style="background-image:url(/media/a/b.webp)">ن</p>')
+        self.assertIn("/media/a/b.webp", out)

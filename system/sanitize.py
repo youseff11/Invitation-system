@@ -25,8 +25,12 @@ DROP_CONTENT_TAGS = {"script", "style", "iframe", "object", "embed", "form",
 
 VOID_TAGS = {"br", "img", "hr"}
 
+# data-move بتربط العنصر بموضعه المحفوظ في block.layout. من غيرها
+# السحب بالماوس جوّه قسم مستورد بيضيع أول ما تحفظ.
+_MOVE_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
 ALLOWED_ATTRS = {
-    "*": {"class", "id", "title", "dir", "lang", "style"},
+    "*": {"class", "id", "title", "dir", "lang", "style", "data-move"},
     "a": {"href", "target", "rel"},
     "img": {"src", "alt", "width", "height", "loading"},
     "time": {"datetime"},
@@ -112,6 +116,9 @@ class _Cleaner(HTMLParser):
             elif name == "style":
                 value = _clean_style(value)
                 if not value:
+                    continue
+            elif name == "data-move":
+                if not _MOVE_RE.match(value):
                     continue
             value = value.replace('"', "&quot;").replace("<", "&lt;")
             parts.append(f'{name}="{value}"')

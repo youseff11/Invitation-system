@@ -251,6 +251,57 @@ _ROOT_DIV_RE = re.compile(
     r'<(div|main)[^>]*\sid=["\'](root|app|__next|__nuxt|___gatsby)["\']', re.I)
 
 
+_HEADING_RE = re.compile(r"<h[1-6][^>]*>(.*?)</h[1-6]>", re.I | re.S)
+_ROOT_TAG_RE = re.compile(r"^<(\w+)([^>]*)>", re.S)
+_CLASS_RE = re.compile(r'\bclass="([^"]*)"', re.I)
+
+# أسماء عربية للوسوم والكلاسات الشائعة في قوالب الدعوات
+_TAG_LABELS = {"header": "الترويسة", "footer": "الخاتمة", "nav": "قائمة",
+               "main": "المحتوى", "aside": "جانبي", "section": "قسم",
+               "article": "مقال", "figure": "صورة", "audio": "صوت",
+               "video": "فيديو", "button": "زر", "form": "نموذج"}
+_CLASS_LABELS = {
+    "hero": "الغلاف", "cover": "الغلاف", "intro": "المقدمة",
+    "preloader": "شاشة التحميل", "loader": "شاشة التحميل",
+    "envelope": "الظرف", "story": "قصتنا", "about": "عننا",
+    "gallery": "المعرض", "photos": "الصور", "timeline": "البرنامج",
+    "agenda": "البرنامج", "schedule": "البرنامج", "countdown": "العدّاد",
+    "venue": "المكان", "location": "المكان", "map": "الخريطة",
+    "place": "المكان", "rsvp": "تأكيد الحضور", "verse": "الآية",
+    "quote": "اقتباس", "footer": "الخاتمة", "end": "الخاتمة",
+    "contact": "التواصل", "gift": "الهدايا", "music": "الموسيقى",
+}
+
+
+def _guess_label(cleaned: str, raw_part: str, index: int) -> str:
+    """اسم مفهوم للقسم المستورد.
+
+    الترتيب: عنوان <h1-h6> جوّاه ← كلاس معروف ← اسم الوسم ← رقم.
+    من غير ده كل الأقسام بتبقى «كود HTML مخصص» في القائمة.
+    """
+    m = _HEADING_RE.search(cleaned)
+    if m:
+        # الاسم بيتعرض كنص عادي، فلازم نفكّ الكيانات — وإلا بيبان
+        # «ليلى &amp; كريم» في القائمة
+        head = _unescape(_visible_text(m.group(1)))[:40].strip()
+        if head:
+            return head
+
+    m = _ROOT_TAG_RE.match(raw_part.strip())
+    if m:
+        tag, attrs = m.group(1).lower(), m.group(2)
+        cls = _CLASS_RE.search(attrs)
+        for token in (cls.group(1).lower().split() if cls else []):
+            for key, label in _CLASS_LABELS.items():
+                if key in token:
+                    return label
+        if tag in _TAG_LABELS:
+            return _TAG_LABELS[tag]
+
+    text = _unescape(_visible_text(cleaned))[:36].strip()
+    return text or f"قسم {index}"
+
+
 def _visible_text(html: str) -> str:
     """النص اللي الضيف هيشوفه فعلاً — من غير وسوم ولا مسافات زيادة."""
     return _WS_RE.sub(" ", _TAG_RE.sub(" ", html or "")).strip()
@@ -423,6 +474,7 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
         blocks.append({
             "id": bid,
             "type": "custom_html",
+            "label": _guess_label(cleaned, part, i),
             "props": {
                 "html": cleaned,
                 # الستايل شيت كامل مع كل قسم: تخمين أنهي قاعدة بتخص أنهي

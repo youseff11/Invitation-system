@@ -55,6 +55,7 @@
   var state = {
     doc: readJSON("editor-document", { theme: {}, settings: {}, blocks: [] }),
     selected: null,
+    selEl: null,        // العنصر المحدَّد جوّه قسم مستورد (اسم data-move)
     device: "mobile",
     dirty: false,
     saving: false,
@@ -578,7 +579,11 @@
 
       row.appendChild(el("span", "ed-block-grip", "⠿"));
       row.appendChild(el("span", "ed-block-icon", spec.icon));
-      row.appendChild(el("span", "ed-block-name", spec.label));
+      // الاسم اللي كتبه المستخدم بيسبق اسم النوع — بيفرق جداً مع
+      // القوالب المستوردة اللي كل أقسامها من نفس النوع
+      var nameEl = el("span", "ed-block-name", block.label || spec.label);
+      if (block.label) nameEl.title = block.label + " — " + spec.label;
+      row.appendChild(nameEl);
       if (gated) row.appendChild(el("span", "ed-block-tag", "الباقة"));
 
       var actions = el("div", "ed-block-actions");
@@ -690,7 +695,7 @@
     var head = el("div", "ed-section-head");
     var title = el("div");
     title.appendChild(el("p", "ed-kicker", "القسم المحدَّد"));
-    title.appendChild(el("strong", null, spec.label));
+    title.appendChild(el("strong", null, block.label || spec.label));
     head.appendChild(title);
 
     var back = el("button", "ed-btn ed-btn--sm", "الأقسام ↩");
@@ -699,6 +704,24 @@
     head.appendChild(back);
     box.appendChild(head);
 
+    // إعادة تسمية القسم — الاسم بيظهر في قائمة الأقسام
+    var nameField = el("div", "ed-field");
+    var nameLabel = el("label");
+    nameLabel.appendChild(el("span", null, "اسم القسم في القائمة"));
+    nameField.appendChild(nameLabel);
+    var nameInput = el("input", "ed-input");
+    nameInput.type = "text";
+    nameInput.maxLength = 60;
+    nameInput.placeholder = spec.label;
+    nameInput.value = block.label || "";
+    nameInput.addEventListener("input", function () {
+      block.label = nameInput.value;
+      markDirty();
+    });
+    nameInput.addEventListener("change", renderBlockList);
+    nameField.appendChild(nameInput);
+    box.appendChild(nameField);
+
     if (spec.description) box.appendChild(el("p", "ed-hint", spec.description));
     if (!hasFeature(spec.feature)) {
       var warn = el("p", "ed-hint", "هذا القسم غير متاح في باقة العميل الحالية ولن يظهر للضيوف.");
@@ -706,11 +729,22 @@
       box.appendChild(warn);
     }
 
-    box.appendChild(buildGroups(
-      spec.props,
-      function (s) { return block.props[s.key]; },
-      function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); }
-    ));
+    // القسم المستورد: الأدوات البصرية الأول، والكود آخر حاجة ومقفول.
+    // اللي بيرفع قالب جاهز عايز يغيّر لون ويكتب نص، مش يقرا HTML.
+    var codeLast = block.type === "custom_html";
+    if (!codeLast) {
+      box.appendChild(buildGroups(
+        spec.props,
+        function (s) { return block.props[s.key]; },
+        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); }
+      ));
+    }
+
+    // في القسم المستورد لوحة العنصر هي الأداة الأساسية — تيجي الأول
+    if (codeLast) {
+      box.appendChild(buildElementGroup(block));
+      box.appendChild(buildColorGroup(block));
+    }
 
     if (spec.style && spec.style.length) {
       box.appendChild(buildGroups(
@@ -722,7 +756,365 @@
     }
 
     box.appendChild(buildLayoutGroup(block, spec));
+    if (codeLast) {
+      box.appendChild(buildGroups(
+        spec.props,
+        function (s) { return block.props[s.key]; },
+        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
+        false
+      ));
+    }
     syncCollapseTool();
+  }
+
+  // ==========================================================
+  // لوحة العنصر — تحكّم كامل في أي حاجة جوّه قسم مستورد
+  // ==========================================================
+  /* القسم المستورد مالوش حقول معروفة مسبقاً، فبدل ما نسيب المستخدم
+     يكتب CSS بإيده بنخلي كل تحكّم يتطبّق كـstyle مضمّن على العنصر
+     نفسه. الميزة إن ده بيتخزن جوّه props.html وبينجو من المنقّي
+     (الخصائص دي كلها في قايمة السماح)، ومحتاجش مفاتيح جديدة. */
+
+  var EL_NAMES = {
+    H1: "عنوان رئيسي", H2: "عنوان", H3: "عنوان فرعي", H4: "عنوان صغير",
+    H5: "عنوان صغير", H6: "عنوان صغير", P: "فقرة", SPAN: "نص",
+    A: "رابط", IMG: "صورة", LI: "عنصر قائمة", UL: "قائمة", OL: "قائمة",
+    DIV: "مجموعة", SECTION: "مجموعة", HEADER: "ترويسة", FOOTER: "خاتمة",
+    FIGURE: "صورة", BLOCKQUOTE: "اقتباس", TABLE: "جدول", TD: "خانة",
+    STRONG: "نص عريض", EM: "نص مائل", SMALL: "نص صغير", BUTTON: "زر"
+  };
+
+  var WEIGHTS = [["", "زي ما هو"], ["300", "خفيف"], ["400", "عادي"],
+                 ["500", "متوسط"], ["600", "شبه عريض"], ["700", "عريض"]];
+  var ALIGNS = [["", "زي ما هو"], ["right", "يمين"], ["center", "وسط"],
+                ["left", "يسار"]];
+
+  function styleOf(node, prop) {
+    return node.style.getPropertyValue(prop) || "";
+  }
+
+  function computedPx(node, prop) {
+    var v = parseFloat(node.ownerDocument.defaultView.getComputedStyle(node)[prop]);
+    return isNaN(v) ? 0 : Math.round(v);
+  }
+
+  /** صف تحكّم: عنوان + عنصر إدخال. */
+  function ctrlRow(label, input, extra) {
+    var row = el("div", "ed-field");
+    var lab = el("label");
+    lab.appendChild(el("span", null, label));
+    row.appendChild(lab);
+    var line = el("div", "ed-ctrl-line");
+    line.appendChild(input);
+    if (extra) line.appendChild(extra);
+    row.appendChild(line);
+    return row;
+  }
+
+  function buildElementGroup(block) {
+    var node = selectedElNode();
+    var wrap = el("details", "ed-group");
+    var sum = el("summary");
+    sum.appendChild(el("span", null, "العنصر المحدَّد"));
+    wrap.appendChild(sum);
+    var body = el("div", "ed-group-body");
+    wrap.appendChild(body);
+
+    if (!node) {
+      body.appendChild(el("p", "ed-hint",
+        "اضغط على أي حاجة جوّه المعاينة — كلمة، صورة، زر — وهتتحكّم فيها من هنا."));
+      return wrap;
+    }
+    wrap.open = true;
+
+    var commit = function () {
+      block.props.html = serializeCustom(
+        node.closest("[data-block]").querySelector(".lb-custom"));
+      markDirty();
+    };
+    var setStyle = function (prop, value) {
+      if (value) node.style.setProperty(prop, value);
+      else node.style.removeProperty(prop);
+      commit();
+    };
+
+    var tag = node.tagName;
+    var head = el("p", "ed-el-name",
+      (EL_NAMES[tag] || tag.toLowerCase()) +
+      (node.className ? " · " + String(node.className).split(" ")[0] : ""));
+    body.appendChild(head);
+
+    // ---- الخط
+    var fontSel = el("select", "ed-input");
+    fontSel.appendChild(new Option("زي ما هو", ""));
+    (SCHEMA.fonts || []).forEach(function (f) {
+      fontSel.appendChild(new Option(f.label, f.value));
+    });
+    /* المتصفح بيعيد كتابة font-family بعلامات تنصيص مزدوجة، فمقارنة
+       نصية مباشرة مع قيمة الخيار بتفشل والقايمة بتبان فاضية. */
+    var fontKey = function (v) {
+      return String(v || "").replace(/["']/g, "").replace(/\s+/g, " ")
+             .trim().toLowerCase();
+    };
+    var cur = fontKey(styleOf(node, "font-family"));
+    for (var fi = 0; fi < fontSel.options.length; fi++) {
+      if (fontKey(fontSel.options[fi].value) === cur) {
+        fontSel.selectedIndex = fi;
+        break;
+      }
+    }
+    fontSel.addEventListener("change", function () {
+      snapshot(); setStyle("font-family", fontSel.value);
+    });
+    body.appendChild(ctrlRow("الخط", fontSel));
+
+    // ---- حجم الخط
+    var sizeVal = parseFloat(styleOf(node, "font-size")) || computedPx(node, "fontSize");
+    var size = el("input", "ed-input");
+    size.type = "range"; size.min = 8; size.max = 120; size.step = 1;
+    size.value = sizeVal;
+    var sizeOut = el("b", "ed-ctrl-out", sizeVal + "px");
+    var sizeStarted = false;
+    size.addEventListener("input", function () {
+      if (!sizeStarted) { snapshot(); sizeStarted = true; }
+      sizeOut.textContent = size.value + "px";
+      setStyle("font-size", size.value + "px");
+    });
+    size.addEventListener("change", function () { sizeStarted = false; });
+    body.appendChild(ctrlRow("حجم الخط", size, sizeOut));
+
+    // ---- السُمك والمحاذاة
+    [["font-weight", "سُمك الخط", WEIGHTS],
+     ["text-align", "المحاذاة", ALIGNS]].forEach(function (spec) {
+      var sel = el("select", "ed-input");
+      spec[2].forEach(function (o) { sel.appendChild(new Option(o[1], o[0])); });
+      sel.value = styleOf(node, spec[0]);
+      sel.addEventListener("change", function () {
+        snapshot(); setStyle(spec[0], sel.value);
+      });
+      body.appendChild(ctrlRow(spec[1], sel));
+    });
+
+    // ---- الألوان
+    [["color", "لون النص"], ["background-color", "لون الخلفية"]].forEach(function (spec) {
+      var input = el("input");
+      input.type = "color";
+      input.className = "ed-color";
+      var cur = styleOf(node, spec[0]);
+      input.value = /^#[0-9a-fA-F]{6}$/.test(cur) ? cur : "#000000";
+      var started = false;
+      input.addEventListener("input", function () {
+        if (!started) { snapshot(); started = true; }
+        setStyle(spec[0], input.value);
+      });
+      input.addEventListener("change", function () { started = false; });
+      var clear = el("button", "ed-btn ed-btn--sm", "مسح");
+      clear.type = "button";
+      clear.addEventListener("click", function () {
+        snapshot(); setStyle(spec[0], "");
+      });
+      body.appendChild(ctrlRow(spec[1], input, clear));
+    });
+
+    // ---- المسافات
+    [["letter-spacing", "تباعد الحروف", -3, 16, .5, "px"],
+     ["line-height", "ارتفاع السطر", .8, 3.2, .05, ""]].forEach(function (spec) {
+      var cur = parseFloat(styleOf(node, spec[0]));
+      if (isNaN(cur)) {
+        cur = spec[0] === "line-height"
+          ? Math.round((computedPx(node, "lineHeight") /
+              (computedPx(node, "fontSize") || 16)) * 100) / 100
+          : 0;
+      }
+      var r = el("input", "ed-input");
+      r.type = "range"; r.min = spec[2]; r.max = spec[3]; r.step = spec[4];
+      r.value = cur;
+      var out = el("b", "ed-ctrl-out", cur + spec[5]);
+      var started = false;
+      r.addEventListener("input", function () {
+        if (!started) { snapshot(); started = true; }
+        out.textContent = r.value + spec[5];
+        setStyle(spec[0], r.value + spec[5]);
+      });
+      r.addEventListener("change", function () { started = false; });
+      body.appendChild(ctrlRow(spec[1], r, out));
+    });
+
+    // ---- الصور: تبديل وقص
+    if (tag === "IMG") {
+      var swap = el("button", "ed-btn ed-btn--sm ed-btn--block", "بدّل الصورة");
+      swap.type = "button";
+      swap.addEventListener("click", function () {
+        openAssetPicker(function (url) {
+          snapshot();
+          node.setAttribute("src", url);
+          node.removeAttribute("srcset");
+          commit();
+          requestPreview();
+        }, "image");
+      });
+      body.appendChild(swap);
+    }
+
+    // ---- الموضع الدقيق
+    var pos = (block.layout && block.layout[state.selEl]) || { dx: 0, dy: 0 };
+    var nudge = el("div", "ed-nudge");
+    [["→", -1, 0], ["←", 1, 0], ["↑", 0, -1], ["↓", 0, 1]].forEach(function (d) {
+      var btn = el("button", "ed-btn ed-btn--sm", d[0]);
+      btn.type = "button";
+      btn.title = "تحريك ربع خطوة";
+      btn.addEventListener("click", function () {
+        snapshot();
+        var p2 = layoutOf(block, state.selEl);
+        p2.dx = Math.round(((p2.dx || 0) + d[1] * 0.25) * 100) / 100;
+        p2.dy = Math.round(((p2.dy || 0) + d[2] * 0.25) * 100) / 100;
+        applySlotOffset(node, p2.dx, p2.dy);
+        markDirty();
+        renderInspector();
+      });
+      nudge.appendChild(btn);
+    });
+    var reset = el("button", "ed-btn ed-btn--sm", "للأصل");
+    reset.type = "button";
+    reset.addEventListener("click", function () {
+      snapshot();
+      if (block.layout) delete block.layout[state.selEl];
+      applySlotOffset(node, 0, 0);
+      markDirty();
+      renderInspector();
+    });
+    nudge.appendChild(reset);
+    body.appendChild(ctrlRow(
+      "الموضع (" + (pos.dx || 0) + "٪ / " + (pos.dy || 0) + "٪)", nudge));
+
+    // ---- إخفاء وحذف
+    var acts = el("div", "ed-ctrl-line");
+    var hidden = node.style.display === "none";
+    var hide = el("button", "ed-btn ed-btn--sm", hidden ? "إظهار" : "إخفاء");
+    hide.type = "button";
+    hide.addEventListener("click", function () {
+      snapshot(); setStyle("display", hidden ? "" : "none"); requestPreview();
+    });
+    var del = el("button", "ed-btn ed-btn--sm ed-btn--danger", "احذف العنصر");
+    del.type = "button";
+    del.addEventListener("click", function () {
+      var root = node.closest(".lb-custom");
+      snapshot();
+      node.remove();
+      block.props.html = serializeCustom(root);
+      if (block.layout) delete block.layout[state.selEl];
+      state.selEl = null;
+      markDirty();
+      requestPreview();
+      renderInspector();
+    });
+    acts.appendChild(hide);
+    acts.appendChild(del);
+    body.appendChild(acts);
+
+    return wrap;
+  }
+
+  /* ألوان القسم المستورد.
+
+     القالب الجاهز بيحط ألوانه في CSS، والمستخدم مش المفروض يفتح الكود
+     عشان يغيّر لون. بنستخرج كل لون مكتوب في ستايل القسم ونعرضه كـswatch،
+     وأي تغيير بيتبدّل في كل مكان اللون ده مذكور فيه — في الستايل وفي
+     خصائص style="" المضمّنة. */
+  var HEX_RE = /#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
+  var RGB_RE = /rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*[\d.]+\s*)?\)/g;
+
+  function hex6(v) {
+    if (v.length === 4) {
+      return "#" + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+    }
+    return v.toLowerCase();
+  }
+
+  function rgbToHex(v) {
+    var m = v.match(/\d{1,3}/g);
+    if (!m || m.length < 3) return null;
+    return "#" + m.slice(0, 3).map(function (x) {
+      var n = Math.max(0, Math.min(255, parseInt(x, 10)));
+      return (n < 16 ? "0" : "") + n.toString(16);
+    }).join("");
+  }
+
+  /** كل الألوان في القسم مرتّبة بعدد مرات ظهورها (الأكتر أول). */
+  function collectColors(block) {
+    var text = (block.props.css || "") + "\n" + (block.props.html || "");
+    var counts = {}, order = [];
+    var add = function (raw, key) {
+      if (!key) return;
+      if (!counts[key]) { counts[key] = { n: 0, raws: {} }; order.push(key); }
+      counts[key].n++;
+      counts[key].raws[raw] = 1;
+    };
+    (text.match(HEX_RE) || []).forEach(function (v) { add(v, hex6(v)); });
+    (text.match(RGB_RE) || []).forEach(function (v) { add(v, rgbToHex(v)); });
+    order.sort(function (a, b) { return counts[b].n - counts[a].n; });
+    return order.slice(0, 12).map(function (key) {
+      return { hex: key, count: counts[key].n, raws: Object.keys(counts[key].raws) };
+    });
+  }
+
+  function replaceColor(block, raws, next) {
+    ["css", "html"].forEach(function (k) {
+      var v = block.props[k];
+      if (typeof v !== "string" || !v) return;
+      raws.forEach(function (raw) {
+        v = v.split(raw).join(next);
+      });
+      block.props[k] = v;
+    });
+  }
+
+  function buildColorGroup(block) {
+    var wrap = el("details", "ed-group");
+    var sum = el("summary");
+    sum.appendChild(el("span", null, "ألوان القسم"));
+    wrap.appendChild(sum);
+    var body = el("div", "ed-group-body");
+
+    var colors = collectColors(block);
+    if (!colors.length) {
+      body.appendChild(el("p", "ed-hint", "مفيش ألوان مكتوبة في ستايل القسم ده."));
+      wrap.appendChild(body);
+      return wrap;
+    }
+    wrap.open = true;
+    body.appendChild(el("p", "ed-hint",
+      "غيّر أي لون هنا وهيتبدّل في كل مكان مستعمَل فيه داخل القسم."));
+
+    var grid = el("div", "ed-swatches");
+    colors.forEach(function (c) {
+      var row = el("label", "ed-swatch");
+      var input = el("input");
+      input.type = "color";
+      input.value = c.hex;
+      var name = el("span", "ed-swatch-hex", c.hex);
+      var uses = el("span", "ed-swatch-n", c.count + "×");
+
+      var raws = c.raws.slice();
+      var committed = false;
+      input.addEventListener("focus", function () { committed = false; });
+      input.addEventListener("input", function () {
+        if (!committed) { snapshot(); committed = true; }   // خطوة تراجع واحدة
+        replaceColor(block, raws, input.value);
+        raws = [input.value];              // الجولة الجاية تبدّل اللون الجديد
+        name.textContent = input.value;
+        markDirty();
+        requestPreview();
+      });
+
+      row.appendChild(input);
+      row.appendChild(name);
+      row.appendChild(uses);
+      grid.appendChild(row);
+    });
+    body.appendChild(grid);
+    wrap.appendChild(body);
+    return wrap;
   }
 
   /* مجموعة "المواضع" — بتظهر بس لما يبقى فيه عنصر متحرّك، ومنها
@@ -996,8 +1388,17 @@
     return (stage ? stage.getBoundingClientRect().width : fdoc.documentElement.clientWidth) || 1;
   }
 
-  function bindSlotDrag(node, blockId, slot) {
+  function bindSlotDrag(node, blockId, slot, onDone) {
+    // كان العنصر قابل للكتابة قبل السحب؟ الأقسام المستوردة فيها
+    // صور و<div> مش نصوص — مانفتحهاش للكتابة بعد السحب بالغلط.
+    var wasEditable = function () {
+      return node.getAttribute("data-lb-text") === "1";
+    };
     node.addEventListener("pointerdown", function (e) {
+      /* أحداث الماوس بتطلع من الابن للأب. من غير stopPropagation، لما
+         تمسك كلمة جوّه فقرة الاتنين بياخدوا الحدث — والأب بيكسب لأنه
+         بيتنفّذ بعد الابن، فالقسم كله بيتحرك بدل الكلمة. */
+      e.stopPropagation();
       // التحرير الكتابي له الأولوية: لو العنصر متفتَّح للكتابة سيبه
       if (node.getAttribute("contenteditable") === "true") return;
       if (e.button !== 0) return;
@@ -1030,8 +1431,10 @@
       e.preventDefault();
 
       // في RTL محور الصفحة مقلوب، لكن transform دايماً فيزيائي — فبنسيبه زي ما هو
-      var dx = drag.dx0 + mx / drag.unit;
-      var dy = drag.dy0 + my / drag.unit;
+      // Shift بيبطّأ الحركة للربع عشان الظبط الدقيق
+      var fine = e.shiftKey ? 0.25 : 1;
+      var dx = drag.dx0 + (mx / drag.unit) * fine;
+      var dy = drag.dy0 + (my / drag.unit) * fine;
 
       var snapX = Math.abs(dx) < SNAP, snapY = Math.abs(dy) < SNAP;
       if (snapX) dx = 0;
@@ -1053,7 +1456,7 @@
       node.classList.remove("lb-dragging");
 
       if (!d.moved) {                       // ضغطة عادية — رجّع التحرير الكتابي
-        node.setAttribute("contenteditable", "plaintext-only");
+        if (wasEditable()) node.setAttribute("contenteditable", "plaintext-only");
         return;
       }
       if (cancel) {
@@ -1071,7 +1474,8 @@
         markDirty();
       }
       pruneLayout(d.block);
-      node.setAttribute("contenteditable", "plaintext-only");
+      if (wasEditable()) node.setAttribute("contenteditable", "plaintext-only");
+      if (typeof onDone === "function") onDone();
       if (state.selected === d.block.id) renderInspector();
     }
 
@@ -1108,6 +1512,10 @@
       node.addEventListener("click", function (e) {
         var slot = e.target.closest("[data-slot]");
         if (slot && slot.isContentEditable) return;
+        /* المستمع ده في مرحلة الالتقاط، يعني بيتنفّذ **قبل** عناصر
+           القسم. من غير السطر ده كان بيوقف الضغطة قبل ما توصل لعنصر
+           القالب المستورد، فاختيار العنصر كان مستحيل. */
+        if (e.target.closest && e.target.closest(".lb-custom [data-move]")) return;
         e.preventDefault();
         e.stopPropagation();
         selectBlock(node.getAttribute("data-block"));
@@ -1124,6 +1532,7 @@
       if (!block || !(key in block.props)) return;
 
       node.setAttribute("contenteditable", "plaintext-only");
+      node.setAttribute("data-lb-text", "1");
       node.style.outline = "none";
       node.addEventListener("focus", function () {
         node.style.boxShadow = "0 0 0 2px var(--accent)";
@@ -1144,6 +1553,8 @@
       bindSlotDrag(node, blockId, key);
     });
 
+    bindCustomHtml(fdoc);
+
     // السحب مش للنصوص بس — أي جزء متعلّم بـdata-move يتحرك (الأزرار،
     // الصور، الخريطة، العدّاد، الفورم…). النصوص متعلّمة تلقائياً في القوالب.
     fdoc.querySelectorAll("[data-move]").forEach(function (node) {
@@ -1153,6 +1564,170 @@
       bindSlotDrag(node, holder.getAttribute("data-block"),
                    node.getAttribute("data-move"));
     });
+  }
+
+  // ==========================================================
+  // الأقسام المستوردة — تحرير بصري بدل الكود
+  // ==========================================================
+  /* القالب المستورد بيتخزن كـHTML خام، فمفيش حقول جاهزة زي "الاسم
+     الأول". من غير الطبقة دي المستخدم مالوش وسيلة غير إنه يعدّل الكود
+     بإيده — وده مش المفروض يكون شغله.
+
+     الفكرة: نمشي على العناصر جوّه القسم، اللي فيه نص بس (مفيش عناصر
+     جوّاه) نخلّيه قابل للكتابة، وأي عنصر نديله رقم ونخلّيه يتسحب.
+     بعد أي تعديل بنعيد بناء props.html من الـDOM نفسه. */
+
+  var TEXTY = { H1:1, H2:1, H3:1, H4:1, H5:1, H6:1, P:1, SPAN:1, A:1, LI:1,
+                TD:1, TH:1, STRONG:1, EM:1, B:1, I:1, SMALL:1, FIGCAPTION:1,
+                BLOCKQUOTE:1, TIME:1, MARK:1 };
+
+  // أبناء سطريين مابيمنعوش العنصر إنه يبقى «نص واحد». ده مهم جداً لأن
+  // <h1>ليلى<span>&</span>كريم</h1> شكل شائع جداً في قوالب الدعوات —
+  // ولو اعتبرناه مش نص، المستخدم بيقدر يكتب في الـspan لوحدها بس.
+  var INLINE = { SPAN:1, EM:1, I:1, B:1, STRONG:1, SMALL:1, U:1, S:1,
+                 MARK:1, SUP:1, SUB:1, BR:1, TIME:1, ABBR:1 };
+
+  function isTextUnit(n) {
+    if (!TEXTY[n.tagName]) return false;
+    if (!(n.textContent || "").trim()) return false;
+    for (var i = 0; i < n.children.length; i++) {
+      if (!INLINE[n.children[i].tagName]) return false;
+      // ابن سطري جوّاه عناصر تانية = تركيب مش نص بسيط
+      if (n.children[i].children.length) return false;
+    }
+    return true;
+  }
+
+  /** العناصر اللي نسمح بسحبها — أي حاجة ليها حجم حقيقي. */
+  function movableIn(root) {
+    return Array.prototype.filter.call(root.querySelectorAll("*"), function (n) {
+      if (n.tagName === "BR" || n.tagName === "HR") return false;
+      var r = n.getBoundingClientRect();
+      return r.width > 6 && r.height > 6;
+    });
+  }
+
+  /** يرجّع props.html من الـDOM بعد ما نشيل علاماتنا الوقتية. */
+  function serializeCustom(root) {
+    var clone = root.cloneNode(true);
+    clone.querySelectorAll("[contenteditable]").forEach(function (n) {
+      n.removeAttribute("contenteditable");
+    });
+    clone.querySelectorAll("[data-lb-edit]").forEach(function (n) {
+      n.removeAttribute("data-lb-edit");
+    });
+    clone.querySelectorAll("[data-lb-text]").forEach(function (n) {
+      n.removeAttribute("data-lb-text");
+    });
+    clone.querySelectorAll(".lb-el-picked").forEach(function (n) {
+      n.classList.remove("lb-el-picked");
+      if (!n.getAttribute("class")) n.removeAttribute("class");
+    });
+    // الإزاحات محفوظة في block.layout مش في الستايل المضمّن
+    clone.querySelectorAll("[style]").forEach(function (n) {
+      n.style.removeProperty("--dx");
+      n.style.removeProperty("--dy");
+      n.style.removeProperty("box-shadow");
+      n.style.removeProperty("outline");
+      if (!n.getAttribute("style")) n.removeAttribute("style");
+    });
+    return clone.innerHTML;
+  }
+
+  function bindCustomHtml(fdoc) {
+    fdoc.querySelectorAll('[data-block-type="custom_html"]').forEach(function (sec) {
+      var root = sec.querySelector(".lb-custom");
+      if (!root) return;
+      var blockId = sec.getAttribute("data-block");
+      var block = findBlock(blockId);
+      if (!block || !("html" in block.props)) return;
+
+      var writeBack = function () {
+        block.props.html = serializeCustom(root);
+        markDirty();
+      };
+
+      /* الترتيب مهم:
+         ١) نعلّم وحدات النص الأول.
+         ٢) اللي جوّه وحدة نص بيتشال من اللعبة خالص — لا اختيار ولا سحب.
+            من غير الخطوة دي، <span> جوّه <h1> بتخطف الاختيار من العنوان
+            وتخلّيك تحرّك علامة & لوحدها بدل الاسم.
+         ٣) ترقيم وربط. */
+      var all = movableIn(root);
+      all.forEach(function (n) {
+        if (isTextUnit(n) && !(n.parentElement &&
+            n.parentElement.closest("[data-lb-text]"))) {
+          n.setAttribute("data-lb-text", "1");
+        }
+      });
+
+      var nodes = all.filter(function (n) {
+        return !(n.parentElement && n.parentElement.closest("[data-lb-text]"));
+      });
+
+      var next = 1;
+      nodes.forEach(function (n) {
+        if (!n.getAttribute("data-move")) {
+          while (root.querySelector('[data-move="el-' + next + '"]')) next++;
+          n.setAttribute("data-move", "el-" + next);
+          next++;
+        }
+      });
+
+      nodes.forEach(function (n) {
+        if (n.dataset.lbEdit) return;
+        n.dataset.lbEdit = "1";
+
+        if (n.getAttribute("data-lb-text") === "1") {
+          n.setAttribute("contenteditable", "plaintext-only");
+          n.style.outline = "none";
+          n.addEventListener("focus", function () {
+            if (state.selected !== blockId) selectBlock(blockId);
+          });
+          n.addEventListener("blur", writeBack);
+          n.addEventListener("input", writeBack);
+          n.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); n.blur(); }
+          });
+        }
+
+        var pick = function (e) {
+          if (e) e.stopPropagation();
+          state.selEl = n.getAttribute("data-move");
+          if (state.selected !== blockId) selectBlock(blockId);
+          else renderInspector();
+          markSelectedEl();
+        };
+        n.addEventListener("pointerdown", function () {
+          state.selEl = n.getAttribute("data-move");
+        });
+        n.addEventListener("click", pick);
+
+        bindSlotDrag(n, blockId, n.getAttribute("data-move"), writeBack);
+      });
+
+      // أول ما نضيف data-move لازم نحفظها، وإلا هتضيع مع أول حفظ
+      if (nodes.length) writeBack();
+    });
+    markSelectedEl();
+  }
+
+  /** العنصر المختار جوّه القسم — يرجّع العقدة الحيّة في المعاينة. */
+  function selectedElNode() {
+    var fdoc = frameDoc();
+    if (!fdoc || !state.selected || !state.selEl) return null;
+    return fdoc.querySelector('[data-block="' + state.selected + '"] ' +
+                              '[data-move="' + state.selEl + '"]');
+  }
+
+  function markSelectedEl() {
+    var fdoc = frameDoc();
+    if (!fdoc) return;
+    fdoc.querySelectorAll(".lb-el-picked").forEach(function (n) {
+      n.classList.remove("lb-el-picked");
+    });
+    var n = selectedElNode();
+    if (n) n.classList.add("lb-el-picked");
   }
 
   function syncInspectorField(blockId, key, value) {
