@@ -20,6 +20,7 @@ urlpatterns = [
     path("dashboard/orders/", views.dashboard_orders, name="dashboard_orders"),
     path("dashboard/templates/", views.dashboard_templates, name="dashboard_templates"),
     path("dashboard/music/", views.dashboard_music, name="dashboard_music"),
+    path("dashboard/intros/", views.dashboard_intros, name="dashboard_intros"),
     path("dashboard/analytics/", views.analytics, name="analytics"),
     path("dashboard/invitations/", views.dashboard_invitations, name="dashboard_invitations"),
     path("dashboard/invitations/new/", views.invitation_create, name="invitation_create"),
@@ -30,6 +31,8 @@ urlpatterns = [
     path("dashboard/invitations/<int:pk>/guests/", views.guests_view, name="guests"),
     path("dashboard/invitations/<int:pk>/guests/qr-sheet/", views.guest_qr_sheet,
          name="guest_qr_sheet"),
+    path("dashboard/invitations/<int:pk>/guests/export.xlsx", views.guests_export,
+         name="guests_export"),
     path("dashboard/invitations/<int:pk>/checkin/", views.checkin_scanner, name="checkin"),
     path("dashboard/invitations/<int:pk>/checkin/scan/", views.checkin_scan,
          name="checkin_scan"),
@@ -53,4 +56,6 @@ urlpatterns = [
     path("i/<slug:slug>/g/<str:token>/", views.invitation_guest, name="invitation_guest"),
     path("i/<slug:slug>/qr.svg", views.invitation_qr, name="invitation_qr"),
     path("i/<slug:slug>/g/<str:token>/qr.svg", views.guest_qr, name="guest_qr"),
+    path("i/<slug:slug>/g/<str:token>/qr.png", views.guest_qr_png, name="guest_qr_png"),
+    path("i/<slug:slug>/g/<str:token>/pass/", views.guest_pass, name="guest_pass"),
 ]

@@ -6,12 +6,15 @@
   <div class="toolbar" style="margin:0">
     <a class="btn btn--gold" href="{% url 'checkin' invitation.pk %}">📷 مسح الدخول</a>
     <a class="btn btn--ghost" href="{% url 'guest_qr_sheet' invitation.pk %}" target="_blank" rel="noopener">🖨 أكواد QR</a>
+    <a class="btn btn--ghost" href="{% url 'guests_export' invitation.pk %}">⤓ إكسل للقاعة</a>
     <a class="btn btn--ghost" href="{% url 'invitation_editor' invitation.pk %}">↩ المحرر</a>
   </div>
 </div>
 
 <div class="stats">
   <div class="stat"><b>{{ guests|length }}</b><span>مدعو</span></div>
+  <div class="stat"><b>{{ entries_allowed }}</b><span>دخلات مسموحة</span></div>
+  <div class="stat"><b>{{ entries_used }}</b><span>دخل فعلاً</span></div>
   <div class="stat"><b>{{ invitation.attending_count }}</b><span>أكّد الحضور</span></div>
   <div class="stat"><b>{{ invitation.total_attending_people }}</b><span>إجمالي الحاضرين</span></div>
   <div class="stat"><b>{{ invitation.public_views }}</b><span>مشاهدة</span></div>
@@ -35,18 +38,26 @@
   <div>
     <h2 style="font-size:18px">قائمة الضيوف</h2>
     <div class="table-wrap" style="margin-bottom:24px">
-      <table>
-        <thead><tr><th>الاسم</th><th>الهاتف</th><th>مرافقون</th><th>الرد</th><th>رابطه الشخصي</th><th>الدخول</th></tr></thead>
+      <table class="guests-table">
+        <thead><tr>
+          <th>الكود</th><th>النوع</th><th>الضيف</th><th>الدخول</th>
+          <th>الحالة</th><th>الرابط الفردي</th><th>QR</th>
+        </tr></thead>
         <tbody>
           {% for g in guests %}
           <tr>
-            <td>{{ g.name }}</td>
-            <td>{{ g.phone|default:'—' }}</td>
-            <td>{{ g.plus_ones_allowed }}</td>
+            <td><code class="pass-code">{{ g.pass_code }}</code></td>
+            <td>{{ g.get_source_display }}</td>
             <td>
-              {% if g.rsvp_status %}<span class="pill pill--{{ g.rsvp_status }}">{{ g.latest_rsvp.get_status_display }}</span>
-              {% else %}<span class="muted">لم يرد</span>{% endif %}
+              {{ g.name }}
+              {% if g.phone %}<br><span class="muted" style="font-size:12px">{{ g.phone }}</span>{% endif %}
+              {% if g.rsvp_status %}<br><span class="pill pill--{{ g.rsvp_status }}">{{ g.latest_rsvp.get_status_display }}</span>{% endif %}
             </td>
+            <td class="nums">
+              <b>{{ g.entries_used }} / {{ g.entries_allowed }}</b>
+              <span class="muted">المتبقي: {{ g.entries_left }}</span>
+            </td>
+            <td><span class="pass-state pass-state--{{ g.pass_status }}">{{ g.pass_status_label }}</span></td>
             <td>
               <div class="guest-link">
                 <button class="btn btn--ghost btn--sm" type="button"
@@ -60,12 +71,15 @@
               </div>
             </td>
             <td>
-              <button class="btn btn--ghost btn--sm" data-checkin="{% url 'guest_toggle_checkin' g.pk %}">
-                {% if g.checked_in %}✓ دخل{% else %}تسجيل الدخول{% endif %}
-              </button>
+              <div class="guest-link">
+                <a class="btn btn--gold btn--sm"
+                   href="{% url 'guest_qr_png' invitation.slug g.token %}" download>تحميل</a>
+                <a class="btn btn--ghost btn--sm" target="_blank" rel="noopener"
+                   href="{% url 'guest_pass' invitation.slug g.token %}">عرض</a>
+              </div>
             </td>
           </tr>
-          {% empty %}<tr><td colspan="6" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="7" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

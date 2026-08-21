@@ -51,6 +51,7 @@
   var FEATURES = readJSON("editor-features", []);
   var ASSETS = readJSON("editor-assets", []);
   var MUSIC = readJSON("editor-music", []);   // مكتبة الموسيقى المشتركة
+  var INTROS = readJSON("editor-intros", []); // معرض فيديوهات الافتتاحية
 
   var state = {
     doc: readJSON("editor-document", { theme: {}, settings: {}, blocks: [] }),
@@ -2273,24 +2274,33 @@
     var box = $("[data-music-lib]");
     if (!box) return;
     box.replaceChildren();
-    if (pickKind !== "audio" || !MUSIC.length) { box.hidden = true; return; }
+
+    var items = pickKind === "audio" ? MUSIC
+              : pickKind === "video" ? INTROS : [];
+    if (!items.length) { box.hidden = true; return; }
     box.hidden = false;
-    box.appendChild(el("p", "ed-lib-label", "مكتبة الموسيقى — متاحة لكل الدعوات"));
-    MUSIC.forEach(function (m) {
+    box.appendChild(el("p", "ed-lib-label",
+      (pickKind === "audio" ? "مكتبة الموسيقى" : "معرض الافتتاحيات") +
+      " — متاحة لكل الدعوات"));
+
+    items.forEach(function (m) {
       var row = el("div", "ed-track");
-      var btn = el("button", "ed-track-pick", m.name);
+      var btn = el("button", "ed-track-pick", m.name +
+        (m.seconds ? " · " + Math.round(m.seconds) + "ث" : ""));
       btn.type = "button";
       btn.title = m.note || m.name;
       btn.addEventListener("click", function () {
         if (pickCallback) pickCallback(m.url);
         closeModal(refs.assetModal);
       });
-      var audio = doc.createElement("audio");
-      audio.controls = true;
-      audio.preload = "none";       // ما ننزّلش كل المقطوعات لمجرد فتح النافذة
-      audio.src = m.url;
+      // preload=none: ما ننزّلش كل الملفات لمجرد إن النافذة اتفتحت
+      var media = doc.createElement(pickKind === "audio" ? "audio" : "video");
+      media.controls = true;
+      media.preload = "none";
+      media.src = m.url;
+      if (m.poster) media.poster = m.poster;
       row.appendChild(btn);
-      row.appendChild(audio);
+      row.appendChild(media);
       box.appendChild(row);
     });
     box.appendChild(el("p", "ed-lib-label", "أو ارفع ملفاً لهذه الدعوة وحدها"));

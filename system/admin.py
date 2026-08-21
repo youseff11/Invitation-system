@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
-    Asset, Customer, Guest, Invitation, MusicTrack, Order, Plan, RSVPResponse,
-    Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan,
+    RSVPResponse, Template,
 )
 
 
@@ -50,9 +50,11 @@ class InvitationAdmin(admin.ModelAdmin):
 
 @admin.register(Guest)
 class GuestAdmin(admin.ModelAdmin):
-    list_display = ("name", "invitation", "phone", "checked_in")
-    list_filter = ("checked_in",)
-    search_fields = ("name", "phone")
+    list_display = ("pass_code", "name", "invitation", "source",
+                    "entries_used", "entries_allowed", "checked_in")
+    list_filter = ("checked_in", "source")
+    search_fields = ("name", "phone", "pass_code")
+    readonly_fields = ("token", "pass_code")
 
 
 @admin.register(RSVPResponse)
@@ -77,5 +79,12 @@ class AssetAdmin(admin.ModelAdmin):
 @admin.register(MusicTrack)
 class MusicTrackAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "order", "created_at")
+    list_editable = ("is_active", "order")
+    search_fields = ("name", "note")
+
+
+@admin.register(IntroVideo)
+class IntroVideoAdmin(admin.ModelAdmin):
+    list_display = ("name", "seconds", "is_active", "order", "created_at")
     list_editable = ("is_active", "order")
     search_fields = ("name", "note")

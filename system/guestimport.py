@@ -153,6 +153,20 @@ def parse_guests(raw: bytes) -> tuple[list[dict], ImportReport]:
     return rows, report
 
 
+def _fresh_pass_code(used: set) -> str:
+    """كود تصريح مش مستخدم — لا في الداتابيز ولا في الدفعة الحالية."""
+    from .models import Guest
+    for _ in range(30):
+        code = Guest.new_pass_code()
+        if code not in used:
+            used.add(code)
+            return code
+    import secrets
+    code = "FRH-" + secrets.token_hex(5).upper()
+    used.add(code)
+    return code
+
+
 def import_guests(invitation, raw: bytes) -> ImportReport:
     """يقرأ الملف ويضيف/يحدّث الضيوف. المطابقة بالهاتف ثم بالاسم."""
     from .models import Guest
@@ -167,6 +181,8 @@ def import_guests(invitation, raw: bytes) -> ImportReport:
 
     to_create: list[Guest] = []
     seen_phones: set[str] = set()
+    used_codes: set[str] = set(
+        Guest.objects.exclude(pass_code="").values_list("pass_code", flat=True))
 
     for row in rows:
         row.pop("_line", None)
@@ -197,7 +213,12 @@ def import_guests(invitation, raw: bytes) -> ImportReport:
             continue
 
         guest = Guest(invitation=invitation, **row)
+        # bulk_create مابيناديش save()، فالرمز وكود التصريح لازم يتولّدوا
+        # هنا بإيدنا — وإلا كل الصفوف بتنزل بكود فاضي والقيد unique بيقع.
         guest.token = Guest.new_token()
+        guest.pass_code = _fresh_pass_code(used_codes)
+        # الضيف المستورد ليه دخلة + مرافقينه
+        guest.entries_allowed = 1 + int(row.get("plus_ones_allowed") or 0)
         to_create.append(guest)
         by_name[row["name"]] = guest
         if phone:

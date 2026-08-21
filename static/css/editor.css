@@ -761,3 +761,5 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 /* أزرار العمليات بتتزاحم لما تبقى ٤ في صف */
 .ed-ctrl-line .ed-btn { flex: 1; min-width: 0; padding: 6px 6px; font-size: 11.5px; }
 .ed-ctrl-line .ed-btn[disabled] { opacity: .42; cursor: not-allowed; }
+/* معاينة الفيديو في نافذة الاختيار */
+.ed-track video { flex: 0 1 210px; max-width: 100%; border-radius: 8px; background: #000; }

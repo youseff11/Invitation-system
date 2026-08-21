@@ -182,16 +182,22 @@
         .then(function (d) {
           if (!d.ok) { show("bad", "✕ " + (d.error || "تعذّر التسجيل")); return; }
           var meta = [];
+          if (d.code) meta.push(d.code);
           if (d.group) meta.push(d.group);
-          if (d.companions) meta.push("+" + d.companions + " مرافق");
           if (d.rsvp) meta.push("الرد: " + d.rsvp);
+          // العدّاد ده أهم حاجة على الباب: كام دخل من كام
+          var count = (d.used != null && d.allowed != null)
+            ? d.used + " من " + d.allowed + " · متبقي " + d.left : "";
+
           if (d.already) {
-            show("warn", "⚠ " + d.name + " — مسجّل قبل كده",
-              ["دخل الساعة " + d.at, meta.join(" · ")]);
+            show("bad", "✕ " + d.name + " — " + (d.error || "التصريح مستخدم"),
+              [count, meta.join(" · ")]);
           } else {
-            show("ok", "✓ " + d.name, [meta.join(" · "), "دخل الساعة " + d.at]);
+            var line = count + (d.left === 0 ? " · اكتمل" : "");
+            show("ok", "✓ " + d.name, [line, meta.join(" · "), "الساعة " + d.at]);
             var li = doc.createElement("li");
-            li.textContent = d.at + " — " + d.name;
+            li.textContent = d.at + " — " + d.name +
+              (d.allowed > 1 ? " (" + d.used + "/" + d.allowed + ")" : "");
             logEl.insertBefore(li, logEl.firstChild);
             while (logEl.children.length > 12) logEl.removeChild(logEl.lastChild);
           }

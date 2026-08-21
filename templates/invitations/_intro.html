@@ -18,11 +18,25 @@
     muted إجباري: كل المتصفحات بتمنع التشغيل التلقائي بصوت. زر الصوت
     تحت بيشيله بعد أول لمسة من الضيف — دي الطريقة الوحيدة المسموحة.
   {% endcomment %}
+  {% if render.settings.intro_video_start == 'button' %}
+  <video class="lb-intro-video" data-intro-video data-intro-manual
+         src="{{ render.settings.intro_video }}"
+         {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
+         playsinline preload="metadata"></video>
+  <div class="lb-intro-veil"></div>
+  <button type="button" class="lb-intro-play" data-intro-play
+          aria-label="تشغيل الفيديو">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M8 5.2v13.6L19 12 8 5.2Z"/>
+    </svg>
+  </button>
+  {% else %}
   <video class="lb-intro-video" data-intro-video
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          autoplay muted playsinline preload="metadata"></video>
   <div class="lb-intro-veil"></div>
+  {% endif %}
   {% if render.settings.intro_video_sound %}
   <button type="button" class="lb-intro-sound" data-intro-sound
           aria-pressed="false" aria-label="تشغيل صوت الفيديو" title="تشغيل الصوت">

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from django import forms
 
-from .models import Customer, Guest, Invitation, MusicTrack, Order, Plan, Template
+from .models import (
+    Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan, Template,
+)
 
 
 class OrderForm(forms.ModelForm):
@@ -110,4 +112,30 @@ class MusicTrackForm(forms.ModelForm):
         f = self.cleaned_data.get("file")
         if f and f.size > 8 * 1024 * 1024:
             raise forms.ValidationError("حجم الملف أكبر من ٨ ميجابايت.")
+        return f
+
+
+class IntroVideoForm(forms.ModelForm):
+    """رفع فيديو افتتاحية للمكتبة المشتركة."""
+
+    class Meta:
+        model = IntroVideo
+        fields = ["name", "file", "poster", "external_url", "note",
+                  "is_active", "order"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"accept": "video/mp4,video/webm"}),
+            "poster": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+            "external_url": forms.URLInput(attrs={"placeholder": "https://.../intro.mp4"}),
+        }
+
+    def clean(self):
+        data = super().clean()
+        if not data.get("file") and not data.get("external_url"):
+            raise forms.ValidationError("ارفع ملف فيديو أو ضع رابطاً مباشراً.")
+        return data
+
+    def clean_file(self):
+        f = self.cleaned_data.get("file")
+        if f and f.size > 8 * 1024 * 1024:
+            raise forms.ValidationError("حجم الفيديو أكبر من ٨ ميجابايت.")
         return f

@@ -918,3 +918,53 @@
   box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .lb-doc--editing .lb-custom [data-lb-text]:hover { cursor: default; }
+
+/* ------------------------------------------------ زر تشغيل فيديو الافتتاحية */
+.lb-intro-play {
+  position: absolute; inset: 0; margin: auto; z-index: 4;
+  inline-size: 88px; block-size: 88px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, .5); border-radius: 50%;
+  background: rgba(20, 18, 16, .5); color: #fff;
+  backdrop-filter: blur(4px); cursor: pointer;
+  transition: transform .2s ease, background .2s ease;
+}
+.lb-intro-play:hover { background: rgba(20, 18, 16, .72); transform: scale(1.06); }
+.lb-intro-play svg { inline-size: 34px; block-size: 34px; margin-inline-start: 5px; }
+/* نبضة خفيفة تلفت النظر إن فيه حاجة تتضغط */
+@media (prefers-reduced-motion: no-preference) {
+  .is-awaiting-play .lb-intro-play { animation: lb-pulse 2.4s ease-in-out infinite; }
+  @keyframes lb-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .34); }
+    70%      { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+  }
+}
+/* المحتوى بيتخبّى لحد ما الفيديو يشتغل — زر التشغيل في نص الشاشة
+   والنص كان بيتراكب معاه ويبقى الاتنين مش مقروءين */
+.is-awaiting-play .lb-intro-inner {
+  opacity: 0; visibility: hidden; pointer-events: none;
+}
+.lb-intro-inner { transition: opacity .45s ease .15s; }
+@media (prefers-reduced-motion: reduce) { .lb-intro-inner { transition: none; } }
+.lb-intro:not(.is-awaiting-play) .lb-intro-play { display: none; }
+
+/* ------------------------------------------------ تصريح الدخول بعد الرد */
+.lb-pass {
+  margin-block-start: 22px; padding: 20px 18px; text-align: center;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface);
+}
+.lb-pass-title {
+  margin: 0 0 12px; font-size: 13px; letter-spacing: 2px; color: var(--accent);
+}
+.lb-pass-qr {
+  inline-size: min(220px, 70%); block-size: auto; display: block;
+  margin-inline: auto; background: #fff; padding: 10px; border-radius: 12px;
+  border: 1px solid var(--border);
+}
+.lb-pass-code {
+  font-family: ui-monospace, "SFMono-Regular", monospace; direction: ltr;
+  font-size: 19px; font-weight: 700; letter-spacing: 1.4px; margin: 12px 0 4px;
+}
+.lb-pass-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+.lb-pass-actions { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }

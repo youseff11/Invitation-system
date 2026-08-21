@@ -1,0 +1,95 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}مكتبة الافتتاحيات — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head">
+  <h1>مكتبة الافتتاحيات</h1>
+  <a class="btn btn--ghost" href="{% url 'dashboard_invitations' %}">↩ الدعوات</a>
+</div>
+
+<div class="card" style="margin-bottom:22px">
+  <h2 style="font-size:17px;margin-top:0">إزاي بتشتغل</h2>
+  <p class="muted" style="margin:0 0 8px;font-size:13.5px">
+    ارفع الفيديو هنا مرة واحدة، وهتلاقيه في المحرر تحت
+    <strong>الإعدادات ← الافتتاحية ← فيديو الافتتاحية</strong> جاهز للاختيار
+    في أي دعوة من غير ما ترفعه تاني — بالظبط زي مكتبة الموسيقى.
+  </p>
+  <p class="muted" style="margin:0;font-size:13px">
+    الفيديو بيتضغط تلقائياً عند الرفع (٧٢٠p) والصوت بيتحفظ.
+    خلّيه قصير — ٣ لـ٧ ثواني كفاية، والضيف مستني الدعوة مش فيلم.
+  </p>
+</div>
+
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(280px,1fr);align-items:start">
+  <div>
+    <h2 style="font-size:18px">الفيديوهات ({{ clips|length }})</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الاسم</th><th>معاينة</th><th>المدة</th><th>الترتيب</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+          {% for c in clips %}
+          <tr>
+            <td>
+              {{ c.name }}
+              {% if c.note %}<br><span class="muted" style="font-size:12.5px">{{ c.note }}</span>{% endif %}
+            </td>
+            <td>
+              {% if c.url %}
+                <video controls preload="none" src="{{ c.url }}"
+                       {% if c.poster_url %}poster="{{ c.poster_url }}"{% endif %}
+                       style="width:190px;max-width:100%;border-radius:8px"></video>
+              {% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td class="nums">{% if c.seconds %}{{ c.seconds|floatformat:1 }} ث{% else %}—{% endif %}</td>
+            <td>{{ c.order }}</td>
+            <td>
+              {% if c.is_active %}<span class="pill pill--published">متاح</span>
+              {% else %}<span class="pill pill--archived">مخفي</span>{% endif %}
+            </td>
+            <td>
+              <form method="post" class="toolbar" style="margin:0;gap:6px">
+                {% csrf_token %}
+                <input type="hidden" name="clip" value="{{ c.pk }}">
+                <button class="btn btn--ghost btn--sm" type="submit" name="action" value="toggle">
+                  {% if c.is_active %}إخفاء{% else %}إظهار{% endif %}
+                </button>
+                <button class="btn btn--ghost btn--sm" type="submit" name="action" value="delete"
+                        onclick="return confirm('تشيل «{{ c.name|escapejs }}» من المكتبة؟')">حذف</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty">المكتبة فاضية — ارفع أول فيديو من الجنب.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <aside class="card">
+    <h2 style="font-size:17px;margin-top:0">إضافة فيديو</h2>
+    <form method="post" enctype="multipart/form-data" class="form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for f in form %}
+        {% if f.field.widget.input_type == 'checkbox' %}
+          <label class="field field--check" for="{{ f.id_for_label }}">
+            {{ f }}<span>{{ f.label }}</span>
+          </label>
+        {% else %}
+          <div class="field">
+            <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+            {{ f }}
+            {% if f.help_text %}<small class="muted" style="font-size:12px">{{ f.help_text }}</small>{% endif %}
+            {{ f.errors }}
+          </div>
+        {% endif %}
+      {% endfor %}
+      <button class="btn btn--gold btn--block" type="submit">حفظ في المكتبة</button>
+    </form>
+    <p class="muted" style="font-size:12.5px;margin-bottom:0">
+      الحد الأقصى ٨ ميجابايت. صورة الغلاف بتظهر فوراً قبل ما الفيديو يحمّل —
+      بتفرق كتير على بيانات الموبايل.
+    </p>
+  </aside>
+</div>
+{% endblock %}

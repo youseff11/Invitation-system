@@ -9,3 +9,5 @@ whitenoise==6.8.2
 # Postgres:              psycopg[binary]==3.2.3
 # MySQL/MariaDB:         mysqlclient==2.2.6
 #   (على PythonAnywhere مثبّتة أصلاً — مش محتاج تنصبها)
+# تصدير كشف الضيوف لإكسل مع رموز QR
+openpyxl>=3.1

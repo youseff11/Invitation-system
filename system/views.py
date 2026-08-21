@@ -18,6 +18,7 @@ from django.http import (
     Http404, HttpResponse, HttpResponseBadRequest, JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
@@ -27,17 +28,17 @@ from django.views.decorators.http import require_GET, require_POST
 from . import blocks as blocks_engine
 from . import qrcodes
 from .forms import (
-    GuestForm, InvitationSettingsForm, MusicTrackForm, OrderForm,
+    GuestForm, IntroVideoForm, InvitationSettingsForm, MusicTrackForm, OrderForm,
 )
 from .models import (
-    Asset, Customer, Guest, Invitation, MusicTrack, Order, Plan, RSVPResponse,
-    Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan,
+    RSVPResponse, Template,
 )
 from django.utils.safestring import mark_safe
 from .renderer import render_document
 from django.core.files.base import ContentFile
 
-from . import guestimport, images, templateimport, video
+from . import guestexport, guestimport, images, templateimport, video
 
 MAX_ASSET_BYTES = 8 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
@@ -310,9 +311,39 @@ def invitation_rsvp(request, slug):
             success = block["props"].get("success_message") or success
             break
 
+    # ---- تصريح الدخول
+    # اللي أكّد حضوره لازم يطلع بتصريح ومعاه QR. لو مالوش سجل ضيف
+    # (سجّل بنفسه من الفورم) بنعمله واحد — من غيره مفيش حاجة تتمسح
+    # على الباب ولا تتحط في كشف القاعة.
+    pass_info = None
+    if status == "attending":
+        if guest is None:
+            guest = Guest.objects.create(
+                invitation=invitation, name=name, phone=phone,
+                plus_ones_allowed=companions, source="rsvp",
+                entries_allowed=1 + companions,
+            )
+            if previous is None:
+                invitation.rsvps.filter(
+                    name=name, guest__isnull=True
+                ).order_by("-created_at").update(guest=guest)
+        else:
+            # الضيف غيّر عدد مرافقينه — التصريح يتحدّث معاه، بس
+            # مانقلّلوش تحت عدد اللي دخلوا فعلاً
+            guest.grant_entries(max(1 + companions, guest.entries_used))
+        pass_info = _guest_pass_payload(request, guest)
+    elif guest is not None and guest.entries_used == 0:
+        # اعتذر قبل ما يدخل — نلغي التصريح
+        guest.grant_entries(0)
+
     if is_ajax:
-        return JsonResponse({"ok": True, "message": success})
+        payload = {"ok": True, "message": success}
+        if pass_info:
+            payload["pass"] = pass_info
+        return JsonResponse(payload)
     messages.success(request, success)
+    if pass_info:
+        return redirect("guest_pass", slug=slug, token=guest.token)
     return redirect("invitation_public", slug=slug)
 
 
@@ -512,6 +543,52 @@ def dashboard_music(request):
 
 
 @login_required
+def dashboard_intros(request):
+    """مكتبة فيديوهات الافتتاحية — نفس فكرة مكتبة الموسيقى."""
+    _staff_required(request)
+    form = IntroVideoForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action in {"delete", "toggle"}:
+            clip = get_object_or_404(IntroVideo, pk=request.POST.get("clip") or 0)
+            if action == "delete":
+                name = clip.name
+                clip.delete()
+                messages.success(request, f"اتشال «{name}» من المكتبة.")
+            else:
+                clip.is_active = not clip.is_active
+                clip.save(update_fields=["is_active", "updated_at"])
+                messages.success(
+                    request,
+                    ("رجّعت" if clip.is_active else "خبّيت") + f" «{clip.name}».")
+            return redirect("dashboard_intros")
+
+        form = IntroVideoForm(request.POST, request.FILES)
+        if form.is_valid():
+            clip = form.save(commit=False)
+            upload = form.cleaned_data.get("file")
+            if upload:
+                # نفس ضغط فيديو الافتتاحية بتاع الرفع من المحرر
+                try:
+                    stored, secs = video.compress(upload)
+                    clip.file = stored
+                    clip.seconds = secs or 0
+                except Exception:
+                    pass
+            clip.save()
+            messages.success(request, f"اتضاف «{clip.name}» للمكتبة.")
+            return redirect("dashboard_intros")
+        messages.error(request, "راجع البيانات — فيه حقل ناقص.")
+
+    return render(request, "dashboard/intros.html", {
+        "nav": "intros",
+        "form": form,
+        "clips": IntroVideo.objects.all(),
+    })
+
+
+@login_required
 def dashboard_orders(request):
     _staff_required(request)
     status = request.GET.get("status", "")
@@ -563,11 +640,15 @@ def guests_view(request, pk):
         guest.save()
         messages.success(request, "تمت إضافة الضيف.")
         return redirect("guests", pk=pk)
+    totals = invitation.guests.aggregate(
+        allowed=Sum("entries_allowed"), used=Sum("entries_used"))
     return render(request, "dashboard/guests.html", {
         "nav": "invitations",
         "invitation": invitation,
         "guests": invitation.guests.all(),
         "rsvps": invitation.rsvps.all(),
+        "entries_allowed": totals["allowed"] or 0,
+        "entries_used": totals["used"] or 0,
         "form": form,
     })
 
@@ -613,6 +694,13 @@ def invitation_editor(request, pk):
             ).order_by("-id")[:300]
         ],
         "features_json": sorted(invitation.allowed_features),
+        # معرض الافتتاحيات — بيظهر في مُنتقي الفيديو جوه المحرر
+        "intros_json": [
+            {"id": v.pk, "name": v.name, "url": v.url,
+             "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
+            for v in IntroVideo.objects.filter(is_active=True)
+            if v.url
+        ],
         # مكتبة الموسيقى المشتركة — بتظهر في مُنتقي الصوت جوه المحرر
         "music_json": [
             {"id": m.pk, "name": m.name, "url": m.url, "note": m.note}
@@ -944,6 +1032,66 @@ def invitation_qr(request, slug):
     return HttpResponse(svg, content_type="image/svg+xml")
 
 
+def _guest_pass_payload(request, guest) -> dict:
+    """بيانات التصريح اللي بتروح للمتصفح بعد تأكيد الحضور."""
+    return {
+        "code": guest.pass_code,
+        "name": guest.name,
+        "entries": guest.entries_allowed,
+        "url": request.build_absolute_uri(
+            reverse("guest_pass", kwargs={"slug": guest.invitation.slug,
+                                          "token": guest.token})),
+        "qr": request.build_absolute_uri(
+            reverse("guest_qr", kwargs={"slug": guest.invitation.slug,
+                                        "token": guest.token})),
+        "download": request.build_absolute_uri(
+            reverse("guest_qr_png", kwargs={"slug": guest.invitation.slug,
+                                            "token": guest.token})),
+    }
+
+
+def guest_pass(request, slug, token):
+    """صفحة تصريح الدخول — الضيف بيشوف الـQR ويحمّله من هنا.
+
+    مفتوحة بالرمز زي الرابط الشخصي: اللي معاه الرابط معاه التصريح.
+    """
+    invitation = get_object_or_404(
+        Invitation.objects.select_related("plan"), slug=slug)
+    if not invitation.is_live and not request.user.is_staff:
+        raise Http404("الدعوة غير متاحة.")
+    guest = get_object_or_404(Guest, invitation=invitation,
+                              token=(token or "").strip())
+    url = request.build_absolute_uri(guest.get_absolute_url())
+    return render(request, "invitations/pass.html", {
+        "invitation": invitation,
+        "guest": guest,
+        "rsvp": guest.latest_rsvp,
+        "qr_svg": mark_safe(qrcodes.svg_for(url, box_size=8, border=2)),
+        "png_url": reverse("guest_qr_png", kwargs={"slug": slug, "token": guest.token}),
+        "site_name": settings.SITE_NAME,
+    })
+
+
+def guest_qr_png(request, slug, token):
+    """نفس رمز الضيف بس PNG — عشان يتحمّل ويتبعت في واتساب.
+
+    الـSVG أنضف للعرض، بس تطبيقات المحادثة مابتعرضهوش، والضيف بيحتاج
+    صورة يحفظها في الاستديو ويوريها على الباب.
+    """
+    invitation = get_object_or_404(Invitation, slug=slug)
+    if not invitation.is_live and not request.user.is_staff:
+        raise Http404
+    guest = get_object_or_404(Guest, invitation=invitation, token=(token or "").strip())
+    url = request.build_absolute_uri(guest.get_absolute_url())
+    png = qrcodes.png_for(url, label=guest.pass_code, caption=guest.name)
+    if png is None:
+        raise Http404("توليد الصور غير متاح على الخادم.")
+    res = HttpResponse(png, content_type="image/png")
+    res["Content-Disposition"] = (
+        f'attachment; filename="{guest.pass_code or "pass"}.png"')
+    return res
+
+
 def guest_qr(request, slug, token):
     """رمز الضيف. بيشفّر رابطه الشخصي، فنفس الرمز بيخدم غرضين:
     الضيف يمسحه بكاميرا تليفونه فتفتحله دعوته، والاستقبال يمسحه على الباب
@@ -954,6 +1102,36 @@ def guest_qr(request, slug, token):
     guest = get_object_or_404(Guest, invitation=invitation, token=(token or "").strip())
     url = request.build_absolute_uri(guest.get_absolute_url())
     return HttpResponse(qrcodes.svg_for(url), content_type="image/svg+xml")
+
+
+@login_required
+def guests_export(request, pk):
+    """كشف الضيوف كملف إكسل ومعاه رموز QR — للقاعة."""
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+
+    guests = list(invitation.guests.all())
+    only = request.GET.get("only", "")
+    if only == "attending":
+        guests = [g for g in guests if g.entries_allowed > 0]
+
+    try:
+        data = guestexport.build(
+            invitation, guests,
+            base_url=request.build_absolute_uri("/").rstrip("/"),
+        )
+    except ImportError:
+        messages.error(request, "تصدير إكسل محتاج حزمة openpyxl على الخادم.")
+        return redirect("guests", pk=pk)
+
+    name = slugify(invitation.slug or "guests", allow_unicode=False) or "guests"
+    res = HttpResponse(
+        data,
+        content_type="application/vnd.openxmlformats-officedocument."
+                     "spreadsheetml.sheet",
+    )
+    res["Content-Disposition"] = f'attachment; filename="{name}-guests.xlsx"'
+    return res
 
 
 @login_required
@@ -982,8 +1160,9 @@ def checkin_scanner(request, pk):
     return render(request, "dashboard/checkin.html", {
         "invitation": invitation,
         "nav": "invitations",
-        "arrived": invitation.guests.filter(checked_in=True).count(),
-        "total": invitation.guests.count(),
+        # بنعدّ الدخلات مش الصفوف — الضيف اللي معاه ٣ بيتحسب ٣
+        "arrived": invitation.guests.aggregate(n=Sum("entries_used"))["n"] or 0,
+        "total": invitation.guests.aggregate(n=Sum("entries_allowed"))["n"] or 0,
     })
 
 
@@ -1005,30 +1184,50 @@ def checkin_scan(request, pk):
     if not (8 <= len(token) <= 64):
         return JsonResponse({"ok": False, "error": "رمز غير صالح."}, status=400)
 
+    # الكود القصير بيتقبل كمان — الاستقبال بيكتبه بالإيد لو الـQR
+    # مارضيش يتمسح (شاشة مكسورة، إضاءة وحشة، ورق مكرمش)
     guest = invitation.guests.filter(token=token).first()
+    if guest is None:
+        guest = invitation.guests.filter(pass_code__iexact=token).first()
     if guest is None:
         return JsonResponse(
             {"ok": False, "error": "الرمز ده مش من ضيوف الدعوة دي."}, status=404)
 
-    already = guest.checked_in
+    """التصريح بيتعدّ بالدخلات مش بمرة واحدة.
+
+    الضيف اللي معاه ٣ دخلات بيدخل هو واتنين معاه، وكل مسحة بتستهلك
+    واحدة. لما تخلص الحالة بتبقى «مستخدم» والمسحة الجاية بترجّع تحذير
+    بدل ما تعدّي حد زيادة بصمت.
+    """
+    allowed = guest.entries_allowed
+    consumed = guest.consume_entry()
     when = timezone.localtime(guest.checked_in_at) if guest.checked_in_at else None
-    if not already:
-        guest.checked_in = True
-        guest.checked_in_at = timezone.now()
-        guest.save(update_fields=["checked_in", "checked_in_at", "updated_at"])
-        when = timezone.localtime(guest.checked_in_at)
+
+    if allowed <= 0:
+        error = "الضيف ده مالوش تصريح دخول — ما أكّدش حضوره."
+    elif not consumed:
+        error = f"التصريح خلص — اتمسح {guest.entries_used} من {allowed}."
+    else:
+        error = ""
 
     rsvp = guest.latest_rsvp
     return JsonResponse({
         "ok": True,
-        "already": already,
+        # already = مسحة زيادة بعد ما التصريح خلص
+        "already": not consumed,
+        "error": error,
         "name": guest.name,
+        "code": guest.pass_code,
         "group": guest.group_name,
         "companions": guest.plus_ones_allowed,
+        "used": guest.entries_used,
+        "allowed": allowed,
+        "left": guest.entries_left,
+        "status": guest.pass_status,
         "rsvp": rsvp.get_status_display() if rsvp else "",
         "at": when.strftime("%H:%M") if when else "",
-        "arrived": invitation.guests.filter(checked_in=True).count(),
-        "total": invitation.guests.count(),
+        "arrived": invitation.guests.aggregate(n=Sum("entries_used"))["n"] or 0,
+        "total": invitation.guests.aggregate(n=Sum("entries_allowed"))["n"] or 0,
     })
 
 

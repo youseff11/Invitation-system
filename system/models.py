@@ -375,6 +375,44 @@ class MusicTrack(TimeStampedModel):
 
 
 # --------------------------------------------------------------------------
+class IntroVideo(TimeStampedModel):
+    """معرض فيديوهات الافتتاحية — يترفع مرة ويتختار في أي دعوة.
+
+    نفس فكرة ``MusicTrack``: مكتبة منسّقة بأسماء عربية وترتيب عرض، مش
+    ملفات مرفوعة لدعوة واحدة.
+    """
+
+    name = models.CharField("الاسم", max_length=120)
+    file = models.FileField("الفيديو", upload_to="intro_videos/%Y/%m/", blank=True)
+    poster = models.ImageField("صورة الغلاف", upload_to="intro_videos/%Y/%m/",
+                               blank=True, null=True)
+    external_url = models.URLField("رابط خارجي", blank=True,
+                                   help_text="بديل للرفع — رابط مباشر لملف فيديو.")
+    seconds = models.FloatField("المدة بالثواني", default=0)
+    note = models.CharField("ملاحظة", max_length=200, blank=True)
+    is_active = models.BooleanField("متاح للاختيار", default=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "name"]
+        verbose_name = "فيديو افتتاحية"
+        verbose_name_plural = "معرض الافتتاحيات"
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def url(self) -> str:
+        if self.file:
+            return self.file.url
+        return self.external_url or ""
+
+    @property
+    def poster_url(self) -> str:
+        return self.poster.url if self.poster else ""
+
+
+# --------------------------------------------------------------------------
 class Guest(TimeStampedModel):
     invitation = models.ForeignKey(Invitation, on_delete=models.CASCADE,
                                    related_name="guests")
@@ -383,6 +421,17 @@ class Guest(TimeStampedModel):
     group_name = models.CharField("المجموعة", max_length=80, blank=True)
     plus_ones_allowed = models.PositiveIntegerField("مرافقون مسموح بهم", default=0)
     token = models.CharField("رمز الضيف", max_length=32, unique=True, blank=True)
+
+    # ---- تصريح الدخول
+    # الكود ده هو اللي بيتقرا بالعين على الباب لو الـQR مارضيش يتمسح،
+    # فلازم يبقى قصير وسهل النطق — مش الـtoken الطويل.
+    pass_code = models.CharField("كود التصريح", max_length=16, unique=True, blank=True)
+    entries_allowed = models.PositiveIntegerField("عدد الدخلات المسموحة", default=1)
+    entries_used = models.PositiveIntegerField("عدد الدخلات المستخدمة", default=0)
+    SOURCE_CHOICES = [("manual", "مسمى"), ("rsvp", "تسجيل ذاتي")]
+    source = models.CharField("النوع", max_length=10,
+                              choices=SOURCE_CHOICES, default="manual")
+
     checked_in = models.BooleanField("دخل القاعة", default=False)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     note = models.CharField("ملاحظة", max_length=250, blank=True)
@@ -398,7 +447,52 @@ class Guest(TimeStampedModel):
     def save(self, *args, **kwargs):
         if not self.token:
             self.token = self.new_token()
+        if not self.pass_code:
+            self.pass_code = self.new_pass_code()
         super().save(*args, **kwargs)
+
+    @staticmethod
+    def new_pass_code() -> str:
+        """كود قصير يتقرا بالعين. بنتجنّب الحروف اللي بتتلخبط (I/O/0/1)."""
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        for _ in range(20):
+            code = "FRH-" + "".join(secrets.choice(alphabet) for _ in range(6))
+            if not Guest.objects.filter(pass_code=code).exists():
+                return code
+        # احتمال بعيد جداً — بنطوّل الكود بدل ما نفشل
+        return "FRH-" + secrets.token_hex(5).upper()
+
+    @property
+    def entries_left(self) -> int:
+        return max(0, self.entries_allowed - self.entries_used)
+
+    @property
+    def pass_status(self) -> str:
+        """``active`` لسه فيه دخلات · ``used`` خلصت · ``none`` مفيش تصريح."""
+        if self.entries_allowed <= 0:
+            return "none"
+        return "used" if self.entries_left == 0 else "active"
+
+    @property
+    def pass_status_label(self) -> str:
+        return {"active": "نشط", "used": "مستخدم", "none": "بدون"}[self.pass_status]
+
+    def grant_entries(self, count: int) -> None:
+        """يحدّد عدد الدخلات المسموحة (الضيف + مرافقينه)."""
+        self.entries_allowed = max(0, int(count))
+        self.save(update_fields=["entries_allowed", "updated_at"])
+
+    def consume_entry(self) -> bool:
+        """يستهلك دخلة واحدة. يرجّع False لو التصريح خلص."""
+        if self.entries_left <= 0:
+            return False
+        self.entries_used += 1
+        if not self.checked_in:
+            self.checked_in = True
+            self.checked_in_at = timezone.now()
+        self.save(update_fields=["entries_used", "checked_in",
+                                 "checked_in_at", "updated_at"])
+        return True
 
     @staticmethod
     def new_token() -> str:

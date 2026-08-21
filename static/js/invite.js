@@ -290,16 +290,52 @@
       if (timer) clearTimeout(timer);
       if (secs > 0) timer = setTimeout(open, secs * 1000);
     }
-    if (!startsOpen) startAuto();
+    // لو الفيديو مستني ضغطة، العدّاد التلقائي يستنى معاه — وإلا
+    // الدعوة بتفتح لوحدها والضيف لسه ما شافش الافتتاحية
+    var awaitsPlay = !!$("[data-intro-video][data-intro-manual]", intro);
+    if (!startsOpen && !awaitsPlay) startAuto();
 
-    // الفيديو لازم يبدأ صامت — كل المتصفحات بتمنع الصوت التلقائي
     var video = $("[data-intro-video]", intro);
+    var playBtn = $("[data-intro-play]", intro);
     if (video) {
-      video.muted = true;
-      var tryPlay = video.play();
-      if (tryPlay && tryPlay.catch) {
-        // iOS في وضع توفير الطاقة بيرفض التشغيل — الغلاف بيفضل ظاهر
-        tryPlay.catch(function () { intro.classList.add("is-video-blocked"); });
+      /* وضعين للبداية:
+
+         تلقائي — لازم يبدأ **صامت**، ده شرط المتصفح مش اختيار.
+         بزر    — لمسة الضيف بتديك إذن التشغيل بصوت من أول ثانية،
+                  وده أحسن تجربة لما الفيديو ليه صوت مقصود. */
+      var manual = video.hasAttribute("data-intro-manual");
+
+      if (manual && playBtn) {
+        intro.classList.add("is-awaiting-play");
+        playBtn.addEventListener("click", function (e) {
+          e.stopPropagation();          // ما نفتحش الدعوة بالغلط
+          intro.classList.remove("is-awaiting-play");
+          video.muted = false;          // مسموح — الضغطة دي إذن صريح
+          var play = video.play();
+          if (play && play.catch) {
+            play.catch(function () {
+              // بعض الأجهزة بترفض الصوت برضو — نجرّب صامت
+              video.muted = true;
+              var again = video.play();
+              if (again && again.catch) {
+                again.catch(function () {
+                  intro.classList.add("is-video-blocked");
+                });
+              }
+            });
+          }
+          var sound = $("[data-intro-sound]", intro);
+          if (sound) { sound.classList.add("is-on"); sound.setAttribute("aria-pressed", "true"); }
+          if (window.__lbMusic) window.__lbMusic.pause();
+          startAuto();                  // العدّاد يبدأ من دلوقتي
+        });
+      } else {
+        video.muted = true;
+        var tryPlay = video.play();
+        if (tryPlay && tryPlay.catch) {
+          // iOS في وضع توفير الطاقة بيرفض التشغيل — الغلاف بيفضل ظاهر
+          tryPlay.catch(function () { intro.classList.add("is-video-blocked"); });
+        }
       }
       video.addEventListener("ended", function () {
         if (!intro.getAttribute("data-intro-auto")) open();
@@ -379,6 +415,7 @@
             form.querySelectorAll("input, textarea, button").forEach(function (el) {
               el.disabled = true;
             });
+            if (data.pass) showPass(data.pass);
           } else {
             showMessage((data && data.error) || "تعذّر الإرسال، حاول مرة أخرى.");
             if (btn) { btn.disabled = false; btn.textContent = btn.dataset.old; }
@@ -389,6 +426,63 @@
           if (btn) { btn.disabled = false; btn.textContent = btn.dataset.old; }
         });
     });
+
+    /* تصريح الدخول بعد تأكيد الحضور.
+
+       بنوريه في نفس الصفحة فوراً — لو استنينا الضيف يفتح رابط تاني،
+       نصّهم مش هيفتحوه، ويوم الفرح يقفوا على الباب من غير رمز. */
+    function showPass(info) {
+      var wrap = form.querySelector("[data-rsvp-pass]");
+      if (!wrap) {
+        wrap = doc.createElement("div");
+        wrap.setAttribute("data-rsvp-pass", "");
+        form.appendChild(wrap);
+      }
+      wrap.className = "lb-pass";
+      wrap.replaceChildren();
+
+      var title = doc.createElement("p");
+      title.className = "lb-pass-title";
+      title.textContent = "تصريح دخولك";
+      wrap.appendChild(title);
+
+      var img = doc.createElement("img");
+      img.className = "lb-pass-qr";
+      img.src = info.qr;
+      img.alt = "رمز الدخول " + (info.code || "");
+      img.loading = "lazy";
+      wrap.appendChild(img);
+
+      var code = doc.createElement("p");
+      code.className = "lb-pass-code";
+      code.textContent = info.code || "";
+      wrap.appendChild(code);
+
+      var note = doc.createElement("p");
+      note.className = "lb-pass-note";
+      note.textContent = "يكفي " + info.entries +
+        (info.entries === 1 ? " شخص واحد" : " أشخاص") + " — وريّه على الباب.";
+      wrap.appendChild(note);
+
+      var row = doc.createElement("div");
+      row.className = "lb-pass-actions";
+      var dl = doc.createElement("a");
+      dl.className = "lb-btn lb-btn--solid";
+      dl.href = info.download;
+      dl.setAttribute("download", "");
+      dl.textContent = "تحميل الرمز";
+      var open = doc.createElement("a");
+      open.className = "lb-btn";
+      open.href = info.url;
+      open.target = "_blank";
+      open.rel = "noopener";
+      open.textContent = "فتح التصريح";
+      row.appendChild(dl);
+      row.appendChild(open);
+      wrap.appendChild(row);
+
+      wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
     function showMessage(text, success) {
       var msg = form.querySelector("[data-rsvp-msg]");

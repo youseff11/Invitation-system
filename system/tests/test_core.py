@@ -10,8 +10,8 @@ from datetime import timedelta
 from system import blocks as B
 from system.data import golden_classic
 from system.models import (
-    Asset, Customer, Guest, Invitation, MusicTrack, Plan, RSVPResponse,
-    Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Plan,
+    RSVPResponse, Template,
 )
 from system.renderer import layout_css, render_document
 from system.sanitize import clean_html
@@ -472,11 +472,23 @@ class GuestLinkTests(BaseAppTest):
                              {"name": "زائر مجهول", "status": "attending"})
         self.assertEqual(RSVPResponse.objects.filter(name="زائر مجهول").count(), 1)
 
-    def test_forged_token_does_not_attach_to_a_guest(self):
+    def test_forged_token_does_not_attach_to_an_existing_guest(self):
+        """الرمز المزوّر مايخلّيش حد ينتحل شخصية ضيف موجود.
+
+        الرد بيترتبط بسجل ضيف **جديد** باسم المُرسل (عشان ياخد تصريح
+        دخوله)، مش بسجل الضيف اللي حاول ينتحله.
+        """
+        victim = self.guest
         self.client.post(f"/i/{self.inv.slug}/rsvp/", {
             "guest_token": "x" * 24, "name": "منتحل", "status": "attending",
         })
-        self.assertIsNone(RSVPResponse.objects.get(name="منتحل").guest)
+        rsvp = RSVPResponse.objects.get(name="منتحل")
+        self.assertNotEqual(rsvp.guest_id, victim.pk)
+        self.assertEqual(rsvp.guest.name, "منتحل")
+        self.assertEqual(rsvp.guest.source, "rsvp")
+        # وتصريح الضيف الأصلي ما اتلمسش
+        victim.refresh_from_db()
+        self.assertEqual(victim.entries_used, 0)
 
 
 # ==========================================================================
@@ -1555,3 +1567,326 @@ class ElementStyleTests(TestCase):
     def test_our_own_media_url_is_allowed(self):
         out = clean_html('<p style="background-image:url(/media/a/b.webp)">ن</p>')
         self.assertIn("/media/a/b.webp", out)
+
+
+# ==========================================================================
+class GuestPassTests(BaseAppTest):
+    """تصريح الدخول: كود قصير + عدد دخلات + حالة نشط/مستخدم."""
+
+    def _guest(self, **kw):
+        base = dict(invitation=self.inv, name="كريم", entries_allowed=1)
+        base.update(kw)
+        return Guest.objects.create(**base)
+
+    def test_pass_code_is_generated_and_readable(self):
+        g = self._guest()
+        self.assertTrue(g.pass_code.startswith("FRH-"))
+        self.assertEqual(len(g.pass_code), 10)
+        # الحروف اللي بتتلخبط في القراءة مستبعدة
+        for ch in "IO01":
+            self.assertNotIn(ch, g.pass_code[4:])
+
+    def test_pass_codes_are_unique(self):
+        codes = {self._guest(name=f"ض{i}").pass_code for i in range(40)}
+        self.assertEqual(len(codes), 40)
+
+    def test_entries_counting(self):
+        g = self._guest(entries_allowed=3)
+        self.assertEqual((g.entries_left, g.pass_status), (3, "active"))
+        self.assertTrue(g.consume_entry())
+        self.assertEqual((g.entries_used, g.entries_left), (1, 2))
+        self.assertTrue(g.consume_entry())
+        self.assertTrue(g.consume_entry())
+        self.assertEqual(g.pass_status, "used")
+        self.assertFalse(g.consume_entry())      # الرابعة مترفوضة
+        self.assertEqual(g.entries_used, 3)
+
+    def test_first_entry_sets_checked_in(self):
+        g = self._guest()
+        g.consume_entry()
+        self.assertTrue(g.checked_in)
+        self.assertIsNotNone(g.checked_in_at)
+
+    def test_no_pass_when_allowance_is_zero(self):
+        self.assertEqual(self._guest(entries_allowed=0).pass_status, "none")
+
+    # ---- الصفحة
+    def test_pass_page_shows_code_and_counts(self):
+        g = self._guest(entries_allowed=3)
+        g.consume_entry()
+        body = self.client.get(
+            f"/i/{self.inv.slug}/g/{g.token}/pass/").content.decode()
+        self.assertIn(g.pass_code, body)
+        self.assertIn("<svg", body)
+        self.assertIn("تحميل الرمز صورة", body)
+
+    def test_pass_page_needs_the_right_token(self):
+        self._guest()
+        self.assertEqual(
+            self.client.get(f"/i/{self.inv.slug}/g/{'z' * 24}/pass/").status_code, 404)
+
+    def test_qr_png_downloads(self):
+        g = self._guest()
+        res = self.client.get(f"/i/{self.inv.slug}/g/{g.token}/qr.png")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "image/png")
+        self.assertIn(g.pass_code, res["Content-Disposition"])
+        self.assertTrue(res.content.startswith(b"\x89PNG"))
+
+
+# ==========================================================================
+class RsvpIssuesPassTests(BaseAppTest):
+    """اللي بيأكد حضوره لازم يطلع بتصريح — حتى لو مش في كشف الضيوف."""
+
+    def _rsvp(self, **kw):
+        data = {"name": "منى", "status": "attending", "companions": 2}
+        data.update(kw)
+        return self.client.post(
+            f"/i/{self.inv.slug}/rsvp/", data,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+
+    def _enable_rsvp(self, max_companions=5):
+        doc = self.inv.document
+        for b in doc["blocks"]:
+            if b["type"] == "rsvp":
+                b["props"]["max_companions"] = max_companions
+                break
+        else:
+            doc["blocks"].append({"id": "rsvp-1", "type": "rsvp",
+                                  "props": {"max_companions": max_companions}})
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+
+    def test_self_registered_guest_gets_a_pass(self):
+        self._enable_rsvp()
+        data = self._rsvp().json()
+        self.assertTrue(data["ok"])
+        self.assertIn("pass", data)
+        g = Guest.objects.get(invitation=self.inv, name="منى")
+        self.assertEqual(g.source, "rsvp")
+        self.assertEqual(g.entries_allowed, 3)      # هي + اتنين
+        self.assertEqual(data["pass"]["code"], g.pass_code)
+
+    def test_pass_payload_has_qr_and_download_links(self):
+        self._enable_rsvp()
+        info = self._rsvp().json()["pass"]
+        for key in ("code", "url", "qr", "download", "entries"):
+            self.assertIn(key, info)
+        self.assertIn("qr.png", info["download"])
+
+    def test_declining_leaves_no_pass(self):
+        self._enable_rsvp()
+        data = self._rsvp(name="سامي", status="declined").json()
+        self.assertNotIn("pass", data)
+        self.assertFalse(Guest.objects.filter(name="سامي").exists())
+
+    def test_named_guest_allowance_follows_companions(self):
+        self._enable_rsvp()
+        g = Guest.objects.create(invitation=self.inv, name="خالد",
+                                 plus_ones_allowed=4, entries_allowed=1)
+        self._rsvp(name="خالد", guest_token=g.token, companions=3)
+        g.refresh_from_db()
+        self.assertEqual(g.entries_allowed, 4)      # هو + تلاتة
+
+    def test_allowance_never_drops_below_people_already_inside(self):
+        """لو ٣ دخلوا خلاص، تعديل الرد لواحد مايخليش العدّاد سالب."""
+        self._enable_rsvp()
+        g = Guest.objects.create(invitation=self.inv, name="خالد",
+                                 plus_ones_allowed=4, entries_allowed=4)
+        for _ in range(3):
+            g.consume_entry()
+        self._rsvp(name="خالد", guest_token=g.token, companions=0)
+        g.refresh_from_db()
+        self.assertEqual(g.entries_allowed, 3)
+        self.assertEqual(g.entries_left, 0)
+
+    def test_changing_to_declined_cancels_an_unused_pass(self):
+        self._enable_rsvp()
+        g = Guest.objects.create(invitation=self.inv, name="خالد",
+                                 plus_ones_allowed=2, entries_allowed=3)
+        self._rsvp(name="خالد", guest_token=g.token, status="declined")
+        g.refresh_from_db()
+        self.assertEqual(g.entries_allowed, 0)
+        self.assertEqual(g.pass_status, "none")
+
+
+# ==========================================================================
+class CheckinEntriesTests(BaseAppTest):
+    """المسح بيستهلك دخلة — مش بيقلب مفتاح مرة واحدة."""
+
+    def setUp(self):
+        super().setUp()
+        self.guest = Guest.objects.create(invitation=self.inv, name="كريم",
+                                          entries_allowed=2)
+        self.client.force_login(self.staff)
+
+    def _scan(self, code=None):
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/checkin/scan/",
+            {"token": code or self.guest.token}).json()
+
+    def test_each_scan_consumes_one_entry(self):
+        first = self._scan()
+        self.assertEqual((first["used"], first["left"], first["status"]),
+                         (1, 1, "active"))
+        second = self._scan()
+        self.assertEqual((second["used"], second["left"], second["status"]),
+                         (2, 0, "used"))
+
+    def test_extra_scan_warns_instead_of_passing_silently(self):
+        self._scan(); self._scan()
+        third = self._scan()
+        self.assertTrue(third["already"])
+        self.assertIn("خلص", third["error"])
+        self.guest.refresh_from_db()
+        self.assertEqual(self.guest.entries_used, 2)   # ما زادش
+
+    def test_short_code_works_when_the_qr_will_not_scan(self):
+        out = self._scan(self.guest.pass_code)
+        self.assertTrue(out["ok"])
+        self.assertEqual(out["code"], self.guest.pass_code)
+
+    def test_guest_without_allowance_is_refused(self):
+        self.guest.grant_entries(0)
+        out = self._scan()
+        self.assertTrue(out["already"])
+        self.assertIn("مالوش تصريح", out["error"])
+
+    def test_totals_count_entries_not_rows(self):
+        Guest.objects.create(invitation=self.inv, name="آخر", entries_allowed=3)
+        out = self._scan()
+        self.assertEqual(out["total"], 5)      # ٢ + ٣
+        self.assertEqual(out["arrived"], 1)
+
+
+# ==========================================================================
+class GuestExportTests(BaseAppTest):
+    """كشف الإكسل اللي بيتبعت للقاعة."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.staff)
+        Guest.objects.create(invitation=self.inv, name="كريم عبد الله",
+                             phone="01000000000", entries_allowed=3)
+        Guest.objects.create(invitation=self.inv, name="منى", entries_allowed=1,
+                             source="rsvp")
+
+    def test_export_returns_a_workbook(self):
+        res = self.client.get(f"/dashboard/invitations/{self.inv.pk}/guests/export.xlsx")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("spreadsheetml", res["Content-Type"])
+        self.assertTrue(res.content.startswith(b"PK"))   # xlsx = أرشيف zip
+
+    def test_sheet_has_a_row_per_guest_with_the_code(self):
+        import io as _io
+        from openpyxl import load_workbook
+        res = self.client.get(f"/dashboard/invitations/{self.inv.pk}/guests/export.xlsx")
+        wb = load_workbook(_io.BytesIO(res.content))
+        ws = wb["الضيوف"]
+        codes = [ws.cell(row=r, column=1).value for r in range(3, 5)]
+        self.assertEqual(set(codes),
+                         set(Guest.objects.values_list("pass_code", flat=True)))
+        self.assertTrue(ws.sheet_view.rightToLeft)
+
+    def test_sheet_embeds_a_qr_image_per_guest(self):
+        """القاعة مالهاش نت على الباب — الرابط لوحده مايكفيش."""
+        import io as _io
+        from openpyxl import load_workbook
+        res = self.client.get(f"/dashboard/invitations/{self.inv.pk}/guests/export.xlsx")
+        wb = load_workbook(_io.BytesIO(res.content))
+        self.assertEqual(len(wb["الضيوف"]._images), 2)
+
+    def test_summary_sheet_totals_entries(self):
+        import io as _io
+        from openpyxl import load_workbook
+        res = self.client.get(f"/dashboard/invitations/{self.inv.pk}/guests/export.xlsx")
+        ws = load_workbook(_io.BytesIO(res.content))["ملخّص"]
+        self.assertEqual(ws["B2"].value, 4)      # ٣ + ١ دخلات مسموحة
+
+    def test_export_requires_staff(self):
+        self.client.logout()
+        res = self.client.get(f"/dashboard/invitations/{self.inv.pk}/guests/export.xlsx")
+        self.assertNotEqual(res.status_code, 200)
+
+
+# ==========================================================================
+class IntroLibraryTests(BaseAppTest):
+    """مكتبة الافتتاحيات — نفس فكرة مكتبة الموسيقى."""
+
+    def setUp(self):
+        super().setUp()
+        self.clip = IntroVideo.objects.create(
+            name="افتتاحية ذهبية", external_url="https://cdn.test/a.mp4", seconds=6)
+
+    def test_page_requires_staff(self):
+        self.assertNotEqual(self.client.get("/dashboard/intros/").status_code, 200)
+
+    def test_page_lists_clips(self):
+        self.client.force_login(self.staff)
+        self.assertIn("افتتاحية ذهبية",
+                      self.client.get("/dashboard/intros/").content.decode())
+
+    def test_clip_needs_a_file_or_a_url(self):
+        from system.forms import IntroVideoForm
+        self.assertFalse(IntroVideoForm({"name": "بدون", "order": 0}).is_valid())
+        self.assertTrue(IntroVideoForm(
+            {"name": "برابط", "external_url": "https://x.test/a.mp4",
+             "order": 0}).is_valid())
+
+    def test_library_reaches_the_editor(self):
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/editor/").content.decode()
+        self.assertIn("editor-intros", body)
+        self.assertIn("cdn.test", body)
+
+    def test_hidden_clips_do_not_reach_the_editor(self):
+        IntroVideo.objects.update(is_active=False)
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/editor/").content.decode()
+        self.assertIn('id="editor-intros" type="application/json">[]', body)
+
+    def test_deleting_a_clip(self):
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/intros/",
+                         {"action": "delete", "clip": self.clip.pk})
+        self.assertFalse(IntroVideo.objects.filter(pk=self.clip.pk).exists())
+
+
+# ==========================================================================
+class IntroPlayButtonTests(BaseAppTest):
+    """زر تشغيل الافتتاحية — لمسة الضيف بتسمح بالصوت من أول ثانية."""
+
+    def _render(self, **settings_):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"]["intro_video"] = "/media/x.mp4"
+        doc["settings"].update(settings_)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_button_mode_shows_a_play_button(self):
+        body = self._render(intro_video_start="button")
+        self.assertIn("data-intro-play", body)
+        self.assertIn("data-intro-manual", body)
+
+    def test_button_mode_does_not_autoplay(self):
+        body = self._render(intro_video_start="button")
+        tag = body[body.index("<video"):body.index("</video>")]
+        self.assertNotIn("autoplay", tag)
+        # ومش صامت إجبارياً — الضغطة هي اللي بتديه إذن الصوت
+        self.assertNotIn(" muted", tag)
+
+    def test_auto_mode_is_still_muted_autoplay(self):
+        tag_src = self._render(intro_video_start="auto")
+        tag = tag_src[tag_src.index("<video"):tag_src.index("</video>")]
+        self.assertIn("autoplay", tag)
+        self.assertIn("muted", tag)
+        self.assertNotIn("data-intro-play", tag_src)
+
+    def test_default_is_auto(self):
+        field = next(f for f in B.editor_schema()["settings_fields"]
+                     if f["key"] == "intro_video_start")
+        self.assertEqual(field["default"], "auto")

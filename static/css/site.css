@@ -658,3 +658,34 @@ tbody tr:hover { background: var(--surface-2); }
   .qrsheet-grid { width: 100%; gap: 8px; grid-template-columns: repeat(4, 1fr); }
   .qrcard { border-color: #bbb; }
 }
+
+/* ------------------------------------------------------- كشف التصاريح */
+.pass-code {
+  font-family: ui-monospace, "SFMono-Regular", monospace; direction: ltr;
+  font-size: 12.5px; letter-spacing: .5px; white-space: nowrap;
+}
+.guests-table .nums { white-space: nowrap; }
+.guests-table .nums b { display: block; font-variant-numeric: tabular-nums; }
+.guests-table .nums span { font-size: 11.5px; }
+.pass-state {
+  display: inline-block; padding: 3px 11px; border-radius: 999px;
+  font-size: 11.5px; letter-spacing: .4px; border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.pass-state--active { color: var(--ok); }
+.pass-state--used { color: var(--danger); }
+.pass-state--none { color: var(--muted); }
+
+/* ------------------------------------------------ الناف على الشاشات المتوسطة */
+/* لوحة التحكم بقى فيها ٧ روابط. بين ٧٨١ و١١٥٠ الشريط كان بيعدّي عرض
+   الشاشة ويعمل تمرير أفقي — فبنضيّق المسافات والخط بدل ما نخفي روابط. */
+@media (min-width: 781px) and (max-width: 1150px) {
+  .nav-links a { padding: 8px 9px; font-size: 13.5px; }
+  .nav-shell { gap: 8px; }
+  .nav-tools { gap: 6px; }
+  .lang-btn span { display: none; }
+}
+@media (min-width: 781px) and (max-width: 980px) {
+  .nav-links a { padding: 7px 6px; font-size: 12.5px; }
+  .nav-cta { padding: 8px 12px; font-size: 12.5px; }
+}
