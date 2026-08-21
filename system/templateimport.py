@@ -36,6 +36,7 @@ MAX_UNPACKED_BYTES = 80 * 1024 * 1024     # مجموع الحجم بعد فك ا
 MAX_MEMBERS = 400
 MAX_RATIO = 120                           # نسبة انتفاخ مشبوهة = zip bomb
 MAX_BLOCKS = 40
+MIN_VISIBLE_CHARS = 60     # أقل من كده = صفحة بلا كلام
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"}
 CSS_EXT = {".css"}
@@ -125,8 +126,10 @@ class _Splitter(HTMLParser):
         self.parts: list[str] = []
         self.title = ""
         self._in_body = False
+        self._seen_body = False
         self._in_style = False
         self._in_title = False
+        self._in_head = False
         self._depth = 0
         self._buf: list[str] = []
         self._void = {"br", "img", "hr", "input", "meta", "link", "source",
@@ -149,6 +152,10 @@ class _Splitter(HTMLParser):
         t = tag.lower()
         if t == "body":
             self._in_body = True
+            self._seen_body = True
+            return
+        if t == "head":
+            self._in_head = True
             return
         if t == "style":
             self._in_style = True
@@ -164,7 +171,12 @@ class _Splitter(HTMLParser):
                 self.css_links.append(href)
             return
         if not self._in_body:
-            return
+            # مافيش <html>/<head>/<body> — قصاصة HTML خام. أول وسم
+            # محتوى بيبدأ الجسم بدل ما نرجّع «فاضي».
+            if self._seen_body or t in ("html", "head", "meta", "link",
+                                        "title", "style", "script"):
+                return
+            self._in_body = True
         if t in self._void:
             self._buf.append(f"<{t}{self._attrs(attrs)}>")
             return
@@ -177,11 +189,19 @@ class _Splitter(HTMLParser):
 
     def handle_endtag(self, tag):
         t = tag.lower()
+        if t == "html":
+            return                       # وسم هيكلي — مش جزء من المحتوى
         if t == "style":
             self._in_style = False
             return
         if t == "title":
             self._in_title = False
+            return
+        if t == "head":
+            self._in_head = False
+            # قصاصات HTML كتير مالهاش <body> خالص. من غير السطر ده
+            # المستورد كان بيرجّع «مفيش محتوى» على ملف محتواه سليم.
+            self._in_body = True
             return
         if t == "body":
             self._flush()
@@ -217,6 +237,27 @@ class _Splitter(HTMLParser):
     def close(self):
         super().close()
         self._flush()
+
+    @property
+    def saw_body(self) -> bool:
+        return self._seen_body
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+_SCRIPT_SRC_RE = re.compile(r"<script[^>]*\ssrc=", re.I)
+_ROOT_DIV_RE = re.compile(
+    r'<(div|main)[^>]*\sid=["\'](root|app|__next|__nuxt|___gatsby)["\']', re.I)
+
+
+def _visible_text(html: str) -> str:
+    """النص اللي الضيف هيشوفه فعلاً — من غير وسوم ولا مسافات زيادة."""
+    return _WS_RE.sub(" ", _TAG_RE.sub(" ", html or "")).strip()
+
+
+def _looks_scripted(html: str) -> bool:
+    """هل الصفحة دي بتعتمد على جافاسكربت في بناء محتواها؟"""
+    return bool(_ROOT_DIV_RE.search(html) or _SCRIPT_SRC_RE.search(html))
 
 
 _STYLE_ATTR_RE = re.compile(r'(\sstyle=)(["\'])(.*?)\2', re.I | re.S)
@@ -375,7 +416,32 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
         })
 
     if not blocks:
-        raise ImportError_("المحتوى كله اتشال بعد التنقية — القالب مش مدعوم.")
+        raise ImportError_(
+            "المحتوى كله اتشال بعد التنقية. غالباً الصفحة مبنية بجافاسكربت "
+            "أو محتواها كله جوّه وسوم مش مسموح بيها."
+        )
+
+    # ------------------------------------------------------------------
+    # الصفحة اتقرت، بس هل فيها كلام أصلاً؟
+    #
+    # المواقع الحديثة بتبعت HTML شبه فاضي (<div id="root"></div>) والمحتوى
+    # كله بيتبني بجافاسكربت في المتصفح. إحنا بنشيل الجافاسكربت لأسباب أمنية،
+    # فالناتج بيبقى هيكل فاضي. أسوأ حاجة نعملها إننا نسيبه يتحفظ كقالب
+    # ويكتشف بنفسه إنه فاضي — فبنوقف هنا ونقول السبب.
+    visible = _visible_text("".join(b["props"]["html"] for b in blocks))
+    # بنرفض **بس** لما الصفحة واضح إنها بتتبني بجافاسكربت — ساعتها
+    # الاستيراد مالوش أي فايدة والنتيجة هتبقى هيكل فاضي مضمون.
+    # صفحة قصيرة وخلاص بتعدّي عادي، والعرض بيحذّر منها (شوف
+    # document_text_length) — مش شغلنا نمنع حد من ملف صغير.
+    if len(visible) < MIN_VISIBLE_CHARS and _looks_scripted(html):
+        raise ImportError_(
+            f"القالب طلع فاضي: لقينا {len(blocks)} قسم بس مفيش فيهم كلام "
+            f"(‎{len(visible)}‎ حرف). الصفحة دي بتتبني بجافاسكربت — الكلام "
+            "مش موجود في ملف HTML نفسه، بيتحط في المتصفح وقت التشغيل، "
+            "وإحنا بنشيل الجافاسكربت لأسباب أمنية. "
+            "افتح الصفحة في المتصفح واستنى تحمّل، وبعدين Ctrl+S ← "
+            "«صفحة كاملة»، أو انسخ الـHTML النهائي من أدوات المطوّر."
+        )
 
     document = blocks_engine.normalize_document({
         "version": 1, "blocks": blocks, "theme": {}, "settings": {},
@@ -404,3 +470,12 @@ def import_template(upload, *, name: str = "", category: str = "classic") -> Tem
         description="قالب مستورد من ملف — الأقسام قابلة للترتيب والإخفاء من المحرر.",
         document=document, is_active=True,
     )
+
+
+def document_text_length(document: dict) -> int:
+    """عدد حروف النص الظاهر في مستند — العرض بيحذّر لو طلع قليل."""
+    html = "".join(
+        (b.get("props") or {}).get("html") or ""
+        for b in (document or {}).get("blocks") or []
+    )
+    return len(_visible_text(html))

@@ -992,8 +992,11 @@ class TemplateImportTests(TestCase):
       <link rel="stylesheet" href="s.css"><script src="x.js"></script>
       <style>.hero h1{font-size:64px}</style></head>
       <body onload="track()">
-        <header class="hero"><h1>عمر</h1></header>
-        <section class="story"><p>حكايتنا</p><script>steal()</script></section>
+        <header class="hero"><h1>عمر و ياسمين</h1>
+          <p>يتشرفان بدعوتكم لحضور حفل زفافهما بقاعة الماسة</p></header>
+        <section class="story"><h2>قصتنا</h2>
+          <p>اتقابلنا في الجامعة سنة ألفين وتسعتاشر وكمّلنا مع بعض من ساعتها.</p>
+          <script>steal()</script></section>
       </body></html>"""
     CSS = "body{background:#111}.hero{min-height:100vh}"
 
@@ -1039,7 +1042,9 @@ class TemplateImportTests(TestCase):
         import io as _io
         buf = _io.BytesIO()
         Image.new("RGB", (900, 600), (1, 2, 3)).save(buf, "PNG")
-        page = self.PAGE.replace("<h1>عمر</h1>", '<h1>عمر</h1><img src="p.png" alt="">')
+        target = "<h1>عمر و ياسمين</h1>"
+        self.assertIn(target, self.PAGE)      # لو الفيكستشر اتغيّر، نعرف فوراً
+        page = self.PAGE.replace(target, target + '<img src="p.png" alt="">')
         tpl = templateimport.import_template(
             self._zip({"index.html": page, "p.png": buf.getvalue()}))
         blob = json.dumps(tpl.document)
@@ -1106,7 +1111,10 @@ class TemplateImportViewTests(BaseAppTest):
 
     def test_upload_creates_a_template(self):
         self.client.force_login(self.staff)
-        page = b"<html><head><title>Imported</title></head><body><p>hi</p></body></html>"
+        page = ("<html><head><title>Imported</title></head><body>"
+                "<h1>عمر و ياسمين</h1>"
+                "<p>يتشرفان بدعوتكم لحضور حفل زفافهما بقاعة الماسة يوم الجمعة</p>"
+                "</body></html>").encode()
         res = self.client.post("/dashboard/templates/", {
             "template_file": SimpleUploadedFile("a.html", page, "text/html"),
         }, follow=True)
@@ -1253,3 +1261,101 @@ class TemplateHygieneTests(TestCase):
             rel = str(path).replace(str(root) + "/", "")
             with self.subTest(template=rel):
                 get_template(rel)
+
+
+# ==========================================================================
+class EmptyImportTests(TestCase):
+    """قالب مستورد فاضي لازم يترفض بسبب واضح مش يتحفظ ويكتشفه المستخدم."""
+
+    def _zip(self, files):
+        import io as _io, zipfile
+        buf = _io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for n, d in files.items():
+                z.writestr(n, d)
+        return SimpleUploadedFile("t.zip", buf.getvalue(), "application/zip")
+
+    SPA = ('<html><head><title>Site</title></head><body>'
+           '<div id="__next"></div><script src="js/main.js"></script></body></html>')
+
+    def test_javascript_built_page_is_refused_with_a_reason(self):
+        with self.assertRaises(templateimport.ImportError_) as cm:
+            templateimport.build_document(
+                *templateimport.parse_upload(self._zip({"index.html": self.SPA})))
+        self.assertIn("جافاسكربت", str(cm.exception))
+
+    def test_nothing_is_saved_when_the_page_is_empty(self):
+        before = Template.objects.count()
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.import_template(
+                SimpleUploadedFile("a.html", self.SPA.encode(), "text/html"))
+        self.assertEqual(Template.objects.count(), before)
+
+    def test_loading_placeholder_is_still_treated_as_empty(self):
+        """«جاري التحميل…» مش محتوى — ده نص مؤقت بيستبدله جافاسكربت."""
+        page = self.SPA.replace('id="__next"></div>', 'id="__next">جاري التحميل…</div>')
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.build_document(
+                *templateimport.parse_upload(self._zip({"index.html": page})))
+
+    def test_a_real_page_still_imports(self):
+        page = ("<html><head><title>عمر و ياسمين</title></head><body>"
+                "<header><h1>عمر و ياسمين</h1>"
+                "<p>يتشرفان بدعوتكم لحضور حفل زفافهما بقاعة الماسة</p></header>"
+                "<section><h2>الموعد</h2>"
+                "<p>الجمعة ٢٤ أكتوبر ٢٠٢٦ الساعة الثامنة مساءً</p></section>"
+                "</body></html>")
+        tpl = templateimport.import_template(
+            SimpleUploadedFile("a.html", page.encode(), "text/html"))
+        self.assertEqual(len(tpl.document["blocks"]), 2)
+
+    def test_html_without_a_body_tag_still_imports(self):
+        """قصاصات كتير مالهاش <body> — كانت بتترفض غلط."""
+        page = ('<div class="hero"><h1>عمر و ياسمين</h1>'
+                "<p>يتشرفان بدعوتكم لحضور حفل زفافهما في قاعة الماسة</p></div>")
+        tpl = templateimport.import_template(
+            SimpleUploadedFile("a.html", page.encode(), "text/html"))
+        self.assertGreaterEqual(len(tpl.document["blocks"]), 1)
+
+
+# ==========================================================================
+class TemplateManageTests(BaseAppTest):
+    """حذف/إخفاء القوالب من اللوحة — من غيرهم القالب الفاضي مالوش مخرج."""
+
+    def _tpl(self, **kw):
+        base = dict(name="مؤقت", slug="temp-x", category="classic",
+                    source="import", document={"version": 1, "blocks": []})
+        base.update(kw)
+        return Template.objects.create(**base)
+
+    def test_delete_removes_an_unused_template(self):
+        tpl = self._tpl()
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/templates/",
+                         {"action": "delete", "template": tpl.pk})
+        self.assertFalse(Template.objects.filter(pk=tpl.pk).exists())
+
+    def test_a_used_template_is_not_deleted(self):
+        """الحذف هيسيب دعوات بغير قالب — بنمنعه ونقترح الإخفاء."""
+        self.client.force_login(self.staff)
+        res = self.client.post("/dashboard/templates/",
+                               {"action": "delete", "template": self.template.pk},
+                               follow=True)
+        self.assertTrue(Template.objects.filter(pk=self.template.pk).exists())
+        self.assertIn("اخفيه", res.content.decode())
+
+    def test_toggle_hides_and_shows(self):
+        tpl = self._tpl(is_active=True)
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/templates/",
+                         {"action": "toggle", "template": tpl.pk})
+        tpl.refresh_from_db()
+        self.assertFalse(tpl.is_active)
+
+    def test_delete_requires_staff(self):
+        """غير مسجّل = تحويل لصفحة الدخول، والقالب مايتحذفش."""
+        tpl = self._tpl()
+        res = self.client.post("/dashboard/templates/",
+                               {"action": "delete", "template": tpl.pk})
+        self.assertIn("/login", res.get("Location", ""))
+        self.assertTrue(Template.objects.filter(pk=tpl.pk).exists())

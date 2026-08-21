@@ -48,11 +48,26 @@
     </div>
     <div class="tpl-body">
       <h3>{{ t.name }}</h3>
-      <span class="tpl-meta">{{ t.get_category_display }} · {{ t.get_source_display }} · استُخدم {{ t.uses }} مرة</span>
+      <span class="tpl-meta">
+        {{ t.get_category_display }} · {{ t.get_source_display }} ·
+        {{ t.document.blocks|length }} قسم · استُخدم {{ t.uses }} مرة
+      </span>
       {% if not t.is_active %}<span class="pill pill--archived">مخفي</span>{% endif %}
+      {% if not t.document.blocks %}<span class="pill pill--archived">فاضي</span>{% endif %}
       <div class="tpl-actions">
         <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">معاينة</a>
         <a class="btn btn--ghost btn--sm" href="/admin/system/template/{{ t.pk }}/change/">تعديل البيانات</a>
+        <form method="post" style="display:contents">
+          {% csrf_token %}
+          <input type="hidden" name="template" value="{{ t.pk }}">
+          <button class="btn btn--ghost btn--sm" type="submit" name="action" value="toggle">
+            {% if t.is_active %}إخفاء{% else %}إظهار{% endif %}
+          </button>
+          {% if not t.uses %}
+          <button class="btn btn--ghost btn--sm" type="submit" name="action" value="delete"
+                  onclick="return confirm('تحذف «{{ t.name|escapejs }}» نهائياً؟')">حذف</button>
+          {% endif %}
+        </form>
       </div>
     </div>
   </article>

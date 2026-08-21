@@ -413,6 +413,30 @@ def invitation_create(request):
 def dashboard_templates(request):
     _staff_required(request)
 
+    if request.method == "POST" and request.POST.get("action") == "delete":
+        tpl = get_object_or_404(Template, pk=request.POST.get("template") or 0)
+        # الدعوات بتاخد نسخة مستقلة من المستند وقت الإنشاء، فحذف القالب
+        # مابيأثرش عليها — بس اللي اتستخدم بنسيبه عشان الإحصائيات تفضل صح
+        if tpl.invitations.exists():
+            messages.error(
+                request,
+                f"«{tpl.name}» متستخدم في {tpl.invitations.count()} دعوة — "
+                "اخفيه بدل ما تحذفه.")
+        else:
+            name = tpl.name
+            tpl.delete()
+            messages.success(request, f"اتحذف «{name}».")
+        return redirect("dashboard_templates")
+
+    if request.method == "POST" and request.POST.get("action") == "toggle":
+        tpl = get_object_or_404(Template, pk=request.POST.get("template") or 0)
+        tpl.is_active = not tpl.is_active
+        tpl.save(update_fields=["is_active", "updated_at"])
+        messages.success(
+            request,
+            ("رجّعت" if tpl.is_active else "خبّيت") + f" «{tpl.name}».")
+        return redirect("dashboard_templates")
+
     if request.method == "POST" and request.FILES.get("template_file"):
         try:
             tpl = templateimport.import_template(
@@ -425,11 +449,20 @@ def dashboard_templates(request):
         except Exception:
             messages.error(request, "تعذّر قراءة الملف. جرّب أرشيف ZIP فيه index.html.")
         else:
+            chars = templateimport.document_text_length(tpl.document)
             messages.success(
                 request,
                 f"اتستورد «{tpl.name}» بـ{len(tpl.document.get('blocks', []))} قسم. "
                 "افتحه في المحرر وظبّطه.",
             )
+            # ملف صغير بيعدّي، بس ما نسيبوش المستخدم يكتشف بنفسه إنه شبه فاضي
+            if chars < templateimport.MIN_VISIBLE_CHARS:
+                messages.error(
+                    request,
+                    f"بس خد بالك: النص الظاهر فيه {chars} حرف بس. لو المفروض "
+                    "فيه كلام أكتر، غالباً الصفحة بتتبني بجافاسكربت — احفظها "
+                    "من المتصفح بعد ما تحمّل (Ctrl+S ← «صفحة كاملة») وجرّب تاني.",
+                )
             return redirect("dashboard_templates")
 
     return render(request, "dashboard/templates.html", {
