@@ -54,15 +54,15 @@ def env_list(key, default=""):
 # ---------------------------------------------------------------- core
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
-SECRET_KEY = env("DJANGO_SECRET_KEY")
+SECRET_KEY = env(
+    "DJANGO_SECRET_KEY",
+    default="dev-only-insecure-key-do-not-use-in-production" if DEBUG else None
+)
+
 if not SECRET_KEY:
-    if DEBUG:
-        # مفتاح تطوير فقط — لا يُستخدم أبداً في الإنتاج.
-        SECRET_KEY = "dev-only-insecure-key-do-not-use-in-production"
-    else:
-        raise RuntimeError(
-            "DJANGO_SECRET_KEY غير محدد. عيّن المتغير قبل التشغيل في وضع الإنتاج."
-        )
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY غير محدد. عيّن المتغير قبل التشغيل في وضع الإنتاج."
+    )
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]")
 if DEBUG and "testserver" not in ALLOWED_HOSTS:
