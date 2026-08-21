@@ -56,6 +56,8 @@
     doc: readJSON("editor-document", { theme: {}, settings: {}, blocks: [] }),
     selected: null,
     selEl: null,        // العنصر المحدَّد جوّه قسم مستورد (اسم data-move)
+    fromPreview: false, // الاختيار جه من ضغطة جوّه المعاينة؟ (يمنع قفزة التمرير)
+    clip: null,         // حافظة عناصر القوالب المستوردة (نسخ/لصق)
     device: "mobile",
     dirty: false,
     saving: false,
@@ -811,6 +813,121 @@
     return row;
   }
 
+  // ---------- عمليات على العنصر (نسخ/لصق/تكرار/إضافة/حذف) ----------
+
+  /** الجذر اللي بنعيد بناء الـHTML منه بعد أي تعديل. */
+  function customRoot(node) {
+    return node && node.closest ? node.closest(".lb-custom") : null;
+  }
+
+  /** يحفظ الـHTML ويعيد بناء المعاينة (عشان الترقيم يتظبط). */
+  function commitStructure(block, root) {
+    block.props.html = serializeCustom(root);
+    markDirty();
+    requestPreview();
+  }
+
+  /** نسخة نضيفة من العنصر — من غير معرّفات أو علاماتنا. */
+  function cleanCopy(node) {
+    var c = node.cloneNode(true);
+    var strip = function (n) {
+      n.removeAttribute("data-move");
+      n.removeAttribute("data-lb-edit");
+      n.removeAttribute("data-lb-text");
+      n.removeAttribute("contenteditable");
+      n.classList.remove("lb-el-picked");
+      if (!n.getAttribute("class")) n.removeAttribute("class");
+    };
+    strip(c);
+    c.querySelectorAll("*").forEach(strip);
+    return c;
+  }
+
+  function copyElement() {
+    var n = selectedElNode();
+    if (!n) return false;
+    state.clip = cleanCopy(n).outerHTML;
+    toast("اتنسخ العنصر — Ctrl+V للصق", "ok");
+    return true;
+  }
+
+  function pasteElement(inside) {
+    var n = selectedElNode();
+    var block = findBlock(state.selected);
+    if (!n || !block || !state.clip) return false;
+    var root = customRoot(n);
+    if (!root) return false;
+
+    var holder = n.ownerDocument.createElement("div");
+    holder.innerHTML = state.clip;
+    var fresh = holder.firstElementChild;
+    if (!fresh) return false;
+
+    snapshot();
+    // نص قابل للكتابة مايتحطش جوّاه عناصر — بنحط بعده
+    if (inside && !n.getAttribute("data-lb-text")) n.appendChild(fresh);
+    else n.insertAdjacentElement("afterend", fresh);
+    state.selEl = null;                 // العنصر الجديد هياخد رقم جديد
+    commitStructure(block, root);
+    toast(inside ? "اتلصق جوّه العنصر" : "اتلصقت نسخة", "ok");
+    return true;
+  }
+
+  function duplicateElement() {
+    if (!copyElementSilent()) return false;
+    return pasteElement(false);
+  }
+
+  function copyElementSilent() {
+    var n = selectedElNode();
+    if (!n) return false;
+    state.clip = cleanCopy(n).outerHTML;
+    return true;
+  }
+
+  function deleteElement() {
+    var n = selectedElNode();
+    var block = findBlock(state.selected);
+    if (!n || !block) return false;
+    var root = customRoot(n);
+    if (!root) return false;
+    snapshot();
+    if (block.layout) delete block.layout[state.selEl];
+    n.remove();
+    state.selEl = null;
+    commitStructure(block, root);
+    renderInspector();
+    toast("اتحذف العنصر — Ctrl+Z للتراجع", "ok");
+    return true;
+  }
+
+  /** يضيف عنصر جديد (صورة أو نص) جوّه المحدَّد أو بعده. */
+  function insertInto(node, block, elem) {
+    var root = customRoot(node);
+    if (!root) return;
+    snapshot();
+    if (node.getAttribute("data-lb-text")) node.insertAdjacentElement("afterend", elem);
+    else node.appendChild(elem);
+    state.selEl = null;
+    commitStructure(block, root);
+  }
+
+  function selectParentElement() {
+    var n = selectedElNode();
+    if (!n) return;
+    var up = n.parentElement;
+    while (up && !up.getAttribute("data-move") && !up.classList.contains("lb-custom")) {
+      up = up.parentElement;
+    }
+    if (!up || !up.getAttribute("data-move")) {
+      toast("ده أعلى عنصر في القسم", "info");
+      return;
+    }
+    state.selEl = up.getAttribute("data-move");
+    markSelectedEl();
+    renderInspector();
+  }
+
   function buildElementGroup(block) {
     var node = selectedElNode();
     var wrap = el("details", "ed-group");
@@ -987,30 +1104,90 @@
     body.appendChild(ctrlRow(
       "الموضع (" + (pos.dx || 0) + "٪ / " + (pos.dy || 0) + "٪)", nudge));
 
+    // ---- إضافة جوّه العنصر
+    var isText = node.getAttribute("data-lb-text") === "1";
+    var addRow = el("div", "ed-ctrl-line");
+    var addImg = el("button", "ed-btn ed-btn--sm", "＋ صورة");
+    addImg.type = "button";
+    addImg.title = isText ? "هتتحط بعد العنصر" : "هتتحط جوّه العنصر";
+    addImg.addEventListener("click", function () {
+      openAssetPicker(function (url) {
+        var img = node.ownerDocument.createElement("img");
+        img.setAttribute("src", url);
+        img.setAttribute("alt", "");
+        img.setAttribute("style", "max-width:100%;height:auto;display:block");
+        insertInto(node, block, img);
+      }, "image");
+    });
+    var addTxt = el("button", "ed-btn ed-btn--sm", "＋ نص");
+    addTxt.type = "button";
+    addTxt.addEventListener("click", function () {
+      var pnode = node.ownerDocument.createElement("p");
+      pnode.textContent = "نص جديد — اضغط عليه واكتب";
+      insertInto(node, block, pnode);
+    });
+    addRow.appendChild(addImg);
+    addRow.appendChild(addTxt);
+    body.appendChild(ctrlRow("أضف", addRow));
+
+    // ---- نسخ ولصق وتكرار
+    var clipRow = el("div", "ed-ctrl-line");
+    var copyB = el("button", "ed-btn ed-btn--sm", "نسخ");
+    copyB.type = "button";
+    copyB.title = "Ctrl+C";
+    copyB.addEventListener("click", function () { copyElement(); renderInspector(); });
+
+    var dupB = el("button", "ed-btn ed-btn--sm", "كرّر");
+    dupB.type = "button";
+    dupB.title = "Ctrl+D";
+    dupB.addEventListener("click", duplicateElement);
+
+    var pasteB = el("button", "ed-btn ed-btn--sm", "لصق");
+    pasteB.type = "button";
+    pasteB.title = "Ctrl+V — بيلزق بعد العنصر";
+    pasteB.disabled = !state.clip;
+    pasteB.addEventListener("click", function () { pasteElement(false); });
+
+    var pasteIn = el("button", "ed-btn ed-btn--sm", "لصق جوّه");
+    pasteIn.type = "button";
+    pasteIn.disabled = !state.clip || isText;
+    pasteIn.addEventListener("click", function () { pasteElement(true); });
+
+    clipRow.appendChild(copyB);
+    clipRow.appendChild(dupB);
+    clipRow.appendChild(pasteB);
+    clipRow.appendChild(pasteIn);
+    body.appendChild(ctrlRow("نسخ ولصق", clipRow));
+
     // ---- إخفاء وحذف
     var acts = el("div", "ed-ctrl-line");
+    var up = el("button", "ed-btn ed-btn--sm", "↰ الأب");
+    up.type = "button";
+    up.title = "اختار العنصر اللي شايله";
+    up.addEventListener("click", selectParentElement);
+
     var hidden = node.style.display === "none";
     var hide = el("button", "ed-btn ed-btn--sm", hidden ? "إظهار" : "إخفاء");
     hide.type = "button";
     hide.addEventListener("click", function () {
       snapshot(); setStyle("display", hidden ? "" : "none"); requestPreview();
     });
-    var del = el("button", "ed-btn ed-btn--sm ed-btn--danger", "احذف العنصر");
+
+    var del = el("button", "ed-btn ed-btn--sm ed-btn--danger", "احذف");
     del.type = "button";
-    del.addEventListener("click", function () {
-      var root = node.closest(".lb-custom");
-      snapshot();
-      node.remove();
-      block.props.html = serializeCustom(root);
-      if (block.layout) delete block.layout[state.selEl];
-      state.selEl = null;
-      markDirty();
-      requestPreview();
-      renderInspector();
-    });
+    del.title = "Delete";
+    del.addEventListener("click", deleteElement);
+
+    acts.appendChild(up);
     acts.appendChild(hide);
     acts.appendChild(del);
     body.appendChild(acts);
+
+    body.appendChild(el("p", "ed-hint",
+      "ضغطة = اختيار · ضغطتين = كتابة · Esc يخرج من الكتابة. " +
+      "Delete يحذف · Ctrl+C نسخ · Ctrl+V لصق · Ctrl+D تكرار · " +
+      "الأسهم تحرّك ربع خطوة (مع Shift خطوة كاملة) · " +
+      "Shift مع السحب = حركة دقيقة"));
 
     return wrap;
   }
@@ -1392,7 +1569,9 @@
     // كان العنصر قابل للكتابة قبل السحب؟ الأقسام المستوردة فيها
     // صور و<div> مش نصوص — مانفتحهاش للكتابة بعد السحب بالغلط.
     var wasEditable = function () {
-      return node.getAttribute("data-lb-text") === "1";
+      // الكتابة بقت بضغطتين، فمانرجّعهاش تلقائياً بعد السحب. بنرجّعها
+      // بس لو كانت مفتوحة فعلاً قبل ما يبدأ السحب.
+      return node.classList.contains("lb-el-typing");
     };
     node.addEventListener("pointerdown", function (e) {
       /* أحداث الماوس بتطلع من الابن للأب. من غير stopPropagation، لما
@@ -1486,6 +1665,72 @@
     });
   }
 
+  /* اختصارات العنصر المحدَّد جوّه قسم مستورد.
+
+     بتتربط مرتين — مرة على مستند المحرر ومرة على مستند المعاينة —
+     لأن الـiframe عالم لوحده وضغطة الكيبورد جوّاه مابتطلعش برّه. */
+  function bindElementKeys(d) {
+    if (d.__lbKeys) return;
+    d.__lbKeys = true;
+
+    d.addEventListener("keydown", function (e) {
+      var t = e.target;
+      var tag = ((t && t.tagName) || "").toLowerCase();
+      var typing = tag === "input" || tag === "textarea" || tag === "select" ||
+                   (t && t.isContentEditable);
+      if (doc.querySelector(".ed-modal:not([hidden])")) return;
+
+      // التراجع مالوش علاقة بالعنصر المحدَّد — بنتعامل معاه الأول
+      if ((e.ctrlKey || e.metaKey) &&
+          ("zZyY".indexOf(e.key) >= 0) && !typing) {
+        e.preventDefault();
+        if (e.key === "y" || e.key === "Y" || e.shiftKey) redo(); else undo();
+        return;
+      }
+
+      var node = selectedElNode();
+      var block = state.selected && findBlock(state.selected);
+      if (!node || !block) return;
+
+      // Escape بيلغي التحديد حتى وانت بتكتب (بيخرجك من الكتابة الأول)
+      if (e.key === "Escape") {
+        if (typing && t.blur) { t.blur(); return; }
+        state.selEl = null; markSelectedEl(); renderInspector();
+        return;
+      }
+      if (typing) return;               // بيكتب — سيبه
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault(); e.stopPropagation(); deleteElement(); return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C")) {
+        e.preventDefault(); copyElement(); renderInspector(); return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V")) {
+        e.preventDefault(); pasteElement(false); return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
+        e.preventDefault(); duplicateElement(); return;
+      }
+
+      // الأسهم: ربع خطوة، ومع Shift خطوة كاملة
+      var ARROWS = { ArrowRight: [-1, 0], ArrowLeft: [1, 0],
+                     ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      var dir = ARROWS[e.key];
+      if (dir) {
+        e.preventDefault();
+        var step = e.shiftKey ? 1 : 0.25;
+        snapshot();
+        var pos = layoutOf(block, state.selEl);
+        pos.dx = Math.round(((pos.dx || 0) + dir[0] * step) * 100) / 100;
+        pos.dy = Math.round(((pos.dy || 0) + dir[1] * step) * 100) / 100;
+        applySlotOffset(node, pos.dx, pos.dy);
+        markDirty();
+        renderInspector();
+      }
+    });
+  }
+
   function resetBlockLayout(blockId) {
     var block = findBlock(blockId);
     if (!block || !block.layout) return;
@@ -1518,7 +1763,9 @@
         if (e.target.closest && e.target.closest(".lb-custom [data-move]")) return;
         e.preventDefault();
         e.stopPropagation();
+        state.fromPreview = true;
         selectBlock(node.getAttribute("data-block"));
+        state.fromPreview = false;
       }, true);
     });
 
@@ -1553,6 +1800,7 @@
       bindSlotDrag(node, blockId, key);
     });
 
+    bindElementKeys(fdoc);
     bindCustomHtml(fdoc);
 
     // السحب مش للنصوص بس — أي جزء متعلّم بـdata-move يتحرك (الأزرار،
@@ -1619,8 +1867,9 @@
     clone.querySelectorAll("[data-lb-text]").forEach(function (n) {
       n.removeAttribute("data-lb-text");
     });
-    clone.querySelectorAll(".lb-el-picked").forEach(function (n) {
+    clone.querySelectorAll(".lb-el-picked, .lb-el-typing").forEach(function (n) {
       n.classList.remove("lb-el-picked");
+      n.classList.remove("lb-el-typing");
       if (!n.getAttribute("class")) n.removeAttribute("class");
     });
     // الإزاحات محفوظة في block.layout مش في الستايل المضمّن
@@ -1679,23 +1928,49 @@
         n.dataset.lbEdit = "1";
 
         if (n.getAttribute("data-lb-text") === "1") {
-          n.setAttribute("contenteditable", "plaintext-only");
+          /* ضغطة واحدة = **اختيار**، ضغطتين = **كتابة**.
+
+             قبل كده الضغطة الواحدة كانت بتفتح الكتابة على طول، وده كان
+             بيبلع كل اختصارات العنصر: Delete بيمسح حرف مش العنصر،
+             والأسهم بتحرّك المؤشّر مش العنصر، وCtrl+C بينسخ نص مش
+             العنصر. ده نفس سلوك أدوات التصميم المحترفة. */
           n.style.outline = "none";
-          n.addEventListener("focus", function () {
-            if (state.selected !== blockId) selectBlock(blockId);
+          n.addEventListener("dblclick", function () {
+            n.setAttribute("contenteditable", "plaintext-only");
+            n.classList.add("lb-el-typing");
+            n.focus();
+            var sel = n.ownerDocument.getSelection();
+            if (sel && sel.rangeCount === 0) {
+              var range = n.ownerDocument.createRange();
+              range.selectNodeContents(n);
+              range.collapse(false);
+              sel.addRange(range);
+            }
           });
-          n.addEventListener("blur", writeBack);
+          n.addEventListener("blur", function () {
+            n.removeAttribute("contenteditable");
+            n.classList.remove("lb-el-typing");
+            writeBack();
+          });
           n.addEventListener("input", writeBack);
           n.addEventListener("keydown", function (e) {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); n.blur(); }
+            // Esc بيخرج من الكتابة بس — العنصر يفضل محدَّد عشان تكمّل
+            // شغل عليه (تحركه، تنسخه، تغيّر خطه). من غير stopPropagation
+            // المستمع العام كان بيلغي التحديد كمان في نفس الضغطة.
+            if (e.key === "Escape") {
+              e.preventDefault(); e.stopPropagation(); n.blur();
+            }
           });
         }
 
         var pick = function (e) {
           if (e) e.stopPropagation();
           state.selEl = n.getAttribute("data-move");
+          state.fromPreview = true;
           if (state.selected !== blockId) selectBlock(blockId);
           else renderInspector();
+          state.fromPreview = false;
           markSelectedEl();
         };
         n.addEventListener("pointerdown", function () {
@@ -1748,9 +2023,18 @@
       n.classList.toggle("is-selected", n.getAttribute("data-block") === id);
     });
     var target = fdoc.querySelector('[data-block="' + id + '"]');
-    if (target && target.scrollIntoView) {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    if (!target || !target.scrollIntoView) return;
+
+    /* ما نحرّكش التمرير لو المستخدم هو اللي ضغط جوّه المعاينة — كان
+       بيدوس على نص فوق الكارت والصفحة تنطّ لتحت تحت رجليه.
+       التمرير للقسم منطقي بس لما الاختيار ييجي من قايمة الأقسام. */
+    if (state.fromPreview) return;
+
+    // ولو القسم باين خلاص، مفيش داعي نحرّك حاجة أصلاً
+    var r = target.getBoundingClientRect();
+    var h = (fdoc.defaultView || {}).innerHeight || 0;
+    if (r.top >= 0 && r.bottom <= h) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   // ==========================================================
@@ -2396,6 +2680,18 @@
       }
     });
 
+    /* اختصارات العناصر — بتتربط على مستند المحرر ومستند المعاينة مع
+       بعض، لأن الضغطة اللي جوّه الـiframe مابتوصلش للصفحة الأم. */
+    bindElementKeys(doc);
+    if (refs.frame) {
+      refs.frame.addEventListener("load", function () {
+        var fdoc = frameDoc();
+        if (fdoc) bindElementKeys(fdoc);
+      });
+      var fd0 = frameDoc();
+      if (fd0) bindElementKeys(fd0);
+    }
+
     /* Delete / Backspace يحذف القسم المحدد — بس لما التركيز مش في خانة كتابة،
        وإلا هنمسح أقسام والمستخدم بيمسح حروف. التراجع بـCtrl+Z شغال. */
     doc.addEventListener("keydown", function (e) {
@@ -2406,6 +2702,8 @@
       if (tag === "input" || tag === "textarea" || tag === "select") return;
       if (t.isContentEditable) return;
       if (doc.querySelector(".ed-modal.is-open")) return;
+      // عنصر محدَّد جوّه قسم مستورد؟ يبقى الحذف ليه هو مش للقسم كله
+      if (state.selEl && selectedElNode()) return;
       if (!state.selected) return;
 
       var block = findBlock(state.selected);

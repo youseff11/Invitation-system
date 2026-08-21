@@ -911,3 +911,10 @@
   outline: 2px solid var(--accent) !important;
   outline-offset: 2px;
 }
+/* العنصر وانت بتكتب جوّاه */
+.lb-doc--editing .lb-el-typing {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.lb-doc--editing .lb-custom [data-lb-text]:hover { cursor: default; }
