@@ -9,10 +9,12 @@ from datetime import timedelta
 
 from system import blocks as B
 from system.data import golden_classic
-from system.models import Customer, Guest, Invitation, Plan, RSVPResponse, Template
+from system.models import (
+    Asset, Customer, Guest, Invitation, Plan, RSVPResponse, Template,
+)
 from system.renderer import layout_css, render_document
 from system.sanitize import clean_html
-from system import guestimport
+from system import guestimport, images
 from system.templatetags import invite as invite_tags
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -638,3 +640,136 @@ class FluidSizeTests(BaseAppTest):
         self.assertIn("--name-size:clamp(", body)
         self.assertIn("--block-pt:clamp(", body)
         self.assertNotIn("--name-size-m:", body)   # الحقل القديم اتحوّل لحد أدنى
+
+
+# ==========================================================================
+class ImagePipelineTests(BaseAppTest):
+    """ضغط الصور والقص — أهم بند لأن ناتجه بيوصل للضيوف."""
+
+    def _photo(self, size=(4032, 3024)):
+        from PIL import Image
+        import io as _io
+        img = Image.new("RGB", size, (180, 150, 120))
+        buf = _io.BytesIO()
+        img.save(buf, "JPEG", quality=92)
+        return buf.getvalue()
+
+    def _upload(self, raw, name="photo.jpg", ctype="image/jpeg"):
+        self.client.force_login(self.staff)
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/upload/",
+            {"file": SimpleUploadedFile(name, raw, ctype)},
+        )
+
+    def test_large_photo_is_downscaled_and_converted(self):
+        raw = self._photo()
+        self.assertTrue(self._upload(raw).json()["ok"])
+        asset = Asset.objects.latest("id")
+        self.assertLessEqual(max(asset.width, asset.height), images.MAX_EDGE)
+        self.assertTrue(asset.file.name.endswith(".webp"))
+        self.assertLess(asset.size_bytes, len(raw) / 4)   # توفير معتبر مش تجميلي
+
+    def test_thumbnail_and_source_are_kept(self):
+        self._upload(self._photo((1200, 900)))
+        asset = Asset.objects.latest("id")
+        self.assertTrue(asset.thumb)
+        self.assertTrue(asset.source)          # الأصل لازم يفضل عشان إعادة القص
+
+    def test_small_image_is_not_upscaled(self):
+        self._upload(self._photo((400, 300)))
+        asset = Asset.objects.latest("id")
+        self.assertEqual((asset.width, asset.height), (400, 300))
+
+    def test_corrupt_file_is_refused(self):
+        res = self._upload(b"not an image at all", "x.jpg")
+        self.assertEqual(res.status_code, 400)
+
+    # ---- القص
+    def _crop(self, asset, box):
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/crop/",
+            data=json.dumps({"asset": asset.pk, "box": box}),
+            content_type="application/json",
+        )
+
+    def test_crop_respects_the_requested_ratio(self):
+        self._upload(self._photo())
+        asset = Asset.objects.latest("id")
+        data = self._crop(asset, {"x": 0, "y": 0, "w": 0.25, "h": 0.5}).json()
+        self.assertTrue(data["ok"])
+        got = data["asset"]["width"] / data["asset"]["height"]
+        want = (0.25 * 4032) / (0.5 * 3024)
+        self.assertAlmostEqual(got, want, delta=0.05)
+
+    def test_crop_keeps_the_original_so_it_can_be_recropped(self):
+        self._upload(self._photo())
+        first = Asset.objects.latest("id")
+        cropped = Asset.objects.get(pk=self._crop(first, {"x": 0, "y": 0, "w": .5, "h": .5}).json()["asset"]["id"])
+        self.assertTrue(cropped.source)
+        again = self._crop(cropped, {"x": 0, "y": 0, "w": .5, "h": .5})
+        self.assertTrue(again.json()["ok"])
+
+    def test_out_of_bounds_box_is_clamped_not_crashed(self):
+        self._upload(self._photo((800, 600)))
+        asset = Asset.objects.latest("id")
+        res = self._crop(asset, {"x": 5, "y": 5, "w": 9, "h": 9})
+        self.assertEqual(res.status_code, 200)
+
+    def test_crop_requires_staff(self):
+        self._upload(self._photo((400, 300)))
+        asset = Asset.objects.latest("id")
+        self.client.logout()
+        self.assertNotEqual(self._crop(asset, {"x": 0, "y": 0, "w": 1, "h": 1}).status_code, 200)
+
+    def test_crop_rejects_asset_from_another_invitation(self):
+        other = Invitation.objects.create(
+            customer=self.customer, template=self.template, plan=self.plan,
+            name_one="س", name_two="ص", status="published",
+            event_date=timezone.now() + timedelta(days=5),
+            document=self.template.get_document(),
+        )
+        self.client.force_login(self.staff)
+        stranger = Asset.objects.create(kind="image", invitation=other,
+                                        original_name="x", width=10, height=10)
+        self.assertEqual(self._crop(stranger, {"x": 0, "y": 0, "w": 1, "h": 1}).status_code, 403)
+
+
+# ==========================================================================
+class IntroTests(BaseAppTest):
+    """الشاشة الافتتاحية — لازم تظهر في المحرر عشان تتعاين وتتعدّل."""
+
+    def _enable(self, **extra):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"].update(extra)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+
+    def test_intro_shows_for_guests(self):
+        self._enable()
+        self.assertIn("lb-intro", self.client.get(self.inv.get_absolute_url()).content.decode())
+
+    def test_intro_shows_inside_the_editor_preview(self):
+        self._enable()
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/preview-frame/").content.decode()
+        self.assertIn("lb-intro", body)
+        # العلامة دي بتخلي المحرر يقدر يرجّعها بعد ما تضغط «التالي»
+        self.assertIn("data-intro-editable", body)
+
+    def test_intro_video_is_muted_and_inline(self):
+        self._enable(intro_video="/media/x.mp4")
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        self.assertIn("data-intro-video", body)
+        # المتصفحات بتمنع التشغيل التلقائي بصوت، وiOS بيحتاج playsinline
+        self.assertIn("muted", body)
+        self.assertIn("playsinline", body)
+
+    def test_no_intro_markup_when_disabled(self):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = False
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        self.assertNotIn("lb-intro",
+                         self.client.get(self.inv.get_absolute_url()).content.decode())

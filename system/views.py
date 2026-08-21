@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import mimetypes
 
@@ -30,7 +31,9 @@ from .models import (
 )
 from django.utils.safestring import mark_safe
 from .renderer import render_document
-from . import guestimport
+from django.core.files.base import ContentFile
+
+from . import guestimport, images
 
 MAX_ASSET_BYTES = 8 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
@@ -524,6 +527,7 @@ def invitation_editor(request, pk):
                 "upload": f"/dashboard/invitations/{invitation.pk}/api/upload/",
                 "saveTemplate": f"/dashboard/invitations/{invitation.pk}/api/save-template/",
                 "assets": f"/dashboard/invitations/{invitation.pk}/api/assets/",
+                "crop": f"/dashboard/invitations/{invitation.pk}/api/crop/",
                 "frame": f"/dashboard/invitations/{invitation.pk}/preview-frame/",
                 "back": "/dashboard/invitations/",
                 "public": invitation.get_absolute_url(),
@@ -636,23 +640,34 @@ def api_upload(request, pk):
         )
 
     width = height = 0
+    stored, thumb, source = upload, None, None
+
     if kind == "image" and content_type != "image/svg+xml":
         try:
             from PIL import Image
             with Image.open(upload) as img:
                 img.verify()            # يرفض الملفات المزيّفة
             upload.seek(0)
-            with Image.open(upload) as img:
-                width, height = img.size
-            upload.seek(0)
         except Exception:
             return JsonResponse(
                 {"ok": False, "error": "الصورة تالفة أو غير صالحة."}, status=400
             )
 
+        try:
+            stored, thumb, width, height = images.compress(upload, content_type)
+        except Exception:
+            upload.seek(0)
+            stored, thumb = upload, None
+        else:
+            # نحتفظ بالأصل عشان القص لاحقاً يبقى من غير فقد جودة
+            if stored is not upload and upload.size <= MAX_ASSET_BYTES:
+                upload.seek(0)
+                source = upload
+
     asset = Asset.objects.create(
-        file=upload, kind=kind, original_name=upload.name[:200],
-        width=width, height=height, size_bytes=upload.size,
+        file=stored, thumb=thumb, source=source,
+        kind=kind, original_name=upload.name[:200],
+        width=width, height=height, size_bytes=getattr(stored, "size", upload.size),
         invitation=invitation, uploaded_by=request.user,
     )
     return JsonResponse({
@@ -660,6 +675,72 @@ def api_upload(request, pk):
         "asset": {"id": asset.pk, "url": asset.url, "name": asset.original_name,
                   "kind": asset.kind, "width": width, "height": height},
     })
+
+
+@login_required
+@require_POST
+def api_crop(request, pk):
+    """يقص صورة من الأصل ويحفظ الناتج كأصل جديد.
+
+    القص بيتم من النسخة الأصلية مش المعروضة، فمفيش فقد جودة متراكم لو
+    قصيت أكتر من مرة. والأصل بيفضل محفوظ فتقدر ترجع تقص من جديد.
+    """
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "طلب غير صالح."}, status=400)
+
+    box = payload.get("box") or {}
+    if not isinstance(box, dict):
+        return JsonResponse({"ok": False, "error": "حدود القص غير صالحة."}, status=400)
+
+    asset = Asset.objects.filter(pk=payload.get("asset"), kind="image").first()
+    if asset is None:
+        return JsonResponse({"ok": False, "error": "الصورة غير موجودة."}, status=404)
+    if asset.invitation_id not in (None, invitation.pk):
+        return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة الدعوة دي."},
+                            status=403)
+
+    source = asset.source if asset.source else asset.file
+    try:
+        source.open("rb")
+        img, (width, height) = images.crop(source, box)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "تعذّر قص الصورة."}, status=400)
+    finally:
+        try:
+            source.close()
+        except Exception:
+            pass
+
+    buf = io.BytesIO()
+    img.save(buf, "WEBP", quality=images.QUALITY, method=5)
+    size = buf.tell()
+    buf.seek(0)
+
+    stem = (asset.original_name or "image").rsplit(".", 1)[0][:60]
+    thumb_io = io.BytesIO()
+    small = img.copy()
+    small.thumbnail((images.THUMB_EDGE, images.THUMB_EDGE))
+    small.save(thumb_io, "WEBP", quality=images.THUMB_QUALITY, method=5)
+    thumb_io.seek(0)
+
+    new = Asset.objects.create(
+        file=ContentFile(buf.read(), name=f"{stem}-crop.webp"),
+        thumb=ContentFile(thumb_io.read(), name=f"{stem}-crop-thumb.webp"),
+        source=asset.source or asset.file,     # الأصل نفسه عشان إعادة القص
+        kind="image", original_name=asset.original_name,
+        width=width, height=height, size_bytes=size,
+        invitation=invitation, uploaded_by=request.user,
+    )
+    return JsonResponse({"ok": True, "asset": {
+        "id": new.pk, "url": new.url, "thumb": new.thumb_url,
+        "name": new.original_name, "kind": "image",
+        "width": width, "height": height,
+    }})
 
 
 @login_required

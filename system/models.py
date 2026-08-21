@@ -215,6 +215,10 @@ class Asset(TimeStampedModel):
                     ("video", "فيديو"), ("other", "أخرى")]
 
     file = models.FileField("الملف", upload_to=_asset_path)
+    thumb = models.FileField("مصغّرة", upload_to=_asset_path, blank=True, null=True)
+    # النسخة الأصلية بتتحفظ عشان القص يفضل غير هدّام — تقدر تعيد القص
+    # من الأصل أي وقت من غير ما تفقد جودة.
+    source = models.FileField("الأصل", upload_to=_asset_path, blank=True, null=True)
     kind = models.CharField("النوع", max_length=10, choices=KIND_CHOICES, default="image")
     original_name = models.CharField("الاسم الأصلي", max_length=200, blank=True)
     width = models.PositiveIntegerField(default=0)
@@ -238,6 +242,15 @@ class Asset(TimeStampedModel):
     @property
     def url(self) -> str:
         return self.file.url if self.file else ""
+
+    @property
+    def thumb_url(self) -> str:
+        return self.thumb.url if self.thumb else self.url
+
+    @property
+    def source_url(self) -> str:
+        """الأصل لو محفوظ، وإلا الملف المعروض — بيستخدمه القص."""
+        return self.source.url if self.source else self.url
 
 
 # --------------------------------------------------------------------------

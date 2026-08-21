@@ -1,13 +1,38 @@
 """إعدادات مشروع "فرحة" — منصة الدعوات الرقمية.
 
 كل القيم الحساسة تُقرأ من متغيرات البيئة، مع قيم افتراضية آمنة للتطوير المحلي فقط.
-انسخ ملف .env.example إلى .env وعدّل القيم قبل النشر.
+القيم بتتقرا من ملف .env جنب manage.py لو موجود، وإلا من متغيرات النظام.
 """
 
 import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _load_dotenv(path: Path) -> None:
+    """يقرأ ملف .env بسطور KEY=VALUE — من غير أي مكتبة خارجية.
+
+    متغيّرات النظام لها الأولوية دايماً، فالاستضافة تقدر تتجاوز الملف.
+    """
+    if not path.is_file():
+        return
+    try:
+        raw = path.read_text(encoding="utf-8-sig")
+    except OSError:
+        return
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_dotenv(BASE_DIR / ".env")
 
 
 def env(key, default=None):
@@ -98,31 +123,45 @@ WSGI_APPLICATION = "Core.wsgi.application"
 ASGI_APPLICATION = "Core.asgi.application"
 
 # ---------------------------------------------------------------- database
-DATABASE_URL = env("DATABASE_URL", "")
-if DATABASE_URL:
-    # دعم Postgres عبر DATABASE_URL بدون الاعتماد على حزمة خارجية.
-    from urllib.parse import unquote, urlparse
+# SQLite افتراضياً — مفيش خدمة خارجية ولا متغيّرات لازمة للتشغيل.
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+        "OPTIONS": {
+            # يقلّل قفل القاعدة لما أكتر من طلب يكتبوا في نفس الوقت
+            "timeout": 20,
+            "transaction_mode": "IMMEDIATE",
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+        },
+    }
+}
 
-    parsed = urlparse(DATABASE_URL)
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": parsed.path.lstrip("/"),
-            "USER": unquote(parsed.username or ""),
-            "PASSWORD": unquote(parsed.password or ""),
-            "HOST": parsed.hostname or "",
-            "PORT": str(parsed.port or ""),
-            "CONN_MAX_AGE": 600,
-            "OPTIONS": {"sslmode": env("DJANGO_DB_SSLMODE", "require")},
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+# لما تقرر تربطه بقاعدة خارجية، حط DATABASE_URL في البيئة وشيل التعليق:
+#   Postgres →  postgres://user:pass@host:5432/dbname
+#   MySQL    →  mysql://user:pass@host/dbname     (PythonAnywhere)
+# DATABASE_URL = env("DATABASE_URL", "")
+# if DATABASE_URL:
+#     from urllib.parse import unquote, urlparse
+#     parsed = urlparse(DATABASE_URL)
+#     scheme = (parsed.scheme or "").split("+")[0].lower()
+#     if scheme in {"mysql", "mariadb"}:
+#         engine = "django.db.backends.mysql"
+#         options = {"charset": "utf8mb4",
+#                    "init_command": "SET sql_mode='STRICT_TRANS_TABLES'"}
+#     else:
+#         engine = "django.db.backends.postgresql"
+#         options = {"sslmode": env("DJANGO_DB_SSLMODE", "require")}
+#     DATABASES = {"default": {
+#         "ENGINE": engine,
+#         "NAME": parsed.path.lstrip("/"),
+#         "USER": unquote(parsed.username or ""),
+#         "PASSWORD": unquote(parsed.password or ""),
+#         "HOST": parsed.hostname or "",
+#         "PORT": str(parsed.port or ""),
+#         "CONN_MAX_AGE": 600,
+#         "OPTIONS": options,
+#     }}
 
 # ---------------------------------------------------------------- auth
 AUTH_PASSWORD_VALIDATORS = [

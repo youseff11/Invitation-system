@@ -41,6 +41,7 @@ urlpatterns = [
     path("dashboard/invitations/<int:pk>/api/save/", views.api_save, name="api_save"),
     path("dashboard/invitations/<int:pk>/api/upload/", views.api_upload, name="api_upload"),
     path("dashboard/invitations/<int:pk>/api/assets/", views.api_assets, name="api_assets"),
+    path("dashboard/invitations/<int:pk>/api/crop/", views.api_crop, name="api_crop"),
     path("dashboard/invitations/<int:pk>/api/save-template/", views.api_save_as_template,
          name="api_save_as_template"),
 

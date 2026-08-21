@@ -252,13 +252,53 @@
   function initIntro() {
     var intro = $(".lb-intro");
     if (!intro) return;
+
+    // داخل المحرر بنخفيها بس ما نشيلهاش، عشان تقدر ترجع تعاينها وتعدّلها
+    var editable = intro.hasAttribute("data-intro-editable");
+    var timer = null;
+
     doc.body.style.overflow = "hidden";
+
     var open = function () {
+      if (timer) { clearTimeout(timer); timer = null; }
       intro.classList.add("is-open");
       doc.body.style.overflow = "";
       if (window.__lbMusic) window.__lbMusic.play();
-      setTimeout(function () { intro.remove(); }, 700);
+      var vid = $("[data-intro-video]", intro);
+      if (vid) { try { vid.pause(); } catch (e) {} }
+      if (!editable) setTimeout(function () { intro.remove(); }, 700);
     };
+
+    var reopen = function () {
+      intro.classList.remove("is-open");
+      doc.body.style.overflow = "hidden";
+      var vid = $("[data-intro-video]", intro);
+      if (vid) { try { vid.currentTime = 0; vid.play(); } catch (e) {} }
+      startAuto();
+    };
+    window.__lbIntro = { open: open, reopen: reopen };
+
+    function startAuto() {
+      var secs = parseFloat(intro.getAttribute("data-intro-auto") || "0");
+      if (timer) clearTimeout(timer);
+      if (secs > 0) timer = setTimeout(open, secs * 1000);
+    }
+    startAuto();
+
+    // الفيديو لازم يبدأ صامت — كل المتصفحات بتمنع الصوت التلقائي
+    var video = $("[data-intro-video]", intro);
+    if (video) {
+      video.muted = true;
+      var tryPlay = video.play();
+      if (tryPlay && tryPlay.catch) {
+        // iOS في وضع توفير الطاقة بيرفض التشغيل — الغلاف بيفضل ظاهر
+        tryPlay.catch(function () { intro.classList.add("is-video-blocked"); });
+      }
+      video.addEventListener("ended", function () {
+        if (!intro.getAttribute("data-intro-auto")) open();
+      });
+    }
+
     var btn = $("[data-intro-open]", intro);
     if (btn) btn.addEventListener("click", open);
     intro.addEventListener("click", function (e) { if (e.target === intro) open(); });

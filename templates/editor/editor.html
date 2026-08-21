@@ -91,7 +91,11 @@
     <main class="ed-canvas">
       <div class="ed-canvas-bar">
         <span>اضغط على أي قسم داخل المعاينة لتحديده — والنصوص قابلة للكتابة مباشرة.</span>
-        <span data-block-count>—</span>
+        <span class="ed-canvas-tools">
+          <button class="ed-btn ed-btn--sm" data-show-intro type="button"
+                  title="عرض الشاشة الافتتاحية في المعاينة">الافتتاحية</button>
+          <span data-block-count>—</span>
+        </span>
       </div>
       <div class="ed-stage">
         <div class="ed-device" data-device-shell data-device="mobile">
@@ -252,6 +256,38 @@
 </div>
 
 {# ------------------------------------------------------------ نافذة الصور #}
+{# ---------- قصّ الصورة ---------- #}
+<div class="ed-modal" data-crop-modal hidden>
+  <div class="ed-modal-card ed-modal-card--wide" role="dialog" aria-modal="true" aria-label="قصّ الصورة">
+    <h3>قصّ الصورة</h3>
+    <p class="ed-hint">
+      اسحب المربع لتحريكه، واسحب من الأركان لتغيير حجمه. القص بيتم من النسخة
+      الأصلية، والأصل بيفضل محفوظ فتقدر ترجع تقص تاني.
+    </p>
+
+    <div class="ed-crop-ratios">
+      <button type="button" class="ed-btn ed-btn--sm is-active" data-crop-ratio="free">حر</button>
+      <button type="button" class="ed-btn ed-btn--sm" data-crop-ratio="1:1">مربع</button>
+      <button type="button" class="ed-btn ed-btn--sm" data-crop-ratio="4:5">4:5</button>
+      <button type="button" class="ed-btn ed-btn--sm" data-crop-ratio="3:2">3:2</button>
+      <button type="button" class="ed-btn ed-btn--sm" data-crop-ratio="16:9">16:9</button>
+    </div>
+
+    <div class="ed-crop-stage" data-crop-stage>
+      <img data-crop-img alt="">
+      <div class="ed-crop-box" data-crop-box>
+        <i data-handle="nw"></i><i data-handle="ne"></i>
+        <i data-handle="sw"></i><i data-handle="se"></i>
+      </div>
+    </div>
+
+    <div class="ed-modal-actions">
+      <button class="ed-btn" type="button" data-close-modal>إلغاء</button>
+      <button class="ed-btn ed-btn--primary" type="button" data-crop-apply>اقصّ</button>
+    </div>
+  </div>
+</div>
+
 <div class="ed-modal" data-asset-modal hidden>
   <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="مكتبة الصور">
     <h3>مكتبة الصور</h3>

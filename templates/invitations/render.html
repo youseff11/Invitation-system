@@ -23,12 +23,25 @@
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root>
 
-{% if render.settings.intro_enabled and not editable %}
-<div class="lb-intro">
+{% if render.settings.intro_enabled %}
+{# داخل المحرر بتظهر كمان عشان تقدر تعاينها وتعدّلها — زر «التالي» بيدخّلك الدعوة #}
+<div class="lb-intro{% if render.settings.intro_video %} lb-intro--video{% endif %}"
+     {% if editable %}data-intro-editable="1"{% endif %}
+     {% if render.settings.intro_video_seconds %}data-intro-auto="{{ render.settings.intro_video_seconds }}"{% endif %}
+     {% if render.settings.intro_image %}style="--intro-bg:url('{{ render.settings.intro_image }}')"{% endif %}>
+
+  {% if render.settings.intro_video %}
+  <video class="lb-intro-video" data-intro-video
+         src="{{ render.settings.intro_video }}"
+         {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
+         autoplay muted playsinline preload="metadata"></video>
+  <div class="lb-intro-veil"></div>
+  {% endif %}
+
   <div class="lb-intro-inner">
     {% if render.data.name_one %}<p class="lb-kicker">{{ render.data.name_one }}{% if render.data.name_two %} &amp; {{ render.data.name_two }}{% endif %}</p>{% endif %}
     {% if guest %}<p class="lb-intro-name">أهلاً {{ guest.name }}</p>{% endif %}
-    <p class="lb-body">{{ render.settings.intro_text }}</p>
+    {% if render.settings.intro_text %}<p class="lb-body">{{ render.settings.intro_text }}</p>{% endif %}
     <button type="button" class="lb-btn lb-btn--solid" data-intro-open>{{ render.settings.intro_button }}</button>
   </div>
 </div>

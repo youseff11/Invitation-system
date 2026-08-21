@@ -47,6 +47,7 @@ FIELD_TYPES = {
     "select",
     "toggle",
     "image",      # معرّف أصل مرفوع أو رابط
+    "media",      # زي image بس بيقبل صوت/فيديو حسب media_kind
     "url",
     "date",
     "datetime",
@@ -75,12 +76,14 @@ def field(
     placeholder: str = "",
     feature: str = "",
     add_label: str = "إضافة عنصر",
+    media_kind: str = "image",
 ) -> dict:
     """تعريف حقل واحد داخل المحرر."""
     if ftype not in FIELD_TYPES:
         raise ValueError(f"نوع حقل غير معروف: {ftype}")
     spec = {
         "key": key,
+        "media_kind": media_kind,
         "label": label,
         "type": ftype,
         "default": default,
@@ -666,7 +669,16 @@ SETTINGS_FIELDS = [
           ]),
     field("intro_enabled", "شاشة افتتاحية", "toggle", False, group="الافتتاحية"),
     field("intro_text", "نص الافتتاحية", "text", "اضغط لفتح الدعوة", group="الافتتاحية"),
-    field("intro_button", "نص الزر", "text", "افتح الدعوة", group="الافتتاحية"),
+    field("intro_button", "نص الزر", "text", "التالي ←", group="الافتتاحية"),
+    field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
+          media_kind="video",
+          help_text="فيديو قصير (٣-٧ ثواني). بيشتغل صامت تلقائياً — المتصفحات "
+               "بتمنع الصوت التلقائي. حط صورة غلاف عشان تظهر فوراً قبل ما يحمّل."),
+    field("intro_poster", "صورة غلاف الفيديو", "image", "", group="الافتتاحية"),
+    field("intro_video_seconds", "يقفل تلقائياً بعد (ثانية)", "range", 0,
+          minimum=0, maximum=15, step=1, group="الافتتاحية",
+          help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),
+    field("intro_image", "صورة خلفية الافتتاحية", "image", "", group="الافتتاحية"),
     field("favicon", "أيقونة الصفحة", "image", "", group="مشاركة"),
     field("share_image", "صورة المعاينة عند المشاركة", "image", "", group="مشاركة"),
     field("share_title", "عنوان المشاركة", "text", "", group="مشاركة"),

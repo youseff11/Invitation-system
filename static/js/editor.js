@@ -312,36 +312,40 @@
       }
 
       // ---------------------------------------------------- صورة
+      case "media":
       case "image": {
+        var mediaKind = spec.media_kind || "image";
+        var isImage = mediaKind === "image";
         var thumb = el("div", "ed-image-thumb");
         thumb.setAttribute("role", "button");
         thumb.tabIndex = 0;
         function paint(v) {
-          if (v) {
+          if (v && isImage) {
             thumb.style.backgroundImage = 'url("' + String(v).replace(/"/g, "%22") + '")';
             thumb.textContent = "";
           } else {
             thumb.style.backgroundImage = "";
-            thumb.textContent = "＋";
+            thumb.textContent = v ? (mediaKind === "video" ? "▶" : "♪") : "＋";
           }
         }
         paint(value);
         var urlInput = el("input", "ed-input");
         urlInput.type = "text";
-        urlInput.placeholder = "أو الصق رابط صورة";
+        urlInput.placeholder = isImage ? "أو الصق رابط صورة" : "أو الصق رابط الملف";
         urlInput.value = value == null ? "" : value;
         urlInput.addEventListener("input", function () {
           paint(urlInput.value);
           setValue(urlInput.value);
         });
-        var pickBtn = el("button", "ed-btn ed-btn--sm", "اختر أو ارفع صورة");
+        var pickBtn = el("button", "ed-btn ed-btn--sm",
+          isImage ? "اختر أو ارفع صورة" : (mediaKind === "video" ? "اختر أو ارفع فيديو" : "اختر أو ارفع ملف"));
         pickBtn.type = "button";
         function open() {
           openAssetPicker(function (url) {
             urlInput.value = url;
             paint(url);
             setValue(url);
-          });
+          }, mediaKind);
         }
         pickBtn.addEventListener("click", open);
         thumb.addEventListener("click", open);
@@ -352,6 +356,28 @@
         var side = el("div", "ed-image-side");
         side.appendChild(urlInput);
         side.appendChild(pickBtn);
+
+        if (isImage) {
+          var cropBtn = el("button", "ed-btn ed-btn--sm", "قصّ الصورة");
+          cropBtn.type = "button";
+          cropBtn.addEventListener("click", function () {
+            var current = urlInput.value;
+            var asset = null;
+            for (var i = 0; i < ASSETS.length; i++) {
+              if (ASSETS[i].url === current) { asset = ASSETS[i]; break; }
+            }
+            if (!asset) {
+              toast("اختر صورة من المكتبة الأول عشان تقدر تقصها.", "error");
+              return;
+            }
+            openCropper(asset, function (url) {
+              urlInput.value = url;
+              paint(url);
+              setValue(url);
+            });
+          });
+          side.appendChild(cropBtn);
+        }
         var ibox = el("div", "ed-image");
         ibox.appendChild(thumb);
         ibox.appendChild(side);
@@ -734,6 +760,7 @@
         btn.type = "button";
         btn.title = "تحريك خطوة صغيرة";
         btn.addEventListener("click", function () {
+          snapshot();
           pos[b[1]] = Math.round((pos[b[1]] + b[2]) * 100) / 100;
           var n = frameDoc() && frameDoc().querySelector(
             '[data-block="' + block.id + '"] [data-slot="' + slot + '"]');
@@ -746,12 +773,13 @@
       var zero = el("button", "ed-btn ed-btn--sm", "صفّر");
       zero.type = "button";
       zero.addEventListener("click", function () {
+        snapshot();
         pos.dx = 0; pos.dy = 0;
         var n = frameDoc() && frameDoc().querySelector(
           '[data-block="' + block.id + '"] [data-slot="' + slot + '"]');
         if (n) applySlotOffset(n, 0, 0);
         pruneLayout(block);
-        snapshot(); markDirty(); renderInspector();
+        markDirty(); renderInspector();
       });
       line.appendChild(zero);
       row.appendChild(line);
@@ -998,9 +1026,12 @@
         layoutOf(d.block, d.slot).dy = d.dy0;
       } else {
         var pos = layoutOf(d.block, d.slot);
+        // القيمة اتغيّرت لحظياً أثناء السحب، فبنرجّعها ثانية واحدة عشان
+        // snapshot يسجّل الحالة اللي قبل السحب — وإلا Ctrl+Z مايرجّعش حاجة.
+        pos.dx = d.dx0; pos.dy = d.dy0;
+        snapshot();
         pos.dx = d.dx != null ? d.dx : d.dx0;
         pos.dy = d.dy != null ? d.dy : d.dy0;
-        snapshot();
         markDirty();
       }
       pruneLayout(d.block);
@@ -1018,6 +1049,7 @@
   function resetBlockLayout(blockId) {
     var block = findBlock(blockId);
     if (!block || !block.layout) return;
+    snapshot();                          // قبل ما نمسح المواضع
     var fdoc = frameDoc();
     if (fdoc) {
       Object.keys(block.layout).forEach(function (slot) {
@@ -1026,7 +1058,6 @@
       });
     }
     delete block.layout;
-    snapshot();
     markDirty();
     renderInspector();
     toast("رجعت المواضع لأماكنها الأصلية");
@@ -1179,8 +1210,134 @@
   // ==========================================================
   var pickCallback = null;
 
-  function openAssetPicker(cb) {
+  var pickKind = "image";
+
+
+  // ==========================================================
+  // قص الصور
+  // ==========================================================
+  // القص بيتم على السيرفر من النسخة الأصلية، فمفيش فقد جودة متراكم،
+  // والأصل بيفضل محفوظ فتقدر ترجع تقص من جديد أي وقت.
+  var cropState = null;
+
+  function openCropper(asset, onDone) {
+    var url = asset.source || asset.url;
+    var modal = $("[data-crop-modal]");
+    if (!modal) return;
+
+    var stage = $("[data-crop-stage]", modal);
+    var img = $("[data-crop-img]", modal);
+    var box = $("[data-crop-box]", modal);
+    img.src = url;
+
+    cropState = { asset: asset, onDone: onDone, ratio: 0 };
+
+    img.onload = function () {
+      // نبدأ بمربع في النص بـ80% من أصغر ضلع
+      var r = img.getBoundingClientRect(), s = stage.getBoundingClientRect();
+      var w = r.width * 0.8, h = r.height * 0.8;
+      setBox((r.left - s.left) + (r.width - w) / 2, (r.top - s.top) + (r.height - h) / 2, w, h);
+    };
+
+    function setBox(x, y, w, h) {
+      var r = img.getBoundingClientRect(), s = stage.getBoundingClientRect();
+      var ox = r.left - s.left, oy = r.top - s.top;
+      w = Math.max(24, Math.min(w, r.width));
+      h = Math.max(24, Math.min(h, r.height));
+      x = Math.max(ox, Math.min(x, ox + r.width - w));
+      y = Math.max(oy, Math.min(y, oy + r.height - h));
+      box.style.left = x + "px"; box.style.top = y + "px";
+      box.style.width = w + "px"; box.style.height = h + "px";
+      cropState.box = { x: x, y: y, w: w, h: h };
+    }
+    cropState.setBox = setBox;
+
+    // السحب والتحجيم
+    var drag = null;
+    box.onpointerdown = function (e) {
+      var handle = e.target.getAttribute("data-handle");
+      drag = { x: e.clientX, y: e.clientY, start: Object.assign({}, cropState.box), handle: handle };
+      box.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    box.onpointermove = function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y, b = drag.start;
+      if (!drag.handle) { setBox(b.x + dx, b.y + dy, b.w, b.h); return; }
+      var nx = b.x, ny = b.y, nw = b.w, nh = b.h;
+      if (drag.handle.indexOf("e") > -1) nw = b.w + dx;
+      if (drag.handle.indexOf("s") > -1) nh = b.h + dy;
+      if (drag.handle.indexOf("w") > -1) { nx = b.x + dx; nw = b.w - dx; }
+      if (drag.handle.indexOf("n") > -1) { ny = b.y + dy; nh = b.h - dy; }
+      if (cropState.ratio) nh = nw / cropState.ratio;
+      setBox(nx, ny, nw, nh);
+    };
+    box.onpointerup = box.onpointercancel = function () { drag = null; };
+
+    $$("[data-crop-ratio]", modal).forEach(function (btn) {
+      btn.onclick = function () {
+        $$("[data-crop-ratio]", modal).forEach(function (x) { x.classList.remove("is-active"); });
+        btn.classList.add("is-active");
+        var parts = btn.getAttribute("data-crop-ratio").split(":");
+        cropState.ratio = parts.length === 2 ? (+parts[0] / +parts[1]) : 0;
+        if (cropState.ratio) {
+          var b = cropState.box;
+          setBox(b.x, b.y, b.w, b.w / cropState.ratio);
+        }
+      };
+    });
+
+    $("[data-crop-apply]", modal).onclick = applyCrop;
+    openModal(modal);
+  }
+
+  function applyCrop() {
+    if (!cropState) return;
+    var img = $("[data-crop-img]");
+    var r = img.getBoundingClientRect();
+    var s = $("[data-crop-stage]").getBoundingClientRect();
+    var b = cropState.box;
+    // نِسَب مش بكسل — عشان القص يفضل صح مهما كان مقاس العرض
+    var payload = {
+      asset: cropState.asset.id,
+      box: {
+        x: (b.x - (r.left - s.left)) / r.width,
+        y: (b.y - (r.top - s.top)) / r.height,
+        w: b.w / r.width,
+        h: b.h / r.height
+      }
+    };
+    var btn = $("[data-crop-apply]");
+    btn.disabled = true;
+    btn.textContent = "جارٍ القص…";
+
+    fetch(META.urls.crop, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      credentials: "same-origin",
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (d) {
+        btn.disabled = false;
+        btn.textContent = "اقصّ";
+        if (!d.ok) { toast(d.error || "تعذّر القص.", "error"); return; }
+        ASSETS.unshift(d.asset);
+        if (cropState.onDone) cropState.onDone(d.asset.url);
+        closeModal($("[data-crop-modal]"));
+        toast("اتقصّت الصورة.", "ok");
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "اقصّ";
+        toast("تعذّر الاتصال بالخادم.", "error");
+      });
+  }
+
+  function openAssetPicker(cb, kind) {
     pickCallback = cb;
+    pickKind = kind || "image";
     renderAssets();
     openModal(refs.assetModal);
   }
@@ -1188,7 +1345,7 @@
   function renderAssets() {
     var box = refs.assetGrid;
     box.replaceChildren();
-    var images = ASSETS.filter(function (a) { return a.kind === "image"; });
+    var images = ASSETS.filter(function (a) { return a.kind === (pickKind || "image"); });
     if (!images.length) {
       box.appendChild(el("p", "ed-empty", "لم تُرفع أي صور بعد."));
       return;
@@ -1458,6 +1615,20 @@
       });
     }
 
+    /* «الافتتاحية» — بترجّع الشاشة الافتتاحية في المعاينة عشان تعاينها
+       وتعدّلها. زر «التالي» جوّاها بيدخّلك الدعوة. */
+    var introBtn = $("[data-show-intro]");
+    if (introBtn) {
+      introBtn.addEventListener("click", function () {
+        var win = refs.frame && refs.frame.contentWindow;
+        if (win && win.__lbIntro) {
+          win.__lbIntro.reopen();
+        } else {
+          toast("فعّل «شاشة افتتاحية» من تبويب الإعدادات الأول.", "error");
+        }
+      });
+    }
+
     var panelToggle = $("[data-panel-toggle]");
     if (panelToggle) {
       panelToggle.addEventListener("click", function () {
@@ -1494,6 +1665,34 @@
       else if ((e.key === "y" || e.key === "Y") || ((e.key === "z" || e.key === "Z") && e.shiftKey)) {
         e.preventDefault(); redo();
       }
+    });
+
+    /* Delete / Backspace يحذف القسم المحدد — بس لما التركيز مش في خانة كتابة،
+       وإلا هنمسح أقسام والمستخدم بيمسح حروف. التراجع بـCtrl+Z شغال. */
+    doc.addEventListener("keydown", function (e) {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      var t = e.target;
+      if (!t) return;
+      var tag = (t.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (t.isContentEditable) return;
+      if (doc.querySelector(".ed-modal.is-open")) return;
+      if (!state.selected) return;
+
+      var block = findBlock(state.selected);
+      if (!block || block.locked) return;
+      var spec = blockSpec(block.type);
+      e.preventDefault();
+
+      snapshot();                      // قبل التعديل — دي الحالة اللي Ctrl+Z هيرجّعها
+      var i = blockIndex(block.id);
+      state.doc.blocks.splice(i, 1);
+      state.selected = null;
+      markDirty();
+      renderBlockList();
+      renderInspector();
+      requestPreview();
+      toast("اتحذف «" + ((spec && spec.label) || "القسم") + "» — Ctrl+Z للتراجع", "ok");
     });
 
     window.addEventListener("beforeunload", function (e) {
