@@ -1,0 +1,50 @@
+{% load static %}<!doctype html>
+<html lang="ar" dir="{{ render.theme.direction|default:'rtl' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ page_title }}</title>
+<meta name="description" content="{{ page_description }}">
+<meta name="robots" content="{% if noindex %}noindex, nofollow{% else %}index, follow{% endif %}">
+<link rel="icon" href="{% if render.settings.favicon %}{{ render.settings.favicon }}{% else %}{% static 'img/favicon.svg' %}{% endif %}">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ page_title }}">
+<meta property="og:description" content="{{ page_description }}">
+{% if share_image %}<meta property="og:image" content="{{ share_image }}">{% endif %}
+{% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&family=Cormorant+Garamond:wght@300;400;500;600&family=Great+Vibes&family=Marcellus&family=Montserrat:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&family=Reem+Kufi:wght@400;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/invite.css' %}">
+{% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
+</head>
+<body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root>
+
+{% if render.settings.intro_enabled and not editable %}
+<div class="lb-intro">
+  <div class="lb-intro-inner">
+    {% if render.data.name_one %}<p class="lb-kicker">{{ render.data.name_one }}{% if render.data.name_two %} &amp; {{ render.data.name_two }}{% endif %}</p>{% endif %}
+    {% if guest %}<p class="lb-intro-name">أهلاً {{ guest.name }}</p>{% endif %}
+    <p class="lb-body">{{ render.settings.intro_text }}</p>
+    <button type="button" class="lb-btn lb-btn--solid" data-intro-open>{{ render.settings.intro_button }}</button>
+  </div>
+</div>
+{% endif %}
+
+<div class="lb-stage{% if render.theme.max_width >= 1100 %} lb-stage--full{% endif %}{% if render.theme.pattern and render.theme.pattern != 'none' %} lb-pattern lb-pattern--{{ render.theme.pattern }}{% endif %}">
+  {{ render.html }}
+
+  {% if render.settings.show_branding %}
+  <footer class="lb-footer">
+    صُممت هذه الدعوة عبر <a href="{{ site_url|default:'/' }}" target="_blank" rel="noopener">{{ site_name }}</a>
+  </footer>
+  {% endif %}
+</div>
+
+{{ music_config|json_script:"invite-music" }}
+<script src="{% static 'js/invite.js' %}" defer></script>
+</body>
+</html>

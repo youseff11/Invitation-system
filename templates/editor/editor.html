@@ -1,0 +1,334 @@
+{% load static %}<!doctype html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>محرر — {{ invitation.title }}</title>
+<script>
+/* نفس مفتاح الموقع — المحرر بيتبع نفس المظهر. بيتنفّذ قبل الرسم فمفيش ومضة.
+   من غير متغيّرات Django عمداً، فمفيش formatter يقدر يكسره. */
+(function () {
+  try {
+    var t = localStorage.getItem("leila-theme");
+    if (t !== "light" && t !== "dark") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32" type="image/png">
+<link rel="stylesheet" href="{% static 'css/editor.css' %}?v={{ ASSET_V }}">
+</head>
+<body class="editor-body">
+
+<div class="ed">
+
+  {# ------------------------------------------------------------ الشريط العلوي #}
+  <header class="ed-top">
+    <div class="ed-top-group">
+      <a class="ed-brand" href="{% url 'dashboard_invitations' %}" title="رجوع للدعوات">
+        <span class="ed-brand-logo" aria-hidden="true"></span><span class="ed-brand-txt">المحرر</span>
+      </a>
+    </div>
+
+    <div class="ed-top-group ed-top-group--grow">
+      <span class="ed-title">
+        <strong>{{ invitation.title }}</strong>
+        · {{ invitation.template.name }} · باقة {{ invitation.plan.name }}
+      </span>
+    </div>
+
+    <div class="ed-top-group">
+      <button class="ed-btn ed-btn--icon ed-theme" data-theme-toggle type="button"
+              title="تبديل المظهر" aria-label="تبديل بين الوضع الفاتح والداكن">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.6v2.1M12 19.3v2.1M2.6 12h2.1M19.3 12h2.1M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/>
+        </svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.3A8.5 8.5 0 1 1 9.7 3.5a6.9 6.9 0 0 0 10.8 10.8Z"/>
+        </svg>
+      </button>
+      <button class="ed-btn ed-btn--icon" data-undo type="button" title="تراجع (Ctrl+Z)">↶</button>
+      <button class="ed-btn ed-btn--icon" data-redo type="button" title="إعادة (Ctrl+Y)">↷</button>
+    </div>
+
+    <div class="ed-seg" role="group" aria-label="حجم الشاشة">
+      <button type="button" data-set-device="mobile" class="is-active">موبايل</button>
+      <button type="button" data-set-device="tablet">تابلت</button>
+      <button type="button" data-set-device="desktop">ديسكتوب</button>
+    </div>
+
+    <div class="ed-top-group ed-top-actions">
+      <span class="ed-save-state" data-save-state>محفوظ</span>
+
+      <div class="ed-more">
+        <button class="ed-btn ed-btn--icon ed-more-btn" data-more type="button"
+                aria-expanded="false" aria-label="إجراءات إضافية" title="المزيد">⋯</button>
+        <div class="ed-more-menu">
+          <a class="ed-btn ed-btn--sm" data-public-link href="{{ invitation.get_absolute_url }}"
+             target="_blank" rel="noopener">فتح الدعوة ↗</a>
+          <button class="ed-btn ed-btn--sm" data-open-template type="button">احفظ كقالب</button>
+        </div>
+      </div>
+
+      <button class="ed-btn ed-btn--primary" data-save type="button">حفظ</button>
+      <button class="ed-btn ed-btn--icon ed-panel-toggle" data-panel-toggle type="button"
+              aria-expanded="false" title="إظهار اللوحة">☰</button>
+    </div>
+  </header>
+
+  {# ------------------------------------------------------------ المنطقة الرئيسية #}
+  <div class="ed-main">
+
+    {# ---------------- المعاينة ---------------- #}
+    <main class="ed-canvas">
+      <div class="ed-canvas-bar">
+        <span>اضغط على أي قسم داخل المعاينة لتحديده — والنصوص قابلة للكتابة مباشرة.</span>
+        <span data-block-count>—</span>
+      </div>
+      <div class="ed-stage">
+        <div class="ed-device" data-device-shell data-device="mobile">
+          <iframe data-preview-frame src="{% url 'invitation_preview_frame' invitation.pk %}"
+                  title="معاينة الدعوة"></iframe>
+          <div class="ed-loading" data-loading>جارٍ التحديث…</div>
+        </div>
+      </div>
+    </main>
+
+    <div class="ed-panel-scrim" data-panel-scrim hidden></div>
+
+    {# ---------------- اللوحة ---------------- #}
+    <aside class="ed-panel">
+      <nav class="ed-tabs" role="tablist">
+        <button type="button" data-tab="blocks" class="is-active">الأقسام</button>
+        <button type="button" data-tab="inspector">الخصائص</button>
+        <button type="button" data-tab="theme">التصميم</button>
+        <button type="button" data-tab="data">البيانات</button>
+        <button type="button" data-tab="settings">إعدادات</button>
+      </nav>
+
+      <div class="ed-tabpanes">
+
+        {# ---- الأقسام ---- #}
+        <section class="ed-tabpane is-active" data-pane="blocks">
+          <div class="ed-section-head">
+            <p class="ed-kicker">أقسام الدعوة</p>
+            <button class="ed-btn ed-btn--sm" data-add-block type="button">＋ إضافة قسم</button>
+          </div>
+          <p class="ed-hint">
+            اسحب القسم لتغيير ترتيبه، واضغط ◉ لإخفائه عن الضيوف، و⧉ لتكراره.
+          </p>
+          <div class="ed-blocks" data-block-list></div>
+
+          <div class="ed-section" style="margin-top:18px">
+            <p class="ed-kicker">مكتبة الصور</p>
+            <p class="ed-hint">ارفع صور الغلاف والمعرض هنا لتستخدمها في أي قسم.</p>
+            <button class="ed-btn ed-btn--sm ed-btn--block" data-open-assets type="button">
+              فتح مكتبة الصور
+            </button>
+          </div>
+        </section>
+
+        {# ---- الخصائص ---- #}
+        <section class="ed-tabpane" data-pane="inspector" data-inspector></section>
+
+        {# ---- التصميم ---- #}
+        <section class="ed-tabpane" data-pane="theme" data-theme-pane></section>
+
+        {# ---- بيانات المناسبة ---- #}
+        <section class="ed-tabpane" data-pane="data">
+          <p class="ed-kicker">بيانات المناسبة</p>
+          <p class="ed-hint">
+            هذه البيانات تملأ الأقسام تلقائياً. أي قسم تركت حقله فارغاً سيأخذ قيمته من هنا.
+          </p>
+
+          <details class="ed-group" open>
+            <summary><span>الأساسيات</span></summary>
+            <div class="ed-group-body">
+              <div class="ed-field">
+                <label><span>العنوان الداخلي</span></label>
+                <input class="ed-input" data-inv-field="title" value="{{ invitation.title }}">
+              </div>
+              <div class="ed-field">
+                <label><span>نوع المناسبة</span></label>
+                <input class="ed-input" data-inv-field="event_type" value="{{ invitation.event_type }}">
+              </div>
+              <div class="ed-field">
+                <label><span>الاسم الأول</span></label>
+                <input class="ed-input" data-inv-field="name_one" value="{{ invitation.name_one }}">
+              </div>
+              <div class="ed-field">
+                <label><span>الاسم الثاني</span></label>
+                <input class="ed-input" data-inv-field="name_two" value="{{ invitation.name_two }}">
+              </div>
+              <div class="ed-field">
+                <label><span>التاريخ والوقت</span></label>
+                <input class="ed-input" type="datetime-local" data-inv-field="event_date"
+                       value="{{ invitation.event_date|date:'Y-m-d\\TH:i' }}">
+              </div>
+            </div>
+          </details>
+
+          <details class="ed-group">
+            <summary><span>المكان والتواصل</span></summary>
+            <div class="ed-group-body">
+              <div class="ed-field">
+                <label><span>اسم القاعة</span></label>
+                <input class="ed-input" data-inv-field="venue" value="{{ invitation.venue }}">
+              </div>
+              <div class="ed-field">
+                <label><span>العنوان</span></label>
+                <input class="ed-input" data-inv-field="address" value="{{ invitation.address }}">
+              </div>
+              <div class="ed-field">
+                <label><span>رابط الخريطة</span></label>
+                <input class="ed-input" type="url" data-inv-field="map_url" value="{{ invitation.map_url }}">
+              </div>
+              <div class="ed-field">
+                <label><span>رقم واتساب</span></label>
+                <input class="ed-input" data-inv-field="whatsapp" value="{{ invitation.whatsapp }}">
+              </div>
+            </div>
+          </details>
+
+          <details class="ed-group">
+            <summary><span>النشر</span></summary>
+            <div class="ed-group-body">
+              <div class="ed-field">
+                <label><span>حالة الدعوة</span></label>
+                <select class="ed-input" data-inv-field="status">
+                  {% for value, text in invitation.STATUS_CHOICES %}
+                    <option value="{{ value }}"{% if invitation.status == value %} selected{% endif %}>{{ text }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="ed-field">
+                <label><span>كلمة سر الدعوة</span></label>
+                <input class="ed-input" data-inv-field="password" value="{{ invitation.password }}">
+                <small>اتركها فارغة لدعوة مفتوحة لكل من يملك الرابط.</small>
+              </div>
+              <div class="ed-field">
+                <label><span>تنتهي في</span></label>
+                <input class="ed-input" type="datetime-local" data-inv-field="expires_at"
+                       value="{{ invitation.expires_at|date:'Y-m-d\\TH:i' }}">
+              </div>
+              <div class="ed-field">
+                <label><span>الرابط العام</span></label>
+                <input class="ed-input" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ invitation.get_absolute_url }}">
+              </div>
+            </div>
+          </details>
+        </section>
+
+        {# ---- إعدادات المستند ---- #}
+        <section class="ed-tabpane" data-pane="settings">
+          <p class="ed-kicker">إعدادات الدعوة</p>
+          <p class="ed-hint">الموسيقى، الشاشة الافتتاحية، وبيانات المشاركة على واتساب وفيسبوك.</p>
+          <div data-settings-fields></div>
+        </section>
+
+      </div>
+    </aside>
+  </div>
+</div>
+
+{# ------------------------------------------------------------ نافذة إضافة قسم #}
+<div class="ed-modal" data-picker-modal hidden>
+  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="إضافة قسم">
+    <h3>إضافة قسم للدعوة</h3>
+    <p>اختر نوع القسم — يُضاف بعد القسم المحدَّد ويمكنك تحريكه بعد ذلك.</p>
+    <div data-picker-body></div>
+    <div class="ed-modal-actions">
+      <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
+    </div>
+  </div>
+</div>
+
+{# ------------------------------------------------------------ نافذة الصور #}
+<div class="ed-modal" data-asset-modal hidden>
+  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="مكتبة الصور">
+    <h3>مكتبة الصور</h3>
+    <p>ارفع صوراً بصيغة JPG أو PNG أو WebP بحد أقصى ٨ ميجابايت للملف.</p>
+    <div class="ed-assets" data-asset-grid></div>
+    <input type="file" data-file-input accept="image/*,audio/*" multiple hidden>
+    <div class="ed-modal-actions">
+      <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
+      <button class="ed-btn ed-btn--primary" type="button" data-upload-trigger>رفع ملفات</button>
+    </div>
+  </div>
+</div>
+
+{# ------------------------------------------------------------ نافذة حفظ كقالب #}
+<div class="ed-modal" data-template-modal hidden>
+  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="حفظ كقالب">
+    <h3>حفظ التصميم الحالي كقالب</h3>
+    <p>
+      سيُضاف القالب لمكتبة القوالب ويصبح متاحاً لكل دعوة جديدة — بدون كتابة أي كود.
+      البيانات الشخصية لهذه الدعوة لا تُنقل معه.
+    </p>
+    <form data-template-form onsubmit="return false">
+      <div class="ed-group-body" style="padding:0">
+        <div class="ed-field">
+          <label><span>اسم القالب</span></label>
+          <input class="ed-input" name="tpl_name" required maxlength="120"
+                 placeholder="مثال: ذهبي كلاسيكي">
+        </div>
+        <div class="ed-field">
+          <label><span>المعرّف في الرابط (اختياري)</span></label>
+          <input class="ed-input" name="tpl_slug" maxlength="120" placeholder="golden-classic">
+        </div>
+        <div class="ed-field">
+          <label><span>التصنيف</span></label>
+          <select class="ed-input" name="tpl_category">
+            {% for value, text in template_categories %}
+              <option value="{{ value }}">{{ text }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="ed-field">
+          <label><span>المجموعة</span></label>
+          <input class="ed-input" name="tpl_collection" value="Premium" maxlength="40">
+        </div>
+        <div class="ed-field">
+          <label><span>الوصف</span></label>
+          <textarea name="tpl_description" rows="3"></textarea>
+        </div>
+        <label class="ed-toggle">
+          <span>معروض للعملاء مباشرة</span>
+          <input type="checkbox" name="tpl_active" checked>
+          <span class="ed-switch"></span>
+        </label>
+      </div>
+    </form>
+    <div class="ed-modal-actions">
+      <button class="ed-btn" type="button" data-close-modal>إلغاء</button>
+      <button class="ed-btn ed-btn--primary" type="button" data-save-template>حفظ القالب</button>
+    </div>
+  </div>
+</div>
+
+<div class="ed-toasts" aria-live="polite"></div>
+
+{% comment %}
+كل البيانات تنتقل للمتصفح عبر json_script فقط.
+لا يوجد أي متغيّر Django داخل ملفات JavaScript — وهذا ما يمنع
+أي أداة تنسيق HTML من كسر المحرر مستقبلاً.
+ملاحظة: تعليقات {# #} في Django تعمل على سطر واحد فقط،
+لذلك تُستخدم {% comment %} لأي تعليق متعدد الأسطر.
+{% endcomment %}
+{{ schema_json|json_script:"editor-schema" }}
+{{ document_json|json_script:"editor-document" }}
+{{ meta_json|json_script:"editor-meta" }}
+{{ features_json|json_script:"editor-features" }}
+{{ assets_json|json_script:"editor-assets" }}
+
+<script src="{% static 'js/editor.js' %}?v={{ ASSET_V }}" defer></script>
+</body>
+</html>

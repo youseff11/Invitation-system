@@ -1,0 +1,35 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}الإحصائيات — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head"><h1>الإحصائيات</h1></div>
+
+<div class="stats">
+  <div class="stat"><b>{{ totals.views }}</b><span>إجمالي المشاهدات</span></div>
+  <div class="stat"><b>{{ totals.attending }}</b><span>مؤكِّد الحضور</span></div>
+  <div class="stat"><b>{{ totals.declined }}</b><span>معتذر</span></div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">أكثر الدعوات مشاهدة</h3>
+  <div data-chart></div>
+</div>
+
+<div class="table-wrap" style="margin-top:20px">
+  <table>
+    <thead><tr><th>الدعوة</th><th>الحالة</th><th>مشاهدات</th><th>ردود</th><th>ضيوف</th></tr></thead>
+    <tbody>
+      {% for i in invitations %}
+      <tr>
+        <td>{{ i.title }}</td>
+        <td><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
+        <td>{{ i.public_views }}</td>
+        <td>{{ i.rsvp_total }}</td>
+        <td>{{ i.guest_total }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">لا توجد بيانات.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{{ chart_json|json_script:"chart-data" }}
+{% endblock %}

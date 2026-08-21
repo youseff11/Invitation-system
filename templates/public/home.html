@@ -1,0 +1,143 @@
+{% extends 'public/_base.html' %}
+{% load i18n %}
+{% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
+{% block content %}
+
+{% comment %}
+  الهيرو — الصورة نظيفة بلا نص محروق، وكل الكلام HTML حقيقي فوقها:
+  يتترجم، تقراه محركات البحث، ويتقاس مع حجم الشاشة.
+  ملحوظة: {# #} بتعليق سطر واحد بس؛ أي تعليق أكتر من سطر لازم {% templatetag openblock %} comment {% templatetag closeblock %}
+  وإلا Django بيطبعه كنص على الصفحة.
+{% endcomment %}
+<section class="hero" id="main">
+  <div class="hero-art">
+    <span class="sr-only">{% translate "دعوة زفاف أنيقة محاطة بالورود" %}</span>
+
+    {# كتابة الكارت — موضعها وميلانها متضبوطين على مكان الكارت في كل صورة #}
+    <div class="hero-card" aria-hidden="true">
+      <span class="hero-card-line">YOU ARE INVITED</span>
+      <span class="hero-card-line">TO OUR WEDDING</span>
+      <span class="hero-rule hero-rule--sm"><i></i><span class="hero-heart"></span><i></i></span>
+    </div>
+  </div>
+
+  <div class="hero-copy">
+    <div class="hero-copy-in">
+      {# الزخرفة والقلب مستخرجين من الصورة الأصلية كـmask، فبياخدوا لون الثيم تلقائياً #}
+      <span class="hero-ornament" aria-hidden="true"></span>
+
+      <h1>
+        <span class="h1-top">{% translate "تصميم دعوات زفاف" %}</span>
+        <span class="h1-main">{% translate "تعكس قصة حبك" %}</span>
+      </h1>
+
+      <div class="hero-rule" aria-hidden="true">
+        <i></i><span class="hero-heart"></span><i></i>
+      </div>
+
+      <p class="hero-sub">{% translate "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى" %}</p>
+
+      <div class="hero-actions">
+        <a class="btn btn--outline" href="{% url 'template_gallery' %}">
+          <span class="hero-heart" aria-hidden="true"></span>
+          <span>{% translate "ابدأ تصميم دعوتك" %}</span>
+          <span class="hero-heart" aria-hidden="true"></span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="templates">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "المعرض" %}</p>
+      <h2>{% translate "قوالب مختارة بعناية" %}</h2>
+      <p>{% translate "كل قالب قابل للتعديل بالكامل — الألوان والخطوط والأقسام والنصوص." %}</p>
+    </div>
+    <div class="grid grid--4">
+      {% for t in templates %}
+      <article class="tpl-card">
+        <div class="tpl-cover"{% if t.cover_src %} style="background-image:url('{{ t.cover_src }}')"{% endif %}>
+          {% if not t.cover_src %}{{ t.display_name|slice:':1' }}{% endif %}
+        </div>
+        <div class="tpl-body">
+          <h3>{{ t.display_name }}</h3>
+          <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
+          <div class="tpl-actions">
+            <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% translate "معاينة" %}</a>
+            <a class="btn btn--gold btn--sm" href="#order">{% translate "اطلبه" %}</a>
+          </div>
+        </div>
+      </article>
+      {% empty %}
+      <p class="empty">{% translate "لا توجد قوالب معروضة بعد." %}</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "كيف تعمل" %}</p>
+      <h2>{% translate "أربع خطوات فقط" %}</h2>
+    </div>
+    <div class="grid grid--4 steps">
+      <div class="step"><h3>{% translate "اختر القالب" %}</h3><p class="muted">{% translate "تصفّح المعرض واختر ما يناسب مناسبتك." %}</p></div>
+      <div class="step"><h3>{% translate "أرسل بياناتك" %}</h3><p class="muted">{% translate "الأسماء، الموعد، المكان، وأي تفاصيل إضافية." %}</p></div>
+      <div class="step"><h3>{% translate "نصمّم دعوتك" %}</h3><p class="muted">{% translate "نضبط التفاصيل ونرسل لك معاينة قبل النشر." %}</p></div>
+      <div class="step"><h3>{% translate "استلم الرابط" %}</h3><p class="muted">{% translate "رابط خاص جاهز للإرسال لكل الضيوف." %}</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="plans">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "الأسعار" %}</p>
+      <h2>{% translate "باقات واضحة بلا مفاجآت" %}</h2>
+    </div>
+    <div class="grid grid--3">
+      {% for p in plans %}
+      <div class="plan{% if p.is_featured %} plan--featured{% endif %}">
+        {% if p.is_featured %}<span class="plan-badge">{% translate "الأكثر طلباً" %}</span>{% endif %}
+        <h3>{{ p.display_name }}</h3>
+        {% if p.display_tagline %}<p class="muted" style="margin:0">{{ p.display_tagline }}</p>{% endif %}
+        <div class="plan-price">{{ p.price|floatformat:0 }} <small>{{ SITE_CURRENCY }}</small></div>
+        <ul>{% for b in p.display_bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+        <a class="btn btn--gold btn--block" href="#order" style="margin-top:14px">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section--alt" id="order">
+  <div class="wrap" style="max-width:760px">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "اطلب دعوتك" %}</p>
+      <h2>{% translate "ابدأ الآن" %}</h2>
+      <p>{% translate "املأ البيانات وسنتواصل معك خلال ساعات لتأكيد التفاصيل." %}</p>
+    </div>
+
+    {% if messages %}{% for m in messages %}
+      <div class="flash flash--{{ m.tags }}">{{ m }}</div>
+    {% endfor %}{% endif %}
+
+    <form class="form form--2 card" method="post" action="{% url 'home' %}#order">
+      {% csrf_token %}
+      {% for f in form %}
+        <div class="field{% if f.name == 'message' or f.name == 'names' %} span-2{% endif %}">
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {{ f.errors }}
+        </div>
+      {% endfor %}
+      <div class="span-2"><button class="btn btn--gold btn--block" type="submit">{% translate "إرسال الطلب" %}</button></div>
+    </form>
+  </div>
+</section>
+
+<footer class="foot"><div class="wrap">{{ SITE_NAME }} — {{ SITE_TAGLINE }}</div></footer>
+{% endblock %}

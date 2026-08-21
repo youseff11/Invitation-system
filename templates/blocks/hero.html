@@ -1,0 +1,19 @@
+{% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }} lb-hero--{{ props.height }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }};--name-size:{{ props.name_size|fluid_min:props.name_size_mobile }};--name-spacing:{{ props.name_spacing|fluid:theme.max_width }}{% if props.name_font %};--name-font:{{ props.name_font }}{% endif %}" data-block="{{ block.id }}" data-block-type="hero"{% if editable %} data-editable="1"{% endif %}>
+  <div class="lb-hero-veil"></div>
+  <div class="lb-inner lb-hero-inner">
+    {% if props.kicker %}<p class="lb-kicker" data-slot="kicker">{{ props.kicker }}</p>{% endif %}
+    {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 46 %}{% endif %}
+    <h1 class="lb-names lb-names--{{ props.names_layout }}">
+      <span class="lb-name" data-slot="name_one">{{ props.name_one }}</span>
+      {% if props.separator %}<span class="lb-sep" data-slot="separator">{{ props.separator }}</span>{% endif %}
+      {% if props.name_two %}<span class="lb-name" data-slot="name_two">{{ props.name_two }}</span>{% endif %}
+    </h1>
+    {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 46 %}{% endif %}
+    {% if props.subtitle %}<p class="lb-hero-sub" data-slot="subtitle">{{ props.subtitle }}</p>{% endif %}
+    {% if props.date_text %}<p class="lb-hero-date" data-slot="date_text">{{ props.date_text }}</p>{% endif %}
+    {% if props.buttons %}<div class="lb-btn-row">
+      {% for b in props.buttons %}{% if b.label %}<a class="lb-btn lb-btn--{{ b.style }}" href="{% button_href b.action b.target data %}" data-action="{{ b.action }}"{% if b.action == 'link' or b.action == 'map' or b.action == 'calendar' %} target="_blank" rel="noopener"{% endif %}>{% if b.icon %}{% icon b.icon 18 %}{% endif %}<span>{{ b.label }}</span></a>{% endif %}{% endfor %}
+    </div>{% endif %}
+  </div>
+  {% if props.show_scroll_hint %}<div class="lb-scroll-hint"><span>{{ props.scroll_hint_text }}</span><i></i></div>{% endif %}
+</section>{% endlocalize %}

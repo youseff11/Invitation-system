@@ -1,0 +1,188 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-20 20:05+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: templates/public/_base.html:4
+msgid "تخطَّ إلى المحتوى"
+msgstr "Skip to content"
+
+#: templates/public/_base.html:10
+msgid "التنقل الرئيسي"
+msgstr "Main navigation"
+
+#: templates/public/_base.html:11 templates/public/gallery.html:3
+msgid "القوالب"
+msgstr "Templates"
+
+#: templates/public/_base.html:12 templates/public/home.html:80
+msgid "كيف تعمل"
+msgstr "How it works"
+
+#: templates/public/_base.html:13
+msgid "الباقات"
+msgstr "Pricing"
+
+#: templates/public/_base.html:14 templates/public/_base.html:16
+#: templates/public/_base.html:51 templates/public/home.html:116
+msgid "اطلب دعوتك"
+msgstr "Order now"
+
+#: templates/public/_base.html:15
+msgid "لوحة التحكم"
+msgstr "Dashboard"
+
+#: templates/public/_base.html:39
+msgid "تبديل بين الوضع الفاتح والداكن"
+msgstr "Toggle light and dark mode"
+
+#: templates/public/_base.html:54
+msgid "فتح القائمة"
+msgstr "Open menu"
+
+#: templates/public/gallery.html:8 templates/public/home.html:51
+msgid "المعرض"
+msgstr "Gallery"
+
+#: templates/public/gallery.html:9
+msgid "كل القوالب"
+msgstr "All templates"
+
+#: templates/public/gallery.html:12
+msgid "الكل"
+msgstr "All"
+
+#: templates/public/gallery.html:29
+msgid "معاينة حية"
+msgstr "Live preview"
+
+#: templates/public/gallery.html:30 templates/public/home.html:66
+msgid "اطلبه"
+msgstr "Order this"
+
+#: templates/public/gallery.html:34
+msgid "لا توجد قوالب في هذا التصنيف."
+msgstr "No templates in this category yet."
+
+#: templates/public/home.html:11
+msgid "دعوة زفاف أنيقة محاطة بالورود"
+msgstr "An elegant wedding invitation surrounded by flowers"
+
+#: templates/public/home.html:27
+msgid "تصميم دعوات زفاف"
+msgstr "Wedding invitations"
+
+#: templates/public/home.html:28
+msgid "تعكس قصة حبك"
+msgstr "that tell your love story"
+
+#: templates/public/home.html:35
+msgid "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى"
+msgstr "Refined, made-to-order designs for a day worth remembering"
+
+#: templates/public/home.html:40
+msgid "ابدأ تصميم دعوتك"
+msgstr "Start designing"
+
+#: templates/public/home.html:52
+msgid "قوالب مختارة بعناية"
+msgstr "Carefully curated templates"
+
+#: templates/public/home.html:53
+msgid "كل قالب قابل للتعديل بالكامل — الألوان والخطوط والأقسام والنصوص."
+msgstr "Every template is fully editable — colours, fonts, sections and text."
+
+#: templates/public/home.html:65
+msgid "معاينة"
+msgstr "Preview"
+
+#: templates/public/home.html:71
+msgid "لا توجد قوالب معروضة بعد."
+msgstr "No templates published yet."
+
+#: templates/public/home.html:81
+msgid "أربع خطوات فقط"
+msgstr "Just four steps"
+
+#: templates/public/home.html:84
+msgid "اختر القالب"
+msgstr "Pick a template"
+
+#: templates/public/home.html:84
+msgid "تصفّح المعرض واختر ما يناسب مناسبتك."
+msgstr "Browse the gallery and choose what suits your occasion."
+
+#: templates/public/home.html:85
+msgid "أرسل بياناتك"
+msgstr "Send your details"
+
+#: templates/public/home.html:85
+msgid "الأسماء، الموعد، المكان، وأي تفاصيل إضافية."
+msgstr "Names, date, venue and anything else you'd like."
+
+#: templates/public/home.html:86
+msgid "نصمّم دعوتك"
+msgstr "We design it"
+
+#: templates/public/home.html:86
+msgid "نضبط التفاصيل ونرسل لك معاينة قبل النشر."
+msgstr "We fine-tune everything and send you a preview before publishing."
+
+#: templates/public/home.html:87
+msgid "استلم الرابط"
+msgstr "Get your link"
+
+#: templates/public/home.html:87
+msgid "رابط خاص جاهز للإرسال لكل الضيوف."
+msgstr "A private link, ready to send to every guest."
+
+#: templates/public/home.html:95
+msgid "الأسعار"
+msgstr "Pricing"
+
+#: templates/public/home.html:96
+msgid "باقات واضحة بلا مفاجآت"
+msgstr "Clear packages, no surprises"
+
+#: templates/public/home.html:101
+msgid "الأكثر طلباً"
+msgstr "Most popular"
+
+#: templates/public/home.html:106
+#, python-format
+msgid "اختر %(plan)s"
+msgstr "Choose %(plan)s"
+
+#: templates/public/home.html:117
+msgid "ابدأ الآن"
+msgstr "Get started"
+
+#: templates/public/home.html:118
+msgid "املأ البيانات وسنتواصل معك خلال ساعات لتأكيد التفاصيل."
+msgstr "Fill in your details and we'll get back to you within hours to confirm."
+"Fill in your details and we'll get back to you within hours to confirm."
+
+#: templates/public/home.html:134
+msgid "إرسال الطلب"
+msgstr "Send request"
+
+#~ msgid "دعوات رقمية"
+#~ msgstr "Digital invitations"
+
+#~ msgid "اطلب دعوتك الآن"
+#~ msgstr "Order yours now"

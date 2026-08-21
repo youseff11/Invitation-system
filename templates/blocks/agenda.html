@@ -1,0 +1,15 @@
+{% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+<div class="lb-inner">
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
+  <ol class="lb-agenda">
+    {% for it in props.items %}<li class="lb-agenda-item">
+      <span class="lb-agenda-time">{{ it.time }}</span>
+      <span class="lb-agenda-dot">{% if it.icon %}{% icon it.icon 16 %}{% endif %}</span>
+      <span class="lb-agenda-body"><strong>{{ it.title }}</strong>{% if it.note %}<em>{{ it.note }}</em>{% endif %}</span>
+    </li>{% endfor %}
+  </ol>
+</div>
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
+</section>{% endlocalize %}

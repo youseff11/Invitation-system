@@ -1,0 +1,623 @@
+/* ================================================================
+   فرحة — واجهة المحرر البصري
+   ================================================================ */
+
+/* ---------------------------------------------------------- الثيم
+   المحرر بيتبع مظهر الموقع: data-theme على <html>. الافتراضي فاتح،
+   و[data-theme="dark"] بيقلب نفس الأسماء — فمفيش قاعدة محتاجة تتكرر. */
+:root {
+  --e-bg:        #f2f2f3;   /* منطقة الكانفس — رمادي خفيف عشان الجهاز الأبيض يبان */
+  --e-panel:     #ffffff;
+  --e-panel-2:   #f7f6f5;
+  --e-line:      #e4e2de;
+  --e-line-soft: #efedea;
+  --e-text:      #17130f;
+  --e-muted:     #6d675f;
+  --e-accent:    #b8914f;
+  --e-accent-dim: rgba(184, 145, 79, .13);
+  --e-accent-ink: #8a6a33;   /* ذهبي أغمق للنصوص الصغيرة على أبيض — 5:1 */
+  --e-on-accent: #ffffff;
+  --e-danger:    #c1544d;
+  --e-ok:        #3f8a55;
+  --e-dot:       #dedcd8;                    /* نقط خلفية الكانفس */
+  --e-device:    #ffffff;
+  --e-overlay:   rgba(255, 255, 255, .66);   /* غطاء "جارٍ التحديث" */
+  --e-backdrop:  rgba(28, 24, 20, .42);      /* خلفية النوافذ */
+  --e-shadow:    0 18px 44px -26px rgba(23, 19, 15, .45);
+  --e-shadow-lg: 0 30px 70px -34px rgba(23, 19, 15, .5);
+  --e-radius: 10px;
+  --e-topbar: 58px;
+  --e-panel-w: 372px;
+}
+
+[data-theme="dark"] {
+  --e-bg:        #0a0a0a;
+  --e-panel:     #121212;
+  --e-panel-2:   #1b1b1b;
+  --e-line:      #2a2a2a;
+  --e-line-soft: #1f1f1f;
+  --e-text:      #ebe8e3;
+  --e-muted:     #98928a;
+  --e-accent:    #d4ab63;
+  --e-accent-dim: rgba(212, 171, 99, .16);
+  --e-accent-ink: #d4ab63;
+  --e-on-accent: #17130f;
+  --e-danger:    #d9635c;
+  --e-ok:        #6bbf7d;
+  --e-dot:       #1d1d1d;
+  --e-device:    #111111;
+  --e-overlay:   rgba(0, 0, 0, .58);
+  --e-backdrop:  rgba(0, 0, 0, .72);
+  --e-shadow:    0 18px 44px -22px #000;
+  --e-shadow-lg: 0 30px 70px -30px #000;
+}
+
+* { box-sizing: border-box; }
+
+html, body.editor-body {
+  margin: 0;
+  height: 100%;
+  background: var(--e-bg);
+  color: var(--e-text);
+  font-family: "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; text-decoration: none; }   /* من غير ده الروابط بتطلع أزرق افتراضي */
+
+/* ---------------------------------------------------------- الهيكل */
+.ed { display: flex; flex-direction: column; height: 100vh; }
+
+.ed-top {
+  height: var(--e-topbar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-inline: 14px;
+  background: var(--e-panel);
+  border-bottom: 1px solid var(--e-line);
+  z-index: 20;
+}
+.ed-top-group { display: flex; align-items: center; gap: 8px; }
+.ed-top-group--grow { flex: 1; min-width: 0; }
+
+.ed-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 700; color: var(--e-text); text-decoration: none;
+  white-space: nowrap;
+}
+.ed-brand-logo {
+  display: block; height: 26px; aspect-ratio: 650 / 200; flex: none;
+  background: url("../images/brand-light.png") center/contain no-repeat;
+}
+.ed-title {
+  color: var(--e-muted); font-size: 13px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ed-title strong { color: var(--e-text); font-weight: 500; }
+
+.ed-save-state { font-size: 12px; color: var(--e-muted); white-space: nowrap; }
+.ed-save-state.is-dirty { color: var(--e-accent); }
+.ed-save-state.is-saving { color: var(--e-accent); }
+.ed-save-state.is-saved { color: var(--e-ok); }
+.ed-save-state.is-error { color: var(--e-danger); }
+
+/* ---------------------------------------------------------- الأزرار */
+.ed-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--e-line);
+  border-radius: 8px;
+  background: var(--e-panel-2);
+  color: var(--e-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, opacity .15s;
+  text-decoration: none;
+}
+.ed-btn:hover:not(:disabled) { border-color: var(--e-accent); }
+.ed-btn:disabled { opacity: .42; cursor: not-allowed; }
+.ed-btn:focus-visible { outline: 2px solid var(--e-accent); outline-offset: 2px; }
+.ed-btn--primary { background: var(--e-accent); border-color: var(--e-accent); color: var(--e-on-accent); font-weight: 600; }
+.ed-btn--primary:hover:not(:disabled) { filter: brightness(1.08); }
+.ed-btn--icon { padding: 8px; width: 34px; }
+.ed-btn--sm { padding: 5px 10px; font-size: 12px; }
+.ed-btn--danger:hover { border-color: var(--e-danger); color: var(--e-danger); }
+.ed-btn--block { width: 100%; }
+
+.ed-seg { display: flex; background: var(--e-panel-2); border: 1px solid var(--e-line); border-radius: 8px; padding: 2px; }
+.ed-seg button {
+  border: 0; background: none; padding: 5px 12px; border-radius: 6px;
+  cursor: pointer; color: var(--e-muted); font-size: 12px;
+}
+.ed-seg button.is-active { background: var(--e-accent-dim); color: var(--e-accent); }
+
+/* ---------------------------------------------------------- التخطيط */
+.ed-main { flex: 1; display: flex; min-height: 0; }
+
+.ed-panel {
+  width: var(--e-panel-w);
+  flex: none;
+  background: var(--e-panel);
+  border-inline-start: 1px solid var(--e-line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  order: 2;
+}
+
+.ed-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--e-line);
+  flex: none;
+}
+.ed-tabs button {
+  flex: 1;
+  border: 0;
+  background: none;
+  padding: 12px 4px;
+  cursor: pointer;
+  color: var(--e-muted);
+  font-size: 12.5px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.ed-tabs button.is-active { color: var(--e-accent); border-bottom-color: var(--e-accent); }
+
+.ed-tabpanes { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.ed-tabpane { display: none; padding: 14px; }
+.ed-tabpane.is-active { display: block; }
+
+.ed-canvas {
+  flex: 1;
+  order: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle, var(--e-dot) 1px, transparent 1px) 0 0 / 20px 20px,
+    var(--e-bg);
+}
+.ed-canvas-bar {
+  flex: none;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-inline: 14px;
+  color: var(--e-muted);
+  font-size: 12px;
+  border-bottom: 1px solid var(--e-line);
+  background: var(--e-panel);
+}
+.ed-stage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow: auto;
+  min-height: 0;
+}
+.ed-device {
+  background: var(--e-device);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--e-shadow-lg);
+  transition: width .3s ease, height .3s ease;
+  width: 390px;
+  height: 100%;
+  max-height: 844px;
+  position: relative;
+}
+.ed-device[data-device="tablet"] { width: 768px; max-height: 1024px; }
+.ed-device[data-device="desktop"] { width: 100%; max-width: 1280px; max-height: none; border-radius: 8px; }
+.ed-device iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--e-device); }
+
+.ed-loading {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: var(--e-overlay);
+  color: var(--e-accent);
+  font-size: 12px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+.ed-loading.is-on { opacity: 1; }
+
+/* ---------------------------------------------------------- قائمة الأقسام */
+.ed-section { margin-bottom: 18px; }
+.ed-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.ed-kicker {
+  font-size: 10.5px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--e-accent); margin: 0;
+}
+.ed-hint { font-size: 11.5px; color: var(--e-muted); margin: 0 0 10px; line-height: 1.6; }
+
+.ed-blocks { display: flex; flex-direction: column; gap: 5px; }
+.ed-block {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 10px;
+  background: var(--e-panel-2);
+  border: 1px solid var(--e-line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.ed-block:hover { border-color: var(--e-accent); }
+.ed-block.is-selected { border-color: var(--e-accent); background: var(--e-accent-dim); }
+.ed-block.is-hidden .ed-block-name { opacity: .45; text-decoration: line-through; }
+.ed-block.is-dragging { opacity: .4; }
+.ed-block.is-over { border-top: 2px solid var(--e-accent); }
+.ed-block-grip { color: var(--e-muted); cursor: grab; font-size: 13px; line-height: 1; }
+.ed-block-icon {
+  width: 24px; height: 24px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 6px;
+  background: var(--e-accent-dim);
+  color: var(--e-accent);
+  font-size: 12px;
+}
+.ed-block-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+/* دي مش رسالة خطأ — دي "القسم ده محتاج ترقية باقة"، فالذهبي أنسب من الأحمر */
+.ed-block-tag {
+  font-size: 10px; color: var(--e-accent); background: var(--e-accent-dim);
+  border: 1px solid color-mix(in srgb, var(--e-accent) 45%, transparent);
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+.ed-block-actions { display: flex; gap: 2px; }
+.ed-icon-btn {
+  width: 26px; height: 26px;
+  border: 0; background: none; border-radius: 6px;
+  color: var(--e-muted); cursor: pointer;
+  display: grid; place-items: center; font-size: 13px;
+}
+.ed-icon-btn:hover { background: var(--e-line); color: var(--e-text); }
+.ed-icon-btn.is-on { color: var(--e-accent); }
+
+/* ---------------------------------------------------------- الحقول */
+.ed-group { margin-bottom: 6px; border: 1px solid var(--e-line); border-radius: var(--e-radius); overflow: hidden; }
+.ed-group > summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  background: var(--e-panel-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  list-style: none;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ed-group > summary::-webkit-details-marker { display: none; }
+.ed-group > summary::after { content: "▾"; color: var(--e-muted); font-size: 11px; }
+.ed-group[open] > summary::after { content: "▴"; }
+.ed-group-body { padding: 12px; display: flex; flex-direction: column; gap: 13px; }
+
+.ed-field { display: flex; flex-direction: column; gap: 5px; }
+.ed-field > label {
+  font-size: 12px; color: var(--e-muted);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.ed-field > label b { color: var(--e-accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ed-field small { font-size: 11px; color: var(--e-muted); opacity: .8; line-height: 1.5; }
+
+.ed-input, .ed-field select, .ed-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--e-bg);
+  border: 1px solid var(--e-line);
+  border-radius: 7px;
+  transition: border-color .15s;
+}
+.ed-input:focus, .ed-field select:focus, .ed-field textarea:focus {
+  outline: none; border-color: var(--e-accent);
+}
+.ed-field textarea { resize: vertical; min-height: 68px; line-height: 1.6; }
+
+.ed-row { display: flex; align-items: center; gap: 8px; }
+.ed-row input[type="range"] { flex: 1; accent-color: var(--e-accent); }
+.ed-color { display: flex; align-items: center; gap: 8px; }
+.ed-color input[type="color"] {
+  width: 40px; height: 32px; padding: 2px; flex: none;
+  background: var(--e-bg); border: 1px solid var(--e-line); border-radius: 7px; cursor: pointer;
+}
+.ed-color .ed-input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; }
+
+.ed-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; cursor: pointer;
+}
+.ed-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.ed-switch {
+  width: 40px; height: 22px; flex: none;
+  background: var(--e-line); border-radius: 999px; position: relative;
+  transition: background .18s;
+}
+.ed-switch::after {
+  content: ""; position: absolute; top: 3px; inset-inline-start: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--e-muted); transition: transform .18s, background .18s;
+}
+.ed-toggle input:checked + .ed-switch { background: var(--e-accent-dim); }
+.ed-toggle input:checked + .ed-switch::after { background: var(--e-accent); transform: translateX(-18px); }
+[dir="ltr"] .ed-toggle input:checked + .ed-switch::after { transform: translateX(18px); }
+.ed-toggle input:focus-visible + .ed-switch { outline: 2px solid var(--e-accent); outline-offset: 2px; }
+
+.ed-align { display: flex; gap: 4px; }
+.ed-align button {
+  flex: 1; padding: 7px; border: 1px solid var(--e-line);
+  background: var(--e-bg); border-radius: 7px; cursor: pointer; color: var(--e-muted);
+}
+.ed-align button.is-active { border-color: var(--e-accent); color: var(--e-accent); background: var(--e-accent-dim); }
+
+/* ---- حقل الصورة ---- */
+.ed-image { display: flex; gap: 8px; align-items: flex-start; }
+.ed-image-thumb {
+  width: 62px; height: 62px; flex: none;
+  border: 1px dashed var(--e-line); border-radius: 8px;
+  background: var(--e-bg) center/cover no-repeat;
+  display: grid; place-items: center;
+  color: var(--e-muted); font-size: 18px; cursor: pointer;
+}
+.ed-image-side { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+
+/* ---- حقل القائمة المتكررة ---- */
+.ed-list { display: flex; flex-direction: column; gap: 8px; }
+.ed-list-item {
+  border: 1px solid var(--e-line); border-radius: 8px;
+  background: var(--e-bg); overflow: hidden;
+}
+.ed-list-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 9px; background: var(--e-panel-2); font-size: 12px;
+}
+.ed-list-head span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-list-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------------------------------------------------------- النوافذ */
+.ed-modal {
+  position: fixed; inset: 0; z-index: 60;
+  background: var(--e-backdrop);
+  display: grid; place-items: center;
+  padding: 20px;
+}
+.ed-modal[hidden] { display: none; }
+.ed-modal-card {
+  width: min(620px, 100%);
+  max-height: 84vh;
+  overflow-y: auto;
+  background: var(--e-panel);
+  border: 1px solid var(--e-line);
+  border-radius: 14px;
+  padding: 20px;
+}
+.ed-modal-card h3 { margin: 0 0 4px; font-size: 17px; }
+.ed-modal-card > p { margin: 0 0 16px; color: var(--e-muted); font-size: 12.5px; }
+.ed-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+.ed-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ed-pick {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px;
+  border: 1px solid var(--e-line);
+  border-radius: 9px;
+  background: var(--e-panel-2);
+  cursor: pointer;
+  text-align: start;
+}
+.ed-pick:hover { border-color: var(--e-accent); }
+.ed-pick i {
+  width: 28px; height: 28px; flex: none;
+  display: grid; place-items: center; border-radius: 7px;
+  background: var(--e-accent-dim); color: var(--e-accent);
+  font-style: normal; font-size: 13px;
+}
+.ed-pick div { min-width: 0; }
+.ed-pick strong { display: block; font-size: 12.5px; font-weight: 600; }
+.ed-pick small { display: block; color: var(--e-muted); font-size: 11px; line-height: 1.45; }
+.ed-pick[disabled] { opacity: .4; cursor: not-allowed; }
+
+.ed-assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ed-asset {
+  aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--e-line); background: var(--e-bg) center/cover no-repeat;
+  cursor: pointer; padding: 0;
+}
+.ed-asset:hover { border-color: var(--e-accent); }
+
+.ed-empty { color: var(--e-muted); font-size: 12.5px; text-align: center; padding: 26px 10px; }
+
+/* ---------------------------------------------------------- التنبيهات */
+.ed-toasts {
+  position: fixed; inset-block-end: 18px; inset-inline-start: 18px;
+  z-index: 80; display: flex; flex-direction: column; gap: 8px;
+}
+.ed-toast {
+  background: var(--e-panel-2);
+  border: 1px solid var(--e-line);
+  border-inline-start: 3px solid var(--e-accent);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  box-shadow: var(--e-shadow-lg);
+  animation: ed-in .22s ease;
+  max-width: 340px;
+}
+.ed-toast--error { border-inline-start-color: var(--e-danger); }
+.ed-toast--ok { border-inline-start-color: var(--e-ok); }
+@keyframes ed-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---------------------------------------------------------- الشاشات الصغيرة */
+.ed-panel-toggle { display: none; }
+
+@media (max-width: 1080px) {
+  :root { --e-panel-w: 320px; }
+  .ed-title { display: none; }
+}
+
+/* ---------------------------------------------------------- قائمة "المزيد"
+   على الديسكتوب أزرار عادية جنب بعض، وعلى الموبايل قائمة منسدلة
+   عشان الشريط العلوي ما يفيضش بره الشاشة ويخفي زر الحفظ. */
+.ed-more { position: relative; display: flex; }
+.ed-more-btn { display: none; }
+.ed-more-menu { display: flex; align-items: center; gap: 8px; }
+
+/* ---------------------------------------------------------- الموبايل */
+@media (max-width: 900px) {
+  :root { --e-topbar: 54px; }
+
+  .ed-top { gap: 8px; padding-inline: 10px; }
+  .ed-seg { display: none; }              /* التليفون هو الموبايل أصلاً */
+  .ed-brand-txt { display: none; }
+  .ed-top-actions { margin-inline-start: auto; gap: 6px; }
+  .ed-btn { padding: 7px 11px; }
+
+  .ed-more-btn { display: inline-flex; }
+  .ed-more-menu {
+    position: absolute; top: calc(100% + 8px); inset-inline-end: 0;
+    flex-direction: column; align-items: stretch; gap: 6px;
+    min-width: 168px; padding: 8px; z-index: 40;
+    background: var(--e-panel); border: 1px solid var(--e-line);
+    border-radius: 12px; box-shadow: var(--e-shadow);
+    opacity: 0; visibility: hidden; transform: translateY(-6px);
+    transition: opacity .18s, transform .18s, visibility .18s;
+  }
+  .ed-more-btn[aria-expanded="true"] + .ed-more-menu {
+    opacity: 1; visibility: visible; transform: none;
+  }
+
+  /* اللوحة درج منزلق — مقفول افتراضياً عشان المعاينة تبان */
+  .ed-panel {
+    position: fixed;
+    inset-block: var(--e-topbar) 0;
+    inset-inline-start: 0;
+    width: min(380px, 92vw);
+    z-index: 30;
+    border-inline-start: 0;
+    border-inline-end: 1px solid var(--e-line);
+    /* في RTL اللوحة على اليمين (inset-inline-start = right)، فبتخرج ناحية اليمين.
+       في LTR العكس. عكسها بيسيب شريحة من اللوحة بايظة على حرف الشاشة. */
+    transform: translateX(100%);
+    transition: transform .26s ease;
+    box-shadow: var(--e-shadow-lg);
+  }
+  [dir="ltr"] .ed-panel {
+    transform: translateX(-100%);
+    box-shadow: var(--e-shadow-lg);
+  }
+  .ed-panel.is-open { transform: none; }
+
+  .ed-panel-scrim {
+    position: fixed; inset: var(--e-topbar) 0 0; z-index: 25;
+    background: var(--e-backdrop);
+  }
+
+  .ed-panel-toggle { display: inline-flex; }
+  .ed-stage { padding: 12px; }
+  .ed-canvas-bar { font-size: 11px; padding-inline: 10px; }
+  .ed-canvas-bar span:first-child {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .ed-canvas-bar span:first-child { display: none; }
+  .ed-btn--sm, .ed-btn { font-size: 13px; }
+  .ed-save-state { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ed-panel, .ed-more-menu, .ed-device { transition: none !important; }
+}
+
+/* ================================================================
+   تلميع + فروق المظهر الفاتح
+   ================================================================ */
+
+[data-theme="dark"] .ed-brand-logo { background-image: url("../images/brand-dark.png"); }
+
+/* الشريط العلوي واللوحة بيرتفعوا شوية عن الكانفس بظل خفيف بدل خط جاف */
+.ed-top   { box-shadow: 0 1px 0 var(--e-line), 0 6px 18px -14px rgba(0, 0, 0, .35); }
+.ed-panel { box-shadow: -1px 0 0 var(--e-line); }
+[dir="ltr"] .ed-panel { box-shadow: 1px 0 0 var(--e-line); }
+
+/* التبويبات: المؤشر يتحرك بنعومة + خلفية عند المرور */
+.ed-tabs button { position: relative; border-radius: 8px 8px 0 0; }
+.ed-tabs button:hover { color: var(--e-text); background: var(--e-panel-2); }
+.ed-tabs button.is-active { font-weight: 600; background: transparent; }
+.ed-tabs button:focus-visible { outline: 2px solid var(--e-accent); outline-offset: -3px; }
+
+/* الحقول: خلفية واضحة في الفاتح (كانت بتاخد لون الكانفس الرمادي) */
+.ed-input, .ed-field select, .ed-field textarea { background: var(--e-panel-2); color: var(--e-text); }
+.ed-input:hover, .ed-field select:hover, .ed-field textarea:hover { border-color: var(--e-muted); }
+.ed-input:focus, .ed-field select:focus, .ed-field textarea:focus {
+  border-color: var(--e-accent);
+  box-shadow: 0 0 0 3px var(--e-accent-dim);
+}
+.ed-input::placeholder, .ed-field textarea::placeholder { color: var(--e-muted); opacity: .7; }
+.ed-color input[type="color"] { background: var(--e-panel-2); }
+
+/* الأقسام: تحديد أوضح ومسافة أريح */
+.ed-block { padding: 10px; border-radius: var(--e-radius); }
+.ed-block:hover { background: var(--e-panel-2); }
+.ed-block.is-selected {
+  border-color: var(--e-accent);
+  box-shadow: 0 0 0 1px var(--e-accent) inset;
+}
+.ed-icon-btn:focus-visible { outline: 2px solid var(--e-accent); outline-offset: 1px; }
+
+/* المجموعات */
+.ed-group { border-color: var(--e-line); }
+.ed-group > summary:hover { background: var(--e-line-soft); }
+.ed-group > summary:focus-visible { outline: 2px solid var(--e-accent); outline-offset: -2px; }
+
+/* الأزرار */
+.ed-btn { border-radius: var(--e-radius); }
+.ed-btn:hover:not(:disabled) { background: var(--e-line-soft); border-color: var(--e-accent); }
+.ed-btn--primary:hover:not(:disabled) { background: var(--e-accent); filter: brightness(1.06); }
+.ed-seg { border-radius: var(--e-radius); }
+
+/* شريط تمرير أنحف داخل اللوحة */
+.ed-tabpanes { scrollbar-width: thin; scrollbar-color: var(--e-line) transparent; }
+.ed-tabpanes::-webkit-scrollbar { width: 9px; }
+.ed-tabpanes::-webkit-scrollbar-thumb {
+  background: var(--e-line); border-radius: 99px;
+  border: 2px solid var(--e-panel);
+}
+.ed-tabpanes::-webkit-scrollbar-track { background: transparent; }
+
+/* إطار الجهاز: حدود رفيعة تفصله عن الكانفس في المظهرين */
+.ed-device { border: 1px solid var(--e-line); }
+
+/* زر تبديل المظهر في الشريط العلوي */
+.ed-theme .i-moon { display: none; }
+[data-theme="dark"] .ed-theme .i-sun { display: none; }
+[data-theme="dark"] .ed-theme .i-moon { display: block; }
+.ed-theme svg { width: 17px; height: 17px; }
+
+/* مبدّل المقاس: الحالة النشطة كانت باهتة أوي في المظهر الفاتح */
+.ed-seg button.is-active {
+  background: var(--e-accent-dim);
+  color: var(--e-accent);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--e-accent) 42%, transparent);
+}
+.ed-seg button:hover:not(.is-active) { color: var(--e-text); }
+
+/* الذهبي العادي على أبيض بيدي 2.9:1 وده تحت الحد المقروء — النصوص الصغيرة
+   بتاخد درجة أغمق في المظهر الفاتح بس، والذهبي يفضل للحدود والأيقونات. */
+.ed-kicker,
+.ed-field > label b,
+.ed-save-state.is-saved,
+.ed-block-tag { color: var(--e-accent-ink); }
+
+/* أكواد الألوان لاتينية — من غير direction:ltr الـ# بيتنقل لآخر النص في سياق RTL
+   فتقرا "f8f4ec#" بدل "#f8f4ec". */
+.ed-color .ed-input,
+.ed-input[type="url"],
+.ed-input[type="email"],
+.ed-input[type="tel"] { direction: ltr; text-align: start; }

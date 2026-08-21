@@ -1,0 +1,16 @@
+{% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+<div class="lb-inner">
+  {% if props.eyebrow %}<p class="lb-eyebrow">{{ props.eyebrow }}</p>{% endif %}
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
+  <div class="lb-countdown lb-countdown--{{ props.variant }}" style="--num-size:{{ props.number_size|fluid:theme.max_width }}"
+       data-countdown="{{ countdown_iso }}" data-finished="{{ props.finished_text }}"{% if not props.show_seconds %} data-no-seconds="1"{% endif %}>
+    <div class="lb-cd-unit"><strong data-cd="days">00</strong><span>{{ props.label_days }}</span></div>
+    <div class="lb-cd-unit"><strong data-cd="hours">00</strong><span>{{ props.label_hours }}</span></div>
+    <div class="lb-cd-unit"><strong data-cd="minutes">00</strong><span>{{ props.label_minutes }}</span></div>
+    {% if props.show_seconds %}<div class="lb-cd-unit"><strong data-cd="seconds">00</strong><span>{{ props.label_seconds }}</span></div>{% endif %}
+  </div>
+</div>
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
+</section>{% endlocalize %}

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}دعوة محمية{% endblock %}
+{% block body_class %}login-page{% endblock %}
+{% block content %}
+<div class="login-card card" style="text-align:center">
+  <h2>هذه الدعوة محمية</h2>
+  <p class="muted">أدخل كلمة السر التي وصلتك مع الرابط.</p>
+  {% if error %}<div class="flash flash--error">كلمة السر غير صحيحة.</div>{% endif %}
+  <form class="form" method="post">
+    {% csrf_token %}
+    <div class="field"><input type="password" name="password" required autofocus placeholder="كلمة السر"></div>
+    <button class="btn btn--gold btn--block" type="submit">فتح الدعوة</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}مسح الدخول — {{ invitation.title }}{% endblock %}
+
+{% block dash %}
+<div class="dash-head">
+  <h1>مسح الدخول</h1>
+  <a class="btn btn--ghost" href="{% url 'guests' invitation.pk %}">↩ الضيوف</a>
+</div>
+
+<div class="checkin" data-checkin-page
+     data-scan-url="{% url 'checkin_scan' invitation.pk %}">
+
+  <div class="checkin-main">
+    <div class="checkin-stage">
+      <video data-scan-video playsinline muted></video>
+      <div class="checkin-frame" aria-hidden="true"></div>
+      <p class="checkin-idle" data-scan-idle>اضغط «تشغيل الكاميرا» لبدء المسح</p>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn btn--gold" type="button" data-scan-start>تشغيل الكاميرا</button>
+      <button class="btn btn--ghost" type="button" data-scan-stop hidden>إيقاف</button>
+    </div>
+
+    <p class="muted" data-scan-support style="font-size:13px"></p>
+
+    <form class="toolbar" data-manual-form style="margin-top:6px">
+      <input type="text" name="token" placeholder="أو الصق رمز الضيف / رابطه هنا"
+             autocomplete="off" style="flex:1;min-width:220px">
+      <button class="btn btn--ghost btn--sm" type="submit">تسجيل</button>
+    </form>
+  </div>
+
+  <aside class="checkin-side">
+    <div class="stat">
+      <b data-arrived>{{ arrived }}</b>
+      <span>وصلوا من <span data-total>{{ total }}</span></span>
+    </div>
+    <div class="checkin-result" data-scan-result>
+      <p class="muted">النتيجة هتظهر هنا بعد كل مسح.</p>
+    </div>
+    <h3 style="font-size:14px;margin:18px 0 8px">آخر اللي دخلوا</h3>
+    <ul class="checkin-log" data-scan-log></ul>
+  </aside>
+</div>
+{% endblock %}

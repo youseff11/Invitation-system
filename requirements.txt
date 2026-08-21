@@ -1,0 +1,9 @@
+Django==5.2.5
+qrcode==8.0
+Pillow==11.0.0
+
+# اختيارية — لخدمة الملفات الستاتيكية في الإنتاج
+whitenoise==6.8.2
+
+# اختيارية — لقاعدة بيانات Postgres عبر DATABASE_URL
+# psycopg[binary]==3.2.3

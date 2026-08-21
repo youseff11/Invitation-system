@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block body_class %}dash-body{% endblock %}
+
+{# نفس ترويسة الموقع بالظبط — نفس الملف المشترك، مش نسخة تانية #}
+{% block chrome %}{% include 'partials/nav.html' with dash=True %}{% endblock %}
+
+{% block content %}
+<main class="dash-main" id="main">
+  <div class="wrap">
+    {% if messages %}{% for m in messages %}<div class="flash flash--{{ m.tags }}">{{ m }}</div>{% endfor %}{% endif %}
+    {% block dash %}{% endblock %}
+  </div>
+</main>
+{% endblock %}

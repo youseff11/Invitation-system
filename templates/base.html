@@ -1,0 +1,37 @@
+{% load static i18n %}<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
+<meta name="description" content="{% block description %}{{ SITE_TAGLINE }}{% endblock %}">
+<script>
+/* يضبط المظهر قبل رسم الصفحة — يمنع ومضة اللون عند التحميل.
+   لا يحتوي على أي متغيّر Django عمداً، فلا يمكن لأي formatter أن يكسره. */
+(function () {
+  try {
+    var t = localStorage.getItem("leila-theme");
+    if (t !== "light" && t !== "dark") {
+      t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cormorant+Garamond:wght@400;500;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="{% static 'img/favicon-32.png' %}" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="{% static 'css/site.css' %}?v={{ ASSET_V }}">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% block chrome %}{% endblock %}
+{% block content %}{% endblock %}
+<script src="{% static 'js/site.js' %}?v={{ ASSET_V }}" defer></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

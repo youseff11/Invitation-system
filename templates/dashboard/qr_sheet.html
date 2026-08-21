@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}أكواد QR — {{ invitation.title }}{% endblock %}
+{% block body_class %}qrsheet-body{% endblock %}
+
+{% block content %}
+<div class="qrsheet">
+  <header class="qrsheet-bar no-print">
+    <div>
+      <strong>أكواد QR — {{ invitation.title }}</strong>
+      <span class="muted"> · {{ rows|length }} ضيف</span>
+    </div>
+    <div class="toolbar" style="margin:0">
+      <button class="btn btn--gold btn--sm" type="button" onclick="window.print()">🖨 طباعة</button>
+      <a class="btn btn--ghost btn--sm" href="{% url 'guests' invitation.pk %}">↩ رجوع</a>
+    </div>
+  </header>
+
+  <p class="qrsheet-hint no-print">
+    كل كارت فيه رمز الضيف. الضيف يمسحه بكاميرته فتفتح دعوته، والاستقبال يمسحه على الباب
+    فيتسجّل دخوله. اقصّ الكروت ووزّعها، أو ابعت لكل ضيف رابطه على واتساب من صفحة الضيوف.
+  </p>
+
+  <div class="qrsheet-grid">
+    {% for row in rows %}
+    <article class="qrcard">
+      <p class="qrcard-event">{{ invitation.name_one }}{% if invitation.name_two %} &amp; {{ invitation.name_two }}{% endif %}</p>
+      <div class="qrcard-code">{{ row.svg }}</div>
+      <p class="qrcard-name">{{ row.guest.name }}</p>
+      {% if row.guest.group_name %}<p class="qrcard-meta">{{ row.guest.group_name }}</p>{% endif %}
+      {% if row.guest.plus_ones_allowed %}
+        <p class="qrcard-meta">+{{ row.guest.plus_ones_allowed }} مرافق</p>
+      {% endif %}
+    </article>
+    {% empty %}
+    <p class="empty">لا يوجد ضيوف. أضف ضيوفاً أو استورد ملف CSV أولاً.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

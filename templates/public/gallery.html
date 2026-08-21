@@ -1,0 +1,39 @@
+{% extends 'public/_base.html' %}
+{% load i18n %}
+{% block title %}{% translate "القوالب" %} — {{ SITE_NAME }}{% endblock %}
+{% block content %}
+<section class="section section--below-nav" id="main">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "المعرض" %}</p>
+      <h2>{% translate "كل القوالب" %}</h2>
+    </div>
+    <div class="toolbar" style="justify-content:center">
+      <a class="btn btn--sm {% if not active_category %}btn--gold{% else %}btn--ghost{% endif %}" href="{% url 'template_gallery' %}">{% translate "الكل" %}</a>
+      {% for value, label in categories %}
+        <a class="btn btn--sm {% if active_category == value %}btn--gold{% else %}btn--ghost{% endif %}"
+           href="?category={{ value }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <div class="grid grid--4">
+      {% for t in templates %}
+      <article class="tpl-card">
+        <div class="tpl-cover"{% if t.cover_src %} style="background-image:url('{{ t.cover_src }}')"{% endif %}>
+          {% if not t.cover_src %}{{ t.display_name|slice:':1' }}{% endif %}
+        </div>
+        <div class="tpl-body">
+          <h3>{{ t.display_name }}</h3>
+          <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
+          {% if t.display_description %}<p class="muted" style="font-size:13px">{{ t.display_description|truncatechars:80 }}</p>{% endif %}
+          <div class="tpl-actions">
+            <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% translate "معاينة حية" %}</a>
+            <a class="btn btn--gold btn--sm" href="{% url 'home' %}#order">{% translate "اطلبه" %}</a>
+          </div>
+        </div>
+      </article>
+      {% empty %}<p class="empty">{% translate "لا توجد قوالب في هذا التصنيف." %}</p>{% endfor %}
+    </div>
+  </div>
+</section>
+<footer class="foot"><div class="wrap">{{ SITE_NAME }}</div></footer>
+{% endblock %}

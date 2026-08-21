@@ -1,0 +1,59 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}دعوة جديدة — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head"><h1>إنشاء دعوة جديدة</h1></div>
+
+<form method="post" class="card" style="max-width:820px">
+  {% csrf_token %}
+
+  <h3>١ — القالب</h3>
+  <div class="grid grid--4" style="margin-bottom:22px">
+    {% for t in templates %}
+    <label class="tpl-card" style="cursor:pointer">
+      <div class="tpl-cover"{% if t.cover_src %} style="background-image:url('{{ t.cover_src }}')"{% endif %}>
+        {% if not t.cover_src %}{{ t.name|slice:':1' }}{% endif %}
+      </div>
+      <div class="tpl-body">
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px">
+          <input type="radio" name="template_id" value="{{ t.pk }}" required{% if forloop.first %} checked{% endif %}>
+          {{ t.name }}
+        </label>
+      </div>
+    </label>
+    {% empty %}<p class="empty">لا توجد قوالب. أنشئ قالباً من المحرر أولاً.</p>{% endfor %}
+  </div>
+
+  <h3>٢ — الباقة</h3>
+  <div class="form form--2" style="margin-bottom:22px">
+    <div class="field">
+      <label for="plan_id">الباقة</label>
+      <select name="plan_id" id="plan_id" required>
+        {% for p in plans %}<option value="{{ p.pk }}">{{ p.name }} — {{ p.price|floatformat:0 }} {{ SITE_CURRENCY }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="event_type">نوع المناسبة</label>
+      <select name="event_type" id="event_type">
+        {% for e in event_types %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <h3>٣ — العميل والأسماء</h3>
+  <div class="form form--2">
+    <div class="field">
+      <label for="customer_id">عميل موجود</label>
+      <select name="customer_id" id="customer_id">
+        <option value="">— عميل جديد —</option>
+        {% for c in customers %}<option value="{{ c.pk }}">{{ c.name }} · {{ c.phone }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field"><label for="customer_name">اسم العميل الجديد</label><input name="customer_name" id="customer_name"></div>
+    <div class="field"><label for="customer_phone">هاتف العميل</label><input name="customer_phone" id="customer_phone"></div>
+    <div class="field"><label for="customer_email">بريد العميل</label><input type="email" name="customer_email" id="customer_email"></div>
+    <div class="field"><label for="name_one">الاسم الأول</label><input name="name_one" id="name_one" placeholder="ليلى"></div>
+    <div class="field"><label for="name_two">الاسم الثاني</label><input name="name_two" id="name_two" placeholder="أحمد"></div>
+    <div class="span-2"><button class="btn btn--gold btn--block" type="submit">إنشاء وفتح المحرر</button></div>
+  </div>
+</form>
+{% endblock %}

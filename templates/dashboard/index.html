@@ -1,0 +1,55 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}لوحة التحكم — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head">
+  <h1>نظرة عامة</h1>
+  <a class="btn btn--gold" href="{% url 'invitation_create' %}">＋ دعوة جديدة</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{{ stats.invitations }}</b><span>دعوة</span></div>
+  <div class="stat"><b>{{ stats.published }}</b><span>منشورة</span></div>
+  <div class="stat"><b>{{ stats.orders_new }}</b><span>طلب جديد</span></div>
+  <div class="stat"><b>{{ stats.customers }}</b><span>عميل</span></div>
+  <div class="stat"><b>{{ stats.templates }}</b><span>قالب</span></div>
+  <div class="stat"><b>{{ stats.guests }}</b><span>ضيف</span></div>
+  <div class="stat"><b>{{ stats.attending }}</b><span>تأكيد حضور</span></div>
+  <div class="stat"><b>{{ stats.views }}</b><span>مشاهدة</span></div>
+</div>
+
+<h2 style="font-size:19px">أحدث الدعوات</h2>
+<div class="table-wrap" style="margin-bottom:26px">
+  <table>
+    <thead><tr><th>الدعوة</th><th>العميل</th><th>القالب</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+      {% for i in recent_invitations %}
+      <tr>
+        <td>{{ i.title }}</td>
+        <td>{{ i.customer.name }}</td>
+        <td>{{ i.template.name }}</td>
+        <td><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
+        <td><a class="btn btn--ghost btn--sm" href="{% url 'invitation_editor' i.pk %}">المحرر</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">لا توجد دعوات بعد.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 style="font-size:19px">أحدث تأكيدات الحضور</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>الاسم</th><th>الدعوة</th><th>الحالة</th><th>المرافقون</th><th>التاريخ</th></tr></thead>
+    <tbody>
+      {% for r in recent_rsvps %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.invitation.title }}</td>
+        <td><span class="pill pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
+        <td>{{ r.companions }}</td>
+        <td>{{ r.created_at|date:'Y/m/d H:i' }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="empty">لا توجد ردود بعد.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% load i18n %}
+{% comment %}
+  الترويسة العائمة — مكوّن واحد مشترك بين الموقع العام ولوحة التحكم.
+  مرّر dash=True من لوحة التحكم عشان تظهر روابطها بدل روابط الموقع.
+{% endcomment %}
+
+<a class="skip-link" href="#main">{% translate "تخطَّ إلى المحتوى" %}</a>
+
+<header class="nav" id="site-nav">
+  <div class="nav-shell">
+    <a class="brand" href="{% url 'home' %}"><span class="sr-only">{{ SITE_NAME }}</span></a>
+
+    <nav class="nav-links" id="nav-menu" aria-label="{% translate 'التنقل الرئيسي' %}">
+      {% if dash %}
+        <a href="{% url 'dashboard' %}"             class="{% if nav == 'home' %}is-active{% endif %}">{% translate "الرئيسية" %}</a>
+        <a href="{% url 'dashboard_invitations' %}" class="{% if nav == 'invitations' %}is-active{% endif %}">{% translate "الدعوات" %}</a>
+        <a href="{% url 'dashboard_templates' %}"   class="{% if nav == 'templates' %}is-active{% endif %}">{% translate "القوالب" %}</a>
+        <a href="{% url 'dashboard_orders' %}"      class="{% if nav == 'orders' %}is-active{% endif %}">{% translate "الطلبات" %}</a>
+        <a href="{% url 'analytics' %}"             class="{% if nav == 'analytics' %}is-active{% endif %}">{% translate "الإحصائيات" %}</a>
+        <a href="/admin/">{% translate "إدارة البيانات" %}</a>
+        <a class="nav-only-mobile" href="{% url 'home' %}">{% translate "الموقع العام" %}</a>
+        <form class="nav-only-mobile nav-logout-inline" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn btn--ghost btn--sm btn--block" type="submit">
+            {% translate "خروج" %} ({{ user.username }})
+          </button>
+        </form>
+      {% else %}
+        <a href="{% url 'home' %}#templates" data-spy="templates">{% translate "القوالب" %}</a>
+        <a href="{% url 'home' %}#how"       data-spy="how">{% translate "كيف تعمل" %}</a>
+        <a href="{% url 'home' %}#plans"     data-spy="plans">{% translate "الباقات" %}</a>
+        <a href="{% url 'home' %}#order"     data-spy="order">{% translate "اطلب دعوتك" %}</a>
+        {% if user.is_staff %}<a href="{% url 'dashboard' %}">{% translate "لوحة التحكم" %}</a>{% endif %}
+        <a class="btn btn--gold btn--sm nav-cta-inline" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+      {% endif %}
+    </nav>
+
+    <div class="nav-tools">
+      {# مبدّل اللغة: form حقيقي لـ set_language عشان الاختيار يتحفظ في الجلسة والكوكي #}
+      <form class="lang-form" action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <input type="hidden" name="language" value="{% if LANGUAGE_CODE == 'ar' %}en{% else %}ar{% endif %}">
+        <button class="lang-btn" type="submit"
+                title="{% if LANGUAGE_CODE == 'ar' %}Switch to English{% else %}التبديل إلى العربية{% endif %}"
+                aria-label="{% if LANGUAGE_CODE == 'ar' %}Switch to English{% else %}التبديل إلى العربية{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M3.5 9.2h17M3.5 14.8h17"/>
+            <path d="M12 3c2.6 2.5 4 5.5 4 9s-1.4 6.5-4 9c-2.6-2.5-4-5.5-4-9s1.4-6.5 4-9Z"/>
+          </svg>
+          <span>{% if LANGUAGE_CODE == 'ar' %}EN{% else %}ع{% endif %}</span>
+        </button>
+      </form>
+
+      <button class="icon-btn" data-theme-toggle type="button"
+              aria-label="{% translate 'تبديل بين الوضع الفاتح والداكن' %}">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.6v2.1M12 19.3v2.1M2.6 12h2.1M19.3 12h2.1M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/>
+        </svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.3A8.5 8.5 0 1 1 9.7 3.5a6.9 6.9 0 0 0 10.8 10.8Z"/>
+        </svg>
+      </button>
+
+      {% if dash %}
+        <form class="nav-logout" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="btn btn--ghost btn--sm nav-cta" type="submit">{% translate "خروج" %}</button>
+        </form>
+      {% else %}
+        <a class="btn btn--gold btn--sm nav-cta" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+      {% endif %}
+
+      <button class="nav-burger" id="nav-burger" type="button"
+              aria-expanded="false" aria-controls="nav-menu" aria-label="{% translate 'فتح القائمة' %}">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="nav-scrim" id="nav-scrim" hidden></div>

@@ -1,0 +1,12 @@
+{% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+<div class="lb-inner">
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
+  <div class="lb-wishes lb-wishes--{{ props.layout }}">
+    {% for w in wishes %}<article class="lb-wish"><p>{{ w.message }}</p><cite>{{ w.name }}</cite></article>
+    {% empty %}<p class="lb-body lb-muted">{{ props.empty_text }}</p>{% endfor %}
+  </div>
+</div>
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
+</section>{% endlocalize %}

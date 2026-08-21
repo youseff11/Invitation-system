@@ -1,0 +1,47 @@
+{% load invite l10n %}{% localize off %}<section id="rsvp" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="rsvp"{% if editable %} data-editable="1"{% endif %}>
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+<div class="lb-inner">
+  {% if props.eyebrow %}<p class="lb-eyebrow">{{ props.eyebrow }}</p>{% endif %}
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
+  {% if props.intro %}<p class="lb-body">{{ props.intro|linebreaksbr }}</p>{% endif %}
+  <div class="lb-card lb-rsvp">
+    {% if rsvp_closed %}<p class="lb-rsvp-closed">{{ props.closed_message }}</p>
+    {% else %}
+    {% if guest %}
+    <p class="lb-guest-hi">
+      {% if guest_answered %}سجّلنا ردك قبل كده يا {{ guest.name }} — تقدر تعدّله من هنا.
+      {% else %}أهلاً {{ guest.name }} 🤍{% endif %}
+    </p>
+    {% endif %}
+    <form class="lb-form" method="post" action="{{ rsvp_action|default:'#' }}" data-rsvp-form{% if editable %} data-demo="1"{% endif %}>
+      {% if csrf_token %}<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">{% endif %}
+      {% if guest %}<input type="hidden" name="guest_token" value="{{ guest.token }}">{% endif %}
+      <input type="text" name="website" class="lb-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="lb-field"><span>{{ props.name_label }}</span>
+        <input type="text" name="name" required maxlength="120" autocomplete="name" value="{{ guest.name|default:'' }}"></label>
+      <label class="lb-field"><span>{{ props.phone_label }}</span>
+        <input type="tel" name="phone" maxlength="40" autocomplete="tel"{% if props.phone_required %} required{% endif %} value="{{ guest.phone|default:'' }}"></label>
+      <div class="lb-field"><span>حالة الحضور</span>
+        <div class="lb-choices">
+          <label><input type="radio" name="status" value="attending"{% if not guest_answered or guest_answered.status == 'attending' %} checked{% endif %}><span>{{ props.attending_label }}</span></label>
+          <label><input type="radio" name="status" value="declined"{% if guest_answered.status == 'declined' %} checked{% endif %}><span>{{ props.declined_label }}</span></label>
+          {% if props.show_maybe %}<label><input type="radio" name="status" value="maybe"{% if guest_answered.status == 'maybe' %} checked{% endif %}><span>{{ props.maybe_label }}</span></label>{% endif %}
+        </div>
+      </div>
+      {% if props.ask_companions %}{% if guest %}{% if guest_max_companions %}<label class="lb-field">
+        <span>{{ props.companions_label }} <small>(حتى {{ guest_max_companions }})</small></span>
+        <input type="number" name="companions" min="0" max="{{ guest_max_companions }}"
+               value="{{ guest_answered.companions|default:0 }}" inputmode="numeric"></label>{% endif %}
+      {% else %}<label class="lb-field"><span>{{ props.companions_label }}</span>
+        <input type="number" name="companions" min="0" max="{{ props.max_companions }}" value="0" inputmode="numeric"></label>{% endif %}{% endif %}
+      {% if props.ask_message %}<label class="lb-field"><span>{{ props.message_label }}</span>
+        <textarea name="message" rows="3" maxlength="600">{{ guest_answered.message|default:'' }}</textarea></label>{% endif %}
+      <button type="submit" class="lb-btn lb-btn--solid lb-btn--block">{{ props.submit_label }}</button>
+      <p class="lb-form-msg" data-rsvp-msg hidden>{{ props.success_message }}</p>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
+</section>{% endlocalize %}

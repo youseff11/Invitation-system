@@ -1,0 +1,656 @@
+/* ================================================================
+   فرحة — الموقع العام ولوحة التحكم
+   ================================================================ */
+/* اللايت أبيض والدارك أسود. النص مش أسود/أبيض خالص عن قصد:
+   #000 على #fff (والعكس) بيعمل إجهاد للعين وهالة حوالين الحروف العربية الرفيعة. */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f5f3;
+  --text: #17130f;
+  --muted: #6d675f;
+  --accent: #b8914f;
+  --accent-soft: rgba(184, 145, 79, .10);
+  --line: #e9e6e1;
+  --ok: #3f8a55;
+  --danger: #c1544d;
+  --radius: 14px;
+  --shadow: 0 20px 50px -34px rgba(23, 19, 15, .45);
+  --shadow-nav: 0 14px 34px -20px rgba(23, 19, 15, .35);
+  --nav-space: 94px;               /* 16 + 62 + 16 — الهيرو بيتسحب تحتها */
+}
+[data-theme="dark"] {
+  --bg: #000000;
+  --surface: #0d0d0d;
+  --surface-2: #151514;
+  --text: #eeeae4;
+  --muted: #99938b;
+  --accent: #d4ab63;
+  --accent-soft: rgba(212, 171, 99, .13);
+  --line: #262523;
+  --ok: #5cb075;
+  --shadow: 0 24px 60px -34px #000;
+  --shadow-nav: 0 16px 40px -22px rgba(0, 0, 0, .9);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Tajawal", system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--accent); }
+h1, h2, h3, h4 { font-family: "Amiri", Georgia, serif; font-weight: 500; line-height: 1.3; margin: 0 0 .5em; }
+/* الإنجليزي بخط لاتيني كلاسيكي — Amiri مصمّم للعربي والنسخة اللاتينية منه ضعيفة */
+html[lang="en"] h1, html[lang="en"] h2, html[lang="en"] h3, html[lang="en"] h4 {
+  font-family: "Cormorant Garamond", "Amiri", Georgia, serif; font-weight: 600; letter-spacing: .01em;
+}
+html[lang="en"] .eyebrow { letter-spacing: .22em; }
+p { margin: 0 0 1em; }
+
+.wrap { width: min(1180px, 100% - 36px); margin-inline: auto; }
+.muted { color: var(--muted); }
+.eyebrow {
+  font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 8px;
+}
+
+/* ---------------------------------------------------------- الأزرار */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 22px; border-radius: 999px; border: 1px solid transparent;
+  background: none; color: inherit; cursor: pointer; font: inherit; font-size: 14px;
+  text-decoration: none; transition: transform .18s, filter .18s, border-color .18s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.btn--gold { background: var(--accent); color: #fff; }
+.btn--gold:hover { filter: brightness(1.07); }
+.btn--ghost { border-color: var(--line); }
+.btn--ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn--sm { padding: 7px 15px; font-size: 13px; }
+.btn--block { width: 100%; }
+.btn--danger { color: var(--danger); border-color: currentColor; }
+
+/* ---------------------------------------------------------- الترويسة العائمة
+   شريط "جزيرة": مفصول عن حواف الشاشة، حوافه دائرية، وخلفيته زجاجية.
+   يتقلّص ويكتسب ظلاً عند النزول بالصفحة (كلاس is-stuck من site.js). */
+
+.skip-link {
+  position: absolute; inset-inline-start: -9999px; top: 0; z-index: 100;
+  background: var(--accent); color: #fff; padding: 10px 20px;
+  border-radius: 0 0 12px 12px; text-decoration: none; font-size: 14px;
+}
+.skip-link:focus { inset-inline-start: 24px; }
+
+.nav {
+  position: sticky; top: 0; z-index: 60;
+  padding: 16px 0;
+  transition: padding .28s ease;
+  pointer-events: none;            /* الفراغ حوالين الجزيرة ما يحجبش الضغط على الصفحة */
+}
+.nav > * { pointer-events: auto; }
+
+.nav-shell {
+  position: relative;
+  width: min(1180px, 100% - 28px);
+  margin-inline: auto;
+  display: flex; align-items: center; gap: 10px;
+  height: 62px; padding-inline: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  box-shadow: 0 2px 10px -7px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  transition: height .28s ease, background .28s ease, box-shadow .28s ease;
+}
+.nav.is-stuck { padding: 8px 0; }
+.nav.is-stuck .nav-shell {
+  height: 54px;
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: var(--shadow-nav);
+}
+
+/* اللوجو صورة خلفية مش <img> عن قصد: كده المتصفح بينزّل النسخة الفعّالة بس
+   (فاتحة أو غامقة) بدل الاتنين، والاسم فاضل موجود كنص لقارئات الشاشة. */
+.brand {
+  display: block; flex: none; text-decoration: none;
+  height: 38px; aspect-ratio: 650 / 200;
+  margin-inline-start: 10px;
+  background-image: url("../images/brand-light.png");
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+  transition: height .28s ease, opacity .18s ease;
+}
+[data-theme="dark"] .brand { background-image: url("../images/brand-dark.png"); }
+.brand:hover { opacity: .82; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.nav.is-stuck .brand { height: 34px; }
+
+/* النسخة الكاملة المرصوصة — صفحة الدخول */
+.brand--stacked {
+  height: 96px; aspect-ratio: 411 / 260; margin-inline: auto;
+  background-image: url("../images/logo-full-light.png");
+}
+[data-theme="dark"] .brand--stacked { background-image: url("../images/logo-full-dark.png"); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.nav-links { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.nav-links a {
+  padding: 9px 14px; border-radius: 999px; text-decoration: none; white-space: nowrap;
+  color: var(--muted); font-size: 14.5px; transition: background .18s, color .18s;
+}
+.nav-links a:hover { color: var(--text); }
+/* القسم اللي المستخدم واقف فيه دلوقتي فقط — بيتحدّد من scroll-spy في site.js */
+.nav-links a.is-active {
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+}
+.nav-cta-inline, .nav-only-mobile { display: none; }
+
+/* ---- مبدّل اللغة ---- */
+.lang-form { display: flex; }
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 38px; padding: 0 12px 0 10px;
+  border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); cursor: pointer; font: inherit;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.lang-btn:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.lang-btn svg { width: 17px; height: 17px; flex: none; }
+.lang-btn span {
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; line-height: 1;
+}
+
+.nav-tools { display: flex; align-items: center; gap: 8px; margin-inline-start: 6px; }
+
+.icon-btn {
+  width: 38px; height: 38px; padding: 0; display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); cursor: pointer;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.icon-btn svg { width: 18px; height: 18px; }
+.i-moon { display: none; }
+[data-theme="dark"] .i-sun { display: none; }
+[data-theme="dark"] .i-moon { display: block; }
+
+.nav-burger {
+  display: none; width: 40px; height: 38px; padding: 0;
+  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border-radius: 12px; border: 1px solid var(--line); background: transparent; cursor: pointer;
+}
+.nav-burger span {
+  width: 17px; height: 1.8px; background: var(--text); border-radius: 2px;
+  transition: transform .25s ease, opacity .2s ease;
+}
+.nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(5.8px) rotate(45deg); }
+.nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5.8px) rotate(-45deg); }
+
+.nav-scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0, 0, 0, .3); backdrop-filter: blur(2px);
+}
+
+/* ---------------------------------------------------------- الرسائل */
+.flash { padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; font-size: 14px; border: 1px solid var(--line); }
+.flash--success { border-color: var(--ok); color: var(--ok); background: rgba(78, 154, 99, .08); }
+.flash--error { border-color: var(--danger); color: var(--danger); background: rgba(193, 84, 77, .08); }
+
+/* ---------------------------------------------------------- الهيرو
+   الصورة نضيفة بلا نص محروق، والكلام كله HTML فوقها.
+   الصورتين اتقصّوا لنفس النسبة (1.8) عشان الارتفاع ما ينطّش عند تبديل المظهر. */
+
+.hero {
+  position: relative;
+  margin-top: calc(-1 * var(--nav-space));   /* الترويسة العائمة تطفو فوق الصورة */
+  background: var(--bg);
+  isolation: isolate;
+}
+
+.hero-art {
+  --hero-img: url("../images/hero-light.webp");
+  position: relative;
+  aspect-ratio: 9 / 5;
+  background-image: var(--hero-img);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* موضع/ميلان الكارت مقيسين من كل صورة على حدة */
+  --card-x: 69.2%; --card-y: 50.5%; --card-w: 20.5%; --card-rot: 7.5deg;
+  container-type: inline-size;     /* مرجع وحدات cqw لكتابة الكارت */
+}
+[data-theme="dark"] .hero-art {
+  --hero-img: url("../images/hero-dark.webp");
+  --card-x: 69.3%; --card-y: 50.8%; --card-w: 20.5%; --card-rot: 7.2deg;
+}
+
+/* شبكة أمان للتباين: تدرّج من حافة الصورة الشمال (مكان النص) ناحية النص.
+   في اللايت أبيض وفي الدارك أسود، فمابيبانش فوق المنطقة الفاضية أصلاً —
+   بيشتغل بس لو النص قرّب من الورد. */
+.hero-art::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to right,
+              var(--bg) 0%,
+              color-mix(in srgb, var(--bg) 72%, transparent) 26%,
+              transparent 52%);
+}
+/* ذوبان الحافة السفلية في خلفية الصفحة */
+.hero-art::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 16%;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+
+/* الكلام: طبقة فوق الصورة، في النص الفاضي على الشمال في اللغتين
+   (المساحة الفاضية في الصورة نفسها على الشمال، فالوضع فيزيائي مش منطقي). */
+.hero-copy {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center;
+  padding-top: calc(var(--nav-space) * .5);
+  pointer-events: none;
+}
+/* هوامش فيزيائية عن قصد: المساحة الفاضية في الصورة على الشمال في اللغتين،
+   فالكتلة لازم تفضل شمال سواء عربي (RTL) أو إنجليزي (LTR).
+   text-align:start بيخلي العربي محاذى يمين والإنجليزي شمال جوّه الكتلة نفسها. */
+.hero-copy-in {
+  pointer-events: auto;
+  width: min(42%, 520px);
+  margin-left: clamp(20px, 5.5vw, 96px);
+  margin-right: auto;
+  text-align: center;          /* زي الصورة الأصلية بالظبط */
+}
+
+/* ---- الزخرفة والقلب: mask مستخرج من الصورة الأصلية، فبياخد لون --accent ---- */
+.hero-ornament,
+.hero-heart {
+  display: block; background-color: var(--accent);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center;  mask-position: center;
+  -webkit-mask-size: contain;     mask-size: contain;
+}
+.hero-ornament {
+  width: clamp(96px, 9vw, 138px); aspect-ratio: 113 / 50;
+  margin: 0 auto 20px;
+  -webkit-mask-image: url("../images/ornament.png");
+  mask-image: url("../images/ornament.png");
+}
+.hero-heart {
+  width: 1em; height: 1.06em; flex: none;
+  -webkit-mask-image: url("../images/heart.png");
+  mask-image: url("../images/heart.png");
+}
+
+/* ---- العنوان بسطرين زي الصورة: سطر صغير غامق + سطر كبير ذهبي ---- */
+.hero-copy h1 { margin: 0; }
+.h1-top {
+  display: block; color: var(--text); font-weight: 400;
+  font-size: clamp(19px, 2.05vw, 34px); line-height: 1.35; margin-bottom: 2px;
+}
+.h1-main {
+  display: block; color: var(--accent); font-weight: 400;
+  font-size: clamp(31px, 4.1vw, 66px); line-height: 1.2; text-wrap: balance;
+}
+
+/* ---- الفاصل: خط ذهبي متلاشي ← قلب → خط ذهبي متلاشي ---- */
+.hero-rule {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: min(88%, 400px); margin: 20px auto 22px; font-size: 17px;
+}
+.hero-rule i { flex: 1; height: 1px; border: 0; }
+.hero-rule i:first-child { background: linear-gradient(to right, transparent, var(--accent)); }
+.hero-rule i:last-child  { background: linear-gradient(to left,  transparent, var(--accent)); }
+
+.hero-sub {
+  color: var(--muted); font-size: clamp(14px, 1.2vw, 18px);
+  max-width: 27ch; margin: 0 auto; line-height: 1.9; text-wrap: balance;
+}
+
+.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+
+/* زر محدَّد بإطار ذهبي وقلبين على الجنبين — زي الصورة */
+.btn--outline {
+  background: transparent; border-color: var(--accent); color: var(--accent);
+  padding: 13px 30px; gap: 15px; font-size: 15px;
+}
+.btn--outline:hover { background: var(--accent-soft); }
+
+/* ---- كتابة الكارت ---- */
+.hero-card {
+  position: absolute; z-index: 2; pointer-events: none;
+  left: var(--card-x); top: var(--card-y); width: var(--card-w);
+  transform: translate(-50%, -50%) rotate(var(--card-rot));
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; color: var(--accent);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  direction: ltr;
+}
+/* الخط بيتقاس بنسبة عرض الصورة (cqw) مش بمقاس ثابت، عشان يفضل جوه حدود
+   الكارت على أي شاشة من 320px لـ 4K. الـvw احتياطي للمتصفحات القديمة. */
+.hero-card-line {
+  font-size: 1.12vw;
+  font-size: 1.12cqw;
+  letter-spacing: .19em; line-height: 1.75; white-space: nowrap;
+}
+.hero-rule--sm {
+  width: 74%; gap: .5em; margin: .55em auto 0;
+  font-size: .85vw;
+  font-size: .85cqw;
+}
+
+/* الصفحات اللي مفيهاش هيرو محتاجة تبعد عن الترويسة العائمة */
+.section--below-nav { padding-top: 34px; }
+
+.section { padding: 74px 0; }
+.section--alt { background: var(--surface-2); }
+.section-head { text-align: center; margin-bottom: 40px; }
+.section-head h2 { font-size: clamp(27px, 4vw, 40px); }
+.section-head p { color: var(--muted); max-width: 58ch; margin-inline: auto; }
+
+.grid { display: grid; gap: 18px; }
+.grid--3 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.grid--4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
+}
+.card h3 { font-size: 19px; margin-bottom: 6px; }
+
+.tpl-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; transition: transform .22s, border-color .22s;
+}
+.tpl-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.tpl-cover {
+  aspect-ratio: 3/4; background: linear-gradient(150deg, var(--accent-soft), var(--surface-2));
+  display: grid; place-items: center; color: var(--accent);
+  font-family: "Amiri", serif; font-size: 30px; background-size: cover; background-position: center;
+}
+.tpl-body { padding: 15px 16px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.tpl-body h3 { margin: 0; font-size: 17px; }
+.tpl-meta { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
+.tpl-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
+
+.plan {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 28px 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow);
+  position: relative;
+}
+.plan--featured { border-color: var(--accent); border-width: 2px; }
+.plan-badge {
+  position: absolute; top: -12px; inset-inline-start: 22px;
+  background: var(--accent); color: #fff; font-size: 11px;
+  padding: 3px 12px; border-radius: 999px; letter-spacing: .1em;
+}
+.plan-price { font-family: "Amiri", serif; font-size: 40px; color: var(--accent); line-height: 1; }
+.plan-price small { font-size: 14px; color: var(--muted); font-family: inherit; }
+.plan ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 14px; }
+.plan li::before { content: "✓"; color: var(--accent); margin-inline-end: 8px; }
+
+.steps { counter-reset: step; }
+.step { position: relative; padding-inline-start: 54px; }
+.step::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; inset-inline-start: 0; top: 0;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--accent); color: var(--accent);
+  display: grid; place-items: center; font-family: "Amiri", serif;
+}
+
+/* ---------------------------------------------------------- النماذج */
+.form { display: grid; gap: 14px; }
+.form--2 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > label, .field label:first-child { font-size: 13px; color: var(--muted); }
+.field input, .field select, .field textarea {
+  font: inherit; padding: 10px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--text); width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field textarea { resize: vertical; min-height: 84px; }
+.errorlist { color: var(--danger); font-size: 12px; list-style: none; padding: 0; margin: 2px 0 0; }
+.span-2 { grid-column: 1 / -1; }
+
+/* ---------------------------------------------------------- لوحة التحكم */
+/* لوحة التحكم بقت بترويسة الموقع نفسها — مفيش سايدبار */
+.dash-main { padding: 30px 0 70px; }
+.dash-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 22px;
+}
+.dash-head h1 { margin: 0; font-size: 27px; }
+
+.stats {
+  display: grid; gap: 12px; margin-bottom: 26px;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 46%), 1fr));
+}
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+.stat b { display: block; font-family: "Amiri", serif; font-size: 32px; color: var(--accent); line-height: 1.1; }
+.stat span { font-size: 12.5px; color: var(--muted); }
+
+.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 14px; text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; letter-spacing: .1em; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface-2); }
+
+.pill { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--line); }
+.pill--published, .pill--completed, .pill--attending { color: var(--ok); border-color: currentColor; }
+.pill--draft, .pill--new { color: var(--muted); }
+.pill--review, .pill--in_progress, .pill--maybe { color: var(--accent); border-color: currentColor; }
+.pill--archived, .pill--cancelled, .pill--declined { color: var(--danger); border-color: currentColor; }
+
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.toolbar input, .toolbar select {
+  font: inherit; padding: 8px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--text);
+}
+
+.empty { text-align: center; padding: 54px 20px; color: var(--muted); }
+
+/* ---------------------------------------------------------- التذييل */
+.foot { border-top: 1px solid var(--line); padding: 34px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ---------------------------------------------------------- الدخول */
+.login-page { min-height: 100vh; display: grid; place-items: center; padding: 26px; }
+.login-card { width: min(390px, 100%); }
+
+@media (max-width: 860px) {
+  .dash-main { padding: 22px 0 60px; }
+  .dash-head h1 { font-size: 22px; }
+}
+
+
+/* ================================================================
+   الاستجابة — الترويسة والهيرو
+   ================================================================ */
+
+/* شاشات متوسطة: نسخة أخف من صورة الهيرو */
+@media (min-width: 781px) and (max-width: 1200px) {
+  .hero-art { --hero-img: url("../images/hero-light-1200.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("../images/hero-dark-1200.webp"); }
+  .hero-copy-in { width: min(48%, 460px); }
+}
+
+/* ---- الموبايل ---- */
+@media (max-width: 780px) {
+  :root { --nav-space: 78px; }
+
+  /* الترويسة */
+  .nav { padding: 12px 0; }
+  .nav-shell { height: 58px; gap: 8px; }
+  .nav.is-stuck .nav-shell { height: 54px; }
+  .nav-burger { display: flex; }
+  .nav-cta { display: none; }
+  .nav-cta-inline { display: inline-flex; margin-top: 6px; }
+  .nav-only-mobile { display: block; }
+  .nav-logout-inline { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .nav-tools { margin-inline-start: auto; gap: 6px; }
+  .lang-btn { height: 34px; padding: 0 10px 0 8px; }
+  .icon-btn { width: 34px; height: 34px; }
+  .nav-burger { width: 36px; height: 34px; }
+
+  .nav-links {
+    position: absolute; top: calc(100% + 10px); inset-inline: 0;
+    flex-direction: column; align-items: stretch; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 20px; padding: 10px; box-shadow: var(--shadow-nav);
+    opacity: 0; visibility: hidden; transform: translateY(-8px);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+  }
+  .nav-links.is-open { opacity: 1; visibility: visible; transform: none; }
+  .nav-links a { padding: 12px 15px; border-radius: 13px; font-size: 15px; }
+
+  /* الهيرو على التليفون: الصورة كاملة بعرض الشاشة من غير أي قص،
+     والكلام تحتها — عشان النص ما يبقاش فوق ورد ومش مقروء.
+     مفيش سحب تحت الترويسة هنا: الصورة قصيرة والشريط كان هيغطي ثلثها. */
+  .hero { margin-top: 0; }
+  .hero-art {
+    aspect-ratio: 9 / 5;
+    width: 100%;
+    background-size: 100% auto;      /* العرض كامل بلا قص */
+    background-position: center top;
+    --hero-img: url("../images/hero-light-800.webp");
+  }
+  [data-theme="dark"] .hero-art { --hero-img: url("../images/hero-dark-800.webp"); }
+  .hero-art::before { display: none; }          /* مفيش نص فوق الصورة هنا */
+  /* الكارت فاضل ظاهر على التليفون — بنكبّر نسبته شوية عشان يبان،
+     وهو لسه جوه حدود الكارت بهامش مريح. */
+  .hero-card { --card-w: 24%; }
+  .hero-card-line { font-size: 1.6cqw; letter-spacing: .14em; line-height: 1.6; }
+  .hero-rule--sm { font-size: 1.2cqw; width: 82%; }
+  .hero-art::after  { height: 26%; }
+
+  .hero-copy {
+    position: static; display: block; padding: 26px 0 4px;
+    pointer-events: auto;
+  }
+  .hero-copy-in {
+    width: min(100% - 36px, 620px);
+    margin: 0 auto; text-align: center;
+  }
+  .hero-copy h1 { font-size: clamp(27px, 7.4vw, 40px); }
+  .hero-sub { max-width: none; margin-inline: auto; font-size: 15.5px; }
+  .hero-actions { justify-content: center; margin-top: 20px; }
+  .hero-actions .btn { flex: 1 1 auto; min-width: 150px; }
+}
+
+/* شاشات صغيرة جداً */
+@media (max-width: 380px) {
+  .brand { height: 30px; }
+  .lang-btn span { display: none; }
+  .lang-btn { padding: 0 9px; }
+}
+
+/* اللوجو على الشاشات الصغيرة */
+@media (max-width: 780px) {
+  .brand { height: 34px; margin-inline-start: 8px; }
+  .nav.is-stuck .brand { height: 31px; }
+  .brand--stacked { height: 84px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* روابط الضيوف في جدول الضيوف */
+.guest-link { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ================================================================
+   ماسح الدخول على الباب
+   ================================================================ */
+.checkin {
+  display: grid; gap: 18px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  align-items: start;
+}
+.checkin-stage {
+  position: relative; aspect-ratio: 4 / 3; overflow: hidden;
+  border-radius: var(--radius); background: #0b0b0b;
+  border: 1px solid var(--line); display: grid; place-items: center;
+}
+.checkin-stage video { width: 100%; height: 100%; object-fit: cover; }
+.checkin-frame {
+  position: absolute; inset: 18%; border: 2px solid var(--accent);
+  border-radius: 16px; opacity: .8; pointer-events: none;
+}
+.checkin-idle { position: absolute; color: #cfc9c0; font-size: 14px; margin: 0; padding: 0 20px; text-align: center; }
+
+.checkin-result {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; background: var(--surface); min-height: 92px;
+}
+.checkin-result strong { display: block; font-size: 17px; margin-bottom: 4px; }
+.checkin-result p { margin: 2px 0; font-size: 13px; color: var(--muted); }
+.checkin-result.is-ok   { border-color: var(--ok); }
+.checkin-result.is-ok strong { color: var(--ok); }
+.checkin-result.is-warn { border-color: var(--accent); }
+.checkin-result.is-warn strong { color: var(--accent); }
+.checkin-result.is-bad  { border-color: var(--danger); }
+.checkin-result.is-bad strong { color: var(--danger); }
+
+.checkin-log { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.checkin-log li {
+  padding: 7px 0; border-bottom: 1px solid var(--line); color: var(--muted);
+}
+.checkin-side .stat { margin-bottom: 14px; }
+
+@media (max-width: 860px) {
+  .checkin { grid-template-columns: 1fr; }
+}
+
+/* ================================================================
+   صفحة طباعة أكواد الضيوف
+   ================================================================ */
+.qrsheet { padding: 22px 0 60px; }
+.qrsheet-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap;
+  width: min(1180px, 100% - 36px); margin: 0 auto 10px;
+}
+.qrsheet-hint {
+  width: min(1180px, 100% - 36px); margin: 0 auto 20px;
+  color: var(--muted); font-size: 13.5px; max-width: 70ch;
+}
+.qrsheet-grid {
+  width: min(1180px, 100% - 36px); margin-inline: auto;
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+.qrcard {
+  border: 1px dashed var(--line); border-radius: 12px;
+  padding: 14px 10px; text-align: center; background: #fff; color: #17130f;
+  break-inside: avoid;
+}
+.qrcard-event { font-family: "Amiri", serif; font-size: 13px; color: #8a6a33; margin: 0 0 8px; }
+.qrcard-code svg { width: 118px; height: 118px; display: block; margin: 0 auto; }
+.qrcard-code path, .qrcard-code rect { fill: #17130f; }
+.qrcard-name { font-weight: 700; font-size: 14.5px; margin: 9px 0 2px; }
+.qrcard-meta { font-size: 11.5px; color: #6d675f; margin: 0; }
+
+@media print {
+  .no-print, .nav, .nav-scrim { display: none !important; }
+  body { background: #fff; }
+  .qrsheet { padding: 0; }
+  .qrsheet-grid { width: 100%; gap: 8px; grid-template-columns: repeat(4, 1fr); }
+  .qrcard { border-color: #bbb; }
+}

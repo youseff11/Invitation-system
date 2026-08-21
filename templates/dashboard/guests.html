@@ -1,0 +1,103 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}الضيوف — {{ invitation.title }}{% endblock %}
+{% block dash %}
+<div class="dash-head">
+  <h1>ضيوف {{ invitation.title }}</h1>
+  <div class="toolbar" style="margin:0">
+    <a class="btn btn--gold" href="{% url 'checkin' invitation.pk %}">📷 مسح الدخول</a>
+    <a class="btn btn--ghost" href="{% url 'guest_qr_sheet' invitation.pk %}" target="_blank" rel="noopener">🖨 أكواد QR</a>
+    <a class="btn btn--ghost" href="{% url 'invitation_editor' invitation.pk %}">↩ المحرر</a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{{ guests|length }}</b><span>مدعو</span></div>
+  <div class="stat"><b>{{ invitation.attending_count }}</b><span>أكّد الحضور</span></div>
+  <div class="stat"><b>{{ invitation.total_attending_people }}</b><span>إجمالي الحاضرين</span></div>
+  <div class="stat"><b>{{ invitation.public_views }}</b><span>مشاهدة</span></div>
+</div>
+
+<div class="card" style="margin-bottom:22px">
+  <h2 style="font-size:17px;margin-top:0">استيراد قائمة الضيوف من ملف CSV</h2>
+  <p class="muted" style="font-size:13.5px">
+    لازم يكون فيه عمود للاسم. الأعمدة الاختيارية: رقم الهاتف، المجموعة، عدد المرافقين، ملاحظات.
+    لو الضيف موجود بنفس رقم الهاتف هيتحدّث بدل ما يتكرر.
+  </p>
+  <form method="post" enctype="multipart/form-data" class="toolbar">
+    {% csrf_token %}
+    <input type="file" name="csv_file" accept=".csv,text/csv" required>
+    <button class="btn btn--gold btn--sm" type="submit">استيراد</button>
+    <a class="btn btn--ghost btn--sm" href="{% url 'guests_sample_csv' %}">تحميل ملف نموذجي</a>
+  </form>
+</div>
+
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr);align-items:start">
+  <div>
+    <h2 style="font-size:18px">قائمة الضيوف</h2>
+    <div class="table-wrap" style="margin-bottom:24px">
+      <table>
+        <thead><tr><th>الاسم</th><th>الهاتف</th><th>مرافقون</th><th>الرد</th><th>رابطه الشخصي</th><th>الدخول</th></tr></thead>
+        <tbody>
+          {% for g in guests %}
+          <tr>
+            <td>{{ g.name }}</td>
+            <td>{{ g.phone|default:'—' }}</td>
+            <td>{{ g.plus_ones_allowed }}</td>
+            <td>
+              {% if g.rsvp_status %}<span class="pill pill--{{ g.rsvp_status }}">{{ g.latest_rsvp.get_status_display }}</span>
+              {% else %}<span class="muted">لم يرد</span>{% endif %}
+            </td>
+            <td>
+              <div class="guest-link">
+                <button class="btn btn--ghost btn--sm" type="button"
+                        data-copy="{{ request.scheme }}://{{ request.get_host }}{{ g.get_absolute_url }}">نسخ</button>
+                {% if g.phone %}
+                <a class="btn btn--ghost btn--sm" target="_blank" rel="noopener"
+                   href="https://wa.me/?text={{ g.name|urlencode }}%2C%20{{ request.scheme }}://{{ request.get_host }}{{ g.get_absolute_url|urlencode }}">واتساب</a>
+                {% endif %}
+                <a class="btn btn--ghost btn--sm" target="_blank" rel="noopener"
+                   href="{{ g.get_absolute_url }}">فتح</a>
+              </div>
+            </td>
+            <td>
+              <button class="btn btn--ghost btn--sm" data-checkin="{% url 'guest_toggle_checkin' g.pk %}">
+                {% if g.checked_in %}✓ دخل{% else %}تسجيل الدخول{% endif %}
+              </button>
+            </td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 style="font-size:18px">تأكيدات الحضور</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>الاسم</th><th>الحالة</th><th>مرافقون</th><th>الرسالة</th><th>التاريخ</th></tr></thead>
+        <tbody>
+          {% for r in rsvps %}
+          <tr>
+            <td>{{ r.name }}</td>
+            <td><span class="pill pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
+            <td>{{ r.companions }}</td>
+            <td style="white-space:normal;max-width:280px">{{ r.message|default:'—' }}</td>
+            <td>{{ r.created_at|date:'Y/m/d H:i' }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="empty">لا توجد ردود بعد.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">إضافة ضيف</h3>
+    <form class="form" method="post">
+      {% csrf_token %}
+      {% for f in form %}
+        <div class="field"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}</div>
+      {% endfor %}
+      <button class="btn btn--gold btn--block" type="submit">إضافة</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

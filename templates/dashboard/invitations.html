@@ -1,0 +1,43 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}الدعوات — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head">
+  <h1>الدعوات</h1>
+  <a class="btn btn--gold" href="{% url 'invitation_create' %}">＋ دعوة جديدة</a>
+</div>
+
+<form class="toolbar" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="ابحث بالاسم أو الرابط…">
+  <select name="status">
+    <option value="">كل الحالات</option>
+    {% for value, label in status_choices %}
+      <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn--ghost btn--sm" type="submit">بحث</button>
+</form>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>الدعوة</th><th>العميل</th><th>الباقة</th><th>الحالة</th><th>ضيوف</th><th>ردود</th><th>مشاهدات</th><th></th></tr></thead>
+    <tbody>
+      {% for i in invitations %}
+      <tr>
+        <td><strong>{{ i.title }}</strong><br><small class="muted">/i/{{ i.slug }}/</small></td>
+        <td>{{ i.customer.name }}</td>
+        <td>{{ i.plan.name }}</td>
+        <td><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
+        <td>{{ i.guest_total }}</td>
+        <td>{{ i.rsvp_total }}</td>
+        <td>{{ i.public_views }}</td>
+        <td style="display:flex;gap:6px">
+          <a class="btn btn--gold btn--sm" href="{% url 'invitation_editor' i.pk %}">المحرر</a>
+          <a class="btn btn--ghost btn--sm" href="{% url 'guests' i.pk %}">الضيوف</a>
+          <a class="btn btn--ghost btn--sm" href="{{ i.get_absolute_url }}" target="_blank" rel="noopener">↗</a>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="8" class="empty">لا توجد دعوات مطابقة.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
