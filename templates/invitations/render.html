@@ -36,6 +36,18 @@
   {% endif %}
 </div>
 
+{% comment %}
+  إعدادات التمرير التلقائي بتوصل زي الموسيقى بالظبط: JSON في الصفحة،
+  مش متغيّر Django جوّه ملف الجافاسكربت. الملف الستاتيك بيفضل ستاتيك.
+  داخل المحرر بنبعت مفعّل=false عشان الصفحة ما تفضلش تنزل لوحدها
+  وإنت بتعدّل.
+{% endcomment %}
+{{ scroll_config|json_script:"invite-scroll" }}
+
+{% if cta %}
+{% include 'invitations/_preview_cta.html' %}
+{% endif %}
+
 {{ music_config|json_script:"invite-music" }}
 <script src="{% static 'js/invite.js' %}" defer></script>
 </body>

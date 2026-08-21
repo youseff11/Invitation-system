@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -329,7 +330,16 @@ class Invitation(TimeStampedModel):
 
     @property
     def allowed_features(self) -> set[str]:
-        return self.plan.feature_set
+        """مزايا الباقة + أي مزايا اتشترت كإضافات في الطلب.
+
+        من غير الجزء التاني، حد يدفع في إضافة «موسيقى» فوق باقة
+        مافيهاش موسيقى ما كانش هياخد حاجة — ولا حد كان هيلاحظ.
+        """
+        features = set(self.plan.feature_set)
+        order = getattr(self, "order", None)
+        if order is not None:
+            features |= order.addon_features
+        return features
 
     @property
     def attending_count(self) -> int:
@@ -573,3 +583,145 @@ class Order(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"طلب #{self.pk} — {self.customer.name}"
+
+    # -- الإضافات ----------------------------------------------------------
+    @property
+    def addons_total(self):
+        """إجمالي الإضافات بأسعارها **وقت الشراء** مش أسعارها الحالية."""
+        return sum((oa.price for oa in self.order_addons.all()), Decimal("0"))
+
+    @property
+    def total_price(self):
+        return (self.plan.price or Decimal("0")) + self.addons_total
+
+    @property
+    def addon_features(self) -> set[str]:
+        """المزايا اللي الإضافات المتشترية بتفتحها في الدعوة."""
+        return {
+            oa.addon.code.strip()
+            for oa in self.order_addons.select_related("addon")
+            if oa.addon.code.strip()
+        }
+
+
+# --------------------------------------------------------------------------
+class PlanAddon(TimeStampedModel):
+    """إضافة اختيارية بسعر زيادة فوق سعر الباقة.
+
+    ``code`` بيربط الإضافة بميزة حقيقية في المحرك (music, rsvp, gallery…).
+    لو اتحطّت، شراء الإضافة **بيفتح** الميزة دي في الدعوة اللي هتتعمل من
+    الطلب — من غير ما حد يعدّل الباقة بالإيد. وسيبها فاضية لو الإضافة
+    خدمة مش ميزة (زي «تسليم خلال ٢٤ ساعة»).
+
+    الأسعار بتتغيّر مع الوقت، عشان كده الطلب بيصوّر السعر وقت الشراء في
+    ``OrderAddon`` — تعديل السعر هنا مايعيدش كتابة الطلبات القديمة.
+    """
+
+    name = models.CharField("الاسم", max_length=120)
+    name_en = models.CharField("الاسم (EN)", max_length=120, blank=True)
+    code = models.CharField(
+        "مفتاح الميزة", max_length=40, blank=True,
+        help_text="اختياري — مفتاح ميزة في المحرك (music / rsvp / gallery …). "
+                  "لو اتحط، شراء الإضافة بيفتح الميزة في الدعوة.",
+    )
+    price = models.DecimalField("السعر", max_digits=10, decimal_places=2, default=0,
+                                validators=[MinValueValidator(0)])
+    description = models.CharField("وصف مختصر", max_length=200, blank=True)
+    plans = models.ManyToManyField(
+        Plan, blank=True, related_name="addons", verbose_name="الباقات",
+        help_text="سيبها فاضية عشان الإضافة تظهر مع كل الباقات.",
+    )
+    is_active = models.BooleanField("مفعّلة", default=True)
+    sort_order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["sort_order", "price", "id"]
+        verbose_name = "إضافة"
+        verbose_name_plural = "الإضافات"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.price})"
+
+    @property
+    def display_name(self) -> str:
+        return _pick(self.name, self.name_en)
+
+    def available_for(self, plan) -> bool:
+        """الإضافة متاحة للباقة دي؟ مفيش باقات محدّدة = متاحة للكل."""
+        if not self.pk:
+            return False
+        linked = self.plans.all()
+        return not linked.exists() or (plan is not None and plan in linked)
+
+
+# --------------------------------------------------------------------------
+class OrderAddon(models.Model):
+    """إضافة متشترية في طلب — بسعرها وقت الشراء مش سعرها الحالي."""
+
+    order = models.ForeignKey("Order", on_delete=models.CASCADE,
+                              related_name="order_addons")
+    addon = models.ForeignKey(PlanAddon, on_delete=models.PROTECT,
+                              related_name="order_addons")
+    # صورة من وقت الشراء — الاسم كمان، عشان لو الإضافة اتغيّر اسمها
+    # الطلب القديم يفضل مقروء زي ما اتعمل
+    name = models.CharField("الاسم وقت الشراء", max_length=120, blank=True)
+    price = models.DecimalField("السعر وقت الشراء", max_digits=10, decimal_places=2,
+                                default=0)
+
+    class Meta:
+        unique_together = [("order", "addon")]
+        verbose_name = "إضافة الطلب"
+        verbose_name_plural = "إضافات الطلب"
+
+    def __str__(self) -> str:
+        return f"{self.name or self.addon.name} — {self.price}"
+
+
+# --------------------------------------------------------------------------
+class SiteSetting(models.Model):
+    """إعدادات الموقع العامة — سجل واحد بس.
+
+    مش في ``settings.py`` عشان المستخدم يقدر يغيّرها من اللوحة من غير
+    نشر جديد، ومش في المستند عشان دي مش بتاعة دعوة بعينها.
+    """
+
+    preview_cta_enabled = models.BooleanField("شريط «عجبك القالب؟»", default=True)
+    preview_cta_text = models.CharField("النص", max_length=120,
+                                        default="عجبك القالب ده؟")
+    whatsapp_enabled = models.BooleanField("إظهار واتساب", default=True)
+    whatsapp_number = models.CharField(
+        "رقم الواتساب", max_length=30, blank=True,
+        help_text="بالكود الدولي، مثال: +201559403203",
+    )
+    whatsapp_message = models.CharField(
+        "الرسالة الجاهزة", max_length=300,
+        default="السلام عليكم، عايز أطلب دعوة بقالب: {template}",
+        help_text="{template} بتتبدّل باسم القالب اللي الزائر شايفه.",
+    )
+    facebook_enabled = models.BooleanField("إظهار فيسبوك", default=True)
+    facebook_url = models.URLField("رابط صفحة فيسبوك", max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "إعدادات الموقع"
+        verbose_name_plural = "إعدادات الموقع"
+
+    def __str__(self) -> str:
+        return "إعدادات الموقع"
+
+    def save(self, *args, **kwargs):
+        # سجل واحد بس مهما حصل. ‎objects.create()‎ بيبعت
+        # ‎force_insert=True‎، ومع pk ثابت ده بيضرب ‎IntegrityError‎ لو
+        # السجل موجود — فبنحوّلها لتحديث بدل ما تقع في وش اللي نده.
+        self.pk = 1
+        kwargs["force_insert"] = False
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls) -> "SiteSetting":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def whatsapp_digits(self) -> str:
+        """wa.me عايز أرقام بس — من غير + ولا مسافات ولا شرط."""
+        return "".join(ch for ch in self.whatsapp_number if ch.isdigit())

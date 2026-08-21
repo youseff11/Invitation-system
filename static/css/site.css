@@ -689,3 +689,64 @@ tbody tr:hover { background: var(--surface-2); }
   .nav-links a { padding: 7px 6px; font-size: 12.5px; }
   .nav-cta { padding: 8px 12px; font-size: 12.5px; }
 }
+
+/* ---------------------------------------------------------- إضافات الطلب */
+.addons {
+  display: grid;
+  gap: 8px;
+  /* عمودين على الشاشات الواسعة، عمود على الموبايل — من غير media query.
+     min(240px, 100%) مش 240px: auto-fit مابيصغّرش العمود تحت الحد
+     الأدنى، فعلى شاشة ٣٩٠ كان العمود بيفضل ٢٤٠ ويطلّع السعر بره. */
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+.addon {
+  /* جريد مش فليكس: العمود الأوسط ‎1fr‎ بيصغّر لحد ما الاسم يلف، فالسعر
+     مابيخرجش بره الشاشة على الموبايل ومحدش بينزل سطر لوحده.
+     مع فليكس + wrap كان مربّع الاختيار بينزل سطر لوحده فوق. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+.addon:hover { border-color: var(--accent); }
+/* الاختيار لازم يبان من نظرة واحدة، مش من مربّع صغير بس */
+.addon:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.addon input { margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+.addon-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.addon-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.addon-desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.addon-price {
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  white-space: nowrap;
+}
+.addons-total {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* مدخلات جوّه خلايا الجدول (تعديل سريع للباقات) — أصغر من مدخلات
+   الفورم العادي عشان الصف ما يعلاش */
+.cell-input {
+  font: inherit; font-size: 13.5px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+.cell-input:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}

@@ -18,6 +18,7 @@
         <a href="{% url 'dashboard_music' %}"       class="{% if nav == 'music' %}is-active{% endif %}">{% translate "الموسيقى" %}</a>
         <a href="{% url 'dashboard_intros' %}"      class="{% if nav == 'intros' %}is-active{% endif %}">{% translate "الافتتاحيات" %}</a>
         <a href="{% url 'dashboard_orders' %}"      class="{% if nav == 'orders' %}is-active{% endif %}">{% translate "الطلبات" %}</a>
+        <a href="{% url 'dashboard_plans' %}"       class="{% if nav == 'plans' or nav == 'site' %}is-active{% endif %}">{% translate "الباقات" %}</a>
         <a href="{% url 'analytics' %}"             class="{% if nav == 'analytics' %}is-active{% endif %}">{% translate "الإحصائيات" %}</a>
         <a href="/admin/">{% translate "إدارة البيانات" %}</a>
         <a class="nav-only-mobile" href="{% url 'home' %}">{% translate "الموقع العام" %}</a>

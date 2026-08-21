@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan,
-    RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
+    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 )
 
 
@@ -64,10 +64,41 @@ class RSVPAdmin(admin.ModelAdmin):
     search_fields = ("name", "phone")
 
 
+class OrderAddonInline(admin.TabularInline):
+    """إضافات الطلب بأسعارها وقت الشراء — للاطّلاع، مش للتعديل."""
+    model = OrderAddon
+    extra = 0
+    readonly_fields = ("addon", "name", "price")
+    can_delete = False
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "customer", "plan", "status", "event_date", "created_at")
+    list_display = ("id", "customer", "plan", "total_price", "status",
+                    "event_date", "created_at")
     list_filter = ("status",)
+    inlines = [OrderAddonInline]
+
+
+@admin.register(PlanAddon)
+class PlanAddonAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "price", "is_active", "sort_order")
+    list_editable = ("price", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    search_fields = ("name", "code")
+    filter_horizontal = ("plans",)
+
+
+@admin.register(SiteSetting)
+class SiteSettingAdmin(admin.ModelAdmin):
+    list_display = ("__str__", "preview_cta_enabled", "whatsapp_number")
+
+    def has_add_permission(self, request):
+        # سجل واحد بس — الزرار «إضافة» بيلخبط
+        return not SiteSetting.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Asset)

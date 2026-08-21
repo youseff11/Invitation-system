@@ -128,11 +128,41 @@
     <form class="form form--2 card" method="post" action="{% url 'home' %}#order">
       {% csrf_token %}
       {% for f in form %}
+        {% if f.name == 'addons' %}
+          {% comment %}
+            الإضافات مربّعات اختيار بأسعارها جنبها مش قائمة منسدلة —
+            العميل لازم يشوف السعر وهو بيختار مش بعد ما يبعت.
+            data-plans فيه أرقام الباقات المسموح فيها الإضافة عشان
+            الجافاسكربت يخفي غير المتاح، والسيرفر بيتحقق تاني في clean().
+          {% endcomment %}
+          {% if addons %}
+          <div class="field span-2">
+            <label>{{ f.label }}</label>
+            <div class="addons" data-addons data-currency="{{ SITE_CURRENCY }}">
+              {% for a in addons %}
+              <label class="addon" data-addon
+                     data-plans="{% for p in a.plans.all %}{{ p.pk }} {% endfor %}">
+                <input type="checkbox" name="addons" value="{{ a.pk }}"
+                       data-price="{{ a.price|floatformat:0 }}">
+                <span class="addon-body">
+                  <span class="addon-name">{{ a.display_name }}</span>
+                  {% if a.description %}<span class="addon-desc">{{ a.description }}</span>{% endif %}
+                </span>
+                <span class="addon-price">+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            <p class="addons-total" data-addons-total hidden></p>
+            {{ f.errors }}
+          </div>
+          {% endif %}
+        {% else %}
         <div class="field{% if f.name == 'message' or f.name == 'names' %} span-2{% endif %}">
           <label for="{{ f.id_for_label }}">{{ f.label }}</label>
           {{ f }}
           {{ f.errors }}
         </div>
+        {% endif %}
       {% endfor %}
       <div class="span-2"><button class="btn btn--gold btn--block" type="submit">{% translate "إرسال الطلب" %}</button></div>
     </form>

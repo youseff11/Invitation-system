@@ -6,6 +6,8 @@ import hashlib
 import io
 import json
 import mimetypes
+from decimal import Decimal, InvalidOperation
+from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib import messages
@@ -29,10 +31,11 @@ from . import blocks as blocks_engine
 from . import qrcodes
 from .forms import (
     GuestForm, IntroVideoForm, InvitationSettingsForm, MusicTrackForm, OrderForm,
+    PlanAddonForm, SiteSettingForm,
 )
 from .models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, Plan,
-    RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
+    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 )
 from django.utils.safestring import mark_safe
 from .renderer import render_document
@@ -81,6 +84,22 @@ def _staff_required(request):
         raise PermissionDenied("لوحة التحكم متاحة لفريق العمل فقط.")
 
 
+def _scroll_config(doc_settings: dict, *, editable: bool = False) -> dict:
+    """إعدادات التمرير التلقائي اللي بتوصل للمتصفح.
+
+    ``editable`` بيطفّيه: الصفحة ماينفعش تفضل نازلة لوحدها والمستخدم
+    بيعدّل فيها من المحرر.
+    """
+    if editable or not doc_settings.get("auto_scroll"):
+        return {"enabled": False}
+    return {
+        "enabled": True,
+        "speed": doc_settings.get("auto_scroll_speed") or "normal",
+        "delay": doc_settings.get("auto_scroll_delay") or 0,
+        "loop": bool(doc_settings.get("auto_scroll_loop")),
+    }
+
+
 def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):
     """يبني صفحة الدعوة كاملة من المستند."""
     result = render_document(
@@ -120,6 +139,7 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         "share_image": doc_settings.get("share_image") or "",
         "canonical_url": request.build_absolute_uri(invitation.get_absolute_url()),
         "music_config": music,
+        "scroll_config": _scroll_config(doc_settings, editable=editable),
         "guest": guest,
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
@@ -141,6 +161,7 @@ def home(request):
         messages.error(request, "يرجى مراجعة البيانات المدخلة.")
     return render(request, "public/home.html", {
         "templates": templates, "plans": plans, "form": form,
+        "addons": PlanAddon.objects.filter(is_active=True).prefetch_related("plans"),
     })
 
 
@@ -155,6 +176,30 @@ def template_gallery(request):
         "categories": Template.CATEGORY_CHOICES,
         "active_category": category,
     })
+
+
+def _preview_cta(template) -> dict | None:
+    """شريط «عجبك القالب؟» في معاينة القالب.
+
+    بيرجّع ``None`` لو الشريط مطفي — فالقالب ما بيتعرضش أصلاً.
+    اسم القالب بيتحط جوّه رسالة الواتساب عشان اللي يوصلك يبقى معروف
+    هو شايف إيه من غير ما الزائر يكتب حاجة.
+    """
+    cfg = SiteSetting.load()
+    if not cfg.preview_cta_enabled:
+        return None
+
+    name = template.display_name
+    wa = ""
+    if cfg.whatsapp_enabled and cfg.whatsapp_digits:
+        text = (cfg.whatsapp_message or "").replace("{template}", name)
+        wa = f"https://wa.me/{cfg.whatsapp_digits}?text={quote(text)}"
+
+    fb = cfg.facebook_url if cfg.facebook_enabled else ""
+    if not wa and not fb:
+        return None                       # شريط من غير أزرار = ضوضاء
+    return {"text": cfg.preview_cta_text, "template_name": name,
+            "whatsapp": wa, "facebook": fb}
 
 
 @require_GET
@@ -173,6 +218,8 @@ def template_demo(request, slug):
         "share_image": "",
         "canonical_url": "",
         "music_config": {},
+        "scroll_config": _scroll_config(result["settings"]),
+        "cta": _preview_cta(template),
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
     })
@@ -605,7 +652,8 @@ def dashboard_intros(request):
 def dashboard_orders(request):
     _staff_required(request)
     status = request.GET.get("status", "")
-    qs = Order.objects.select_related("customer", "plan", "template")
+    qs = (Order.objects.select_related("customer", "plan", "template")
+            .prefetch_related("order_addons__addon"))
     if status:
         qs = qs.filter(status=status)
     return render(request, "dashboard/orders.html", {
@@ -1269,4 +1317,108 @@ def analytics(request):
             "attending": RSVPResponse.objects.filter(status="attending").count(),
             "declined": RSVPResponse.objects.filter(status="declined").count(),
         },
+    })
+
+
+@login_required
+def dashboard_plans(request):
+    """الباقات والإضافات — تعديل الأسعار وإضافات بسعر زيادة."""
+    _staff_required(request)
+    editing = None
+    form = PlanAddonForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+
+        if action in {"delete", "toggle"}:
+            addon = get_object_or_404(PlanAddon, pk=request.POST.get("addon") or 0)
+            if action == "delete":
+                # الإضافة اللي اتباعت في طلب مابتتشالش — الطلب بيشاور
+                # عليها، ومسحها بيمسح تاريخ الطلب معاها
+                if addon.order_addons.exists():
+                    addon.is_active = False
+                    addon.save(update_fields=["is_active", "updated_at"])
+                    messages.warning(
+                        request,
+                        f"«{addon.name}» اتشترت في طلبات قبل كده، فاتخبّت بدل "
+                        "ما تتمسح عشان الطلبات القديمة تفضل مقروءة.",
+                    )
+                else:
+                    name = addon.name
+                    addon.delete()
+                    messages.success(request, f"اتمسحت «{name}».")
+            else:
+                addon.is_active = not addon.is_active
+                addon.save(update_fields=["is_active", "updated_at"])
+                messages.success(
+                    request,
+                    ("فعّلت" if addon.is_active else "وقّفت") + f" «{addon.name}».",
+                )
+            return redirect("dashboard_plans")
+
+        if action == "plan":
+            plan = get_object_or_404(Plan, pk=request.POST.get("plan") or 0)
+            # تعديل سريع للاسم والسعر من الجدول — الباقي في إدارة البيانات
+            plan.name = (request.POST.get("name") or plan.name).strip()[:80]
+            try:
+                plan.price = Decimal(request.POST.get("price") or plan.price)
+                raw_old = (request.POST.get("old_price") or "").strip()
+                plan.old_price = Decimal(raw_old) if raw_old else None
+            except (InvalidOperation, TypeError):
+                messages.error(request, "السعر لازم يكون رقم.")
+                return redirect("dashboard_plans")
+            if plan.price < 0 or (plan.old_price is not None and plan.old_price < 0):
+                messages.error(request, "السعر ماينفعش يكون بالسالب.")
+                return redirect("dashboard_plans")
+            plan.is_active = request.POST.get("is_active") == "on"
+            plan.save(update_fields=["name", "price", "old_price", "is_active",
+                                     "updated_at"])
+            messages.success(request, f"اتحفظت باقة «{plan.name}».")
+            return redirect("dashboard_plans")
+
+        else:
+            pk = request.POST.get("addon") or ""
+            instance = PlanAddon.objects.filter(pk=pk).first() if pk else None
+            form = PlanAddonForm(request.POST, instance=instance)
+            if form.is_valid():
+                addon = form.save()
+                messages.success(
+                    request,
+                    ("اتحفظت" if instance else "اتضافت") + f" «{addon.name}».",
+                )
+                return redirect("dashboard_plans")
+            editing = instance
+            messages.error(request, "راجع البيانات — فيه حقل ناقص أو غلط.")
+
+    edit_pk = request.GET.get("edit")
+    if edit_pk and request.method == "GET":
+        editing = PlanAddon.objects.filter(pk=edit_pk).first()
+        if editing:
+            form = PlanAddonForm(instance=editing)
+
+    return render(request, "dashboard/plans.html", {
+        "nav": "plans",
+        "form": form,
+        "editing": editing,
+        "addons": PlanAddon.objects.prefetch_related("plans"),
+        "plans": Plan.objects.all(),
+        "feature_keys": sorted(blocks_engine.feature_keys()),
+    })
+
+
+@login_required
+def dashboard_site(request):
+    """إعدادات الموقع — شريط المعاينة وروابط التواصل."""
+    _staff_required(request)
+    cfg = SiteSetting.load()
+    form = SiteSettingForm(request.POST or None, instance=cfg)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "اتحفظت الإعدادات.")
+        return redirect("dashboard_site")
+    return render(request, "dashboard/site.html", {
+        "nav": "site",
+        "form": form,
+        "cfg": cfg,
+        "sample": Template.objects.filter(is_active=True).first(),
     })

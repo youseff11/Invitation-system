@@ -1,6 +1,7 @@
 """اختبارات المحرك — البلوكات، العرض، الأمان، وواجهة المحرر."""
 
 import json
+import re
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -10,9 +11,12 @@ from datetime import timedelta
 from system import blocks as B
 from system.data import golden_classic
 from system.models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Plan,
-    RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
+    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 )
+from system.forms import OrderForm, PlanAddonForm
+from decimal import Decimal
+from urllib.parse import quote
 from system.renderer import layout_css, render_document
 from system.sanitize import clean_html
 from system import cssscope, guestimport, images, templateimport, video
@@ -2219,3 +2223,421 @@ class VideoHeightCapTests(TestCase):
         for o in spec["options"]:
             with self.subTest(o=o["value"]):
                 self.assertIn(f".lb-video--{o['value']} ", self.css)
+
+
+# ==========================================================================
+class AutoScrollTests(BaseAppTest):
+    """التمرير التلقائي — مفتاح تشغيل، وسرعة، ويقف أول ما الضيف يلمس."""
+
+    def _render(self, **s):
+        doc = self.inv.document
+        doc["settings"].update(s)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_default_is_off(self):
+        """ميزة بتحرّك الصفحة تحت إيد الواحد ماينفعش تبقى الافتراضي."""
+        field = next(f for f in B.editor_schema()["settings_fields"]
+                     if f["key"] == "auto_scroll")
+        self.assertIs(field["default"], False)
+        body = self._render()
+        self.assertIn('"enabled": false', body)
+
+    def test_enabled_ships_its_settings(self):
+        body = self._render(auto_scroll=True, auto_scroll_speed="fast",
+                            auto_scroll_delay=5, auto_scroll_loop=True)
+        node = body[body.index('id="invite-scroll"'):]
+        node = node[:node.index("</script>")]
+        self.assertIn('"enabled": true', node)
+        self.assertIn('"speed": "fast"', node)
+        self.assertIn('"delay": 5', node)
+        self.assertIn('"loop": true', node)
+
+    def test_bogus_speed_falls_back(self):
+        body = self._render(auto_scroll=True, auto_scroll_speed="\"};alert(1)//")
+        self.assertIn('"speed": "normal"', body)
+        self.assertNotIn("alert(1)", body)
+
+    def test_it_is_off_inside_the_editor(self):
+        """الصفحة ماينفعش تفضل نازلة لوحدها وإنت بتعدّل فيها."""
+        from system.views import _scroll_config
+        on = {"auto_scroll": True, "auto_scroll_speed": "fast"}
+        self.assertTrue(_scroll_config(on)["enabled"])
+        self.assertFalse(_scroll_config(on, editable=True)["enabled"])
+
+    def test_delay_is_clamped(self):
+        body = self._render(auto_scroll=True, auto_scroll_delay=9999)
+        self.assertIn('"delay": 20', body)      # الحد الأعلى في الحقل
+
+    # -- ضمانات في ملف الجافاسكربت ---------------------------------------
+    def _js(self):
+        js = (Path(settings.BASE_DIR) / "static/js/invite.js").read_text("utf-8")
+        i = js.index("function initAutoScroll()")
+        return js[i:js.index("\n  // -----", i)]
+
+    def test_reduced_motion_disables_it_completely(self):
+        """الإعداد ده طلب صريح من ناس الحركة بتتعبهم."""
+        self.assertIn("prefers-reduced-motion", self._js())
+
+    def test_user_interaction_stops_it(self):
+        body = self._js()
+        for ev in ("wheel", "touchstart", "pointerdown", "keydown"):
+            with self.subTest(ev=ev):
+                self.assertIn(f'"{ev}"', body)
+        self.assertIn("stoppedByUser", body)
+
+    def test_the_control_button_is_exempt_from_that(self):
+        """من غير الاستثناء ده الضغط على «تشغيل» كان بيوقّفه في نفس اللحظة."""
+        self.assertIn("btn.contains(e.target)", self._js())
+
+    def test_it_waits_for_the_intro_to_close(self):
+        """الافتتاحية بتقفل التمرير أصلاً، فمالوش معنى يبدأ قبلها."""
+        self.assertIn("lb:intro-open", self._js())
+        js = (Path(settings.BASE_DIR) / "static/js/invite.js").read_text("utf-8")
+        self.assertIn('dispatchEvent(new CustomEvent("lb:intro-open"))', js)
+
+
+# ==========================================================================
+class PreviewCtaTests(BaseAppTest):
+    """شريط «عجبك القالب؟» — في معاينة القالب بس."""
+
+    def setUp(self):
+        super().setUp()
+        self.cfg = SiteSetting.load()
+        self.cfg.whatsapp_number = "+20 155-940 3203"
+        self.cfg.facebook_url = "https://facebook.com/farha"
+        self.cfg.save()
+
+    def _preview(self):
+        return self.client.get(f"/templates/{self.template.slug}/preview/").content.decode()
+
+    def test_bar_shows_with_the_template_name(self):
+        body = self._preview()
+        self.assertIn("data-preview-cta", body)
+        self.assertIn("عجبك القالب ده؟", body)
+        self.assertIn(self.template.name, body)
+
+    def test_whatsapp_link_carries_the_template_name(self):
+        body = self._preview()
+        self.assertIn("wa.me/201559403203", body)
+        # الاسم متشفّر في الرابط
+        self.assertIn(quote(self.template.name), body)
+
+    def test_number_is_normalised_for_wa_me(self):
+        """wa.me بيرفض + والمسافات والشرط — بيدّي صفحة غلط من غير شرح."""
+        self.assertEqual(SiteSetting.load().whatsapp_digits, "201559403203")
+
+    def test_facebook_link_is_there(self):
+        self.assertIn("facebook.com/farha", self._preview())
+
+    def test_toggle_hides_the_whole_bar(self):
+        self.cfg.preview_cta_enabled = False
+        self.cfg.save()
+        self.assertNotIn("data-preview-cta", self._preview())
+
+    def test_each_icon_has_its_own_toggle(self):
+        self.cfg.whatsapp_enabled = False
+        self.cfg.save()
+        body = self._preview()
+        self.assertNotIn("wa.me", body)
+        self.assertIn("facebook.com/farha", body)   # فيسبوك لسه ظاهر
+
+    def test_bar_disappears_when_nothing_is_left_to_show(self):
+        """شريط فيه نص وبس ومفيش أي زرار = ضوضاء."""
+        self.cfg.whatsapp_enabled = False
+        self.cfg.facebook_enabled = False
+        self.cfg.save()
+        self.assertNotIn("data-preview-cta", self._preview())
+
+    def test_it_never_shows_on_a_real_invitation(self):
+        """دعوة العميل مش مكان إعلان — الشريط للمعاينة بس."""
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        self.assertNotIn("data-preview-cta", body)
+
+    def test_message_placeholder_is_replaced(self):
+        self.cfg.whatsapp_message = "عايز {template} لو سمحت"
+        self.cfg.save()
+        body = self._preview()
+        self.assertIn(quote(f"عايز {self.template.name} لو سمحت"), body)
+        self.assertNotIn("{template}", body)
+
+    def test_settings_are_one_row_only(self):
+        """سجلين إعدادات = مين اللي شغّال؟"""
+        SiteSetting.objects.create(preview_cta_text="تاني")
+        self.assertEqual(SiteSetting.objects.count(), 1)
+        self.assertEqual(SiteSetting.load().preview_cta_text, "تاني")
+
+
+# ==========================================================================
+class PlanAddonTests(BaseAppTest):
+    """إضافات بسعر زيادة فوق الباقة."""
+
+    def setUp(self):
+        super().setUp()
+        self.music = PlanAddon.objects.create(
+            name="موسيقى بالخلفية", code="music", price=50)
+        self.fast = PlanAddon.objects.create(
+            name="تسليم ٢٤ ساعة", code="", price=100)
+
+    def test_addon_page_lists_them(self):
+        self.client.force_login(self.staff)
+        body = self.client.get("/dashboard/plans/").content.decode()
+        self.assertIn("موسيقى بالخلفية", body)
+        self.assertIn("تسليم ٢٤ ساعة", body)
+
+    def test_page_is_staff_only(self):
+        self.assertEqual(self.client.get("/dashboard/plans/").status_code, 302)
+        self.client.force_login(self.normal)
+        self.assertEqual(self.client.get("/dashboard/plans/").status_code, 403)
+
+    def test_create_edit_toggle_delete(self):
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/plans/", {
+            "name": "معرض صور", "code": "gallery", "price": "75", "sort_order": "0",
+            "is_active": "on",
+        })
+        new = PlanAddon.objects.get(name="معرض صور")
+        self.assertEqual(new.code, "gallery")
+
+        self.client.post("/dashboard/plans/", {
+            "addon": new.pk, "name": "معرض صور موسّع", "code": "gallery",
+            "price": "90", "sort_order": "0", "is_active": "on",
+        })
+        new.refresh_from_db()
+        self.assertEqual(new.name, "معرض صور موسّع")
+        self.assertEqual(int(new.price), 90)
+
+        self.client.post("/dashboard/plans/", {"addon": new.pk, "action": "toggle"})
+        new.refresh_from_db()
+        self.assertFalse(new.is_active)
+
+        self.client.post("/dashboard/plans/", {"addon": new.pk, "action": "delete"})
+        self.assertFalse(PlanAddon.objects.filter(pk=new.pk).exists())
+
+    def test_unknown_feature_code_is_refused(self):
+        """إضافة بمفتاح مش موجود بتتباع ومابتفتحش حاجة — والعميل مش
+        هيعرف إن مفيش فرق."""
+        form = PlanAddonForm({"name": "x", "code": "not_a_feature",
+                              "price": "10", "sort_order": "0"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("code", form.errors)
+
+    def test_blank_code_is_fine(self):
+        """الإضافة ممكن تبقى خدمة مش ميزة — زي التسليم السريع."""
+        form = PlanAddonForm({"name": "تسليم سريع", "code": "",
+                              "price": "100", "sort_order": "0"})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_purchased_addon_is_hidden_not_deleted(self):
+        """مسحها كان هيمسح تاريخ الطلب معاها."""
+        order = self._order(self.music)
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/plans/", {"addon": self.music.pk, "action": "delete"})
+        self.music.refresh_from_db()
+        self.assertFalse(self.music.is_active)
+        self.assertTrue(order.order_addons.exists())
+
+    # -- الطلب -------------------------------------------------------------
+    def _order(self, *addons, plan=None):
+        form = OrderForm({
+            "customer_name": "يوسف", "customer_phone": "0100000001",
+            "plan": (plan or self.plan).pk, "event_type": "زفاف",
+            "names": "يوسف و سارة",
+            "addons": [a.pk for a in addons],
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        return form.save()
+
+    def test_order_total_adds_the_addons(self):
+        order = self._order(self.music, self.fast)
+        self.assertEqual(order.addons_total, Decimal("150"))
+        self.assertEqual(order.total_price, self.plan.price + Decimal("150"))
+
+    def test_price_at_purchase_is_frozen(self):
+        """تغيير سعر الإضافة بعدين ماينفعش يعيد كتابة طلب قديم."""
+        order = self._order(self.music)
+        self.music.price = Decimal("500")
+        self.music.save(update_fields=["price"])
+        order.refresh_from_db()
+        self.assertEqual(order.addons_total, Decimal("50"))
+
+    def test_name_at_purchase_is_frozen_too(self):
+        order = self._order(self.music)
+        self.music.name = "اسم تاني خالص"
+        self.music.save(update_fields=["name"])
+        self.assertEqual(order.order_addons.first().name, "موسيقى بالخلفية")
+
+    def test_bought_feature_opens_on_the_invitation(self):
+        """اللي دفع في «موسيقى» فوق باقة مافيهاش موسيقى لازم ياخدها."""
+        bare = Plan.objects.create(name="بسيطة", slug="bare", price=300,
+                                   features=["countdown"])
+        inv = Invitation.objects.create(
+            customer=self.customer, template=self.template, plan=bare,
+            name_one="أ", name_two="ب", status="published",
+            event_date=timezone.now() + timedelta(days=10),
+            document=self.template.get_document(),
+        )
+        self.assertNotIn("music", inv.allowed_features)
+
+        order = self._order(self.music, plan=bare)
+        order.invitation = inv
+        order.save(update_fields=["invitation"])
+        inv.refresh_from_db()
+        self.assertIn("music", inv.allowed_features)
+        self.assertIn("countdown", inv.allowed_features)   # ومزايا الباقة باقية
+
+    def test_service_addon_opens_nothing(self):
+        order = self._order(self.fast)
+        self.assertEqual(order.addon_features, set())
+
+    def test_addon_limited_to_other_plans_is_refused(self):
+        """الإخفاء في المتصفح مش حماية — الفورم بيتبعت من غير جافاسكربت."""
+        self.music.plans.set([self.basic])
+        form = OrderForm({
+            "customer_name": "يوسف", "customer_phone": "0100000002",
+            "plan": self.plan.pk, "event_type": "زفاف",
+            "addons": [self.music.pk],
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("addons", form.errors)
+
+    def test_unrestricted_addon_works_with_any_plan(self):
+        self.assertTrue(self.music.available_for(self.plan))
+        self.assertTrue(self.music.available_for(self.basic))
+
+    def test_addons_appear_in_the_order_form_on_the_site(self):
+        body = self.client.get("/").content.decode()
+        self.assertIn("موسيقى بالخلفية", body)
+        self.assertIn("data-addons", body)
+
+    def test_inactive_addon_is_not_offered(self):
+        self.music.is_active = False
+        self.music.save(update_fields=["is_active"])
+        self.assertNotIn("موسيقى بالخلفية", self.client.get("/").content.decode())
+
+    def test_orders_table_shows_the_addons_and_total(self):
+        self._order(self.music)
+        self.client.force_login(self.staff)
+        body = self.client.get("/dashboard/orders/").content.decode()
+        self.assertIn("موسيقى بالخلفية", body)
+        self.assertIn(str(int(self.plan.price + 50)), body)
+
+
+# ==========================================================================
+class PlanQuickEditTests(BaseAppTest):
+    """تعديل اسم وسعر الباقة من الجدول من غير ما تفتح صفحة تانية."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.staff)
+
+    def _post(self, **extra):
+        data = {"action": "plan", "plan": self.plan.pk, "name": self.plan.name,
+                "price": str(self.plan.price)}
+        data.update(extra)
+        return self.client.post("/dashboard/plans/", data)
+
+    def test_price_and_name_are_saved(self):
+        self._post(name="مميزة جداً", price="1250", is_active="on")
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.name, "مميزة جداً")
+        self.assertEqual(self.plan.price, Decimal("1250"))
+        self.assertTrue(self.plan.is_active)
+
+    def test_unchecked_box_actually_hides_the_plan(self):
+        """مربّع اختيار مش متعلّم مابيتبعتش أصلاً — لازم نتعامل مع غيابه."""
+        self._post()                       # من غير is_active
+        self.plan.refresh_from_db()
+        self.assertFalse(self.plan.is_active)
+
+    def test_negative_price_is_refused(self):
+        old = self.plan.price
+        self._post(price="-100")
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.price, old)
+
+    def test_garbage_price_does_not_crash(self):
+        old = self.plan.price
+        res = self._post(price="مية جنيه")
+        self.assertEqual(res.status_code, 302)
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.price, old)
+
+    def test_blank_old_price_clears_it(self):
+        self.plan.old_price = Decimal("2000")
+        self.plan.save(update_fields=["old_price"])
+        self._post(old_price="", is_active="on")
+        self.plan.refresh_from_db()
+        self.assertIsNone(self.plan.old_price)
+
+    def test_features_are_not_touched(self):
+        """التعديل السريع للسعر ماينفعش يمسح مزايا الباقة بالغلط."""
+        before = list(self.plan.features)
+        self._post(price="900", is_active="on")
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.features, before)
+
+    def test_the_row_forms_live_outside_the_table(self):
+        """‎<form>‎ ابن مباشر لـ‎<tr>‎ مش HTML صالح والمتصفح بينقله."""
+        body = self.client.get("/dashboard/plans/").content.decode()
+        table = body[body.index("<h2 style=\"font-size:18px;margin-top:28px\">الباقات"):]
+        table = table[:table.index("</table>")]
+        head, rows = table.split("<tbody>", 1)
+        self.assertIn('id="plan-', head)          # الفورمات قبل الجدول
+        self.assertNotIn("<form", rows)           # ومفيش فورم جوّه الصفوف
+
+
+# ==========================================================================
+class CssVariableTests(TestCase):
+    """كل ‎var(--x)‎ **من غير قيمة احتياطية** لازم يكون ليه مصدر.
+
+    الحكاية دي جت من غلطة حقيقية: كتبت ‎var(--border)‎ في ‎site.css‎
+    والاسم ده موجود في ‎invite.css‎ بس. النتيجة إن السطر كله بيبقى غير
+    صالح — الكارت طلع من غير حدود ومن غير إبراز للمختار، **من غير أي
+    رسالة خطأ في أي مكان**. ده أسوأ نوع غلط: بيسكت.
+
+    ‎var(--x, 62px)‎ بقيمة احتياطية مالهاش المشكلة دي — بتنزل على
+    الاحتياطي وخلاص، وده استخدام مقصود مش سهو.
+    """
+
+    # الاسم، وبعده فاصلة لو فيه قيمة احتياطية
+    VAR = re.compile(r"var\(\s*(--[a-z0-9-]+)\s*(,?)")
+    DEF = re.compile(r"(--[a-z0-9-]+)\s*:")
+
+    def _read(self, rel):
+        return (Path(settings.BASE_DIR) / rel).read_text("utf-8")
+
+    def _required(self, css):
+        """المتغيرات المستخدمة من غير قيمة احتياطية."""
+        return {name for name, comma in self.VAR.findall(css) if not comma}
+
+    def test_site_css_defines_everything_it_uses(self):
+        css = self._read("static/css/site.css")
+        missing = sorted(self._required(css) - set(self.DEF.findall(css)))
+        self.assertEqual(missing, [], f"متغيرات مستخدمة ومش متعرّفة: {missing}")
+
+    def test_invite_css_variables_come_from_somewhere(self):
+        """‎invite.css‎ بياخد متغيرات كتير من المحرك وقت العرض، فاللي
+        مش متعرّف في الملف لازم يكون بيتكتب من بايثون أو الجافاسكربت."""
+        css = self._read("static/css/invite.css")
+        missing = self._required(css) - set(self.DEF.findall(css))
+        parts = [
+            self._read("system/renderer.py"),
+            self._read("system/templatetags/invite.py"),
+            self._read("static/js/invite.js"),
+            self._read("static/js/editor.js"),
+        ]
+        for folder in ("templates/blocks", "templates/invitations"):
+            parts += [p.read_text("utf-8")
+                      for p in (Path(settings.BASE_DIR) / folder).glob("*.html")]
+        sources = "\n".join(parts)
+        orphans = sorted(v for v in missing if v not in sources)
+        self.assertEqual(orphans, [], f"متغيرات مالهاش مصدر خالص: {orphans}")
+
+    def test_the_check_would_have_caught_the_real_bug(self):
+        """ضمان إن الفحص نفسه شغّال مش بيعدّي كل حاجة."""
+        fake = ".x { border: 1px solid var(--does-not-exist); }"
+        self.assertEqual(self._required(fake), {"--does-not-exist"})
+        # ومع قيمة احتياطية مايتبلّغش عنه
+        self.assertEqual(self._required(".x { color: var(--nope, red); }"), set())

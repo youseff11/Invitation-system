@@ -289,6 +289,8 @@
       var vid = $("[data-intro-video]", intro);
       if (vid) { try { vid.pause(); } catch (e) {} }
       if (!editable) setTimeout(function () { intro.remove(); }, 700);
+      // التمرير التلقائي مستني الإشارة دي — قبلها التمرير مقفول أصلاً
+      doc.dispatchEvent(new CustomEvent("lb:intro-open"));
     };
 
     var reopen = function () {
@@ -510,6 +512,123 @@
     }
   }
 
+  // ---------------------------------------------------------- التمرير التلقائي
+  /* الدعوة بتنزل لوحدها بالراحة زي العرض.
+
+     تلات قرارات مقصودة هنا:
+
+     ١) **الضيف أهم من العرض.** أي لمسة أو تمرير أو ضغطة زرار بتوقّفه
+        فوراً وماترجعوش يشتغل لوحده تاني. حاجة بتحرّك الصفحة تحت إيد
+        الواحد وهو بيقرا أسوأ من إنها ماتشتغلش أصلاً.
+     ٢) **بيتحرّك بالبكسل الجزئي.** ‎scrollBy‎ بعدد صحيح كل إطار بيدّي
+        حركة متقطّعة على الشاشات السريعة. بنجمّع الكسور ونمرّر لما
+        توصل بكسل كامل.
+     ٣) **prefers-reduced-motion بيلغيه خالص.** ناس بتتعبها الحركة
+        التلقائية فعلاً، والإعداد ده هو طلبهم الصريح. */
+  var SCROLL_PPS = { slow: 18, normal: 34, fast: 60 };   // بكسل في الثانية
+
+  function initAutoScroll() {
+    var node = doc.getElementById("invite-scroll");
+    if (!node) return;
+    var cfg;
+    try { cfg = JSON.parse(node.textContent); } catch (e) { return; }
+    if (!cfg || !cfg.enabled) return;
+    if (window.__lbScroll) return;                       // اتربط قبل كده
+    if (window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var speed = SCROLL_PPS[cfg.speed] || SCROLL_PPS.normal;
+    var delay = Math.max(0, Number(cfg.delay) || 0) * 1000;
+    var loop = !!cfg.loop;
+    var running = false, raf = null, last = 0, carry = 0, startTimer = null;
+    var stoppedByUser = false;
+
+    var btn = doc.createElement("button");
+    btn.type = "button";
+    btn.className = "lb-autoscroll";
+    btn.hidden = true;
+    btn.innerHTML =
+      '<svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+      '<path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>' +
+      '<svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+      '<path d="M8 5.2v13.6L19 12 8 5.2Z"/></svg>';
+    doc.body.appendChild(btn);
+
+    function atBottom() {
+      var el = doc.scrollingElement || doc.documentElement;
+      return el.scrollTop + window.innerHeight >= el.scrollHeight - 2;
+    }
+
+    function frame(now) {
+      if (!running) return;
+      if (!last) last = now;
+      var dt = Math.min(now - last, 100);          // تبويب راجع من الخلفية
+      last = now;
+      carry += (speed * dt) / 1000;
+      var step = Math.floor(carry);
+      if (step >= 1) {
+        carry -= step;
+        // ‎auto‎ مش ‎smooth‎: التنعيم مع حركة مستمرة بيتخانق مع نفسه
+        window.scrollBy({ top: step, behavior: "auto" });
+      }
+      if (atBottom()) {
+        if (loop) { window.scrollTo({ top: 0, behavior: "smooth" }); carry = 0; }
+        else { stop(true); return; }
+      }
+      raf = window.requestAnimationFrame(frame);
+    }
+
+    function start() {
+      if (running || stoppedByUser) return;
+      running = true; last = 0; carry = 0;
+      btn.hidden = false;
+      btn.classList.remove("is-paused");
+      btn.setAttribute("aria-label", "إيقاف التمرير التلقائي");
+      raf = window.requestAnimationFrame(frame);
+    }
+
+    function stop(finished) {
+      running = false;
+      if (raf) { window.cancelAnimationFrame(raf); raf = null; }
+      if (startTimer) { clearTimeout(startTimer); startTimer = null; }
+      btn.classList.add("is-paused");
+      btn.setAttribute("aria-label", "تشغيل التمرير التلقائي");
+      // خلص لآخر الصفحة؟ الزر مالوش لازمة تاني
+      if (finished && !loop) btn.hidden = true;
+    }
+
+    /* أي تدخّل من الضيف بيوقّفه نهائياً. الزر نفسه مستثنى — دي ضغطة
+       على تحكّم بتاعنا مش محاولة قراءة. */
+    function userStop(e) {
+      if (e && e.target && btn.contains(e.target)) return;
+      stoppedByUser = true;
+      stop(false);
+    }
+    ["wheel", "touchstart", "pointerdown", "keydown"].forEach(function (ev) {
+      window.addEventListener(ev, userStop, { passive: true });
+    });
+
+    btn.addEventListener("click", function () {
+      stoppedByUser = false;
+      if (running) { stoppedByUser = true; stop(false); }
+      else start();
+    });
+
+    function schedule() {
+      if (startTimer) clearTimeout(startTimer);
+      stoppedByUser = false;
+      startTimer = setTimeout(start, delay);
+    }
+
+    // الافتتاحية بتقفل التمرير على الصفحة، فمالوش معنى نبدأ قبلها
+    window.__lbScroll = { start: schedule, stop: stop };
+    if ($(".lb-intro:not(.is-open)")) {
+      doc.addEventListener("lb:intro-open", schedule, { once: true });
+    } else {
+      schedule();
+    }
+  }
+
   // ---------------------------------------------------------- الإقلاع
   function boot() {
     initCountdowns();
@@ -521,6 +640,7 @@
     initMusic();
     initIntro();
     initRsvp();
+    initAutoScroll();
     root.setAttribute("data-ready", "1");
   }
 

@@ -735,6 +735,20 @@ SETTINGS_FIELDS = [
           minimum=0, maximum=15, step=1, group="الافتتاحية",
           help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),
     field("intro_image", "صورة خلفية الافتتاحية", "image", "", group="الافتتاحية"),
+
+    field("auto_scroll", "تمرير تلقائي", "toggle", False, group="التمرير",
+          help_text="الدعوة بتنزل لوحدها بالراحة زي العرض. بتقف فوراً أول "
+               "ما الضيف يلمس الشاشة أو يمرّر بنفسه، وفيه زر إيقاف ظاهر."),
+    field("auto_scroll_speed", "سرعة التمرير", "select", "normal",
+          group="التمرير", options=[
+              opt("slow", "بطيء"), opt("normal", "عادي"), opt("fast", "سريع"),
+          ]),
+    field("auto_scroll_delay", "يبدأ بعد (ثانية)", "range", 3, group="التمرير",
+          minimum=0, maximum=20, step=1,
+          help_text="مهلة قبل ما يبدأ عشان الضيف يقرا أول قسم براحته."),
+    field("auto_scroll_loop", "يرجع للأول لما يخلص", "toggle", False,
+          group="التمرير"),
+
     field("favicon", "أيقونة الصفحة", "image", "", group="مشاركة"),
     field("share_image", "صورة المعاينة عند المشاركة", "image", "", group="مشاركة"),
     field("share_title", "عنوان المشاركة", "text", "", group="مشاركة"),
@@ -959,6 +973,19 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
 
     out["blocks"] = blocks
     return out
+
+
+def feature_keys() -> set[str]:
+    """كل مفاتيح المزايا اللي المحرك بيعرفها — من البلوكات والإعدادات.
+
+    الباقات والإضافات بتتحقّق من المفاتيح دي، عشان مايتباعش لعميل
+    مفتاح مش موجود أصلاً في المحرك فيدفع ومايتغيّرش عنده حاجة.
+    """
+    keys = {b["feature"] for b in BLOCK_REGISTRY.values() if b.get("feature")}
+    keys |= {f["feature"] for f in SETTINGS_FIELDS if f.get("feature")}
+    for b in BLOCK_REGISTRY.values():
+        keys |= {p["feature"] for p in b.get("props", []) if p.get("feature")}
+    return keys
 
 
 def editor_schema() -> dict:

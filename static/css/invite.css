@@ -741,6 +741,80 @@
   justify-content: center;
 }
 
+/* ------------------------------------------- شريط «عجبك القالب؟» */
+/* شريط ثابت تحت في معاينة القالب. ‎padding-block-end‎ فيه ‎safe-area‎
+   عشان ما يتغطّاش بشريط الإيماءات في آيفون. */
+.lb-cta {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 70;
+  /* شبه معتم: ٩٢٪ كان بيسيب كلام الصفحة يبان من ورا الأيقونات */
+  background: color-mix(in srgb, var(--surface) 97%, transparent);
+  backdrop-filter: blur(10px);
+  border-block-start: 1px solid var(--border);
+  padding-block: 10px;
+  padding-block-end: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-inline: 16px;
+}
+.lb-cta-inner {
+  max-width: var(--max-width);
+  margin-inline: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.lb-cta-text {
+  margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5;
+  /* الاسم ماينفعش يمدّ الشريط لبره الشاشة */
+  min-width: 0; overflow-wrap: anywhere;
+}
+.lb-cta-name { color: var(--text); font-family: var(--font-heading); }
+.lb-cta-links { display: flex; gap: 9px; flex-shrink: 0; }
+.lb-cta-btn {
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border-radius: 50%; color: #fff;
+  text-decoration: none;
+  transition: transform .18s ease, filter .18s ease;
+}
+.lb-cta-btn:hover { transform: scale(1.08); filter: brightness(1.06); }
+.lb-cta-btn svg { width: 21px; height: 21px; }
+.lb-cta-btn--wa { background: #25d366; }
+.lb-cta-btn--fb { background: #1877f2; }
+/* الشريط بيغطّي آخر الصفحة — بنزوّد مسافة تحت عشان التوقيع ما يختفيش */
+.lb-doc:has(.lb-cta) .lb-stage { padding-block-end: 74px; }
+/* زر الموسيقى والتمرير فوق الشريط مش تحته */
+.lb-doc:has(.lb-cta) .lb-music,
+.lb-doc:has(.lb-cta) .lb-autoscroll { inset-block-end: 78px; }
+@media print { .lb-cta { display: none !important; } }
+
+/* ------------------------------------------- زر التمرير التلقائي */
+/* في الناحية المقابلة لزر الموسيقى (‎inset-inline-start‎ مقابل ‎end‎)
+   عشان ما يتراكبوش مع بعض لما الاتنين شغّالين. */
+.lb-autoscroll {
+  position: fixed;
+  inset-block-end: 18px;
+  inset-inline-start: 18px;
+  z-index: 60;
+  width: 44px; height: 44px; padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--accent-40);
+  background: var(--surface);
+  color: var(--accent);
+  display: grid; place-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  opacity: .72;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.lb-autoscroll:hover, .lb-autoscroll:focus-visible { opacity: 1; transform: scale(1.06); }
+.lb-autoscroll svg { width: 17px; height: 17px; }
+/* أيقونة واحدة ظاهرة حسب الحالة */
+.lb-autoscroll .i-play { display: none; }
+.lb-autoscroll.is-paused .i-pause { display: none; }
+.lb-autoscroll.is-paused .i-play { display: block; }
+@media print { .lb-autoscroll { display: none !important; } }
+
 /* ---------------------------------------------------------- الافتتاحية */
 .lb-intro {
   position: fixed;

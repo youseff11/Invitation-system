@@ -326,4 +326,43 @@
       chartHost.appendChild(row);
     });
   }
+
+  /* ---------------------------------------------------------- إضافات الطلب
+     حاجتين بس:
+     ١) الإضافة المربوطة بباقات معيّنة بتختفي لما تختار باقة تانية —
+        وبنشيل علامتها كمان، وإلا كان هيتبعت اختيار مخفي والسيرفر يرفض
+        الفورم من غير ما المستخدم يشوف السبب.
+     ٢) إجمالي حيّ تحت الاختيارات: العميل يعرف هيدفع كام قبل ما يبعت. */
+  (function initAddons() {
+    var box = doc.querySelector("[data-addons]");
+    if (!box) return;
+    var totalNode = doc.querySelector("[data-addons-total]");
+    var planSel = doc.querySelector("select[name=plan]");
+    var rows = Array.prototype.slice.call(box.querySelectorAll("[data-addon]"));
+    var currency = box.getAttribute("data-currency") || "";
+
+    function refresh() {
+      var plan = planSel ? planSel.value : "";
+      var total = 0, shown = 0;
+      rows.forEach(function (row) {
+        var raw = (row.getAttribute("data-plans") || "").trim();
+        var allowed = raw ? raw.split(/\s+/) : [];
+        var ok = !allowed.length || (plan && allowed.indexOf(plan) !== -1);
+        row.hidden = !ok;
+        var input = row.querySelector("input");
+        if (!ok) { input.checked = false; return; }
+        shown++;
+        if (input.checked) total += Number(input.getAttribute("data-price")) || 0;
+      });
+      box.hidden = shown === 0;
+      if (totalNode) {
+        totalNode.hidden = total === 0;
+        totalNode.textContent = "إجمالي الإضافات: +" + total + " " + currency;
+      }
+    }
+
+    box.addEventListener("change", refresh);
+    if (planSel) planSel.addEventListener("change", refresh);
+    refresh();
+  })();
 })();
