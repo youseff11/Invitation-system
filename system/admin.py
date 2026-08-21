@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
-    Asset, Customer, Guest, Invitation, Order, Plan, RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, MusicTrack, Order, Plan, RSVPResponse,
+    Template,
 )
 
 
@@ -71,3 +72,10 @@ class OrderAdmin(admin.ModelAdmin):
 class AssetAdmin(admin.ModelAdmin):
     list_display = ("original_name", "kind", "invitation", "created_at")
     list_filter = ("kind",)
+
+
+@admin.register(MusicTrack)
+class MusicTrackAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_active", "order", "created_at")
+    list_editable = ("is_active", "order")
+    search_fields = ("name", "note")

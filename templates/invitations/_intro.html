@@ -1,0 +1,49 @@
+{% comment %}
+  الشاشة الافتتاحية — ملف منفصل عن render.html عن قصد.
+
+  المحرر بيحدّث المعاينة بتبديل محتوى ‎.lb-stage‎ بس، والافتتاحية أخت
+  للـstage مش جواه. لما كانت مكتوبة جوّه render.html كانت أي حاجة تعدّلها
+  فيها (النص، الزر، الصورة، الفيديو) مابتبانش غير لما تقفل المحرر
+  وتفتحه تاني. دلوقتي ‎api_preview‎ بيعرض الملف ده لوحده والمحرر
+  بيبدّل عقدة الافتتاحية زي ما بيبدّل الأقسام.
+{% endcomment %}
+{% if render.settings.intro_enabled %}
+<div class="lb-intro{% if render.settings.intro_video %} lb-intro--video{% endif %}"
+     {% if editable %}data-intro-editable="1"{% endif %}
+     {% if render.settings.intro_video_seconds %}data-intro-auto="{{ render.settings.intro_video_seconds }}"{% endif %}
+     {% if render.settings.intro_image %}style="--intro-bg:url('{{ render.settings.intro_image }}')"{% endif %}>
+
+  {% if render.settings.intro_video %}
+  {% comment %}
+    muted إجباري: كل المتصفحات بتمنع التشغيل التلقائي بصوت. زر الصوت
+    تحت بيشيله بعد أول لمسة من الضيف — دي الطريقة الوحيدة المسموحة.
+  {% endcomment %}
+  <video class="lb-intro-video" data-intro-video
+         src="{{ render.settings.intro_video }}"
+         {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
+         autoplay muted playsinline preload="metadata"></video>
+  <div class="lb-intro-veil"></div>
+  {% if render.settings.intro_video_sound %}
+  <button type="button" class="lb-intro-sound" data-intro-sound
+          aria-pressed="false" aria-label="تشغيل صوت الفيديو" title="تشغيل الصوت">
+    <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6M21 9l-5 6"/>
+    </svg>
+    <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+      <path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+    </svg>
+  </button>
+  {% endif %}
+  {% endif %}
+
+  <div class="lb-intro-inner">
+    {% if render.data.name_one %}<p class="lb-kicker">{{ render.data.name_one }}{% if render.data.name_two %} &amp; {{ render.data.name_two }}{% endif %}</p>{% endif %}
+    {% if guest %}<p class="lb-intro-name">أهلاً {{ guest.name }}</p>{% endif %}
+    {% if render.settings.intro_text %}<p class="lb-body">{{ render.settings.intro_text }}</p>{% endif %}
+    <button type="button" class="lb-btn lb-btn--solid" data-intro-open>{{ render.settings.intro_button }}</button>
+  </div>
+</div>
+{% endif %}

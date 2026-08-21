@@ -1,8 +1,8 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
-  <div class="lb-gallery lb-gallery--{{ props.layout }}" style="--cols:{{ props.columns }};--gap:{{ props.gap }}px;--img-radius:{{ props.image_radius }}px;--aspect:{{ props.aspect }}"{% if props.lightbox %} data-lightbox="1"{% endif %}>
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading">{{ props.heading }}</h2>{% endif %}
+  <div data-move="gallery" class="lb-gallery lb-gallery--{{ props.layout }}" style="--cols:{{ props.columns }};--gap:{{ props.gap }}px;--img-radius:{{ props.image_radius }}px;--aspect:{{ props.aspect }}"{% if props.lightbox %} data-lightbox="1"{% endif %}>
     {% for im in props.images %}{% if im.src %}<figure class="lb-gitem">
       <img src="{{ im.src }}" alt="{{ im.caption|default:'' }}" loading="lazy">
       {% if im.caption %}<figcaption>{{ im.caption }}</figcaption>{% endif %}

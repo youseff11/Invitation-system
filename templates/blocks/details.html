@@ -2,8 +2,8 @@
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
   {% if props.eyebrow %}<p class="lb-eyebrow">{{ props.eyebrow }}</p>{% endif %}
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
-  <div class="lb-details lb-details--{{ props.layout }}" style="--cols:{{ props.columns }}">
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading">{{ props.heading }}</h2>{% endif %}
+  <div data-move="details" class="lb-details lb-details--{{ props.layout }}" style="--cols:{{ props.columns }}">
     {% for row in props.rows %}<div class="lb-detail">
       {% if row.icon %}<span class="lb-detail-icon">{% icon row.icon 26 %}</span>{% endif %}
       {% if row.label %}<span class="lb-detail-label">{{ row.label }}</span>{% endif %}

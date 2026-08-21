@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import re
+
 from django import template
 from django.utils.safestring import mark_safe
 
+from ..cssscope import scope_css
 from ..sanitize import clean_html
 
 register = template.Library()
+
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 # --------------------------------------------------------------------------
@@ -118,6 +123,21 @@ def icon_names():
 def safe_html(value):
     """ينقّي نص HTML قبل عرضه — يُستخدم لكل حقل من نوع html."""
     return mark_safe(clean_html(value or ""))
+
+
+@register.filter(name="safe_css")
+def safe_css(value, block_id=""):
+    """يحصر ستايل القسم المستورد جوّه القسم نفسه — وقت العرض.
+
+    الحصر بيتعمل هنا مش وقت الاستيراد عن قصد: المخزَّن يفضل CSS الأصلي
+    اللي تقدر تقراه وتعدّله من المحرر، والحصر (اللي هو حدود الأمان)
+    بيتطبّق على كل عرض، فمستند اتعدّل بالإيد مايقدرش يكسر باقي الصفحة.
+    """
+    if not value:
+        return ""
+    bid = str(block_id or "").strip()
+    scope = f"#{bid}" if _SAFE_ID.match(bid) else ".lb-custom"
+    return mark_safe(scope_css(str(value), scope))
 
 
 @register.filter

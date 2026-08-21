@@ -15,6 +15,31 @@
   </p>
 </div>
 
+<div class="card" style="margin-bottom:22px">
+  <h3 style="margin-top:0">استيراد قالب جاهز (HTML أو ZIP)</h3>
+  <p class="muted" style="font-size:13.5px">
+    ارفع ملف <code>.html</code> أو أرشيف <code>.zip</code> فيه <code>index.html</code>
+    ومعاه الصور وملفات CSS. كل عنصر رئيسي في الصفحة بيتحوّل لقسم تقدر ترتّبه
+    وتخفيه وتعدّله من المحرر، والستايل بيتحصر جوّه قسمه فمابيكسرش باقي الدعوة.
+  </p>
+  <p class="muted" style="font-size:13px;border-inline-start:3px solid var(--accent);padding-inline-start:10px">
+    <strong>اعرف حدوده:</strong> جافاسكربت القالب بتتشال (الملف جاي من بره وبيتعرض
+    على الضيوف)، والقالب المستورد مش هيبقى فيه حقول جاهزة زي «اسم العروسة»
+    و«التاريخ» زي القوالب الأصلية — ده مش ممكن استنتاجه من HTML عشوائي.
+    التعديل بيبقى على النص والستايل مباشرة.
+  </p>
+  <form method="post" enctype="multipart/form-data" class="toolbar">
+    {% csrf_token %}
+    <input type="file" name="template_file" required
+           accept=".html,.htm,.zip,text/html,application/zip">
+    <input type="text" name="template_name" placeholder="اسم القالب (اختياري)" maxlength="120">
+    <select name="template_category">
+      {% for value, label in categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--gold btn--sm" type="submit">استيراد</button>
+  </form>
+</div>
+
 <div class="grid grid--4">
   {% for t in templates %}
   <article class="tpl-card">

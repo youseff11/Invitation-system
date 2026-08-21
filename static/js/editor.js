@@ -50,6 +50,7 @@
   var META = readJSON("editor-meta", { urls: {} });
   var FEATURES = readJSON("editor-features", []);
   var ASSETS = readJSON("editor-assets", []);
+  var MUSIC = readJSON("editor-music", []);   // مكتبة الموسيقى المشتركة
 
   var state = {
     doc: readJSON("editor-document", { theme: {}, settings: {}, blocks: [] }),
@@ -721,6 +722,7 @@
     }
 
     box.appendChild(buildLayoutGroup(block, spec));
+    syncCollapseTool();
   }
 
   /* مجموعة "المواضع" — بتظهر بس لما يبقى فيه عنصر متحرّك، ومنها
@@ -742,7 +744,13 @@
     }
     wrap.open = true;
 
-    var labels = {};
+    var labels = {
+      buttons: "الأزرار", ornament_top: "الزخرفة العلوية",
+      ornament_bottom: "الزخرفة السفلية", image: "الصورة", gallery: "المعرض",
+      map: "الخريطة", countdown: "العدّاد", qr: "رمز QR", form: "نموذج الحضور",
+      details: "التفاصيل", video: "الفيديو", hosts: "أصحاب الدعوة",
+      agenda: "البرنامج", share: "أزرار المشاركة", scroll_hint: "إشارة التمرير"
+    };
     (spec.props || []).forEach(function (f) { labels[f.key] = f.label; });
 
     moved.forEach(function (slot) {
@@ -810,6 +818,7 @@
       function (s) { return state.doc.theme[s.key]; },
       function (s, v) { state.doc.theme[s.key] = v; markDirty(); requestPreview(); }
     ));
+    syncCollapseTool();
   }
 
   function renderSettingsPane() {
@@ -823,6 +832,7 @@
       function (s) { return state.doc.settings[s.key]; },
       function (s, v) { state.doc.settings[s.key] = v; markDirty(); requestPreview(); }
     ));
+    syncCollapseTool();
   }
 
   // ==========================================================
@@ -863,6 +873,30 @@
       });
   }, 280);
 
+  /* تحديث الشاشة الافتتاحية داخل المعاينة.
+
+     الافتتاحية أخت لـ.lb-stage مش جواه، فتبديل الـstage لوحده كان
+     بيسيبها زي ما هي — يعني تغيّر نص الافتتاحية أو صورتها وماتشوفش
+     أي فرق غير لما تقفل المحرر وتفتحه تاني. */
+  function applyIntro(fdoc, html) {
+    if (html === undefined) return;          // نسخة سيرفر قديمة — ما نلمسش حاجة
+    var current = fdoc.querySelector(".lb-intro");
+    // الافتتاحية اتقفلت من الإعدادات
+    if (!html) { if (current) current.remove(); return; }
+
+    // لو الضيف/المحرر كان قافلها (is-open)، نفضل قافلينها بعد التحديث
+    // عشان ما ترجعش تغطّي المعاينة مع كل حرف بتكتبه
+    var wasOpen = current && current.classList.contains("is-open");
+    var holder = fdoc.createElement("div");
+    holder.innerHTML = html;
+    var fresh = holder.firstElementChild;
+    if (!fresh) return;
+    if (wasOpen) fresh.classList.add("is-open");
+
+    if (current) current.replaceWith(fresh);
+    else fdoc.body.insertBefore(fresh, fdoc.body.firstChild);
+  }
+
   function applyPreview(data) {
     drag = null;
     clearGuides();
@@ -881,6 +915,8 @@
     stage.className = "lb-stage" +
       (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
       (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
+
+    applyIntro(fdoc, data.intro);
 
     bindPreviewInteractions();
     if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
@@ -1106,6 +1142,16 @@
       });
 
       bindSlotDrag(node, blockId, key);
+    });
+
+    // السحب مش للنصوص بس — أي جزء متعلّم بـdata-move يتحرك (الأزرار،
+    // الصور، الخريطة، العدّاد، الفورم…). النصوص متعلّمة تلقائياً في القوالب.
+    fdoc.querySelectorAll("[data-move]").forEach(function (node) {
+      if (node.hasAttribute("data-slot")) return;      // اتربط فوق
+      var holder = node.closest("[data-block]");
+      if (!holder) return;
+      bindSlotDrag(node, holder.getAttribute("data-block"),
+                   node.getAttribute("data-move"));
     });
   }
 
@@ -1335,26 +1381,84 @@
       });
   }
 
+  var PICKER_TEXT = {
+    image: { title: "مكتبة الصور",
+             hint: "ارفع صوراً بصيغة JPG أو PNG أو WebP بحد أقصى ٨ ميجابايت للملف.",
+             accept: "image/*", empty: "لم تُرفع أي صور بعد." },
+    video: { title: "مكتبة الفيديو",
+             hint: "ارفع فيديو MP4 أو WebM بحد أقصى ٨ ميجابايت. خلّيه قصير (٣-٧ ثواني) "
+                   + "عشان يفتح بسرعة على بيانات الموبايل.",
+             accept: "video/mp4,video/webm,video/*", empty: "لم يُرفع أي فيديو بعد." },
+    audio: { title: "مكتبة الموسيقى",
+             hint: "ارفع MP3 أو M4A بحد أقصى ٨ ميجابايت.",
+             accept: "audio/*", empty: "لم تُرفع أي مقطوعة بعد." }
+  };
+
   function openAssetPicker(cb, kind) {
     pickCallback = cb;
     pickKind = kind || "image";
+    var t = PICKER_TEXT[pickKind] || PICKER_TEXT.image;
+    var title = $("[data-asset-title]"), hint = $("[data-asset-hint]");
+    var input = $("[data-file-input]");
+    if (title) title.textContent = t.title;
+    if (hint) hint.textContent = t.hint;
+    // من غير السطر ده نافذة اختيار الملف مش بتوري غير الصور
+    if (input) input.setAttribute("accept", t.accept);
     renderAssets();
     openModal(refs.assetModal);
+  }
+
+  /* مكتبة الموسيقى المشتركة: بتترفع مرة واحدة من لوحة التحكم وتبقى متاحة
+     لكل الدعوات، فبتظهر فوق الملفات المرفوعة للدعوة الحالية لوحدها. */
+  function renderMusicLibrary() {
+    var box = $("[data-music-lib]");
+    if (!box) return;
+    box.replaceChildren();
+    if (pickKind !== "audio" || !MUSIC.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.appendChild(el("p", "ed-lib-label", "مكتبة الموسيقى — متاحة لكل الدعوات"));
+    MUSIC.forEach(function (m) {
+      var row = el("div", "ed-track");
+      var btn = el("button", "ed-track-pick", m.name);
+      btn.type = "button";
+      btn.title = m.note || m.name;
+      btn.addEventListener("click", function () {
+        if (pickCallback) pickCallback(m.url);
+        closeModal(refs.assetModal);
+      });
+      var audio = doc.createElement("audio");
+      audio.controls = true;
+      audio.preload = "none";       // ما ننزّلش كل المقطوعات لمجرد فتح النافذة
+      audio.src = m.url;
+      row.appendChild(btn);
+      row.appendChild(audio);
+      box.appendChild(row);
+    });
+    box.appendChild(el("p", "ed-lib-label", "أو ارفع ملفاً لهذه الدعوة وحدها"));
   }
 
   function renderAssets() {
     var box = refs.assetGrid;
     box.replaceChildren();
+    renderMusicLibrary();
     var images = ASSETS.filter(function (a) { return a.kind === (pickKind || "image"); });
     if (!images.length) {
-      box.appendChild(el("p", "ed-empty", "لم تُرفع أي صور بعد."));
+      box.appendChild(el("p", "ed-empty",
+        (PICKER_TEXT[pickKind] || PICKER_TEXT.image).empty));
       return;
     }
     images.forEach(function (a) {
       var btn = el("button", "ed-asset");
       btn.type = "button";
       btn.title = a.name;
-      btn.style.backgroundImage = 'url("' + a.url + '")';
+      if (a.kind === "image") {
+        btn.style.backgroundImage = 'url("' + (a.thumb || a.url) + '")';
+      } else {
+        // الفيديو والصوت مالهمش صورة مصغّرة — نوري أيقونة والاسم
+        btn.classList.add("ed-asset--file");
+        btn.appendChild(el("span", "ed-asset-ico", a.kind === "video" ? "▶" : "♪"));
+        btn.appendChild(el("span", "ed-asset-name", a.name || ""));
+      }
       btn.addEventListener("click", function () {
         if (pickCallback) pickCallback(a.url);
         closeModal(refs.assetModal);
@@ -1401,9 +1505,47 @@
     $$("[data-pane]").forEach(function (p) {
       p.classList.toggle("is-active", p.dataset.pane === name);
     });
+    syncCollapseTool();
     // على الموبايل اللوحة درج منزلق. نفتحه فقط لما المستخدم يطلب تبويب بنفسه،
     // مش عند التهيئة — وإلا بيغطي المعاينة من أول ثانية.
     if (reveal !== false && refs.panel) setPanel(true);
+  }
+
+  // ==========================================================
+  // طيّ كل المجموعات
+  // ==========================================================
+  /* لوحة الخصائص فيها مجموعات كتير، ولما تفتح أربعة أو خمسة بتفضل
+     تنزل وتطلع عشان توصل للي انت عايزه. الزر ده بيقفلهم كلهم مرة
+     واحدة — وبيرجّع يفتحهم لو دُست عليه تاني. */
+  function activePane() {
+    return $(".ed-tabpane.is-active");
+  }
+
+  function paneGroups() {
+    var pane = activePane();
+    return pane ? Array.prototype.slice.call(pane.querySelectorAll("details.ed-group")) : [];
+  }
+
+  function syncCollapseTool() {
+    var tools = $("[data-panel-tools]");
+    if (!tools) return;
+    var groups = paneGroups();
+    tools.hidden = groups.length < 2;        // مجموعة واحدة مش محتاجة زرار
+    if (tools.hidden) return;
+
+    var anyOpen = groups.some(function (g) { return g.open; });
+    var btn = $("[data-collapse-all]");
+    var label = $("[data-collapse-label]");
+    if (btn) btn.setAttribute("aria-expanded", anyOpen ? "true" : "false");
+    if (label) label.textContent = anyOpen ? "اقفل الكل" : "افتح الكل";
+  }
+
+  function toggleAllGroups() {
+    var groups = paneGroups();
+    if (!groups.length) return;
+    var anyOpen = groups.some(function (g) { return g.open; });
+    groups.forEach(function (g) { g.open = !anyOpen; });
+    syncCollapseTool();
   }
 
   function setPanel(open) {
@@ -1547,6 +1689,18 @@
 
     var saveBtn = $("[data-save]");
     if (saveBtn) saveBtn.addEventListener("click", function () { save(false); });
+
+    var collapseBtn = $("[data-collapse-all]");
+    if (collapseBtn) collapseBtn.addEventListener("click", toggleAllGroups);
+    // حدث toggle بتاع <details> مابيصعدش، فبنسمع للضغط على الملخّص
+    // ونعيد المزامنة بعد ما المتصفح يقلب الحالة
+    if (refs.panel) {
+      refs.panel.addEventListener("click", function (e) {
+        if (e.target.closest("details.ed-group > summary")) {
+          setTimeout(syncCollapseTool, 0);
+        }
+      });
+    }
 
     if (refs.undo) refs.undo.addEventListener("click", undo);
     if (refs.redo) refs.redo.addEventListener("click", redo);

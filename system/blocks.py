@@ -229,6 +229,14 @@ LAYOUT_MAX_Y = 40.0    # cqw
 _SLOT_RE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 
+# أجزاء غير نصية بيتسمح بتحريكها كمان (مش مفاتيح props)
+MOVABLE_PARTS = {
+    "buttons", "ornament_top", "ornament_bottom", "image", "gallery", "map",
+    "countdown", "qr", "form", "details", "video", "hosts", "agenda", "share",
+    "scroll_hint", "card", "media",
+}
+
+
 def _clean_layout(raw, allowed_slots: set[str]) -> dict:
     """يقبل {slot: {dx, dy}} فقط، بأسماء معروفة وقيم داخل الحدود."""
     if not isinstance(raw, dict):
@@ -237,7 +245,7 @@ def _clean_layout(raw, allowed_slots: set[str]) -> dict:
     for slot, val in list(raw.items())[:60]:
         if not isinstance(slot, str) or not _SLOT_RE.match(slot):
             continue
-        if allowed_slots and slot not in allowed_slots:
+        if allowed_slots and slot not in allowed_slots and slot not in MOVABLE_PARTS:
             continue
         if not isinstance(val, dict):
             continue
@@ -609,6 +617,8 @@ register(
     props=[
         field("html", "الكود", "html", "",
               help_text="يمر عبر منقّي أمان — الوسوم الخطرة تُزال تلقائياً"),
+        field("css", "ستايل القسم", "textarea", "",
+              help_text="يُحصر داخل هذا القسم فقط — لن يؤثر على باقي الدعوة"),
     ],
 )
 
@@ -659,7 +669,7 @@ THEME_FIELDS = [
 ]
 
 SETTINGS_FIELDS = [
-    field("music_url", "رابط الموسيقى", "url", "", group="الموسيقى", feature="music"),
+    field("music_url", "رابط الموسيقى", "media", "", media_kind="audio", group="الموسيقى", feature="music"),
     field("music_autoplay", "تشغيل تلقائي", "toggle", True, group="الموسيقى", feature="music",
           help_text="المتصفحات تمنع التشغيل التلقائي أحياناً — سيظهر زر تشغيل"),
     field("music_loop", "تكرار", "toggle", True, group="الموسيقى", feature="music"),
@@ -672,9 +682,14 @@ SETTINGS_FIELDS = [
     field("intro_button", "نص الزر", "text", "التالي ←", group="الافتتاحية"),
     field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
           media_kind="video",
-          help_text="فيديو قصير (٣-٧ ثواني). بيشتغل صامت تلقائياً — المتصفحات "
-               "بتمنع الصوت التلقائي. حط صورة غلاف عشان تظهر فوراً قبل ما يحمّل."),
+          help_text="فيديو قصير (٣-٧ ثواني). بيبدأ صامت إجبارياً — كل "
+               "المتصفحات بتمنع الصوت التلقائي. حط صورة غلاف عشان تظهر "
+               "فوراً قبل ما يحمّل."),
     field("intro_poster", "صورة غلاف الفيديو", "image", "", group="الافتتاحية"),
+    field("intro_video_sound", "زر صوت على الفيديو", "toggle", True,
+          group="الافتتاحية",
+          help_text="لو الفيديو فيه صوت، الزر ده بيخلي الضيف يشغّله بلمسة. "
+               "من غيره الفيديو بيفضل صامت — مفيش طريقة تانية مسموحة."),
     field("intro_video_seconds", "يقفل تلقائياً بعد (ثانية)", "range", 0,
           minimum=0, maximum=15, step=1, group="الافتتاحية",
           help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),

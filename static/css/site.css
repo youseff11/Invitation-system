@@ -425,6 +425,10 @@ p { margin: 0 0 1em; }
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .field textarea { resize: vertical; min-height: 84px; }
+/* حقل مربّع اختيار: المربّع جنب كلامه مش فوقه */
+.field--check { flex-direction: row; align-items: center; gap: 9px; cursor: pointer; }
+.field--check input { width: auto; flex: none; accent-color: var(--accent); }
+.field--check span { font-size: 13.5px; color: var(--text); }
 .errorlist { color: var(--danger); font-size: 12px; list-style: none; padding: 0; margin: 2px 0 0; }
 .span-2 { grid-column: 1 / -1; }
 

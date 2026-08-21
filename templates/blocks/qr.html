@@ -1,8 +1,8 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
-  <div class="lb-qr" style="--qr-size:{{ props.size }}px">
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading">{{ props.heading }}</h2>{% endif %}
+  <div data-move="qr" class="lb-qr" style="--qr-size:{{ props.size }}px">
     {% if qr_svg %}{{ qr_svg|safe }}{% else %}<div class="lb-qr-empty">{% icon 'info' 28 %}<span>يظهر الرمز بعد نشر الدعوة</span></div>{% endif %}
   </div>
   {% if props.show_link and data.public_url %}<p class="lb-qr-link">{{ data.public_url }}</p>{% endif %}

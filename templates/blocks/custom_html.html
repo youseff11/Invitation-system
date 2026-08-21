@@ -1,6 +1,7 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
+  {% if props.css %}<style>{{ props.css|safe_css:block.id }}</style>{% endif %}
   <div class="lb-custom">{{ props.html|safe_html }}</div>
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}

@@ -44,8 +44,21 @@ ALLOWED_CSS_PROPS = {
     "margin-left", "padding", "padding-top", "padding-bottom", "padding-right",
     "padding-left", "border", "border-radius", "width", "max-width", "height",
     "opacity", "display", "direction",
+    "background-image", "background-size", "background-position",
+    "background-repeat", "min-height", "aspect-ratio",
 }
-_CSS_DANGER_RE = re.compile(r"(expression|javascript:|url\s*\(|@import|behavior)", re.I)
+_CSS_DANGER_RE = re.compile(r"(expression|javascript:|@import|behavior)", re.I)
+
+# url() مسموحة **بس** لو بتشاور على ملف مخزّن عندنا. الرابط الخارجي في
+# style بيسرّب زيارة الضيف لسيرفر تاني، وdata: بيفتح باب لمحتوى مش متحكّم فيه.
+_SAFE_URL_RE = re.compile(
+    r"""url\(\s*(['"]?)(/(?:media|static)/[^'")\s]*)\1\s*\)""", re.I)
+_ANY_URL_RE = re.compile(r"url\s*\(", re.I)
+
+
+def _url_ok(value: str) -> bool:
+    """صح لو كل url() في القيمة بتشاور على ملف عندنا."""
+    return len(_SAFE_URL_RE.findall(value)) == len(_ANY_URL_RE.findall(value))
 
 
 def _clean_style(value: str) -> str:
@@ -59,6 +72,8 @@ def _clean_style(value: str) -> str:
         if prop not in ALLOWED_CSS_PROPS:
             continue
         if _CSS_DANGER_RE.search(val):
+            continue
+        if "url(" in val.lower() and not _url_ok(val):
             continue
         parts.append(f"{prop}:{val}")
     return ";".join(parts[:20])
@@ -101,6 +116,9 @@ class _Cleaner(HTMLParser):
             value = value.replace('"', "&quot;").replace("<", "&lt;")
             parts.append(f'{name}="{value}"')
         if tag == "a":
+            # لو القالب حاطط rel بنفسه، نستبدلها مش نضيف تانية —
+            # وسم بخاصية مكرّرة المتصفح بياخد الأولى ويرمي التانية
+            parts = [p for p in parts if not p.startswith("rel=")]
             parts.append('rel="noopener noreferrer"')
         return (" " + " ".join(parts)) if parts else ""
 

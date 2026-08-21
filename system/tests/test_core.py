@@ -10,11 +10,12 @@ from datetime import timedelta
 from system import blocks as B
 from system.data import golden_classic
 from system.models import (
-    Asset, Customer, Guest, Invitation, Plan, RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, MusicTrack, Plan, RSVPResponse,
+    Template,
 )
 from system.renderer import layout_css, render_document
 from system.sanitize import clean_html
-from system import guestimport, images
+from system import cssscope, guestimport, images, templateimport, video
 from system.templatetags import invite as invite_tags
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -381,7 +382,7 @@ class LayoutTests(BaseAppTest):
                                         "subtitle": {"dx": 0, "dy": 0}}},
             {"id": "quote-1", "layout": {}},
         ])
-        self.assertIn('#hero-1 [data-slot="name_one"]{--dx:4cqw;--dy:-2cqw}', css)
+        self.assertIn('#hero-1 [data-move="name_one"]{--dx:4cqw;--dy:-2cqw}', css)
         self.assertNotIn("subtitle", css)
         self.assertNotIn("quote-1", css)
 
@@ -773,3 +774,482 @@ class IntroTests(BaseAppTest):
         self.inv.save(update_fields=["document"])
         self.assertNotIn("lb-intro",
                          self.client.get(self.inv.get_absolute_url()).content.decode())
+
+
+# ==========================================================================
+class VideoUploadTests(BaseAppTest):
+    """رفع فيديو الافتتاحية — كان بيترفض قبل كده لأن المُنتقي ما كانش بيقبله."""
+
+    def _clip(self, seconds=20, height=1080):
+        """يولّد MP4 حقيقي بـffmpeg. لو مش متثبّت بنتخطّى الاختبار."""
+        import shutil, subprocess, tempfile, os
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg غير متاح")
+        path = tempfile.mktemp(suffix=".mp4")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi",
+             # libx264 مع yuv420p بيرفض الأبعاد الفردية
+             "-i", f"testsrc=size={height * 16 // 9 // 2 * 2}x{height}:rate=25:duration={seconds}",
+             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", path],
+            check=True, timeout=120,
+        )
+        raw = open(path, "rb").read()
+        os.unlink(path)
+        return raw
+
+    def _upload(self, raw, name="intro.mp4", ctype="video/mp4"):
+        self.client.force_login(self.staff)
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/upload/",
+            {"file": SimpleUploadedFile(name, raw, ctype)},
+        )
+
+    def test_video_upload_is_accepted(self):
+        data = self._upload(self._clip(seconds=3, height=360)).json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["asset"]["kind"], "video")
+
+    def test_tall_video_is_shrunk_to_720p(self):
+        raw = self._clip(seconds=6, height=1080)
+        data = self._upload(raw).json()
+        asset = Asset.objects.latest("id")
+        self.assertLess(asset.size_bytes, len(raw))          # اتضغط فعلاً
+        self.assertGreater(data["asset"]["seconds"], 0)
+
+    def test_duration_is_not_silently_trimmed(self):
+        """القص الصامت بيبوّظ مقطع فرح طويل من غير ما المستخدم يعرف."""
+        data = self._upload(self._clip(seconds=14, height=480)).json()
+        self.assertGreater(data["asset"]["seconds"], 13)
+
+    def test_audio_is_kept(self):
+        """قسم الفيديو ممكن يكون مقطع ليه صوت — مانشيلوش."""
+        import shutil, subprocess, tempfile, os
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg غير متاح")
+        path = tempfile.mktemp(suffix=".mp4")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error",
+             "-f", "lavfi", "-i", "testsrc=size=640x480:rate=25:duration=4",
+             "-f", "lavfi", "-i", "sine=frequency=440:duration=4",
+             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+             "-c:a", "aac", "-shortest", path],
+            check=True, timeout=120)
+        raw = open(path, "rb").read()
+        os.unlink(path)
+        self.assertTrue(self._upload(raw).json()["ok"])
+        asset = Asset.objects.latest("id")
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=codec_type", "-of", "default=nw=1:nk=1",
+             asset.file.path],
+            capture_output=True, text=True, timeout=20)
+        self.assertIn("audio", probe.stdout)
+
+    def test_compress_falls_back_when_ffmpeg_is_missing(self):
+        """الاستضافة ممكن تكون من غير ffmpeg — لازم الرفع يفضل شغّال."""
+        original = video.available
+        video.available = lambda: False
+        try:
+            up = SimpleUploadedFile("x.mp4", b"fake bytes", "video/mp4")
+            out, secs = video.compress(up)
+            self.assertIs(out, up)
+            self.assertEqual(secs, 0)
+        finally:
+            video.available = original
+
+    def test_disguised_file_is_refused(self):
+        self.assertEqual(self._upload(b"x", "a.exe", "application/x-msdownload").status_code, 400)
+
+
+# ==========================================================================
+class MusicLibraryTests(BaseAppTest):
+    """مكتبة الموسيقى — ترفع المقطوعة مرة وتختارها في أي دعوة."""
+
+    def setUp(self):
+        super().setUp()
+        self.track = MusicTrack.objects.create(
+            name="زفة كلاسيك", external_url="https://cdn.example.com/a.mp3")
+
+    def test_page_requires_staff(self):
+        self.assertNotEqual(self.client.get("/dashboard/music/").status_code, 200)
+
+    def test_page_lists_tracks(self):
+        self.client.force_login(self.staff)
+        self.assertIn("زفة كلاسيك", self.client.get("/dashboard/music/").content.decode())
+
+    def test_track_needs_a_file_or_a_url(self):
+        from system.forms import MusicTrackForm
+        self.assertFalse(MusicTrackForm({"name": "بدون صوت", "order": 0}).is_valid())
+        self.assertTrue(MusicTrackForm(
+            {"name": "برابط", "external_url": "https://x.test/a.mp3", "order": 0}).is_valid())
+
+    def test_library_reaches_the_editor(self):
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/editor/").content.decode()
+        self.assertIn("editor-music", body)
+        # json_script بيهرّب العربي لـ\\uXXXX، فبندوّر على الشكل ده مش على الحروف
+        self.assertIn(r"\u0632\u0641\u0629", body)
+
+    def test_hidden_tracks_do_not_reach_the_editor(self):
+        MusicTrack.objects.update(is_active=False)
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/editor/").content.decode()
+        self.assertIn('id="editor-music" type="application/json">[]', body)
+
+    def test_deleting_a_track(self):
+        self.client.force_login(self.staff)
+        self.client.post("/dashboard/music/",
+                         {"action": "delete", "track": self.track.pk})
+        self.assertFalse(MusicTrack.objects.filter(pk=self.track.pk).exists())
+
+    def test_music_url_field_is_an_audio_picker(self):
+        """قبل كده كان حقل نص — المستخدم كان لازم يعرف رابط جاهز."""
+        field = next(f for f in B.editor_schema()["settings_fields"]
+                     if f["key"] == "music_url")
+        self.assertEqual(field["type"], "media")
+        self.assertEqual(field["media_kind"], "audio")
+
+
+# ==========================================================================
+class CssScopeTests(TestCase):
+    """حصر CSS — ده حد أمان مش تجميل، فلازم يتغطّى بالتفصيل."""
+
+    def scope(self, css, url_map=None):
+        return cssscope.scope_css(css, "#b1", url_map)
+
+    def test_plain_rule_is_scoped(self):
+        self.assertEqual(self.scope(".t{color:red}"), "#b1 .t{color:red}")
+
+    def test_page_wide_selectors_become_the_block(self):
+        for sel in ("html", "body", ":root", "*"):
+            self.assertEqual(self.scope(sel + "{margin:0}"), "#b1{margin:0}")
+
+    def test_body_descendant_is_rebased(self):
+        self.assertEqual(self.scope("body .t{color:red}"), "#b1 .t{color:red}")
+
+    def test_duplicate_selectors_are_merged(self):
+        self.assertEqual(self.scope("html, body{margin:0}"), "#b1{margin:0}")
+
+    def test_media_query_contents_are_scoped(self):
+        out = self.scope("@media (max-width:600px){.t{color:red}}")
+        self.assertIn("@media (max-width:600px){#b1 .t{color:red}}", out)
+
+    def test_keyframes_pass_through_unscoped(self):
+        out = self.scope("@keyframes fade{from{opacity:0}to{opacity:1}}")
+        self.assertIn("@keyframes fade{", out)
+        self.assertNotIn("#b1 from", out)
+
+    def test_import_is_dropped_without_eating_the_next_rule(self):
+        """الخطأ ده بلع القاعدة اللي بعده لما اتكتب أول مرة."""
+        out = self.scope('@import url("//evil.test/x.css");\nbody{margin:0}')
+        self.assertNotIn("evil.test", out)
+        self.assertIn("#b1{margin:0}", out)
+
+    def test_dangerous_declarations_are_dropped(self):
+        css = ".t{width:expression(alert(1));behavior:url(x.htc);-moz-binding:url(y);color:red}"
+        out = self.scope(css)
+        self.assertNotIn("expression", out)
+        self.assertNotIn("behavior", out)
+        self.assertNotIn("binding", out)
+        self.assertIn("color:red", out)
+
+    def test_fixed_becomes_absolute(self):
+        """fixed بيهرب من القسم ويفضل معلّق فوق باقي الدعوة."""
+        self.assertIn("position:absolute", self.scope(".t{position:fixed}"))
+
+    def test_relative_urls_map_to_stored_assets(self):
+        out = self.scope(".t{background:url(bg.jpg)}", {"bg.jpg": "/media/a/bg.webp"})
+        self.assertIn('url("/media/a/bg.webp")', out)
+
+    def test_unmapped_relative_url_is_neutralised(self):
+        self.assertIn("none", self.scope(".t{background:url(ghost.jpg)}"))
+
+    def test_absolute_paths_survive_a_second_pass(self):
+        """الحصر بيتعمل وقت العرض على CSS اتحلّت روابطه وقت الاستيراد."""
+        once = self.scope(".t{background:url(bg.jpg)}", {"bg.jpg": "/media/a/bg.webp"})
+        twice = cssscope.scope_css(once.replace("#b1 ", ""), "#b1")
+        self.assertIn("/media/a/bg.webp", twice)
+
+    def test_unbalanced_braces_do_not_crash(self):
+        self.assertIsInstance(self.scope(".a{color:red}}}.b{color:blue"), str)
+
+
+# ==========================================================================
+class TemplateImportTests(TestCase):
+    """استيراد قالب من ملف — الملف جاي من بره فالأمان أهم بند."""
+
+    def _zip(self, files: dict):
+        import io as _io, zipfile
+        buf = _io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            for name, data in files.items():
+                z.writestr(name, data)
+        return SimpleUploadedFile("t.zip", buf.getvalue(), "application/zip")
+
+    PAGE = """<!doctype html><html><head><title>عمر و ياسمين</title>
+      <link rel="stylesheet" href="s.css"><script src="x.js"></script>
+      <style>.hero h1{font-size:64px}</style></head>
+      <body onload="track()">
+        <header class="hero"><h1>عمر</h1></header>
+        <section class="story"><p>حكايتنا</p><script>steal()</script></section>
+      </body></html>"""
+    CSS = "body{background:#111}.hero{min-height:100vh}"
+
+    def test_plain_html_file_imports(self):
+        up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
+        tpl = templateimport.import_template(up)
+        self.assertEqual(len(tpl.document["blocks"]), 2)
+        self.assertEqual(tpl.source, "import")
+
+    def test_title_is_used_as_the_name(self):
+        up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
+        self.assertEqual(templateimport.import_template(up).name, "عمر و ياسمين")
+
+    def test_explicit_name_wins(self):
+        up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
+        self.assertEqual(templateimport.import_template(up, name="اسمي").name, "اسمي")
+
+    def test_scripts_and_handlers_are_stripped(self):
+        up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
+        tpl = templateimport.import_template(up)
+        blob = json.dumps(tpl.document, ensure_ascii=False)
+        self.assertNotIn("steal", blob)
+        self.assertNotIn("onload", blob)
+        self.assertNotIn("<script", blob)
+
+    def test_linked_stylesheet_is_picked_up(self):
+        tpl = templateimport.import_template(
+            self._zip({"index.html": self.PAGE, "s.css": self.CSS}))
+        self.assertIn("min-height:100vh", tpl.document["blocks"][0]["props"]["css"])
+
+    def test_stored_css_is_scoped_when_rendered(self):
+        tpl = templateimport.import_template(
+            self._zip({"index.html": self.PAGE, "s.css": self.CSS}))
+        html = render_document(tpl.document, invitation=None, request=None,
+                               allowed_features=None, editable=False)["html"]
+        bid = tpl.document["blocks"][0]["id"]
+        self.assertIn(f"#{bid}", html)
+        # body{} اللي كان بيصبغ الصفحة كلها بقى على القسم نفسه
+        self.assertNotIn("body{background", html.replace(" ", ""))
+
+    def test_images_are_stored_and_relinked(self):
+        from PIL import Image
+        import io as _io
+        buf = _io.BytesIO()
+        Image.new("RGB", (900, 600), (1, 2, 3)).save(buf, "PNG")
+        page = self.PAGE.replace("<h1>عمر</h1>", '<h1>عمر</h1><img src="p.png" alt="">')
+        tpl = templateimport.import_template(
+            self._zip({"index.html": page, "p.png": buf.getvalue()}))
+        blob = json.dumps(tpl.document)
+        self.assertIn("/media/", blob)
+        self.assertNotIn('src="p.png"', blob)
+        self.assertTrue(Asset.objects.filter(invitation__isnull=True).exists())
+
+    # ---- الأمان
+    def test_path_traversal_members_are_ignored(self):
+        up = self._zip({"../../../etc/passwd.html": "<body><p>x</p></body>",
+                        "index.html": self.PAGE})
+        tpl = templateimport.import_template(up)
+        self.assertIn("عمر", json.dumps(tpl.document, ensure_ascii=False))
+
+    def test_absolute_path_member_is_ignored(self):
+        main, files = templateimport.parse_upload(
+            self._zip({"/etc/x.html": "<body><p>x</p></body>", "index.html": self.PAGE}))
+        self.assertNotIn("/etc/x.html", files)
+
+    def test_executable_members_are_dropped(self):
+        _, files = templateimport.parse_upload(
+            self._zip({"index.html": self.PAGE, "x.js": "steal()",
+                       "x.php": "<?php ?>", "x.exe": "MZ"}))
+        self.assertEqual(set(files), {"index.html"})
+
+    def test_zip_bomb_is_refused(self):
+        bomb = self._zip({"index.html": self.PAGE, "big.css": "a" * (30 * 1024 * 1024)})
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.parse_upload(bomb)
+
+    def test_archive_without_html_is_refused(self):
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.parse_upload(self._zip({"a.css": "x{}"}))
+
+    def test_broken_zip_is_refused(self):
+        up = SimpleUploadedFile("t.zip", b"PK\x03\x04 garbage", "application/zip")
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.parse_upload(up)
+
+    def test_wrong_extension_is_refused(self):
+        with self.assertRaises(templateimport.ImportError_):
+            templateimport.parse_upload(
+                SimpleUploadedFile("a.txt", b"hello", "text/plain"))
+
+    def test_index_html_is_preferred_over_other_pages(self):
+        main, _ = templateimport.parse_upload(self._zip({
+            "pages/about.html": "<body><p>about</p></body>",
+            "index.html": self.PAGE,
+        }))
+        self.assertEqual(main, "index.html")
+
+    def test_slug_collision_gets_a_suffix(self):
+        for _ in range(2):
+            templateimport.import_template(
+                SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html"))
+        slugs = list(Template.objects.filter(source="import").values_list("slug", flat=True))
+        self.assertEqual(len(set(slugs)), len(slugs))
+
+
+# ==========================================================================
+class TemplateImportViewTests(BaseAppTest):
+    def test_upload_requires_staff(self):
+        self.assertNotEqual(self.client.get("/dashboard/templates/").status_code, 200)
+
+    def test_upload_creates_a_template(self):
+        self.client.force_login(self.staff)
+        page = b"<html><head><title>Imported</title></head><body><p>hi</p></body></html>"
+        res = self.client.post("/dashboard/templates/", {
+            "template_file": SimpleUploadedFile("a.html", page, "text/html"),
+        }, follow=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(Template.objects.filter(source="import").exists())
+
+    def test_bad_upload_shows_an_arabic_error_not_a_500(self):
+        self.client.force_login(self.staff)
+        res = self.client.post("/dashboard/templates/", {
+            "template_file": SimpleUploadedFile("a.txt", b"nope", "text/plain"),
+        }, follow=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(Template.objects.filter(source="import").exists())
+
+
+# ==========================================================================
+class IntroLivePreviewTests(BaseAppTest):
+    """الافتتاحية لازم تتحدّث لحظياً في المحرر.
+
+    كانت مكتوبة جوّه render.html، والمحرر بيبدّل ‎.lb-stage‎ بس — والافتتاحية
+    أخت للـstage مش جواه. فأي تعديل فيها ما كانش بيبان غير بعد ما تقفل
+    المحرر وتفتحه تاني.
+    """
+
+    def _doc(self, **settings_):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"].update(settings_)
+        return B.normalize_document(doc)
+
+    def _preview(self, doc):
+        self.client.force_login(self.staff)
+        return self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/preview/",
+            data=json.dumps({"document": doc}), content_type="application/json",
+        ).json()
+
+    def test_preview_returns_the_intro_separately(self):
+        data = self._preview(self._doc(intro_text="أهلاً بيكم"))
+        self.assertIn("intro", data)
+        self.assertIn("lb-intro", data["intro"])
+        self.assertIn("أهلاً بيكم", data["intro"])
+        # مش المفروض تتكرر جوّه html بتاع الأقسام
+        self.assertNotIn("lb-intro", data["html"])
+
+    def test_editing_intro_text_changes_the_preview(self):
+        first = self._preview(self._doc(intro_text="نص أول"))["intro"]
+        second = self._preview(self._doc(intro_text="نص تاني"))["intro"]
+        self.assertIn("نص أول", first)
+        self.assertIn("نص تاني", second)
+        self.assertNotIn("نص أول", second)
+
+    def test_editing_the_button_label_changes_the_preview(self):
+        out = self._preview(self._doc(intro_button="ادخل يا حبيبي"))["intro"]
+        self.assertIn("ادخل يا حبيبي", out)
+
+    def test_disabling_the_intro_returns_empty(self):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = False
+        self.assertEqual(self._preview(B.normalize_document(doc))["intro"], "")
+
+    def test_intro_is_marked_editable_in_the_preview(self):
+        out = self._preview(self._doc())["intro"]
+        self.assertIn("data-intro-editable", out)
+
+    def test_page_and_preview_render_the_same_intro_partial(self):
+        """لو الاتنين ما استعملوش نفس الملف هيفرقوا مع الوقت."""
+        self.inv.document = self._doc(intro_text="نص مشترك")
+        self.inv.save(update_fields=["document"])
+        page = self.client.get(self.inv.get_absolute_url()).content.decode()
+        self.assertIn("نص مشترك", page)
+        self.assertIn("نص مشترك", self._preview(self.inv.document)["intro"])
+
+
+# ==========================================================================
+class IntroSoundTests(BaseAppTest):
+    """صوت فيديو الافتتاحية — المتصفح بيمنع الصوت التلقائي، فالزر هو الحل."""
+
+    def _render(self, **settings_):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"].update(settings_)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_video_still_starts_muted(self):
+        """مفيش متصفح بيسمح بالتشغيل التلقائي بصوت — لو شلنا muted الفيديو
+        نفسه مش هيشتغل خالص."""
+        body = self._render(intro_video="/media/x.mp4")
+        self.assertIn("muted", body)
+        self.assertIn("playsinline", body)
+
+    def test_sound_button_appears_with_a_video(self):
+        self.assertIn("data-intro-sound", self._render(intro_video="/media/x.mp4"))
+
+    def test_sound_button_can_be_switched_off(self):
+        body = self._render(intro_video="/media/x.mp4", intro_video_sound=False)
+        self.assertNotIn("data-intro-sound", body)
+
+    def test_no_sound_button_without_a_video(self):
+        self.assertNotIn("data-intro-sound", self._render(intro_image="/media/x.webp"))
+
+    def test_video_has_no_loop_so_it_can_open_on_end(self):
+        """loop بيمنع حدث ended اللي بيفتح الدعوة لوحدها."""
+        body = self._render(intro_video="/media/x.mp4")
+        video_tag = body[body.index("<video"):body.index("</video>")]
+        self.assertNotIn(" loop", video_tag)
+
+
+# ==========================================================================
+class TemplateHygieneTests(TestCase):
+    """أخطاء قوالب بتعدّي من غير ما ترمي استثناء — بتظهر للمستخدم كنص."""
+
+    def _templates(self):
+        import os
+        from django.conf import settings as dj
+        root = dj.BASE_DIR / "templates"
+        for dirpath, _dirs, files in os.walk(root):
+            for name in files:
+                if name.endswith(".html"):
+                    path = os.path.join(dirpath, name)
+                    yield path, open(path, encoding="utf-8").read()
+
+    def test_no_multiline_hash_comments(self):
+        """‎{# #}‎ في Django بيشتغل على سطر واحد بس.
+
+        تعليق ممتد على سطرين مابيرميش خطأ — بيتطبع على الصفحة كنص عادي
+        قدام المستخدم. حصل مرتين في المشروع ده، فبقى ليه اختبار.
+        """
+        bad = []
+        for path, body in self._templates():
+            for i, line in enumerate(body.splitlines(), 1):
+                if "{#" in line and "#}" not in line.split("{#", 1)[1]:
+                    bad.append(f"{path}:{i}")
+        self.assertEqual(bad, [], "تعليق {# #} ممتد على أكتر من سطر: " + ", ".join(bad))
+
+    def test_every_template_loads(self):
+        """لو حد نسي {% load %} الصفحة بتقع وقت العرض مش وقت الفحص."""
+        from django.template.loader import get_template
+        from django.conf import settings as dj
+        root = dj.BASE_DIR / "templates"
+        for path, _ in self._templates():
+            rel = str(path).replace(str(root) + "/", "")
+            with self.subTest(template=rel):
+                get_template(rel)

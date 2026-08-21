@@ -2,8 +2,8 @@
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
   {% if props.eyebrow %}<p class="lb-eyebrow">{{ props.eyebrow }}</p>{% endif %}
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
-  <div class="lb-countdown lb-countdown--{{ props.variant }}" style="--num-size:{{ props.number_size|fluid:theme.max_width }}"
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading">{{ props.heading }}</h2>{% endif %}
+  <div data-move="countdown" class="lb-countdown lb-countdown--{{ props.variant }}" style="--num-size:{{ props.number_size|fluid:theme.max_width }}"
        data-countdown="{{ countdown_iso }}" data-finished="{{ props.finished_text }}"{% if not props.show_seconds %} data-no-seconds="1"{% endif %}>
     <div class="lb-cd-unit"><strong data-cd="days">00</strong><span>{{ props.label_days }}</span></div>
     <div class="lb-cd-unit"><strong data-cd="hours">00</strong><span>{{ props.label_hours }}</span></div>

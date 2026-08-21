@@ -1,7 +1,7 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
-  {% if props.src %}<figure class="lb-figure lb-figure--{{ props.frame }}" style="max-width:{{ props.max_width }}px">
+  {% if props.src %}<figure data-move="image" class="lb-figure lb-figure--{{ props.frame }}" style="max-width:{{ props.max_width }}px">
     <img src="{{ props.src }}" alt="{{ props.caption|default:'' }}" loading="lazy">
     {% if props.caption %}<figcaption>{{ props.caption }}</figcaption>{% endif %}
   </figure>{% else %}<div class="lb-gempty">اختر صورة من المحرر</div>{% endif %}

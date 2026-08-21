@@ -350,7 +350,7 @@ def layout_css(blocks: list[dict]) -> str:
             if not dx and not dy:
                 continue
             rules.append(
-                f'#{bid} [data-slot="{slot}"]{{--dx:{dx}cqw;--dy:{dy}cqw}}'
+                f'#{bid} [data-move="{slot}"]{{--dx:{dx}cqw;--dy:{dy}cqw}}'
             )
     # آمن بحكم البناء: المعرّفات متحققة بـ_SAFE_ID والأرقام float،
     # فمفيش أي مدخل من المستخدم بيوصل للناتج كنص حر.

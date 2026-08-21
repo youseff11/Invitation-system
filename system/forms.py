@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django import forms
 
-from .models import Customer, Guest, Invitation, Order, Plan, Template
+from .models import Customer, Guest, Invitation, MusicTrack, Order, Plan, Template
 
 
 class OrderForm(forms.ModelForm):
@@ -83,3 +83,31 @@ class TemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["slug"].required = False
+
+
+class MusicTrackForm(forms.ModelForm):
+    """رفع مقطوعة للمكتبة المشتركة.
+
+    الملف أو الرابط — واحد منهم كفاية، بس لازم واحد على الأقل، وإلا هتبقى
+    مقطوعة بلا صوت في القائمة.
+    """
+
+    class Meta:
+        model = MusicTrack
+        fields = ["name", "file", "external_url", "note", "is_active", "order"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"accept": "audio/*"}),
+            "external_url": forms.URLInput(attrs={"placeholder": "https://.../song.mp3"}),
+        }
+
+    def clean(self):
+        data = super().clean()
+        if not data.get("file") and not data.get("external_url"):
+            raise forms.ValidationError("ارفع ملفاً صوتياً أو ضع رابطاً مباشراً.")
+        return data
+
+    def clean_file(self):
+        f = self.cleaned_data.get("file")
+        if f and f.size > 8 * 1024 * 1024:
+            raise forms.ValidationError("حجم الملف أكبر من ٨ ميجابايت.")
+        return f

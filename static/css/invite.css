@@ -796,17 +796,17 @@
 
 .lb-stage { container-type: inline-size; }
 
-[data-slot] {
+[data-move] {
   transform: translate(var(--dx, 0), var(--dy, 0));
 }
 
 /* أثناء السحب داخل المحرر */
-.lb-doc--editing [data-slot] { cursor: default; }
-.lb-doc--editing [data-slot]:not([contenteditable="true"]):hover {
+.lb-doc--editing [data-move] { cursor: default; }
+.lb-doc--editing [data-move]:not([contenteditable="true"]):hover {
   outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
   outline-offset: 4px;
 }
-.lb-doc--editing [data-slot].lb-dragging {
+.lb-doc--editing [data-move].lb-dragging {
   outline: 1px solid var(--accent);
   outline-offset: 4px;
   cursor: grabbing;
@@ -864,3 +864,33 @@
 .lb-intro--video .lb-intro-inner,
 .lb-intro--video .lb-kicker,
 .lb-intro--video .lb-body { color: #fff; }
+
+/* ------------------------------------------------ قسم HTML مخصص/مستورد */
+/* .lb-inner فليكس بمحاذاة وسط، فأي ابن بيتقلّص لعرض محتواه. القالب
+   المستورد متصمّم على عرض الصفحة كامل، فبناخد العرض المتاح كله. */
+.lb-custom { width: 100%; }
+/* الستايل المستورد بيتحصر بمعرّف القسم، وممكن يبقى فيه عناصر بعرض
+   أكبر من الحاوية — نمنعها تعمل تمرير أفقي للصفحة كلها */
+[data-block-type="custom_html"] { overflow-x: hidden; }
+
+/* ------------------------------------------------ زر صوت فيديو الافتتاحية */
+.lb-intro-sound {
+  position: absolute; z-index: 3;
+  inset-block-start: 16px; inset-inline-end: 16px;
+  width: 42px; height: 42px; padding: 0;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, .38); border-radius: 50%;
+  background: rgba(20, 18, 16, .46); color: #fff;
+  backdrop-filter: blur(6px); cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.lb-intro-sound:hover { background: rgba(20, 18, 16, .68); transform: scale(1.06); }
+.lb-intro-sound svg { width: 21px; height: 21px; }
+/* الأيقونة بتتبدّل حسب الحالة — واحدة ظاهرة والتانية مخفية */
+.lb-intro-sound .i-on { display: none; }
+.lb-intro-sound.is-on .i-off { display: none; }
+.lb-intro-sound.is-on .i-on { display: block; }
+.lb-intro-sound[hidden] { display: none; }
+@media (max-width: 480px) {
+  .lb-intro-sound { width: 38px; height: 38px; inset-block-start: 12px; inset-inline-end: 12px; }
+}

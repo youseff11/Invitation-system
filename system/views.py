@@ -18,6 +18,7 @@ from django.http import (
     Http404, HttpResponse, HttpResponseBadRequest, JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -25,15 +26,18 @@ from django.views.decorators.http import require_GET, require_POST
 
 from . import blocks as blocks_engine
 from . import qrcodes
-from .forms import GuestForm, InvitationSettingsForm, OrderForm
+from .forms import (
+    GuestForm, InvitationSettingsForm, MusicTrackForm, OrderForm,
+)
 from .models import (
-    Asset, Customer, Guest, Invitation, Order, Plan, RSVPResponse, Template,
+    Asset, Customer, Guest, Invitation, MusicTrack, Order, Plan, RSVPResponse,
+    Template,
 )
 from django.utils.safestring import mark_safe
 from .renderer import render_document
 from django.core.files.base import ContentFile
 
-from . import guestimport, images
+from . import guestimport, images, templateimport, video
 
 MAX_ASSET_BYTES = 8 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
@@ -408,10 +412,67 @@ def invitation_create(request):
 @login_required
 def dashboard_templates(request):
     _staff_required(request)
+
+    if request.method == "POST" and request.FILES.get("template_file"):
+        try:
+            tpl = templateimport.import_template(
+                request.FILES["template_file"],
+                name=(request.POST.get("template_name") or "").strip(),
+                category=request.POST.get("template_category") or "classic",
+            )
+        except templateimport.ImportError_ as exc:
+            messages.error(request, str(exc))
+        except Exception:
+            messages.error(request, "تعذّر قراءة الملف. جرّب أرشيف ZIP فيه index.html.")
+        else:
+            messages.success(
+                request,
+                f"اتستورد «{tpl.name}» بـ{len(tpl.document.get('blocks', []))} قسم. "
+                "افتحه في المحرر وظبّطه.",
+            )
+            return redirect("dashboard_templates")
+
     return render(request, "dashboard/templates.html", {
         "nav": "templates",
         "templates": Template.objects.annotate(uses=Count("invitations")),
         "categories": Template.CATEGORY_CHOICES,
+    })
+
+
+@login_required
+def dashboard_music(request):
+    """مكتبة الموسيقى — ترفع المقطوعة مرة وتختارها في أي دعوة."""
+    _staff_required(request)
+    form = MusicTrackForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action in {"delete", "toggle"}:
+            track = get_object_or_404(MusicTrack, pk=request.POST.get("track") or 0)
+            if action == "delete":
+                name = track.name
+                track.delete()
+                messages.success(request, f"اتشالت «{name}» من المكتبة.")
+            else:
+                track.is_active = not track.is_active
+                track.save(update_fields=["is_active", "updated_at"])
+                messages.success(
+                    request,
+                    ("رجّعت" if track.is_active else "خبّيت") + f" «{track.name}».",
+                )
+            return redirect("dashboard_music")
+
+        form = MusicTrackForm(request.POST, request.FILES)
+        if form.is_valid():
+            track = form.save()
+            messages.success(request, f"اتضافت «{track.name}» للمكتبة.")
+            return redirect("dashboard_music")
+        messages.error(request, "راجع البيانات — فيه حقل ناقص.")
+
+    return render(request, "dashboard/music.html", {
+        "nav": "music",
+        "form": form,
+        "tracks": MusicTrack.objects.all(),
     })
 
 
@@ -509,10 +570,20 @@ def invitation_editor(request, pk):
         "schema_json": blocks_engine.editor_schema(),
         "document_json": document,
         "assets_json": [
-            {"id": a.pk, "url": a.url, "name": a.original_name, "kind": a.kind}
-            for a in Asset.objects.filter(invitation=invitation)[:200]
+            {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "name": a.original_name, "kind": a.kind}
+            # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
+            for a in Asset.objects.filter(
+                Q(invitation=invitation) | Q(invitation__isnull=True)
+            ).order_by("-id")[:300]
         ],
         "features_json": sorted(invitation.allowed_features),
+        # مكتبة الموسيقى المشتركة — بتظهر في مُنتقي الصوت جوه المحرر
+        "music_json": [
+            {"id": m.pk, "name": m.name, "url": m.url, "note": m.note}
+            for m in MusicTrack.objects.filter(is_active=True)
+            if m.url
+        ],
         "template_categories": Template.CATEGORY_CHOICES,
         "meta_json": {
             "invitationId": invitation.pk,
@@ -563,9 +634,15 @@ def api_preview(request, pk):
         editable=True,
     )
     doc_settings = result["settings"]
+    # الافتتاحية أخت لـ.lb-stage مش جواه، والمحرر بيبدّل الـstage بس.
+    # فبنعرضها هنا لوحدها عشان تعديلاتها تبان لحظياً زي الأقسام.
+    intro_html = render_to_string("invitations/_intro.html", {
+        "render": result, "editable": True, "guest": None,
+    }, request=request)
     return JsonResponse({
         "ok": True,
         "html": str(result["html"]),
+        "intro": intro_html.strip(),
         "cssVars": result["css_vars"],
         "pattern": result["theme"].get("pattern") or "none",
         "maxWidth": result["theme"].get("max_width"),
@@ -664,6 +741,16 @@ def api_upload(request, pk):
                 upload.seek(0)
                 source = upload
 
+    seconds = 0.0
+    if kind == "video":
+        # فيديو الافتتاحية بيتشاف على تليفون وبيشتغل صامت، فبنقصّه على ١٠ ثواني
+        # ونشيل الصوت وننزّله ٧٢٠p. لو ffmpeg مش متثبّت بيرجع الأصل زي ما هو.
+        try:
+            stored, seconds = video.compress(upload)
+        except Exception:
+            upload.seek(0)
+            stored, seconds = upload, 0.0
+
     asset = Asset.objects.create(
         file=stored, thumb=thumb, source=source,
         kind=kind, original_name=upload.name[:200],
@@ -672,8 +759,9 @@ def api_upload(request, pk):
     )
     return JsonResponse({
         "ok": True,
-        "asset": {"id": asset.pk, "url": asset.url, "name": asset.original_name,
-                  "kind": asset.kind, "width": width, "height": height},
+        "asset": {"id": asset.pk, "url": asset.url, "thumb": asset.thumb_url,
+                  "name": asset.original_name, "kind": asset.kind,
+                  "width": width, "height": height, "seconds": seconds},
     })
 
 
@@ -751,8 +839,12 @@ def api_assets(request, pk):
     return JsonResponse({
         "ok": True,
         "assets": [
-            {"id": a.pk, "url": a.url, "name": a.original_name, "kind": a.kind}
-            for a in Asset.objects.filter(invitation=invitation)[:200]
+            {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "name": a.original_name, "kind": a.kind}
+            # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
+            for a in Asset.objects.filter(
+                Q(invitation=invitation) | Q(invitation__isnull=True)
+            ).order_by("-id")[:300]
         ],
     })
 

@@ -2,8 +2,8 @@
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
   <blockquote class="lb-quote lb-quote--{{ props.frame }}" style="font-size:{{ props.quote_size|fluid:theme.max_width }}{% if props.quote_font %};font-family:{{ props.quote_font }}{% endif %}">
-    <p data-slot="text">{{ props.text }}</p>
-    {% if props.source %}<cite data-slot="source">{{ props.source }}</cite>{% endif %}
+    <p data-slot="text" data-move="text">{{ props.text }}</p>
+    {% if props.source %}<cite data-slot="source" data-move="source">{{ props.source }}</cite>{% endif %}
   </blockquote>
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}

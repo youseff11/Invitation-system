@@ -344,6 +344,37 @@ class Invitation(TimeStampedModel):
 
 
 # --------------------------------------------------------------------------
+class MusicTrack(TimeStampedModel):
+    """مكتبة الموسيقى — تُرفع مرة وتُختار في أي دعوة جديدة.
+
+    منفصلة عن Asset عن قصد: دي مكتبة منسّقة بأسماء عربية وترتيب عرض،
+    مش ملفات مرفوعة لدعوة بعينها.
+    """
+
+    name = models.CharField("الاسم", max_length=120)
+    file = models.FileField("الملف", upload_to="music/%Y/%m/", blank=True)
+    external_url = models.URLField("رابط خارجي", blank=True,
+                                   help_text="بديل للرفع — رابط مباشر لملف صوتي.")
+    note = models.CharField("ملاحظة", max_length=200, blank=True)
+    is_active = models.BooleanField("متاحة للاختيار", default=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "name"]
+        verbose_name = "مقطوعة موسيقية"
+        verbose_name_plural = "مكتبة الموسيقى"
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def url(self) -> str:
+        if self.file:
+            return self.file.url
+        return self.external_url or ""
+
+
+# --------------------------------------------------------------------------
 class Guest(TimeStampedModel):
     invitation = models.ForeignKey(Invitation, on_delete=models.CASCADE,
                                    related_name="guests")

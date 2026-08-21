@@ -2,9 +2,9 @@
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
   {% if props.eyebrow %}<p class="lb-eyebrow">{{ props.eyebrow }}</p>{% endif %}
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading">{{ props.heading }}</h2>{% endif %}
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading">{{ props.heading }}</h2>{% endif %}
   {% if props.intro %}<p class="lb-body">{{ props.intro|linebreaksbr }}</p>{% endif %}
-  <div class="lb-card lb-rsvp">
+  <div class="lb-card lb-rsvp" data-move="form">
     {% if rsvp_closed %}<p class="lb-rsvp-closed">{{ props.closed_message }}</p>
     {% else %}
     {% if guest %}

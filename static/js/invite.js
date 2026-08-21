@@ -253,11 +253,18 @@
     var intro = $(".lb-intro");
     if (!intro) return;
 
+    // __lbRefresh بيتنادى أكتر من مرة. لو العقدة دي اتربطت خلاص
+    // مانربطهاش تاني — وإلا كل تحديث معاينة بيضيف مستمع زيادة
+    if (intro.dataset.lbBound) return;
+    intro.dataset.lbBound = "1";
+
     // داخل المحرر بنخفيها بس ما نشيلهاش، عشان تقدر ترجع تعاينها وتعدّلها
     var editable = intro.hasAttribute("data-intro-editable");
     var timer = null;
 
-    doc.body.style.overflow = "hidden";
+    // لو كانت مفتوحة قبل تحديث المعاينة، مانرجعش نقفل التمرير عليه
+    var startsOpen = intro.classList.contains("is-open");
+    doc.body.style.overflow = startsOpen ? "" : "hidden";
 
     var open = function () {
       if (timer) { clearTimeout(timer); timer = null; }
@@ -283,7 +290,7 @@
       if (timer) clearTimeout(timer);
       if (secs > 0) timer = setTimeout(open, secs * 1000);
     }
-    startAuto();
+    if (!startsOpen) startAuto();
 
     // الفيديو لازم يبدأ صامت — كل المتصفحات بتمنع الصوت التلقائي
     var video = $("[data-intro-video]", intro);
@@ -297,11 +304,49 @@
       video.addEventListener("ended", function () {
         if (!intro.getAttribute("data-intro-auto")) open();
       });
+
+      /* زر الصوت: الطريقة الوحيدة المسموحة لتشغيل صوت الفيديو.
+         المتصفح بيسمح بإلغاء الكتم **بس** لو جاي من لمسة المستخدم
+         نفسه، فمفيش نسخة أوتوماتيكية من ده مهما عملنا.
+         بنخفي الزر لو الفيديو أصلاً مالوش مسار صوت — زرار بيوعد بحاجة
+         مش موجودة أسوأ من مفيش زرار. */
+      var sound = $("[data-intro-sound]", intro);
+      if (sound) {
+        var hideIfSilent = function () {
+          if (hasAudio(video) === false) sound.hidden = true;
+        };
+        video.addEventListener("loadeddata", hideIfSilent);
+        if (video.readyState >= 2) hideIfSilent();
+
+        sound.addEventListener("click", function (e) {
+          e.stopPropagation();               // ما نفتحش الدعوة بالغلط
+          video.muted = !video.muted;
+          if (!video.muted) { try { video.play(); } catch (err) {} }
+          sound.setAttribute("aria-pressed", String(!video.muted));
+          sound.setAttribute("aria-label",
+            video.muted ? "تشغيل صوت الفيديو" : "كتم صوت الفيديو");
+          sound.classList.toggle("is-on", !video.muted);
+          // لو الفيديو والموسيقى شغّالين مع بعض هيتزنقوا في ودن الضيف
+          if (!video.muted && window.__lbMusic) window.__lbMusic.pause();
+        });
+      }
     }
 
     var btn = $("[data-intro-open]", intro);
     if (btn) btn.addEventListener("click", open);
     intro.addEventListener("click", function (e) { if (e.target === intro) open(); });
+  }
+
+  /** هل الفيديو فيه مسار صوت؟ ``null`` يعني المتصفح مش بيقول. */
+  function hasAudio(v) {
+    if (typeof v.mozHasAudio === "boolean") return v.mozHasAudio;
+    if (v.audioTracks && typeof v.audioTracks.length === "number") {
+      return v.audioTracks.length > 0;
+    }
+    if (typeof v.webkitAudioDecodedByteCount === "number") {
+      return v.webkitAudioDecodedByteCount > 0;
+    }
+    return null;                              // مش عارفين — نسيب الزر ظاهر
   }
 
   // ---------------------------------------------------------- نموذج RSVP
@@ -380,6 +425,9 @@
   window.__lbRefresh = function () {
     initCountdowns();
     initVideo();
+    // المحرر بيستبدل عقدة .lb-intro لما تعدّل إعداداتها — العقدة
+    // الجديدة مالهاش مستمعين، فبنربطها تاني
+    initIntro();
     $$(".lb-anim").forEach(function (n) { n.classList.add("is-in"); });
   };
 })();

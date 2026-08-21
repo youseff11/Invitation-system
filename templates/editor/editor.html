@@ -118,6 +118,23 @@
         <button type="button" data-tab="settings">إعدادات</button>
       </nav>
 
+      {% comment %}
+        طي كل المجموعات المفتوحة في التبويب الحالي. بيظهر بس لما يكون
+        فيه مجموعتين على الأقل — تبويب «الأقسام» مفيهوش مجموعات خالص.
+      {% endcomment %}
+      <div class="ed-panel-tools" data-panel-tools hidden>
+        <button class="ed-collapse-btn" type="button" data-collapse-all
+                aria-expanded="true" title="اقفل كل المجموعات">
+          {% comment %}
+            نفس رموز رؤوس المجموعات (▲ مفتوحة / ▼ مقفولة) عشان الزر
+            يقرا بنفس لغة اللوحة. السهمين المرسومين بـSVG كانوا
+            بيتلاصقوا في النص عند ١٥px ويبانوا زي علامة ×.
+          {% endcomment %}
+          <span class="ed-collapse-ico" aria-hidden="true"></span>
+          <span data-collapse-label>اقفل الكل</span>
+        </button>
+      </div>
+
       <div class="ed-tabpanes">
 
         {# ---- الأقسام ---- #}
@@ -289,11 +306,13 @@
 </div>
 
 <div class="ed-modal" data-asset-modal hidden>
-  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="مكتبة الصور">
-    <h3>مكتبة الصور</h3>
-    <p>ارفع صوراً بصيغة JPG أو PNG أو WebP بحد أقصى ٨ ميجابايت للملف.</p>
+  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="المكتبة">
+    <h3 data-asset-title>مكتبة الصور</h3>
+    <p data-asset-hint>ارفع صوراً بصيغة JPG أو PNG أو WebP بحد أقصى ٨ ميجابايت للملف.</p>
+    {# مكتبة الموسيقى المشتركة — بتتعبّى من JS وبتفضل مخفية لغير الصوت #}
+    <div class="ed-lib" data-music-lib hidden></div>
     <div class="ed-assets" data-asset-grid></div>
-    <input type="file" data-file-input accept="image/*,audio/*" multiple hidden>
+    <input type="file" data-file-input accept="image/*,audio/*,video/*" multiple hidden>
     <div class="ed-modal-actions">
       <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
       <button class="ed-btn ed-btn--primary" type="button" data-upload-trigger>رفع ملفات</button>
@@ -364,6 +383,7 @@
 {{ meta_json|json_script:"editor-meta" }}
 {{ features_json|json_script:"editor-features" }}
 {{ assets_json|json_script:"editor-assets" }}
+{{ music_json|json_script:"editor-music" }}
 
 <script src="{% static 'js/editor.js' %}?v={{ ASSET_V }}" defer></script>
 </body>
