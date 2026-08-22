@@ -186,7 +186,9 @@ def _preview_cta(template) -> dict | None:
     هو شايف إيه من غير ما الزائر يكتب حاجة.
     """
     cfg = SiteSetting.load()
-    if not cfg.preview_cta_enabled:
+    # شرط الظهور عايش في الموديل عشان اللوحة والمعاينة يقروا نفس الحكم —
+    # لما كان مكرر هنا، اللوحة كانت بتقول «ظاهر» والصفحة مابتعرضش حاجة.
+    if not cfg.preview_cta_ready:
         return None
 
     name = template.display_name
@@ -196,8 +198,6 @@ def _preview_cta(template) -> dict | None:
         wa = f"https://wa.me/{cfg.whatsapp_digits}?text={quote(text)}"
 
     fb = cfg.facebook_url if cfg.facebook_enabled else ""
-    if not wa and not fb:
-        return None                       # شريط من غير أزرار = ضوضاء
     return {"text": cfg.preview_cta_text, "template_name": name,
             "whatsapp": wa, "facebook": fb}
 

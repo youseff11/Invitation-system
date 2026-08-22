@@ -6,6 +6,23 @@
   <a class="btn btn--ghost" href="{% url 'dashboard_plans' %}">↩ الباقات</a>
 </div>
 
+{% comment %}
+  الحالة اللي كانت بتضيّع الوقت: التوجل مفتوح، والشريط مش ظاهر في
+  المعاينة، ومفيش أي رسالة تقول ليه. الشريط بيتخفي بالكامل لو مفيش
+  وسيلة تواصل — شريط من غير أزرار ضوضاء — فبنقولها بصوت عالي هنا.
+{% endcomment %}
+{% if cfg.preview_cta_enabled and not cfg.preview_cta_ready %}
+<div class="card" data-cta-warning
+     style="border-inline-start:4px solid var(--gold);margin-bottom:18px">
+  <h2 style="font-size:16px;margin:0 0 6px">الشريط مفعّل — بس مش ظاهر</h2>
+  <p class="muted" style="font-size:13.5px;margin:0">
+    مفيش <strong>رقم واتساب</strong> ولا <strong>رابط فيسبوك</strong>، فالشريط
+    بيبقى كلام من غير زرار — والصفحة بتخفيه بالكامل. املا واحد منهم تحت
+    واحفظ، وهيبان على طول في معاينة أي قالب.
+  </p>
+</div>
+{% endif %}
+
 <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(280px,.8fr);align-items:start">
   <div class="card">
     <h2 style="font-size:17px;margin-top:0">شريط «عجبك القالب؟»</h2>
@@ -50,7 +67,15 @@
 
     <h3 style="font-size:14px;margin-bottom:6px">الحالة دلوقتي</h3>
     <ul class="muted" style="font-size:13px;padding-inline-start:18px;margin:0">
-      <li>الشريط: {% if cfg.preview_cta_enabled %}<strong>ظاهر</strong>{% else %}مطفي{% endif %}</li>
+      {% comment %}
+        كان بيقول «ظاهر» بمجرد إن التوجل مفتوح، حتى لو الشريط مخفي فعلاً
+        لأن مفيش وسيلة تواصل. دلوقتي بيقرا نفس حكم الصفحة.
+      {% endcomment %}
+      <li>الشريط:
+        {% if cfg.preview_cta_ready %}<strong>ظاهر</strong>
+        {% elif cfg.preview_cta_enabled %}<strong>مفعّل بس مخفي — مفيش وسيلة تواصل</strong>
+        {% else %}مطفي{% endif %}
+      </li>
       <li>واتساب:
         {% if cfg.whatsapp_enabled and cfg.whatsapp_digits %}
           <strong dir="ltr">{{ cfg.whatsapp_number }}</strong>

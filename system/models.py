@@ -725,3 +725,19 @@ class SiteSetting(models.Model):
     def whatsapp_digits(self) -> str:
         """wa.me عايز أرقام بس — من غير + ولا مسافات ولا شرط."""
         return "".join(ch for ch in self.whatsapp_number if ch.isdigit())
+
+    @property
+    def has_contact_link(self) -> bool:
+        """فيه وسيلة تواصل واحدة على الأقل شغّالة؟"""
+        return bool((self.whatsapp_enabled and self.whatsapp_digits)
+                    or (self.facebook_enabled and self.facebook_url))
+
+    @property
+    def preview_cta_ready(self) -> bool:
+        """الشريط هيظهر فعلاً؟
+
+        مفعّل **و** فيه لينك واحد على الأقل. شريط من غير أزرار ضوضاء،
+        فبيتخفي بالكامل — وده كان بيحصل بالصمت: التوجل مفتوح والشريط
+        مش باين ومحدش يعرف ليه. اللوحة بتحذّر من الحالة دي دلوقتي.
+        """
+        return bool(self.preview_cta_enabled and self.has_contact_link)

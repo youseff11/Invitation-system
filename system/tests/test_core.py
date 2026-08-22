@@ -2507,6 +2507,65 @@ class PreviewCtaTests(BaseAppTest):
 
 
 # ==========================================================================
+class PreviewCtaOnAFreshInstallTests(BaseAppTest):
+    """أول ما تنصّب المشروع الشريط مفعّل بس الرقم فاضي.
+
+    فبيختفي بالكامل، واللوحة كانت بتقول «ظاهر»، ومفيش أي رسالة تفسّر —
+    وقعد الواحد يدوّر في الكود على حاجة موجودة أصلاً وشغّالة صح.
+    """
+
+    def _preview(self):
+        return self.client.get(
+            f"/templates/{self.template.slug}/preview/").content.decode()
+
+    def _dash(self):
+        self.client.force_login(self.staff)
+        return self.client.get("/dashboard/site/").content.decode()
+
+    def test_the_defaults_leave_it_enabled_but_contactless(self):
+        cfg = SiteSetting.load()
+        self.assertTrue(cfg.preview_cta_enabled)
+        self.assertEqual(cfg.whatsapp_number, "")
+        self.assertEqual(cfg.facebook_url, "")
+
+    def test_so_the_bar_does_not_render(self):
+        self.assertNotIn("data-preview-cta", self._preview())
+
+    def test_the_dashboard_says_why_instead_of_staying_silent(self):
+        self.assertIn("data-cta-warning", self._dash())
+
+    def test_the_status_line_does_not_claim_it_is_visible(self):
+        dash = self._dash()
+        self.assertIn("مفعّل بس مخفي", dash)
+
+    def test_one_number_is_enough_to_bring_it_back(self):
+        cfg = SiteSetting.load()
+        cfg.whatsapp_number = "+20 100 000 0000"
+        cfg.save()
+        self.assertIn("data-preview-cta", self._preview())
+        self.assertNotIn("data-cta-warning", self._dash())
+
+    def test_facebook_alone_is_enough_too(self):
+        cfg = SiteSetting.load()
+        cfg.facebook_url = "https://facebook.com/farha"
+        cfg.save()
+        self.assertIn("data-preview-cta", self._preview())
+        self.assertNotIn("data-cta-warning", self._dash())
+
+    def test_the_page_and_the_dashboard_read_one_rule(self):
+        """لما الشرط كان مكرر في الاتنين، اللوحة كذبت على المستخدم."""
+        views = (Path(settings.BASE_DIR) / "system/views.py").read_text("utf-8")
+        i = views.index("def _preview_cta(")
+        self.assertIn("cfg.preview_cta_ready", views[i:i + 900])
+
+    def test_a_disabled_toggle_is_not_reported_as_a_problem(self):
+        cfg = SiteSetting.load()
+        cfg.preview_cta_enabled = False
+        cfg.save()
+        self.assertNotIn("data-cta-warning", self._dash())
+
+
+# ==========================================================================
 class PlanAddonTests(BaseAppTest):
     """إضافات بسعر زيادة فوق الباقة."""
 
