@@ -61,10 +61,21 @@
   {% endif %}
 
   <div class="lb-intro-inner">
-    {% if render.data.name_one %}<p class="lb-kicker">{{ render.data.name_one }}{% if render.data.name_two %} &amp; {{ render.data.name_two }}{% endif %}</p>{% endif %}
+    {% comment %}
+      النوت ده كان بياخد الأسماء من تبويب البيانات لوحده — يعني كل دعوة
+      بتطلع اسم صاحبها على الافتتاحية غصب عن اللي بيصمّم. بقى حقل
+      مستقل: تكتب فيه اللي انت عايزه، وسيبته فاضي مايبانش خالص.
+    {% endcomment %}
+    {% if render.settings.intro_note %}<p class="lb-kicker">{{ render.settings.intro_note }}</p>{% endif %}
     {% if guest %}<p class="lb-intro-name">أهلاً {{ guest.name }}</p>{% endif %}
     {% if render.settings.intro_text %}<p class="lb-body">{{ render.settings.intro_text }}</p>{% endif %}
-    <button type="button" class="lb-btn lb-btn--solid" data-intro-open>{{ render.settings.intro_button }}</button>
+    {% comment %}
+      الزر اختياري. مع فيديو الافتتاحية بيبقى زيادة: الضيف دايس زر
+      التشغيل خلاص، والدعوة بتفتح لوحدها لما الفيديو يخلص. لو فضّيت
+      النص الزر بيختفي والـJS بيخلي أي لمسة على الشاشة تفتح الدعوة —
+      عشان محدش يتقفل على الافتتاحية من غير مخرج.
+    {% endcomment %}
+    {% if render.settings.intro_button %}<button type="button" class="lb-btn lb-btn--solid" data-intro-open>{{ render.settings.intro_button }}</button>{% endif %}
   </div>
 </div>
 {% endif %}

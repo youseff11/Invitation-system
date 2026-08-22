@@ -471,7 +471,22 @@
 
     var btn = $("[data-intro-open]", intro);
     if (btn) btn.addEventListener("click", open);
-    intro.addEventListener("click", function (e) { if (e.target === intro) open(); });
+
+    /* الزر بقى اختياري — لو المصمّم فضّى نصه مايتعرضش خالص. ساعتها
+       لازم يفضل فيه مخرج، وإلا الضيف بيتقفل على الافتتاحية والتمرير
+       مقفول تحته. المخارج: نهاية الفيديو، العدّاد التلقائي، ولمسة في
+       أي مكان.
+
+       ولمسة «أي مكان» مش مسموحة وإحنا لسه مستنيين زر التشغيل — الضيف
+       ساعتها ما شافش الافتتاحية أصلاً، والضغطة المفروض تروح لزر
+       التشغيل مش تتخطّى كل حاجة. زر التشغيل وزر الصوت بيوقّفوا
+       الضغطة بنفسهم فمش هيوصلوا هنا. */
+    intro.addEventListener("click", function (e) {
+      if (intro.classList.contains("is-awaiting-play")) return;
+      if (btn) { if (e.target === intro) open(); return; }
+      open();
+    });
+    if (!btn) intro.style.cursor = "pointer";
   }
 
   /** هل الفيديو فيه مسار صوت؟ ``null`` يعني المتصفح مش بيقول. */

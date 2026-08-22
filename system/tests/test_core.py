@@ -1208,6 +1208,82 @@ class IntroLivePreviewTests(BaseAppTest):
 
 
 # ==========================================================================
+class IntroNoteTests(BaseAppTest):
+    """النوت بقى حقل يكتبه المصمّم بدل ما الافتتاحية تاخد اسم العميل."""
+
+    def _intro(self, **settings_):
+        """جزء الافتتاحية بس — ‎lb-kicker‎ موجود في الغلاف كمان، فمقارنة
+        على الصفحة كلها بتكدب."""
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"].update(settings_)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        i = body.index('<div class="lb-intro')
+        return body[i:body.index("lb-stage", i)]
+
+    def test_the_intro_no_longer_prints_the_client_name(self):
+        """كانت بتاخد name_one من تبويب البيانات غصب — دي بيانات العميل
+        مش قرار تصميم، وكانت بتطلع في كل قالب."""
+        self.assertNotIn(self.inv.name_one, self._intro())
+
+    def test_nothing_shows_when_the_note_is_empty(self):
+        self.assertNotIn("lb-kicker", self._intro())
+
+    def test_the_note_shows_what_was_written(self):
+        self.assertIn("محمد", self._intro(intro_note="محمد & فرح"))
+
+    def test_the_note_is_escaped(self):
+        body = self._intro(intro_note="<img src=x onerror=alert(1)>")
+        self.assertNotIn("<img", body)
+
+    def test_the_note_defaults_to_empty(self):
+        field = next(f for f in B.editor_schema()["settings_fields"]
+                     if f["key"] == "intro_note")
+        self.assertEqual(field["default"], "")
+
+
+# ==========================================================================
+class IntroExitTests(BaseAppTest):
+    """الافتتاحية بتقفل التمرير تحتها — لازم يفضل ليها مخرج دايماً."""
+
+    def setUp(self):
+        super().setUp()
+        js = (Path(settings.BASE_DIR) / "static/js/invite.js").read_text("utf-8")
+        i = js.index("function initIntro()")
+        self.js = js[i:js.index("\n  }\n", i)]
+
+    def _intro(self, **settings_):
+        doc = self.inv.document
+        doc["settings"]["intro_enabled"] = True
+        doc["settings"].update(settings_)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.client.get(self.inv.get_absolute_url()).content.decode()
+
+    def test_the_button_is_there_by_default(self):
+        self.assertIn("data-intro-open", self._intro())
+
+    def test_an_empty_label_removes_the_button(self):
+        """مع فيديو الافتتاحية الزر زيادة: الضيف داس زر التشغيل خلاص."""
+        self.assertNotIn("data-intro-open", self._intro(intro_button=""))
+
+    def test_a_tap_anywhere_opens_it_when_there_is_no_button(self):
+        seg = self.js[self.js.index('intro.addEventListener("click"'):]
+        self.assertIn("if (btn)", seg[:400])
+        self.assertIn("open();", seg[:400])
+
+    def test_the_tap_does_not_skip_while_the_play_button_waits(self):
+        """الضيف ساعتها ما شافش الافتتاحية أصلاً."""
+        seg = self.js[self.js.index('intro.addEventListener("click"'):]
+        self.assertIn("is-awaiting-play", seg[:220])
+
+    def test_the_end_of_the_video_still_opens_it(self):
+        self.assertIn('video.addEventListener("ended"', self.js)
+
+
+# ==========================================================================
 class IntroSoundTests(BaseAppTest):
     """صوت فيديو الافتتاحية — المتصفح بيمنع الصوت التلقائي، فالزر هو الحل."""
 
