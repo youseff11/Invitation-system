@@ -763,3 +763,18 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-ctrl-line .ed-btn[disabled] { opacity: .42; cursor: not-allowed; }
 /* معاينة الفيديو في نافذة الاختيار */
 .ed-track video { flex: 0 1 210px; max-width: 100%; border-radius: 8px; background: #000; }
+
+/* ---------------------------------------------------- جدول الترجمة */
+/* النص العربي معروض للقراءة بس — تعديله مكانه تبويبه الأصلي، وعرضه
+   هنا قابل للكتابة كان هيخلي فيه مكانين لنفس النص. */
+.ed-i18n-src {
+  margin: 0 0 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--e-line-soft);
+  color: var(--e-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

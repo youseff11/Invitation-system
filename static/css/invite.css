@@ -1125,3 +1125,27 @@
 }
 .lb-pass-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
 .lb-pass-actions { display: flex; gap: 9px; justify-content: center; flex-wrap: wrap; }
+
+/* ------------------------------------------------ زرار لغة الدعوة */
+/* بيظهر بس لما يكون فيه نسخة إنجليزية مكتوبة. مكانه مقابل زر
+   الموسيقى (اللي في ‎inset-inline-end‎) عشان ما يركبوش على بعض. */
+.lb-lang {
+  position: fixed; z-index: 25;
+  inset-block-start: 16px; inset-inline-start: 16px;
+  min-inline-size: 42px; block-size: 42px;
+  padding-inline: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text);
+  font: 600 13px/1 var(--font-body, inherit); letter-spacing: .5px;
+  text-decoration: none;
+  box-shadow: 0 8px 22px -12px rgba(0, 0, 0, .45);
+  transition: transform .18s ease, background .18s ease;
+}
+.lb-lang:hover { transform: translateY(-1px); background: var(--accent-10); }
+.lb-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* الافتتاحية بتغطّي الشاشة كلها — الزرار تحتها مش هيتشاف ولا هيتضغط */
+.lb-intro:not(.is-open) ~ .lb-lang { display: none; }
+@media (max-width: 480px) {
+  .lb-lang { inset-block-start: 12px; inset-inline-start: 12px; block-size: 38px; }
+}

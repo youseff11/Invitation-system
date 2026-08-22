@@ -1466,6 +1466,198 @@
     syncCollapseTool();
   }
 
+  // ==========================================================
+  // الترجمة — النسخة الإنجليزية للدعوة
+  // ==========================================================
+  /* مفيش ترجمة آلية: المصمّم بيكتب الإنجليزي بإيده وبيتخزّن جوّه
+     المستند في ‎doc.i18n.en‎ كخريطة «مفتاح ← نص».
+
+     شكل المفتاح هنا لازم يطابق اللي بايثون بتقراه في ‎apply_i18n‎ —
+     فيه اختبار بيتأكد إن التنين متفقين، لأن أي فرق معناه ترجمة
+     مكتوبة ومش ظاهرة والمستخدم مش هيعرف ليه. */
+  var I18N_TEXT = { text: 1, textarea: 1 };
+  var I18N_DATA = [
+    ["name_one", "الاسم الأول"],
+    ["name_two", "الاسم الثاني"],
+    ["event_type", "نوع المناسبة"],
+    ["venue", "اسم القاعة"],
+    ["address", "العنوان"],
+  ];
+
+  function i18nTable() {
+    if (!state.doc.i18n) state.doc.i18n = {};
+    if (!state.doc.i18n.en) state.doc.i18n.en = {};
+    return state.doc.i18n.en;
+  }
+
+  /** كل النصوص اللي ينفع تترجم — بنفس ترتيب ظهورها في الدعوة. */
+  function i18nRows() {
+    var rows = [];
+    var push = function (key, label, value, group) {
+      if (typeof value !== "string" || !value.trim()) return;
+      rows.push({ key: key, label: label, value: value, group: group });
+    };
+
+    I18N_DATA.forEach(function (d) {
+      var input = $('[data-inv-field="' + d[0] + '"]');
+      push("data." + d[0], d[1], input ? input.value : "", "بيانات المناسبة");
+    });
+
+    (SCHEMA.settings_fields || []).forEach(function (s) {
+      if (!I18N_TEXT[s.type]) return;
+      push("settings." + s.key, s.label, state.doc.settings[s.key], "إعدادات الدعوة");
+    });
+
+    (state.doc.blocks || []).forEach(function (block) {
+      var spec = blockSpec(block.type);
+      if (!spec) return;
+      var group = block.label || spec.label;
+      var props = block.props || {};
+      spec.props.forEach(function (f) {
+        if (f.translate === false) return;      // كود مش كلام
+        var v = props[f.key];
+        if (f.type === "html") {
+          /* القسم المستورد كلامه جوّه الكود. بنقرا وحدات النص اللي
+             المحرر معلّمها بـ‎data-move‎ ونعرض كل واحدة لوحدها —
+             العنصر اللي جواه وسوم تانية بنسيبه، عشان الاستبدال
+             مايمسحش ‎<br>‎ أو ‎<span>‎ ملوّن والمصمّم مايفهمش راح فين. */
+          if (typeof v !== "string" || !v) return;
+          var root = new DOMParser().parseFromString(
+            "<div>" + v + "</div>", "text/html").body.firstChild;
+          Array.prototype.forEach.call(root.querySelectorAll("[data-move]"),
+            function (n) {
+              if (n.innerHTML.indexOf("<") > -1) return;
+              push(block.id + "." + f.key + "#" + n.getAttribute("data-move"),
+                   "نص", (n.textContent || "").trim(), group);
+            });
+          return;
+        }
+        if (I18N_TEXT[f.type]) {
+          push(block.id + "." + f.key, f.label, v, group);
+        } else if (f.type === "list" && Array.isArray(v)) {
+          v.slice(0, 60).forEach(function (item, i) {
+            if (!item || typeof item !== "object") return;
+            (f.fields || []).forEach(function (sub) {
+              if (!I18N_TEXT[sub.type]) return;
+              push(block.id + "." + f.key + "." + i + "." + sub.key,
+                   f.label + " " + (i + 1) + " — " + sub.label,
+                   item[sub.key], group);
+            });
+          });
+        }
+      });
+    });
+    return rows;
+  }
+
+  function renderI18nPane() {
+    var pane = $("[data-pane='i18n']");
+    if (!pane) return;
+    var host = $("[data-i18n-fields]", pane);
+    var countEl = $("[data-i18n-count]", pane);
+    if (!host) return;
+    host.replaceChildren();
+
+    var rows = i18nRows();
+    var table = i18nTable();
+
+    // مفاتيح اتخزّنت لنصوص اتغيّرت أو اتمسحت — بتفضل في المستند وهي
+    // ميّتة. بنشيلها هنا عشان العدّاد يقول الحقيقة وزرار اللغة مايظهرش
+    // بسبب ترجمة لقسم اتحذف.
+    var live = {};
+    rows.forEach(function (r) { live[r.key] = 1; });
+    Object.keys(table).forEach(function (k) {
+      if (!live[k]) delete table[k];
+    });
+
+    var done = Object.keys(table).length;
+    if (countEl) {
+      countEl.textContent = done
+        ? "مترجَم " + done + " من " + rows.length + " نص."
+        : "لسه مفيش أي نص مترجَم — زرار اللغة مخفي عن الضيف.";
+    }
+
+    if (!rows.length) {
+      host.appendChild(el("p", "ed-empty", "مفيش نصوص في الدعوة عشان تترجمها."));
+      return;
+    }
+
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      if (!groups[r.group]) { groups[r.group] = []; order.push(r.group); }
+      groups[r.group].push(r);
+    });
+
+    order.forEach(function (name) {
+      var wrap = el("details", "ed-group");
+      wrap.open = true;
+      var sum = el("summary");
+      sum.appendChild(el("span", null, name));
+      wrap.appendChild(sum);
+      var body = el("div", "ed-group-body");
+
+      groups[name].forEach(function (r) {
+        var fld = el("div", "ed-field");
+        var lab = el("label");
+        lab.appendChild(el("span", null, r.label));
+        fld.appendChild(lab);
+        // النص العربي معروض مش قابل للتعديل — تعديله مكانه تبويبه الأصلي
+        var src = el("p", "ed-i18n-src", r.value);
+        src.setAttribute("dir", "rtl");
+        fld.appendChild(src);
+
+        var input = el(r.value.length > 60 ? "textarea" : "input", "ed-input");
+        input.setAttribute("dir", "ltr");
+        input.setAttribute("placeholder", "English…");
+        if (input.tagName === "TEXTAREA") input.rows = 3;
+        input.value = table[r.key] || "";
+        input.addEventListener("input", function () {
+          var v = input.value.trim();
+          if (v) table[r.key] = v; else delete table[r.key];
+          markDirty();
+        });
+        input.addEventListener("change", function () {
+          renderI18nPane();
+          requestPreview();
+        });
+        fld.appendChild(input);
+        body.appendChild(fld);
+      });
+
+      wrap.appendChild(body);
+      host.appendChild(wrap);
+    });
+
+    /* معاينة النسخة الإنجليزية جوّه المحرر. المعاينة بتتبعت للسيرفر
+       أصلاً مع كل تعديل، فبنبعت معاها اللغة بس — نفس الكود اللي
+       بيشوفه الضيف، مش محاكاة ليه. */
+    var peek = el("button", "ed-btn ed-btn--sm ed-btn--block",
+      state.previewLang === "en" ? "رجّع المعاينة عربي" : "عاين بالإنجليزي");
+    peek.type = "button";
+    peek.addEventListener("click", function () {
+      state.previewLang = state.previewLang === "en" ? "ar" : "en";
+      renderI18nPane();
+      requestPreview();
+    });
+    host.insertBefore(peek, host.firstChild);
+
+    var clear = $("[data-i18n-clear]", pane);
+    if (clear && !clear.dataset.bound) {
+      clear.dataset.bound = "1";
+      clear.addEventListener("click", function () {
+        if (!Object.keys(i18nTable()).length) return;
+        if (!window.confirm("امسح النسخة الإنجليزية كلها؟")) return;
+        snapshot();
+        state.doc.i18n.en = {};
+        markDirty();
+        renderI18nPane();
+        requestPreview();
+        toast("اتمسحت النسخة الإنجليزية — Ctrl+Z للتراجع", "ok");
+      });
+    }
+    syncCollapseTool();
+  }
+
   function renderSettingsPane() {
     var box = refs.settingsPane;
     if (!box) return;
@@ -1504,7 +1696,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
-      body: JSON.stringify({ document: state.doc })
+      body: JSON.stringify({ document: state.doc, lang: state.previewLang || "ar" })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -2529,6 +2721,9 @@
     $$("[data-pane]").forEach(function (p) {
       p.classList.toggle("is-active", p.dataset.pane === name);
     });
+    // جدول الترجمة بيتبني من نصوص الدعوة الحالية، فبيتعاد بناؤه مع كل
+    // فتحة — أي نص جديد كتبته في تبويب تاني بيظهر هنا على طول.
+    if (name === "i18n") renderI18nPane();
     syncCollapseTool();
     // على الموبايل اللوحة درج منزلق. نفتحه فقط لما المستخدم يطلب تبويب بنفسه،
     // مش عند التهيئة — وإلا بيغطي المعاينة من أول ثانية.

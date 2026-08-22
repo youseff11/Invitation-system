@@ -19,7 +19,7 @@ from decimal import Decimal
 from urllib.parse import quote
 from system.renderer import layout_css, render_document
 from system.sanitize import clean_html
-from system import cssscope, guestimport, images, templateimport, video
+from system import cssscope, customtext, guestimport, images, templateimport, video
 from system.templatetags import invite as invite_tags
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
@@ -3223,3 +3223,279 @@ class DocumentWallpaperTests(BaseAppTest):
         """الطلب كان «للدعوة كلها ولا لأقسام معينة» — التانية موجودة أصلاً."""
         keys = [f["key"] for f in B.editor_schema()["blocks"]["text"]["style"]]
         self.assertIn("bg_image", keys)
+
+
+# ==========================================================================
+class DocumentTranslationTests(BaseAppTest):
+    """النسخة الإنجليزية — نصوص يكتبها المصمّم بإيده، مفيش ترجمة آلية."""
+
+    def _doc(self, table=None):
+        doc = self.inv.document
+        doc["i18n"] = {"en": table or {}}
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        return self.inv.document
+
+    def _page(self, lang=""):
+        url = self.inv.get_absolute_url() + (f"?lang={lang}" if lang else "")
+        return self.client.get(url).content.decode()
+
+    def _hero_key(self, field="kicker"):
+        hero = next(b for b in self.inv.document["blocks"] if b["type"] == "hero")
+        return f"{hero['id']}.{field}"
+
+    # ---- التخزين
+    def test_a_fresh_document_has_an_empty_table(self):
+        self.assertEqual(B.normalize_document({})["i18n"], {"en": {}})
+
+    def test_junk_is_thrown_away(self):
+        doc = B.normalize_document({"i18n": {"en": {
+            "ok": "Fine", "bad": 12, "": "x", "blank": "   ",
+        }}})
+        self.assertEqual(doc["i18n"]["en"], {"ok": "Fine"})
+
+    def test_a_huge_value_is_capped(self):
+        doc = B.normalize_document({"i18n": {"en": {"k": "a" * 9000}}})
+        self.assertEqual(len(doc["i18n"]["en"]["k"]), B.MAX_I18N_VALUE)
+
+    # ---- زرار اللغة
+    def test_no_translation_means_no_button(self):
+        """دعوة من غير ترجمة مالهاش لازمة تعرض زرار بيرجّع نفس الكلام."""
+        self._doc()
+        self.assertNotIn("data-lang-toggle", self._page())
+
+    def test_one_line_is_enough_to_show_it(self):
+        self._doc({self._hero_key(): "Wedding invitation"})
+        self.assertIn("data-lang-toggle", self._page())
+
+    def test_asking_for_english_without_a_translation_stays_arabic(self):
+        self._doc()
+        body = self._page("en")
+        self.assertIn('<html lang="ar"', body)
+
+    # ---- التبديل
+    def test_the_english_text_replaces_the_arabic(self):
+        self._doc({self._hero_key(): "Wedding invitation"})
+        body = self._page("en")
+        self.assertIn("Wedding invitation", body)
+        self.assertNotIn("دعوة زفاف", body)
+
+    def test_an_untranslated_field_stays_arabic(self):
+        """نص ناقص أحسن من فراغ في وش الضيف."""
+        self._doc({self._hero_key(): "Wedding invitation"})
+        body = self._page("en")
+        self.assertIn("Wedding invitation", body)
+        self.assertIn("يتشرفان بدعوتكم", body)      # السطر الفرعي لسه عربي
+
+    def test_arabic_is_untouched_by_default(self):
+        self._doc({self._hero_key(): "Wedding invitation"})
+        body = self._page()
+        self.assertIn("دعوة زفاف", body)
+        self.assertNotIn("Wedding invitation", body)
+
+    def test_the_page_flips_to_ltr(self):
+        self._doc({self._hero_key(): "Wedding invitation"})
+        body = self._page("en")
+        self.assertIn('<html lang="en"', body)
+        self.assertIn('dir="ltr"', body)
+
+    # ---- بيانات المناسبة
+    def test_the_names_come_from_the_table_too(self):
+        """الأسماء عايشة في جدول الدعوة مش المستند، وبرضو بيشوفها الضيف."""
+        self._doc({"data.name_one": "Layla", "data.venue": "Jasmine Hall"})
+        body = self._page("en")
+        self.assertIn("Layla", body)
+        self.assertIn("Jasmine Hall", body)
+
+    def test_the_names_are_not_touched_in_arabic(self):
+        self._doc({"data.name_one": "Layla"})
+        self.assertIn("ليلى", self._page())
+
+    # ---- عناصر القوايم
+    def test_a_list_item_can_be_translated(self):
+        """المفتاح بيتاخد من ‎translatable_entries‎ نفسها عشان الاختبار
+        ما يعتمدش على اسم حقل ممكن يتغيّر."""
+        rows = B.translatable_entries(self.inv.document)
+        row = next(r for r in rows if r["value"] == "والد العروس")
+        self.assertEqual(row["key"].count("."), 3)      # block.list.index.sub
+        self._doc({row["key"]: "Father of the bride"})
+        self.assertIn("Father of the bride", self._page("en"))
+
+    # ---- الخطوط
+    def test_english_can_take_its_own_fonts(self):
+        """الخطوط العربية محارفها اللاتينية ناقصة أو وحشة."""
+        doc = self.inv.document
+        doc["theme"]["font_heading_en"] = "'Playfair Display', serif"
+        doc["i18n"] = {"en": {self._hero_key(): "Wedding invitation"}}
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        self.assertIn("Playfair Display", self._page("en"))
+
+    def test_an_empty_english_font_keeps_the_arabic_one(self):
+        self._doc({self._hero_key(): "Wedding invitation"})
+        self.assertIn("Amiri", self._page("en"))
+
+    # ---- الأصل ما بيتلمسش
+    def test_the_stored_document_is_never_rewritten(self):
+        """‎apply_i18n‎ بيرجّع نسخة — لو عدّل الأصل كانت الترجمة هتاكل
+        النص العربي من قاعدة البيانات."""
+        doc = self._doc({self._hero_key(): "Wedding invitation"})
+        B.apply_i18n(doc, "en")
+        hero = next(b for b in doc["blocks"] if b["type"] == "hero")
+        self.assertEqual(hero["props"]["kicker"], "دعوة زفاف")
+
+
+# ==========================================================================
+class TranslationKeyContractTests(BaseAppTest):
+    """مفاتيح الجدول بيبنيها الجافاسكربت وبتقراها بايثون.
+
+    أي فرق بينهم معناه ترجمة مكتوبة ومش ظاهرة، والمستخدم مش هيعرف ليه —
+    فالاختبار ده بيقفل العقد بين الاتنين.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+
+    def test_python_builds_the_keys_it_can_read(self):
+        rows = B.translatable_entries(self.inv.document, {"name_one": "ليلى"})
+        table = {r["key"]: "EN " + r["key"] for r in rows}
+        doc = dict(self.inv.document)
+        doc["i18n"] = {"en": table}
+        out = B.apply_i18n(doc, "en")
+        # كل مفتاح بلوك اتطبّق فعلاً — مش اتجاهل بصمت
+        hero = next(b for b in out["blocks"] if b["type"] == "hero")
+        self.assertTrue(hero["props"]["kicker"].startswith("EN "))
+
+    def test_the_js_uses_the_same_shapes(self):
+        for shape in ('"data." + d[0]', '"settings." + s.key',
+                      'block.id + "." + f.key',
+                      'block.id + "." + f.key + "." + i + "." + sub.key'):
+            with self.subTest(shape=shape):
+                self.assertIn(shape, self.js)
+
+    def test_the_js_only_offers_text_fields(self):
+        self.assertIn("var I18N_TEXT = { text: 1, textarea: 1 }", self.js)
+        self.assertEqual(B.TRANSLATABLE_TYPES, {"text", "textarea"})
+
+    def test_dead_keys_are_swept_when_the_pane_opens(self):
+        """قسم اتحذف كانت ترجمته بتفضل وتخلي زرار اللغة يظهر على الفاضي."""
+        i = self.js.index("function renderI18nPane(")
+        self.assertIn("delete table[k]", self.js[i:i + 2000])
+
+
+# ==========================================================================
+class CustomSectionTextTests(TestCase):
+    """نصوص القسم المستورد — استخراجها من الكود واستبدالها فيه."""
+
+    HTML = (
+        '<section class="c">\n'
+        '  <style>.x{color:red}</style>\n'
+        '  <h1 data-move="el-1" class="t">YOU&#39;RE INVITED</h1>\n'
+        '  <p data-move="el-2">Mohamed &amp; Farah</p>\n'
+        '  <div data-move="el-3"><span>mixed</span> markup</div>\n'
+        '  <img data-move="el-4" src="a.png">\n'
+        '</section>'
+    )
+
+    def test_plain_text_units_are_found(self):
+        keys = [m for m, _t in customtext.text_units(self.HTML)]
+        self.assertEqual(keys, ["el-1", "el-2"])
+
+    def test_the_text_comes_out_decoded(self):
+        units = dict(customtext.text_units(self.HTML))
+        self.assertEqual(units["el-2"], "Mohamed & Farah")
+
+    def test_mixed_markup_is_left_alone(self):
+        """الاستبدال كان هيمسح الوسم اللي جوّه والمصمّم مش هيفهم راح فين."""
+        self.assertNotIn("el-3", dict(customtext.text_units(self.HTML)))
+
+    def test_void_tags_are_not_offered(self):
+        self.assertNotIn("el-4", dict(customtext.text_units(self.HTML)))
+
+    def test_style_and_script_are_never_offered(self):
+        """ده كان الباج: الجدول بيعرض CSS بدل الكلام."""
+        for _m, text in customtext.text_units(self.HTML):
+            self.assertNotIn("color:red", text)
+
+    def test_broken_html_does_not_explode(self):
+        self.assertIsInstance(customtext.text_units("<div><p data-move=x>hi"), list)
+
+    # ---- الاستبدال
+    def test_only_the_targeted_text_changes(self):
+        out = customtext.replace_texts(self.HTML, {"el-1": "أنتم مدعوون"})
+        self.assertIn("أنتم مدعوون", out)
+        self.assertIn("Mohamed &amp; Farah", out)
+
+    def test_the_tags_survive_byte_for_byte(self):
+        """إعادة بناء الكود كانت هتغيّر الاقتباسات وتكسر ستايل القالب."""
+        out = customtext.replace_texts(self.HTML, {"el-1": "X"})
+        self.assertIn('<h1 data-move="el-1" class="t">', out)
+        self.assertIn('<img data-move="el-4" src="a.png">', out)
+        self.assertIn("<style>.x{color:red}</style>", out)
+
+    def test_the_new_text_is_escaped(self):
+        out = customtext.replace_texts(self.HTML, {"el-1": '<script>x</script>'})
+        self.assertNotIn("<script>x", out)
+        self.assertIn("&lt;script&gt;", out)
+
+    def test_an_empty_map_returns_the_original(self):
+        self.assertEqual(customtext.replace_texts(self.HTML, {}), self.HTML)
+
+
+# ==========================================================================
+class CustomSectionTranslationTests(BaseAppTest):
+    """الترجمة جوّه قسم مستورد — من جدول الترجمة لحد صفحة الضيف."""
+
+    HTML = '<div><h2 data-move="el-1">أهلاً بيكم</h2>' \
+           '<p data-move="el-2">في فرحنا</p></div>'
+
+    def setUp(self):
+        super().setUp()
+        doc = B.normalize_document({"blocks": [
+            {"type": "custom_html", "id": "custom-1",
+             "props": {"html": self.HTML, "css": ".a{color:red}"}},
+        ]})
+        self.inv.document = doc
+        self.inv.save(update_fields=["document"])
+
+    def _rows(self):
+        return B.translatable_entries(self.inv.document)
+
+    def _page(self, lang=""):
+        url = self.inv.get_absolute_url() + (f"?lang={lang}" if lang else "")
+        return self.client.get(url).content.decode()
+
+    def test_the_words_show_up_not_the_code(self):
+        values = [r["value"] for r in self._rows()]
+        self.assertIn("أهلاً بيكم", values)
+        self.assertIn("في فرحنا", values)
+
+    def test_the_css_field_is_gone_from_the_table(self):
+        """ده اللي كان بيملا الجدول بستايل بدل كلام."""
+        self.assertNotIn(".a{color:red}", [r["value"] for r in self._rows()])
+        self.assertFalse(any(r["key"].endswith(".css") for r in self._rows()))
+
+    def test_the_key_points_inside_the_html(self):
+        row = next(r for r in self._rows() if r["value"] == "أهلاً بيكم")
+        self.assertEqual(row["key"], "custom-1.html#el-1")
+
+    def test_translating_one_line_reaches_the_guest(self):
+        doc = self.inv.document
+        doc["i18n"] = {"en": {"custom-1.html#el-1": "Welcome"}}
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        body = self._page("en")
+        self.assertIn("Welcome", body)
+        self.assertIn("في فرحنا", body)          # اللي مترجمش يفضل عربي
+
+    def test_the_stored_html_is_never_rewritten(self):
+        doc = self.inv.document
+        doc["i18n"] = {"en": {"custom-1.html#el-1": "Welcome"}}
+        B.apply_i18n(doc, "en")
+        self.assertIn("أهلاً بيكم", doc["blocks"][0]["props"]["html"])
+
+    def test_the_editor_reads_the_same_keys(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn('block.id + "." + f.key + "#" + n.getAttribute("data-move")', js)
+        self.assertIn("f.translate === false", js)

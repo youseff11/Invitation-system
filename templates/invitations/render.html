@@ -1,5 +1,5 @@
 {% load static %}<!doctype html>
-<html lang="ar" dir="{{ render.theme.direction|default:'rtl' }}">
+<html lang="{{ render.lang|default:'ar' }}" dir="{{ render.theme.direction|default:'rtl' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -22,6 +22,23 @@
 {% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root>
+
+{% comment %}
+  زرار اللغة — بيظهر بس لو المصمّم كتب نسخة إنجليزية فعلاً
+  (‎render.has_en‎). دعوة من غير ترجمة مالهاش لازمة تعرض زرار بيرجّع
+  نفس الكلام.
+
+  التبديل بالرابط مش بجافاسكربت: كده الرابط اللي الضيف يبعته لصاحبه
+  يفتح بنفس اللغة، والعنوان ووصف المشاركة بيتبنوا صح على السيرفر.
+{% endcomment %}
+{% if render.has_en %}
+<a class="lb-lang" data-lang-toggle
+   href="?{% if render.lang == 'en' %}lang=ar{% else %}lang=en{% endif %}"
+   hreflang="{% if render.lang == 'en' %}ar{% else %}en{% endif %}"
+   aria-label="{% if render.lang == 'en' %}اعرض بالعربية{% else %}View in English{% endif %}">
+  {% if render.lang == 'en' %}ع{% else %}EN{% endif %}
+</a>
+{% endif %}
 
 {# الافتتاحية في ملف لوحدها عشان المحرر يقدر يحدّثها لحظياً #}
 {% include 'invitations/_intro.html' %}

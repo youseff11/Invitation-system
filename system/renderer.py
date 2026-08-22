@@ -397,12 +397,33 @@ def render_document(
     allowed_features: set[str] | None = None,
     editable: bool = False,
     guest=None,
+    lang: str = "ar",
 ) -> dict:
     """يعرض المستند ويعيد ``{"html", "css_vars", "theme", "settings"}``."""
     doc = blocks_engine.normalize_document(document)
+
+    # النسخة الإنجليزية نصوص مكتوبة بالإيد ومخزّنة جوّه المستند — مفيش
+    # ترجمة آلية ولا استدعاء لأي خدمة برّه. أي مفتاح مش مترجم بيفضل
+    # عربي: نص ناقص أحسن من فراغ في وش الضيف.
+    has_en = blocks_engine.has_translation(doc, "en")
+    lang = "en" if (lang == "en" and has_en) else "ar"
+
     theme = doc["theme"]
     doc_settings = doc["settings"]
     data = build_data_context(invitation)
+
+    if lang == "en":
+        doc = blocks_engine.apply_i18n(doc, "en")
+        theme = doc["theme"]
+        doc_settings = doc["settings"]
+        data = blocks_engine.apply_i18n_data(data, doc, "en")
+        # الإنجليزي بيتقرا من الشمال، والخطوط العربية محارفها اللاتينية
+        # ناقصة — فبناخد خطوط النسخة الإنجليزية لو المصمّم حدّدها.
+        theme["direction"] = "ltr"
+        if theme.get("font_heading_en"):
+            theme["font_heading"] = theme["font_heading_en"]
+        if theme.get("font_body_en"):
+            theme["font_body"] = theme["font_body_en"]
 
     if invitation is not None and request is not None:
         data["public_url"] = request.build_absolute_uri(invitation.get_absolute_url())
@@ -465,4 +486,7 @@ def render_document(
         "data": data,
         "countdown_iso": countdown_iso,
         "block_count": len(doc["blocks"]),
+        # القالب بيقرر ظهور زرار اللغة من دول: مفيش نسخة = مفيش زرار.
+        "lang": lang,
+        "has_en": has_en,
     }

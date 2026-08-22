@@ -115,6 +115,7 @@
         <button type="button" data-tab="inspector">الخصائص</button>
         <button type="button" data-tab="theme">التصميم</button>
         <button type="button" data-tab="data">البيانات</button>
+        <button type="button" data-tab="i18n">الترجمة</button>
         <button type="button" data-tab="settings">إعدادات</button>
       </nav>
 
@@ -249,6 +250,21 @@
         </section>
 
         {# ---- إعدادات المستند ---- #}
+        {# ---- الترجمة ---- #}
+        <section class="ed-tabpane" data-pane="i18n">
+          <div class="ed-section-head">
+            <p class="ed-kicker">النسخة الإنجليزية</p>
+            <button class="ed-btn ed-btn--sm" data-i18n-clear type="button">امسح الكل</button>
+          </div>
+          <p class="ed-hint">
+            اكتب مقابل كل نص عربي نسخته الإنجليزية. اللي تسيبه فاضي بيفضل
+            ظاهر بالعربي. زرار اللغة مابيظهرش للضيف غير لما تكتب سطر واحد
+            على الأقل.
+          </p>
+          <p class="ed-hint" data-i18n-count></p>
+          <div data-i18n-fields></div>
+        </section>
+
         <section class="ed-tabpane" data-pane="settings">
           <p class="ed-kicker">إعدادات الدعوة</p>
           <p class="ed-hint">الموسيقى، الشاشة الافتتاحية، وبيانات المشاركة على واتساب وفيسبوك.</p>

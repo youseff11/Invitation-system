@@ -32,6 +32,8 @@ import re
 import uuid
 from typing import Any
 
+from . import customtext
+
 DOCUMENT_VERSION = 1
 
 # --------------------------------------------------------------------------
@@ -77,8 +79,14 @@ def field(
     feature: str = "",
     add_label: str = "إضافة عنصر",
     media_kind: str = "image",
+    translate: bool = True,
 ) -> dict:
-    """تعريف حقل واحد داخل المحرر."""
+    """تعريف حقل واحد داخل المحرر.
+
+    ``translate=False`` بيشيل الحقل من جدول الترجمة. بيتحط على الحقول
+    اللي محتواها كود مش كلام يشوفه الضيف — CSS مثلاً. كلام القسم
+    المستورد نفسه بيتسحب من جوّه الـHTML، مش من الحقل ده.
+    """
     if ftype not in FIELD_TYPES:
         raise ValueError(f"نوع حقل غير معروف: {ftype}")
     spec = {
@@ -89,6 +97,8 @@ def field(
         "default": default,
         "group": group,
     }
+    if not translate:
+        spec["translate"] = False
     if help_text:
         spec["help"] = help_text
     if options:
@@ -663,6 +673,7 @@ register(
         field("html", "الكود", "html", "", group="كود متقدّم",
               help_text="يمر عبر منقّي أمان — الوسوم الخطرة تُزال تلقائياً"),
         field("css", "ستايل القسم", "textarea", "", group="كود متقدّم",
+              translate=False,
               help_text="يُحصر داخل هذا القسم فقط — لن يؤثر على باقي الدعوة"),
     ],
 )
@@ -686,6 +697,14 @@ THEME_FIELDS = [
           group="الخطوط", options=FONT_CHOICES),
     field("font_body", "خط النصوص", "font", "'Tajawal', sans-serif",
           group="الخطوط", options=FONT_CHOICES),
+    # الخطوط العربية (أميري، ريم كوفي، عارف رقعة) محارفها اللاتينية
+    # ناقصة أو وحشة، فالنسخة الإنجليزية بتاخد خطوطها لو المصمّم حدّدها.
+    field("font_heading_en", "خط العناوين — النسخة الإنجليزية", "font", "",
+          group="الخطوط", options=FONT_CHOICES,
+          help_text="سيبه فاضي عشان يفضل نفس الخط العربي."),
+    field("font_body_en", "خط النصوص — النسخة الإنجليزية", "font", "",
+          group="الخطوط", options=FONT_CHOICES,
+          help_text="سيبه فاضي عشان يفضل نفس الخط العربي."),
     field("font_scale", "مقياس الخطوط", "range", 1.0, group="الخطوط",
           minimum=0.8, maximum=1.4, step=0.05),
     field("letter_spacing", "تباعد الحروف", "range", 0, group="الخطوط",
@@ -1011,6 +1030,216 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
         })
 
     out["blocks"] = blocks
+    out["i18n"] = _clean_i18n(doc.get("i18n"))
+    return out
+
+
+# --------------------------------------------------------------------------
+# الترجمة اليدوية — نسخة تانية من نصوص الدعوة
+# --------------------------------------------------------------------------
+# القرار: مفيش ترجمة آلية. المصمّم بيكتب النسخة الإنجليزية بإيده من
+# تبويب «الترجمة» في المحرر، والدعوة بتخزّنها جنب العربي بنفس المستند.
+# لو ما كتبش حاجة، زرار اللغة مابيظهرش للضيف أصلاً.
+#
+# المفتاح نص بنقط عشان يعيش في JSON ويتقرا في اللوحة:
+#   data.name_one          → بيانات الدعوة (عايشة في جدول الدعوة مش المستند)
+#   settings.intro_text    → إعدادات المستند
+#   hero-ab12cd.kicker     → حقل نصي جوّه بلوك
+#   agenda-x.items.0.title → عنصر جوّه حقل قائمة
+I18N_LANGS = ("en",)
+TRANSLATABLE_TYPES = {"text", "textarea"}
+MAX_I18N_ENTRIES = 600
+MAX_I18N_VALUE = 2000
+
+# بيانات الدعوة مش جزء من المستند (عايشة في جدول ‎Invitation‎)، لكنها
+# بتظهر للضيف — فلازم تترجم زي أي نص تاني.
+DATA_TRANSLATABLE = [
+    ("name_one", "الاسم الأول"),
+    ("name_two", "الاسم الثاني"),
+    ("event_type", "نوع المناسبة"),
+    ("venue", "اسم القاعة"),
+    ("address", "العنوان"),
+    ("date_text", "نص التاريخ"),
+    ("time_text", "نص الوقت"),
+]
+
+
+def _clean_i18n(raw: Any) -> dict:
+    """ينضّف خريطة الترجمة الجاية من المتصفح.
+
+    مفاتيح وقيم نصية بس، بحد أقصى للطول وللعدد — الخريطة دي بتتحفظ
+    في نفس عمود المستند فماينفعش تكبر بلا سقف.
+    """
+    out: dict[str, dict[str, str]] = {}
+    src = raw if isinstance(raw, dict) else {}
+    for lang in I18N_LANGS:
+        table = src.get(lang) if isinstance(src.get(lang), dict) else {}
+        clean: dict[str, str] = {}
+        for key, value in list(table.items())[:MAX_I18N_ENTRIES]:
+            if not isinstance(key, str) or not key.strip():
+                continue
+            if not isinstance(value, str):
+                continue
+            value = value.strip()
+            if not value:
+                continue                      # الفاضي = مترجمش، مش نص فاضي
+            clean[key.strip()[:200]] = value[:MAX_I18N_VALUE]
+        out[lang] = clean
+    return out
+
+
+def _entry(key: str, label: str, value: Any, group: str) -> dict | None:
+    """صف واحد في جدول الترجمة — أو ``None`` لو النص فاضي."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return {"key": key, "label": label, "value": value, "group": group}
+
+
+def translatable_entries(doc: dict, data: dict | None = None) -> list[dict]:
+    """كل النصوص اللي ينفع تترجم في الدعوة، بالترتيب اللي بتظهر بيه.
+
+    بيرجّع قايمة صفوف ``{key, label, value, group}`` — المحرر بيبني منها
+    جدول «عربي ← إنجليزي»، والعارض بيستعمل نفس المفاتيح في القراءة.
+    """
+    rows: list[dict] = []
+
+    for key, label in DATA_TRANSLATABLE:
+        row = _entry(f"data.{key}", label, (data or {}).get(key), "بيانات المناسبة")
+        if row:
+            rows.append(row)
+
+    settings = doc.get("settings") if isinstance(doc.get("settings"), dict) else {}
+    for spec in SETTINGS_FIELDS:
+        if spec["type"] not in TRANSLATABLE_TYPES:
+            continue
+        row = _entry(f"settings.{spec['key']}", spec["label"],
+                     settings.get(spec["key"]), "إعدادات الدعوة")
+        if row:
+            rows.append(row)
+
+    for block in doc.get("blocks") or []:
+        if not isinstance(block, dict):
+            continue
+        spec = BLOCK_REGISTRY.get(block.get("type"))
+        if not spec:
+            continue
+        bid = block.get("id") or ""
+        group = block.get("label") or spec["label"]
+        props = block.get("props") if isinstance(block.get("props"), dict) else {}
+
+        for fspec in spec["props"]:
+            if fspec.get("translate") is False:
+                continue                      # كود مش كلام يشوفه الضيف
+            value = props.get(fspec["key"])
+            if fspec["type"] == "html":
+                # القسم المستورد: الكلام جوّه الكود نفسه، فبنسحب وحدات
+                # النص اللي المحرر معلّمها ونعرضها واحدة واحدة.
+                for move, text in customtext.text_units(value or ""):
+                    row = _entry(f"{bid}.{fspec['key']}#{move}", "نص", text, group)
+                    if row:
+                        rows.append(row)
+                continue
+            if fspec["type"] in TRANSLATABLE_TYPES:
+                row = _entry(f"{bid}.{fspec['key']}", fspec["label"], value, group)
+                if row:
+                    rows.append(row)
+            elif fspec["type"] == "list" and isinstance(value, list):
+                # عناصر القوايم: برنامج الحفل، أصحاب الدعوة، الأزرار،
+                # تعليقات المعرض — كلها نصوص بيشوفها الضيف.
+                for i, item in enumerate(value[:60]):
+                    if not isinstance(item, dict):
+                        continue
+                    for sub in fspec.get("fields") or []:
+                        if sub["type"] not in TRANSLATABLE_TYPES:
+                            continue
+                        row = _entry(
+                            f"{bid}.{fspec['key']}.{i}.{sub['key']}",
+                            f"{fspec['label']} {i + 1} — {sub['label']}",
+                            item.get(sub["key"]), group,
+                        )
+                        if row:
+                            rows.append(row)
+    return rows
+
+
+def translation_table(doc: dict, lang: str = "en") -> dict:
+    return (doc.get("i18n") or {}).get(lang) or {}
+
+
+def has_translation(doc: dict, lang: str = "en") -> bool:
+    """فيه نسخة مكتوبة فعلاً؟ ده اللي بيقرر ظهور زرار اللغة للضيف."""
+    return bool(translation_table(doc, lang))
+
+
+def apply_i18n(doc: dict, lang: str) -> dict:
+    """نسخة من المستند بنصوص اللغة المطلوبة.
+
+    أي مفتاح مش مترجم بيفضل بقيمته العربية — نص ناقص أحسن من فراغ.
+    المستند الأصلي مابيتلمسش (المحرر والعرض بيشتغلوا على نفس الكائن).
+    """
+    table = translation_table(doc, lang)
+    if not table:
+        return doc
+
+    out = copy.deepcopy(doc)
+    settings = out.get("settings") or {}
+    # الأقسام المستوردة: بنجمّع كل نصوص القسم الأول وبعدين نمرّ على
+    # الكود مرة واحدة. تمريرة لكل نص كانت هتعيد تحليل الصفحة كلها
+    # عشرات المرات على الفاضي.
+    pending: dict[str, dict[str, dict[str, str]]] = {}
+    for key, value in table.items():
+        parts = key.split(".")
+        if parts[0] == "settings" and len(parts) == 2:
+            if parts[1] in settings:
+                settings[parts[1]] = value
+            continue
+        if parts[0] == "data":
+            continue                          # بتتطبّق على سياق البيانات مش المستند
+
+        block = next((b for b in out.get("blocks") or []
+                      if b.get("id") == parts[0]), None)
+        if not block:
+            continue
+        props = block.get("props")
+        if not isinstance(props, dict):
+            continue
+        if len(parts) == 2 and "#" in parts[1]:
+            # ‎<block>.<prop>#<data-move>‎ — نص جوّه قسم مستورد
+            prop, _, move = parts[1].partition("#")
+            if isinstance(props.get(prop), str):
+                pending.setdefault(parts[0], {}).setdefault(prop, {})[move] = value
+            continue
+        if len(parts) == 2 and parts[1] in props:
+            props[parts[1]] = value
+        elif len(parts) == 4 and isinstance(props.get(parts[1]), list):
+            try:
+                item = props[parts[1]][int(parts[2])]
+            except (ValueError, IndexError):
+                continue
+            if isinstance(item, dict) and parts[3] in item:
+                item[parts[3]] = value
+
+    for bid, fields in pending.items():
+        block = next((b for b in out.get("blocks") or []
+                      if b.get("id") == bid), None)
+        if not block:
+            continue
+        for prop, mapping in fields.items():
+            block["props"][prop] = customtext.replace_texts(
+                block["props"].get(prop) or "", mapping)
+    return out
+
+
+def apply_i18n_data(data: dict, doc: dict, lang: str) -> dict:
+    """نفس الحكاية لبيانات المناسبة — الأسماء والقاعة والعنوان."""
+    table = translation_table(doc, lang)
+    if not table:
+        return data
+    out = dict(data)
+    for key, _label in DATA_TRANSLATABLE:
+        value = table.get(f"data.{key}")
+        if value:
+            out[key] = value
     return out
 
 

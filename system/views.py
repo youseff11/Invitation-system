@@ -100,6 +100,15 @@ def _scroll_config(doc_settings: dict, *, editable: bool = False) -> dict:
     }
 
 
+def _lang(request) -> str:
+    """اللغة اللي الضيف طلبها من الرابط.
+
+    باراميتر في الرابط مش كوكي: كده الرابط اللي الضيف يبعته لحد تاني
+    يفتح بنفس اللغة، والميتا والعنوان بيتبنوا على السيرفر صح.
+    """
+    return "en" if (request.GET.get("lang") or "").lower().startswith("en") else "ar"
+
+
 def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):
     """يبني صفحة الدعوة كاملة من المستند."""
     result = render_document(
@@ -109,6 +118,7 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         allowed_features=invitation.allowed_features,
         editable=editable,
         guest=guest,
+        lang=_lang(request),
     )
     doc_settings = result["settings"]
     title = (
@@ -220,7 +230,8 @@ def template_demo(request, slug):
     """معاينة قالب كدعوة تجريبية — بدون إنشاء أي سجل."""
     template = get_object_or_404(Template, slug=slug, is_active=True)
     result = render_document(template.document, invitation=None, request=request,
-                             allowed_features=None, editable=False)
+                             allowed_features=None, editable=False,
+                             lang=_lang(request))
     return render(request, "invitations/render.html", {
         "render": result,
         "invitation": None,
@@ -833,6 +844,8 @@ def api_preview(request, pk):
         request=request,
         allowed_features=invitation.allowed_features,
         editable=True,
+        # المحرر بيعاين اللغة اللي المصمّم واقف عليها في تبويب الترجمة
+        lang="en" if body.get("lang") == "en" else "ar",
     )
     doc_settings = result["settings"]
     # الافتتاحية أخت لـ.lb-stage مش جواه، والمحرر بيبدّل الـstage بس.
