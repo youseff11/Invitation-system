@@ -2003,6 +2003,24 @@ class VideoBlockSourceTests(BaseAppTest):
         self.assertIn("lb-video--16x9", body)
         self.assertNotIn("rm -rf", body)
 
+    def test_controls_are_on_by_default(self):
+        """الدعوات الموجودة ماينفعش يختفي منها الشريط فجأة."""
+        self.assertTrue(self._spec("controls")["default"])
+        self.assertNotIn("data-no-controls", self._render({"url": "/media/c.mp4"}))
+
+    def test_controls_can_be_switched_off(self):
+        self.assertIn("data-no-controls",
+                      self._render({"url": "/media/c.mp4", "controls": False}))
+
+    def test_sound_is_off_by_default(self):
+        """فيديو بيطلع صوت من غير ما حد يطلبه بيخضّ الضيف."""
+        self.assertFalse(self._spec("sound")["default"])
+        self.assertNotIn("data-sound", self._render({"url": "/media/c.mp4"}))
+
+    def test_sound_flag_reaches_the_markup(self):
+        self.assertIn("data-sound", self._render(
+            {"url": "/media/c.mp4", "autoplay": True, "sound": True}))
+
     def test_media_field_still_blocks_javascript_scheme(self):
         """الحقل كان type=url وليه فلتر. تحويله لـmedia ماينفعش يشيله."""
         doc = B.normalize_document({"blocks": [
@@ -2180,11 +2198,54 @@ class VideoPlayerPathTests(TestCase):
         # احتياطية — مش شكل المسافات نفسه
         self.assertRegex(css, r"var\(--vid-ratio,\s*16\s*/\s*9\)")
 
-    def test_autoplay_is_still_muted(self):
-        """المتصفح بيمنع التشغيل التلقائي بصوت — ولو شلناها الفيديو
-        مش هيشتغل خالص بدل ما يشتغل صامت."""
-        seg = self.body[self.body.index("if (autoplay)"):]
-        self.assertIn("v.muted = true", seg[:200])
+    def test_autoplay_without_a_gesture_is_still_muted(self):
+        """من غير لمسة من الضيف المتصفح بيمنع الصوت — والصامت هو الطريق
+        الوحيد اللي الفيديو بيشتغل بيه أصلاً."""
+        seg = self.body[self.body.index("if (autoplay && !withSound)"):]
+        self.assertIn("v.muted = true", seg[:120])
+
+    def test_sound_is_gated_on_the_intro_screen(self):
+        """الصوت مربوط بلمسة الضيف على زر فتح الدعوة — مفيش إذن تاني."""
+        self.assertIn('doc.querySelector(".lb-intro")', self.body)
+        self.assertIn("lb:intro-open", self.body)
+
+    def test_the_gesture_is_spent_inside_its_own_listener(self):
+        """صلاحية اللمسة لحظة الضغطة بس. لو استنّينا الفيديو يوصل
+        للشاشة الإذن بيبقى راح والصوت بيترفض."""
+        seg = self.body[self.body.index('"lb:intro-open"'):]
+        self.assertIn("v.play()", seg[:400])
+
+    def test_refused_sound_falls_back_to_muted(self):
+        """الافتتاحية ممكن تتفتح بالعدّاد التلقائي — يبقى مفيش لمسة."""
+        seg = self.body[self.body.index('"lb:intro-open"'):]
+        self.assertIn("v.muted = true", seg[:700])
+
+    def test_music_is_ducked_while_a_loud_video_plays(self):
+        """موسيقى وفيديو صوتي فوق بعض = دوشة."""
+        self.assertIn("__lbMusic", self.body)
+        seg = self.body[self.body.index("var duck ="):]
+        self.assertIn("m.pause()", seg[:250])
+
+    def test_hidden_controls_come_back_when_autoplay_is_blocked(self):
+        """وضع توفير الطاقة في iOS بيرفض التشغيل التلقائي. من غير الرجوع
+        ده الضيف بيبص على صورة ساكنة من غير أي زر يشغّلها بيه."""
+        seg = self.body[self.body.index("var tryPlay"):]
+        self.assertIn("catch", seg[:300])
+        self.assertIn("v.controls = true", seg[:300])
+
+    def test_autoplay_waits_for_the_section_to_be_on_screen(self):
+        """كل فيديوهات الدعوة تشتغل مع بعض = موبايل بيهنّج وداتا بتتحرق."""
+        self.assertIn("IntersectionObserver", self.body)
+        self.assertIn("v.pause()", self.body)
+
+    def test_guests_cannot_download_the_video_from_the_controls(self):
+        self.assertIn("nodownload", self.body)
+
+    def test_a_bare_video_is_clickable(self):
+        """من غير شريط ومن غير تشغيل تلقائي الفيديو صورة ساكنة —
+        فالضغطة عليه لازم تبقى هي زر التشغيل."""
+        seg = self.body[self.body.index("} else if (noControls) {"):]
+        self.assertIn('addEventListener("click"', seg[:400])
 
 
 # ==========================================================================

@@ -154,6 +154,8 @@
       var poster = holder.getAttribute("data-poster");
       var autoplay = holder.hasAttribute("data-autoplay");
       var loop = holder.hasAttribute("data-loop");
+      var noControls = holder.hasAttribute("data-no-controls");
+      var wantSound = holder.hasAttribute("data-sound");
       var yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/);
       var vimeo = url.match(/vimeo\.com\/(\d+)/);
 
@@ -163,13 +165,17 @@
         frame.setAttribute("allowfullscreen", "");
         frame.setAttribute("title", "فيديو المناسبة");
         if (yt) {
+          /* controls=0 بيخفي شريط يوتيوب — بس الشعار وزر «شاهد على
+             يوتيوب» بيفضلوا، مشغّلهم مش تحت إيدنا. */
           frame.src = "https://www.youtube-nocookie.com/embed/" + yt[1] +
-            "?rel=0&autoplay=1" + (loop ? "&loop=1&playlist=" + yt[1] : "");
+            "?rel=0&autoplay=1" + (noControls ? "&controls=0&modestbranding=1" : "") +
+            (loop ? "&loop=1&playlist=" + yt[1] : "");
         } else if (vimeo) {
-          frame.src = "https://player.vimeo.com/video/" + vimeo[1] + "?autoplay=1";
+          frame.src = "https://player.vimeo.com/video/" + vimeo[1] +
+            "?autoplay=1" + (noControls ? "&controls=0" : "");
         } else {
           var v = doc.createElement("video");
-          v.src = url; v.controls = true; v.playsInline = true;
+          v.src = url; v.controls = !noControls; v.playsInline = true;
           v.loop = loop; v.autoplay = true;
           if (poster) v.poster = poster;
           holder.replaceChildren(v);
@@ -186,11 +192,24 @@
          preload=metadata بينزّل الترويسة بس، ولو فيه صورة غلاف
          بنستخدم none والغلاف بيبان فوراً. */
       if (!yt && !vimeo) {
+        /* لمسة الضيف على زر «افتح الدعوة» في الشاشة الافتتاحية هي إذن
+           التشغيل الوحيد اللي المتصفح بيعترف بيه — وهي كمان الإذن
+           الوحيد اللي بيسمح بصوت. فطالما فيه افتتاحية، بنستنّاها بدل
+           ما نبدأ صامت. من غيرها مفيش لمسة مضمونة والصامت هو الطريق
+           الوحيد اللي الفيديو بيشتغل بيه أصلاً. */
+        var gate = !!doc.querySelector(".lb-intro");
+        var withSound = autoplay && wantSound && gate;
+
         var v = doc.createElement("video");
-        v.src = url; v.loop = loop; v.playsInline = true; v.controls = true;
+        v.src = url; v.loop = loop; v.playsInline = true;
+        v.controls = !noControls;
+        /* حتى مع الشريط ظاهر: قايمة الـ⋮ فيها «تنزيل» و«سرعة التشغيل».
+           ده فيديو العروسين مش ملف عام — بنقفل الاتنين. */
+        v.setAttribute("controlsList", "nodownload noplaybackrate noremoteplayback");
+        v.disablePictureInPicture = true;
         v.preload = poster ? "none" : "metadata";
         if (poster) v.poster = poster;
-        if (autoplay) { v.muted = true; v.autoplay = true; v.preload = "auto"; }
+        if (autoplay && !withSound) { v.muted = true; v.autoplay = true; v.preload = "auto"; }
         // النسبة الحقيقية مابتتعرفش غير من الملف — بنبلّغ بيها الحاوية
         // عشان «زي ما هو» تاخد شكلها من غير قفزة في التخطيط
         v.addEventListener("loadedmetadata", function () {
@@ -199,6 +218,71 @@
           }
         });
         holder.replaceChildren(v);
+
+        /* التشغيل التلقائي ممكن يترفض: وضع توفير الطاقة في iOS، أو
+           Data Saver، أو إعداد المتصفح اللي بيمنع الوسائط. ولو الشريط
+           مخفي ساعتها الضيف بيبص على صورة ساكنة مالهاش أي زر —
+           فبنرجّع الشريط بدل ما نسيبه مقفول على فيديو واقف. */
+        var tryPlay = function () {
+          var p = v.play();
+          if (p && p.catch) p.catch(function () { v.controls = true; });
+        };
+
+        /* مانشغّلش كل فيديوهات الدعوة مع بعض — بيهنّج الموبايل وبياكل
+           داتا الضيف، والصوت بيتلخبط لو أكتر من واحد شغال. بيبدأ لما
+           القسم يوصل للشاشة ويقف لما يعدّي. */
+        var watch = function () {
+          if (typeof IntersectionObserver !== "function") { tryPlay(); return; }
+          new IntersectionObserver(function (entries) {
+            entries.forEach(function (en) {
+              if (en.isIntersecting) tryPlay();
+              else if (!v.paused) v.pause();
+            });
+          }, { threshold: 0.35 }).observe(v);
+        };
+
+        /* الموسيقى والفيديو الصوتي مايشتغلوش فوق بعض. بنوطّي الموسيقى
+           وقت الفيديو ونرجّعها لما يقف — ولو كانت مقفولة أصلاً مانلمسهاش. */
+        var ducked = false;
+        var duck = function () {
+          var m = window.__lbMusic;
+          if (m && m.audio && !m.audio.paused) { ducked = true; m.pause(); }
+        };
+        var unduck = function () {
+          if (!ducked) return;
+          ducked = false;
+          if (window.__lbMusic) window.__lbMusic.play();
+        };
+
+        if (withSound) {
+          /* صلاحية اللمسة لحظة الضغطة نفسها بس. لو استنّينا الفيديو
+             يوصل للشاشة الإذن بيبقى راح — فبنشغّله ونوقفه فوراً جوّه
+             المستمع، وبعد كده العنصر بيفضل مسموح ليه يشتغل بصوت في أي
+             وقت. ولو الافتتاحية اتفتحت بالعدّاد التلقائي مش بضغطة،
+             مفيش لمسة أصلاً والمتصفح بيرفض — بنرجع صامت. */
+          var arm = function () {
+            v.addEventListener("play", duck);
+            v.addEventListener("pause", unduck);
+            v.addEventListener("ended", unduck);
+            watch();
+          };
+          doc.addEventListener("lb:intro-open", function () {
+            var p = v.play();
+            if (!p || !p.then) { v.pause(); arm(); return; }
+            p.then(function () { v.pause(); v.currentTime = 0; })
+              .catch(function () { v.muted = true; })
+              .then(arm, arm);
+          }, { once: true });
+        } else if (autoplay) {
+          watch();
+        } else if (noControls) {
+          /* من غير شريط ومن غير تشغيل تلقائي الفيديو بيبقى صورة ساكنة.
+             الضغطة على الفيديو نفسه بقت هي زر التشغيل/الإيقاف. */
+          v.style.cursor = "pointer";
+          v.addEventListener("click", function () {
+            if (v.paused) tryPlay(); else v.pause();
+          });
+        }
         return;
       }
 

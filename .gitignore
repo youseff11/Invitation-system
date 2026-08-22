@@ -11,3 +11,4 @@ media/
 staticfiles/
 shots/
 .DS_Store
+repomix-output.xml
