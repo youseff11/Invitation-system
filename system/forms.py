@@ -221,9 +221,13 @@ class PlanAddonForm(forms.ModelForm):
 class SiteSettingForm(forms.ModelForm):
     class Meta:
         model = SiteSetting
+        # الترتيب مقصود: الطلبات ورقم الواتساب فوق — دول اللي بيتغيّروا،
+        # ونصوص شريط المعاينة تحت.
         fields = [
-            "preview_cta_enabled", "preview_cta_text",
-            "whatsapp_enabled", "whatsapp_number", "whatsapp_message",
+            "orders_enabled",
+            "whatsapp_enabled", "whatsapp_number",
+            "whatsapp_float_enabled", "whatsapp_cta_message",
+            "preview_cta_enabled", "preview_cta_text", "whatsapp_message",
             "facebook_enabled", "facebook_url",
         ]
         widgets = {

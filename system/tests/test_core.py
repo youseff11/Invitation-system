@@ -2566,6 +2566,168 @@ class PreviewCtaOnAFreshInstallTests(BaseAppTest):
 
 
 # ==========================================================================
+class OrdersToggleTests(BaseAppTest):
+    """قفل نموذج «اطلب دعوتك» من اللوحة بدل ما يتعمل كومنت في الكود.
+
+    الكومنت كان هيخفي القسم بس ويسيب حاجتين مكسورين: الـPOST على ‎/‎
+    لسه شغّال وأي حد يقدر يبعت طلب، وأزرار «اطلب دعوتك» في النڤ
+    والقوالب والباقات بتودّي على مرساة ‎#order‎ مش موجودة.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.cfg = SiteSetting.load()
+        self.cfg.whatsapp_number = "+201000000000"
+        self.cfg.save()
+
+    def _off(self):
+        self.cfg.orders_enabled = False
+        self.cfg.save()
+
+    def _home(self):
+        return self.client.get("/").content.decode()
+
+    def test_open_by_default_so_nothing_changes_for_existing_sites(self):
+        self.assertTrue(SiteSetting.load().orders_enabled)
+        self.assertIn("إرسال الطلب", self._home())
+
+    def test_closing_it_removes_the_form(self):
+        self._off()
+        self.assertNotIn("إرسال الطلب", self._home())
+
+    def test_closing_it_also_refuses_a_direct_post(self):
+        """إخفاء القسم مش قفل — المسار لسه موجود."""
+        self._off()
+        r = self.client.post("/", {
+            "name": "زائر", "phone": "01000000000", "plan": self.plan.pk,
+            "template": self.template.pk, "event_type": "زفاف",
+        })
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(Order.objects.count(), 0)
+
+    def test_an_open_form_still_takes_orders(self):
+        r = self.client.post("/", {
+            "name": "زائر", "phone": "01000000000", "plan": self.plan.pk,
+            "template": self.template.pk, "event_type": "زفاف",
+        })
+        self.assertIn(r.status_code, (200, 302))
+
+    def test_the_buttons_point_at_whatsapp_instead_of_a_dead_anchor(self):
+        self._off()
+        body = self._home()
+        self.assertNotIn('href="#order"', body)
+        self.assertIn("wa.me/201000000000", body)
+
+    def test_with_no_number_the_buttons_disappear_rather_than_break(self):
+        self.cfg.whatsapp_number = ""
+        self.cfg.orders_enabled = False
+        self.cfg.save()
+        body = self._home()
+        self.assertNotIn('href="#order"', body)
+        self.assertNotIn("اطلب على واتساب", body)
+
+
+# ==========================================================================
+class PlanAddonShowcaseTests(BaseAppTest):
+    """الإضافات بقت عرض سعر تحت كل باقة — مش اختيار في نموذج."""
+
+    def setUp(self):
+        super().setUp()
+        self.video = PlanAddon.objects.create(name="اضافه فيديو", price=200)
+        self.song = PlanAddon.objects.create(name="اضافه اغنيه", price=300)
+        self.song.plans.add(self.basic)          # مربوطة بباقة واحدة بس
+
+    def _home(self):
+        return self.client.get("/").content.decode()
+
+    def test_the_price_is_shown_under_the_plan(self):
+        body = self._home()
+        self.assertIn("إضافات اختيارية", body)
+        self.assertIn("اضافه فيديو", body)
+        self.assertIn("+200", body)
+
+    def test_an_addon_with_no_plans_shows_under_all_of_them(self):
+        i = self._home().count("اضافه فيديو")
+        self.assertGreaterEqual(i, Plan.objects.filter(is_active=True).count())
+
+    def test_an_addon_tied_to_one_plan_shows_only_there(self):
+        body = self._home()
+        section = body[body.index('id="plans"'):body.index('id="order"')]
+        self.assertEqual(section.count("اضافه اغنيه"), 1)
+
+    def test_it_is_a_price_list_not_a_picker(self):
+        """عرض بس — مفيش شيك بوكس ولا مجموع في قسم الباقات."""
+        body = self._home()
+        section = body[body.index('id="plans"'):body.index('id="order"')]
+        self.assertNotIn("checkbox", section)
+        self.assertNotIn("data-addons-total", section)
+
+    def test_an_inactive_addon_is_not_advertised(self):
+        self.video.is_active = False
+        self.video.save()
+        self.assertNotIn("اضافه فيديو", self._home())
+
+
+# ==========================================================================
+class WhatsAppFloatTests(BaseAppTest):
+    """أيقونة واتساب عائمة في صفحات الموقع، رقمها من لوحة التحكم."""
+
+    def setUp(self):
+        super().setUp()
+        self.cfg = SiteSetting.load()
+        self.cfg.whatsapp_number = "+20 155-940 3203"
+        self.cfg.save()
+
+    def test_it_shows_on_the_home_page(self):
+        body = self.client.get("/").content.decode()
+        self.assertIn("data-wa-float", body)
+        self.assertIn("wa.me/201559403203", body)
+
+    def test_it_shows_on_the_gallery_too(self):
+        self.assertIn("data-wa-float",
+                      self.client.get("/templates/").content.decode())
+
+    def test_the_ready_message_rides_along(self):
+        self.cfg.whatsapp_cta_message = "عايز أستفسر"
+        self.cfg.save()
+        self.assertIn(quote("عايز أستفسر"), self.client.get("/").content.decode())
+
+    def test_no_number_means_no_button(self):
+        self.cfg.whatsapp_number = ""
+        self.cfg.save()
+        self.assertNotIn("data-wa-float", self.client.get("/").content.decode())
+
+    def test_its_own_toggle_turns_it_off(self):
+        self.cfg.whatsapp_float_enabled = False
+        self.cfg.save()
+        self.assertNotIn("data-wa-float", self.client.get("/").content.decode())
+
+    def test_the_preview_cta_toggle_does_not_control_it(self):
+        """التنين وسايل تواصل مختلفة — قفل واحد مايقفلش التاني."""
+        self.cfg.preview_cta_enabled = False
+        self.cfg.save()
+        self.assertIn("data-wa-float", self.client.get("/").content.decode())
+
+    def test_it_never_shows_on_a_guest_invitation(self):
+        """دعوة العميل مش مكان إعلان عننا."""
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        self.assertNotIn("data-wa-float", body)
+
+    def test_it_never_shows_in_the_dashboard(self):
+        self.client.force_login(self.staff)
+        self.assertNotIn("data-wa-float",
+                         self.client.get("/dashboard/").content.decode())
+
+    def test_the_number_is_editable_from_the_dashboard(self):
+        self.client.force_login(self.staff)
+        body = self.client.get("/dashboard/site/").content.decode()
+        for name in ("whatsapp_number", "whatsapp_float_enabled",
+                     "whatsapp_cta_message", "orders_enabled"):
+            with self.subTest(name=name):
+                self.assertIn(f'name="{name}"', body)
+
+
+# ==========================================================================
 class PlanAddonTests(BaseAppTest):
     """إضافات بسعر زيادة فوق الباقة."""
 

@@ -29,6 +29,23 @@ def _asset_version():
     return _ASSET_V
 
 
+def _cta():
+    """إعدادات التواصل اللي كل صفحة محتاجاها — الطلبات وزر الواتساب.
+
+    الاستيراد جوّه الدالة عن قصد: معالجات السياق بتتحمّل بدري، وأي
+    استيراد للموديلات على مستوى الملف بيضرب AppRegistryNotReady.
+
+    سطر واحد في الجدول، فالاستعلام رخيص — لكنه بيتنفّذ مع كل صفحة.
+    """
+    from .models import SiteSetting
+    cfg = SiteSetting.load()
+    return {
+        "orders_enabled": cfg.orders_enabled,
+        "whatsapp_url": cfg.whatsapp_url,
+        "whatsapp_float": cfg.whatsapp_float_ready,
+    }
+
+
 def site_settings(request):
     en = (get_language() or "").startswith("en")
     return {
@@ -37,5 +54,6 @@ def site_settings(request):
         "SITE_WHATSAPP": settings.SITE_WHATSAPP,
         "SITE_EMAIL": settings.SITE_EMAIL,
         "SITE_CURRENCY": settings.SITE_CURRENCY,
+        "SITE_CTA": _cta(),
         "ASSET_V": _asset_version(),
     }

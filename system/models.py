@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from decimal import Decimal
+from urllib.parse import quote
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -701,6 +702,28 @@ class SiteSetting(models.Model):
     facebook_enabled = models.BooleanField("إظهار فيسبوك", default=True)
     facebook_url = models.URLField("رابط صفحة فيسبوك", max_length=300, blank=True)
 
+    # ---- استقبال الطلبات
+    orders_enabled = models.BooleanField(
+        "نموذج «اطلب دعوتك» في الموقع", default=True,
+        help_text="اقفله لو بتاخد الطلبات على واتساب. القسم بيختفي من "
+                  "الصفحة، وأزرار «اطلب دعوتك» بتوجّه على واتساب، "
+                  "والسيرفر بيرفض أي إرسال للنموذج — مش بيتخبّى بس.",
+    )
+
+    # ---- زر واتساب العائم
+    whatsapp_float_enabled = models.BooleanField(
+        "زر واتساب عائم في الموقع", default=True,
+        help_text="أيقونة واتساب ثابتة في ركن كل صفحات الموقع. محتاجة "
+                  "«رقم الواتساب» تحت.",
+    )
+    whatsapp_cta_message = models.CharField(
+        "رسالة الزر العائم", max_length=300,
+        default="السلام عليكم، حابب أستفسر عن الدعوات الرقمية",
+        blank=True,
+        help_text="الرسالة الجاهزة اللي هتتكتب للزائر لما يدوس الأيقونة. "
+                  "دي غير رسالة شريط «عجبك القالب؟» اللي فيها {template}.",
+    )
+
     class Meta:
         verbose_name = "إعدادات الموقع"
         verbose_name_plural = "إعدادات الموقع"
@@ -731,6 +754,20 @@ class SiteSetting(models.Model):
         """فيه وسيلة تواصل واحدة على الأقل شغّالة؟"""
         return bool((self.whatsapp_enabled and self.whatsapp_digits)
                     or (self.facebook_enabled and self.facebook_url))
+
+    @property
+    def whatsapp_url(self) -> str:
+        """رابط wa.me الجاهز للزر العائم — أو فاضي لو مفيش رقم."""
+        if not (self.whatsapp_enabled and self.whatsapp_digits):
+            return ""
+        text = (self.whatsapp_cta_message or "").strip()
+        base = f"https://wa.me/{self.whatsapp_digits}"
+        return f"{base}?text={quote(text)}" if text else base
+
+    @property
+    def whatsapp_float_ready(self) -> bool:
+        """الزر العائم هيظهر فعلاً؟ مفعّل + فيه رقم."""
+        return bool(self.whatsapp_float_enabled and self.whatsapp_url)
 
     @property
     def preview_cta_ready(self) -> bool:

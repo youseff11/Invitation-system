@@ -32,9 +32,23 @@
         <a href="{% url 'home' %}#templates" data-spy="templates">{% translate "القوالب" %}</a>
         <a href="{% url 'home' %}#how"       data-spy="how">{% translate "كيف تعمل" %}</a>
         <a href="{% url 'home' %}#plans"     data-spy="plans">{% translate "الباقات" %}</a>
+        {% comment %}
+          لما نموذج الطلبات مقفول، «اطلب دعوتك» مايوديش لقسم مش موجود —
+          بيوصّل على واتساب. ولو مفيش رقم كمان، بيتشال خالص: زرار
+          بيروح لمكان فاضي أسوأ من زرار ناقص.
+        {% endcomment %}
+        {% if SITE_CTA.orders_enabled %}
         <a href="{% url 'home' %}#order"     data-spy="order">{% translate "اطلب دعوتك" %}</a>
+        {% elif SITE_CTA.whatsapp_url %}
+        <a href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
+        {% endif %}
         {% if user.is_staff %}<a href="{% url 'dashboard' %}">{% translate "لوحة التحكم" %}</a>{% endif %}
+        {% if SITE_CTA.orders_enabled %}
         <a class="btn btn--gold btn--sm nav-cta-inline" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+        {% elif SITE_CTA.whatsapp_url %}
+        <a class="btn btn--gold btn--sm nav-cta-inline" href="{{ SITE_CTA.whatsapp_url }}"
+           target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
+        {% endif %}
       {% endif %}
     </nav>
 
@@ -75,8 +89,11 @@
           {% csrf_token %}
           <button class="btn btn--ghost btn--sm nav-cta" type="submit">{% translate "خروج" %}</button>
         </form>
-      {% else %}
+      {% elif SITE_CTA.orders_enabled %}
         <a class="btn btn--gold btn--sm nav-cta" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+      {% elif SITE_CTA.whatsapp_url %}
+        <a class="btn btn--gold btn--sm nav-cta" href="{{ SITE_CTA.whatsapp_url }}"
+           target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
       {% endif %}
 
       <button class="nav-burger" id="nav-burger" type="button"

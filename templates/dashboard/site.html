@@ -13,7 +13,7 @@
 {% endcomment %}
 {% if cfg.preview_cta_enabled and not cfg.preview_cta_ready %}
 <div class="card" data-cta-warning
-     style="border-inline-start:4px solid var(--gold);margin-bottom:18px">
+     style="border-inline-start:4px solid var(--accent);margin-bottom:18px">
   <h2 style="font-size:16px;margin:0 0 6px">الشريط مفعّل — بس مش ظاهر</h2>
   <p class="muted" style="font-size:13.5px;margin:0">
     مفيش <strong>رقم واتساب</strong> ولا <strong>رابط فيسبوك</strong>، فالشريط
@@ -84,6 +84,15 @@
       <li>فيسبوك:
         {% if cfg.facebook_enabled and cfg.facebook_url %}<strong>مربوط</strong>
         {% else %}مطفي أو الرابط فاضي{% endif %}
+      </li>
+      <li>نموذج الطلبات:
+        {% if cfg.orders_enabled %}<strong>مفتوح</strong>
+        {% else %}مقفول — الأزرار بتوجّه على واتساب{% endif %}
+      </li>
+      <li>زر واتساب العائم:
+        {% if cfg.whatsapp_float_ready %}<strong>ظاهر</strong>
+        {% elif cfg.whatsapp_float_enabled %}<strong>مفعّل بس مخفي — الرقم فاضي</strong>
+        {% else %}مطفي{% endif %}
       </li>
     </ul>
     <p class="muted" style="font-size:12.5px;margin-bottom:0">

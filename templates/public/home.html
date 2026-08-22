@@ -66,7 +66,12 @@
           <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
           <div class="tpl-actions">
             <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% translate "معاينة" %}</a>
+            {% if SITE_CTA.orders_enabled %}
             <a class="btn btn--gold btn--sm" href="#order">{% translate "اطلبه" %}</a>
+            {% elif SITE_CTA.whatsapp_url %}
+            <a class="btn btn--gold btn--sm" href="{{ SITE_CTA.whatsapp_url }}"
+               target="_blank" rel="noopener">{% translate "اطلبه" %}</a>
+            {% endif %}
           </div>
         </div>
       </article>
@@ -106,13 +111,60 @@
         {% if p.display_tagline %}<p class="muted" style="margin:0">{{ p.display_tagline }}</p>{% endif %}
         <div class="plan-price">{{ p.price|floatformat:0 }} <small>{{ SITE_CURRENCY }}</small></div>
         <ul>{% for b in p.display_bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+
+        {% comment %}
+          الإضافات هنا **عرض سعر بس** — مفيش اختيار ولا مجموع. الزبون
+          يعرف إن الفيديو بـ٢٠٠ زيادة قبل ما يكلّمنا، والاتفاق بيتم على
+          واتساب. الاختيار الحقيقي عايش في نموذج الطلب لما يكون مفتوح.
+        {% endcomment %}
+        {% if p.shown_addons %}
+        <div class="plan-addons">
+          <p class="plan-addons-title">{% translate "إضافات اختيارية" %}</p>
+          <ul class="plan-addons-list">
+            {% for a in p.shown_addons %}
+            <li>
+              <span>{{ a.display_name }}</span>
+              <b>+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</b>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if SITE_CTA.orders_enabled %}
         <a class="btn btn--gold btn--block" href="#order" style="margin-top:14px">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+        {% elif SITE_CTA.whatsapp_url %}
+        <a class="btn btn--gold btn--block" href="{{ SITE_CTA.whatsapp_url }}"
+           target="_blank" rel="noopener" style="margin-top:14px">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
   </div>
 </section>
 
+{% comment %}
+  نموذج الطلب بيتقفل من لوحة التحكم (إعدادات الموقع ← «نموذج اطلب دعوتك»)
+  مش بالكومنت في الكود: الكومنت بيخفي القسم بس بيسيب الـPOST مفتوح
+  وأزرار «اطلب دعوتك» بتودّي على مرساة مش موجودة. التوجل بيقفل التلاتة
+  مع بعض وبيترجع من غير نشر جديد.
+{% endcomment %}
+{% if not SITE_CTA.orders_enabled %}
+  {% if SITE_CTA.whatsapp_url %}
+  <section class="section section--alt" id="order">
+    <div class="wrap" style="max-width:640px;text-align:center">
+      <div class="section-head">
+        <p class="eyebrow">{% translate "اطلب دعوتك" %}</p>
+        <h2>{% translate "كلّمنا على واتساب" %}</h2>
+        <p>{% translate "ابعتلنا الباقة والموعد وأي تفاصيل، ونرجعلك بمعاينة قبل النشر." %}</p>
+      </div>
+      <a class="btn btn--gold" href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">
+        {% translate "افتح المحادثة" %}
+      </a>
+    </div>
+  </section>
+  {% endif %}
+{% else %}
 <section class="section section--alt" id="order">
   <div class="wrap" style="max-width:760px">
     <div class="section-head">
@@ -168,6 +220,7 @@
     </form>
   </div>
 </section>
+{% endif %}
 
 <footer class="foot"><div class="wrap">{{ SITE_NAME }} — {{ SITE_TAGLINE }}</div></footer>
 {% endblock %}

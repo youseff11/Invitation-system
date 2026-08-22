@@ -1,2 +1,6 @@
 {% extends 'base.html' %}
-{% block chrome %}{% include 'partials/nav.html' %}{% endblock %}
+{% comment %}
+  زر الواتساب العائم في صفحات الموقع بس — مش في لوحة التحكم (بتستخدم
+  dashboard/_base.html) ولا في دعوة العميل (صفحة مستقلة مالهاش أب).
+{% endcomment %}
+{% block chrome %}{% include 'partials/nav.html' %}{% include 'partials/_whatsapp_float.html' %}{% endblock %}

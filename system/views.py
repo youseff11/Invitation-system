@@ -151,9 +151,22 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
 # ==========================================================================
 def home(request):
     templates = Template.objects.filter(is_active=True)[:12]
-    plans = Plan.objects.filter(is_active=True)
-    form = OrderForm(request.POST or None)
+    plans = list(Plan.objects.filter(is_active=True))
+    addons = list(PlanAddon.objects.filter(is_active=True).prefetch_related("plans"))
+    cfg = SiteSetting.load()
+
+    # الإضافات بتتعرض تحت كل باقة كسعر استرشادي. إضافة من غير باقات
+    # محددة معناها «متاحة مع الكل» — نفس القاعدة اللي في نموذج الطلب.
+    for p in plans:
+        p.shown_addons = [a for a in addons
+                          if not a.plans.all() or p in a.plans.all()]
+
+    form = OrderForm(request.POST or None) if cfg.orders_enabled else None
     if request.method == "POST":
+        # القسم مخفي من الصفحة لما الطلبات مقفولة — لكن الإخفاء مش قفل.
+        # المسار لسه موجود وأي حد يقدر يبعتله POST، فالرفض هنا مش هناك.
+        if not cfg.orders_enabled:
+            raise PermissionDenied("استقبال الطلبات من الموقع مقفول حالياً.")
         if form.is_valid():
             form.save()
             messages.success(request, "تم استلام طلبك. سنتواصل معك قريباً لتأكيد التفاصيل.")
@@ -161,7 +174,7 @@ def home(request):
         messages.error(request, "يرجى مراجعة البيانات المدخلة.")
     return render(request, "public/home.html", {
         "templates": templates, "plans": plans, "form": form,
-        "addons": PlanAddon.objects.filter(is_active=True).prefetch_related("plans"),
+        "addons": addons,
     })
 
 
