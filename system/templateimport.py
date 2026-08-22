@@ -31,8 +31,8 @@ from . import cssscope, images
 from .models import Asset, Template
 from .sanitize import clean_html
 
-MAX_ARCHIVE_BYTES = 20 * 1024 * 1024      # حجم الملف المرفوع نفسه
-MAX_UNPACKED_BYTES = 80 * 1024 * 1024     # مجموع الحجم بعد فك الضغط
+MAX_ARCHIVE_BYTES = 50 * 1024 * 1024      # حجم الملف المرفوع نفسه
+MAX_UNPACKED_BYTES = 150 * 1024 * 1024     # مجموع الحجم بعد فك الضغط
 MAX_MEMBERS = 400
 MAX_RATIO = 120                           # نسبة انتفاخ مشبوهة = zip bomb
 MAX_BLOCKS = 40
@@ -417,7 +417,7 @@ def parse_upload(upload) -> tuple[str, dict[str, bytes]]:
     """يقرأ الملف المرفوع ويرجّع ``(اسم_ملف_HTML, الملفات)``."""
     raw = upload.read()
     if len(raw) > MAX_ARCHIVE_BYTES:
-        raise ImportError_("حجم الملف أكبر من ٢٠ ميجابايت.")
+        raise ImportError_("حجم الملف أكبر من 50 ميجابايت.")
     if not raw:
         raise ImportError_("الملف فاضي.")
 
