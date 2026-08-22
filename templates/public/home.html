@@ -113,30 +113,37 @@
         <ul>{% for b in p.display_bullets %}<li>{{ b }}</li>{% endfor %}</ul>
 
         {% comment %}
-          الإضافات هنا **عرض سعر بس** — مفيش اختيار ولا مجموع. الزبون
-          يعرف إن الفيديو بـ٢٠٠ زيادة قبل ما يكلّمنا، والاتفاق بيتم على
-          واتساب. الاختيار الحقيقي عايش في نموذج الطلب لما يكون مفتوح.
+          تجميع الأزرار والإضافات في حاوية واحدة بخاصية margin-top: auto
+          لضمان محاذاتها جميعاً في نفس المستوى بأسفل الكارت.
         {% endcomment %}
-        {% if p.shown_addons %}
-        <div class="plan-addons">
-          <p class="plan-addons-title">{% translate "إضافات اختيارية" %}</p>
-          <ul class="plan-addons-list">
-            {% for a in p.shown_addons %}
-            <li>
-              <span>{{ a.display_name }}</span>
-              <b>+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</b>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% endif %}
+        <div class="plan-bottom-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px;">
 
-        {% if SITE_CTA.orders_enabled %}
-        <a class="btn btn--gold btn--block" href="#order" style="margin-top:14px">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
-        {% elif SITE_CTA.whatsapp_url %}
-        <a class="btn btn--gold btn--block" href="{{ SITE_CTA.whatsapp_url }}"
-           target="_blank" rel="noopener" style="margin-top:14px">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
-        {% endif %}
+            {% if p.shown_addons %}
+            <div class="plan-addons" style="display: none;">
+              <p class="plan-addons-title" style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">{% translate "إضافات اختيارية" %}</p>
+              <ul class="plan-addons-list" style="list-style: none; padding: 0; margin: 0; font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 8px;">
+                {% for a in p.shown_addons %}
+                <li style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span>{{ a.display_name }}</span>
+                  <b>+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</b>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+
+            {% if SITE_CTA.orders_enabled %}
+            <a class="btn btn--gold btn--block" href="#order">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+            {% elif SITE_CTA.whatsapp_url %}
+            <a class="btn btn--gold btn--block" href="{{ SITE_CTA.whatsapp_url }}"
+               target="_blank" rel="noopener">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+            {% endif %}
+
+            {% if p.shown_addons %}
+            <button type="button" class="btn btn--ghost btn--block toggle-addons-btn">{% translate "عرض الإضافات المتاحة" %}</button>
+            {% endif %}
+
+        </div>
       </div>
       {% endfor %}
     </div>
@@ -223,4 +230,24 @@
 {% endif %}
 
 <footer class="foot"><div class="wrap">{{ SITE_NAME }} — {{ SITE_TAGLINE }}</div></footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var toggleBtns = document.querySelectorAll('.toggle-addons-btn');
+    toggleBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var addonsDiv = this.parentElement.querySelector('.plan-addons');
+        if (addonsDiv.style.display === 'none') {
+          addonsDiv.style.display = 'block';
+          this.textContent = '{% translate "إخفاء الإضافات" %}';
+        } else {
+          addonsDiv.style.display = 'none';
+          this.textContent = '{% translate "عرض الإضافات المتاحة" %}';
+        }
+      });
+    });
+  });
+</script>
 {% endblock %}
