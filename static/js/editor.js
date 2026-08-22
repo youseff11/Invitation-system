@@ -962,7 +962,18 @@
       (node.className ? " · " + String(node.className).split(" ")[0] : ""));
     body.appendChild(head);
 
+    /* الصورة مش نص. الخط والحجم والسُمك والمحاذاة وتباعد الحروف
+       وارتفاع السطر ولون النص مالهمش أي تأثير على ‎<img>‎ — عرضها
+       كان بيخلي اللوحة تبان زي ما هي مهما حرّكت فيها، وده أسوأ من
+       إنها ناقصة. بنعرض أدوات الصورة بدالها. */
+    var isImg = tag === "IMG";
+    if (isImg) {
+      body.appendChild(el("p", "ed-hint",
+        "دي صورة — أدوات الخط والنص مش بتأثر عليها فمخفية."));
+    }
+
     // ---- الخط
+    if (!isImg) {
     var fontSel = el("select", "ed-input");
     fontSel.appendChild(new Option("زي ما هو", ""));
     (SCHEMA.fonts || []).forEach(function (f) {
@@ -1012,9 +1023,14 @@
       });
       body.appendChild(ctrlRow(spec[1], sel));
     });
+    }
 
+    /* لون الخلفية بيفضل مفيد على الصورة — بيبان ورا PNG شفاف ووقت
+       التحميل. لون النص لأ. */
     // ---- الألوان
-    [["color", "لون النص"], ["background-color", "لون الخلفية"]].forEach(function (spec) {
+    (isImg ? [["background-color", "لون الخلفية"]]
+           : [["color", "لون النص"], ["background-color", "لون الخلفية"]]
+    ).forEach(function (spec) {
       var input = el("input");
       input.type = "color";
       input.className = "ed-color";
@@ -1035,6 +1051,7 @@
     });
 
     // ---- المسافات
+    if (!isImg) {
     [["letter-spacing", "تباعد الحروف", -3, 16, .5, "px"],
      ["line-height", "ارتفاع السطر", .8, 3.2, .05, ""]].forEach(function (spec) {
       var cur = parseFloat(styleOf(node, spec[0]));
@@ -1057,21 +1074,67 @@
       r.addEventListener("change", function () { started = false; });
       body.appendChild(ctrlRow(spec[1], r, out));
     });
+    }
 
     // ---- الصور: تبديل وقص
-    if (tag === "IMG") {
+    if (isImg) {
+      var setSrc = function (url) {
+        node.setAttribute("src", url);
+        /* srcset بيكسب على src — لو سبناها الصورة القديمة تفضل ظاهرة
+           والمستخدم يفتكر إن التبديل مااشتغلش. */
+        node.removeAttribute("srcset");
+        commit();
+        requestPreview();
+      };
+
       var swap = el("button", "ed-btn ed-btn--sm ed-btn--block", "بدّل الصورة");
       swap.type = "button";
       swap.addEventListener("click", function () {
-        openAssetPicker(function (url) {
-          snapshot();
-          node.setAttribute("src", url);
-          node.removeAttribute("srcset");
-          commit();
-          requestPreview();
-        }, "image");
+        openAssetPicker(function (url) { snapshot(); setSrc(url); }, "image");
       });
       body.appendChild(swap);
+
+      /* القص بيتم على الأصل المحفوظ في المكتبة مش على النسخة المعروضة،
+         عشان ما يحصلش فقد جودة متراكم — يعني لازم الصورة تكون أصل في
+         مكتبة الدعوة. صورة جاية مع قالب مستورد ومش مرفوعة عندنا مالهاش
+         أصل نقص منه، فبنطلب يبدّلها من المكتبة الأول. */
+      var crop = el("button", "ed-btn ed-btn--sm ed-btn--block", "قصّ الصورة");
+      crop.type = "button";
+      crop.addEventListener("click", function () {
+        var src = node.getAttribute("src") || "";
+        var asset = null;
+        for (var i = 0; i < ASSETS.length; i++) {
+          if (ASSETS[i].url && src.indexOf(ASSETS[i].url) > -1) { asset = ASSETS[i]; break; }
+        }
+        if (!asset) {
+          toast("الصورة دي مش من مكتبة الدعوة — اضغط «بدّل الصورة» " +
+                "واختارها أو ارفعها، وبعدين تقدر تقصها.", "error");
+          return;
+        }
+        openCropper(asset, function (url) { snapshot(); setSrc(url); });
+      });
+      body.appendChild(crop);
+
+      // ---- مقاس الصورة واستدارتها — دي اللي بتأثر فعلاً على ‎<img>‎
+      [["width", "عرض الصورة", 10, 100, 1, "%"],
+       ["border-radius", "استدارة الحواف", 0, 200, 2, "px"]].forEach(function (spec) {
+        var cur = parseFloat(styleOf(node, spec[0]));
+        if (isNaN(cur)) {
+          cur = spec[0] === "width" ? 100 : computedPx(node, "borderTopLeftRadius") || 0;
+        }
+        var r2 = el("input", "ed-input");
+        r2.type = "range"; r2.min = spec[2]; r2.max = spec[3]; r2.step = spec[4];
+        r2.value = cur;
+        var out2 = el("b", "ed-ctrl-out", cur + spec[5]);
+        var began = false;
+        r2.addEventListener("input", function () {
+          if (!began) { snapshot(); began = true; }
+          out2.textContent = r2.value + spec[5];
+          setStyle(spec[0], r2.value + spec[5]);
+        });
+        r2.addEventListener("change", function () { began = false; });
+        body.appendChild(ctrlRow(spec[1], r2, out2));
+      });
     }
 
     // ---- الموضع الدقيق

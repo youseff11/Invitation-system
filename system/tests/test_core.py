@@ -2778,3 +2778,83 @@ class CssVariableTests(TestCase):
         self.assertEqual(self._required(fake), {"--does-not-exist"})
         # ومع قيمة احتياطية مايتبلّغش عنه
         self.assertEqual(self._required(".x { color: var(--nope, red); }"), set())
+
+
+# ==========================================================================
+class ElementInspectorTests(TestCase):
+    """لوحة «العنصر المحدَّد» جوّه القسم المستورد.
+
+    كانت بتعرض نفس أدوات النص مهما كان العنصر — يعني لو حدّدت صورة
+    تلاقي قدامك خط وحجم خط ومحاذاة وتباعد حروف، وتحرّكهم ومايحصلش
+    حاجة. أداة مالهاش تأثير أسوأ من أداة ناقصة.
+    """
+
+    def setUp(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        i = js.index("function buildElementGroup(")
+        self.body = js[i:js.index("\n  function ", i + 10)]
+
+    def _guard_span(self, start_at):
+        """مدى أول حارس ‎if (!isImg)‎ بعد ‎start_at‎ — بعدّ الأقواس مش بالشكل."""
+        at = self.body.index("if (!isImg) {", start_at)
+        opening = self.body.index("{", at)
+        depth = 0
+        for j in range(opening, len(self.body)):
+            if self.body[j] == "{":
+                depth += 1
+            elif self.body[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    return opening, j
+        raise AssertionError("حارس مفتوح ومش مقفول")
+
+    def _guarded(self, probe):
+        """هل الحقل ده واقع جوّه حارس ‎if (!isImg)‎؟"""
+        at = self.body.index(probe)
+        pos = 0
+        while True:
+            try:
+                start, end = self._guard_span(pos)
+            except ValueError:
+                return False
+            if start < at < end:
+                return True
+            pos = end
+
+    def test_an_image_is_recognised_by_its_tag(self):
+        self.assertIn('var isImg = tag === "IMG"', self.body)
+
+    def test_the_font_controls_are_hidden_for_images(self):
+        for probe in ('"font-family"', '"font-size"', '"font-weight"', '"text-align"'):
+            with self.subTest(probe=probe):
+                self.assertTrue(self._guarded(probe), f"{probe} مش متحجوب عن الصورة")
+
+    def test_the_spacing_controls_are_hidden_for_images(self):
+        for probe in ('"letter-spacing"', '"line-height"'):
+            with self.subTest(probe=probe):
+                self.assertTrue(self._guarded(probe), f"{probe} مش متحجوب عن الصورة")
+
+    def test_text_colour_goes_but_background_stays(self):
+        """‎color‎ مالوش أي أثر على ‎<img>‎، لكن الخلفية بتبان ورا PNG شفاف."""
+        self.assertIn('isImg ? [["background-color"', self.body)
+
+    def test_an_image_gets_a_crop_button(self):
+        seg = self.body[self.body.index("if (isImg) {"):]
+        self.assertIn("قصّ الصورة", seg)
+        self.assertIn("openCropper(", seg)
+
+    def test_crop_refuses_an_image_that_is_not_in_the_library(self):
+        """القص بيشتغل على الأصل المحفوظ — صورة جاية مع قالب مستورد
+        مالهاش أصل عندنا، فالزر لازم يقول كده مش يفشل بصمت."""
+        seg = self.body[self.body.index("قصّ الصورة"):]
+        self.assertIn("ASSETS", seg[:900])
+        self.assertIn("if (!asset)", seg[:900])
+
+    def test_an_image_gets_controls_that_actually_do_something(self):
+        seg = self.body[self.body.index("if (isImg) {"):]
+        self.assertIn('"width"', seg)
+        self.assertIn('"border-radius"', seg)
+
+    def test_the_guard_helper_would_catch_a_regression(self):
+        """ضمان إن الفحص نفسه بيفرّق — مش بيرجع True على طول."""
+        self.assertFalse(self._guarded('var isImg = tag === "IMG"'))
