@@ -194,14 +194,9 @@ MEDIA_ROOT = Path(env("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media")))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
-        "BACKEND": (
-            "whitenoise.storage.CompressedManifestStaticFilesStorage"
-            if "whitenoise.middleware.WhiteNoiseMiddleware" in MIDDLEWARE and not DEBUG
-            else "django.contrib.staticfiles.storage.StaticFilesStorage"
-        )
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
     },
 }
-
 # يمنع خطأ 500 في whitenoise لو في ملف static ناقص في الـ HTML
 WHITENOISE_MANIFEST_STRICT = False
 
