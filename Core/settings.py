@@ -202,6 +202,9 @@ STORAGES = {
     },
 }
 
+# يمنع خطأ 500 في whitenoise لو في ملف static ناقص في الـ HTML
+WHITENOISE_MANIFEST_STRICT = False
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------- security
@@ -248,8 +251,8 @@ SITE_EMAIL = env("SITE_EMAIL", "")
 SITE_CURRENCY = env("SITE_CURRENCY", "ج.م")
 
 # حدود استيراد القوالب — حماية من ZIP bomb.
-TEMPLATE_IMPORT_MAX_ZIP_SIZE = 50 * 1024 * 1024        # 20MB للأرشيف نفسه
-TEMPLATE_IMPORT_MAX_UNCOMPRESSED = 150 * 1024 * 1024    # 80MB بعد الفك
+TEMPLATE_IMPORT_MAX_ZIP_SIZE = 50 * 1024 * 1024        # 50MB للأرشيف نفسه
+TEMPLATE_IMPORT_MAX_UNCOMPRESSED = 150 * 1024 * 1024    # 150MB بعد الفك
 TEMPLATE_IMPORT_MAX_FILES = 300
 TEMPLATE_IMPORT_ALLOWED_ASSETS = {
     ".html", ".htm", ".css", ".js", ".json",
