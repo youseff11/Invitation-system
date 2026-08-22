@@ -3,40 +3,26 @@
 {% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
 {% block content %}
 
-{% comment %}
-  الهيرو — الصورة نظيفة بلا نص محروق، وكل الكلام HTML حقيقي فوقها:
-  يتترجم، تقراه محركات البحث، ويتقاس مع حجم الشاشة.
-  ملحوظة: {# #} بتعليق سطر واحد بس؛ أي تعليق أكتر من سطر لازم {% templatetag openblock %} comment {% templatetag closeblock %}
-  وإلا Django بيطبعه كنص على الصفحة.
-{% endcomment %}
 <section class="hero" id="main">
   <div class="hero-art">
     <span class="sr-only">{% translate "دعوة زفاف أنيقة محاطة بالورود" %}</span>
-
-    {# كتابة الكارت — موضعها وميلانها متضبوطين على مكان الكارت في كل صورة #}
     <div class="hero-card" aria-hidden="true">
       <span class="hero-card-line">YOU ARE INVITED</span>
       <span class="hero-card-line">TO OUR WEDDING</span>
       <span class="hero-rule hero-rule--sm"><i></i><span class="hero-heart"></span><i></i></span>
     </div>
   </div>
-
   <div class="hero-copy">
     <div class="hero-copy-in">
-      {# الزخرفة والقلب مستخرجين من الصورة الأصلية كـmask، فبياخدوا لون الثيم تلقائياً #}
       <span class="hero-ornament" aria-hidden="true"></span>
-
       <h1>
         <span class="h1-top">{% translate "تصميم دعوات زفاف" %}</span>
         <span class="h1-main">{% translate "تعكس قصة حبك" %}</span>
       </h1>
-
       <div class="hero-rule" aria-hidden="true">
         <i></i><span class="hero-heart"></span><i></i>
       </div>
-
       <p class="hero-sub">{% translate "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى" %}</p>
-
       <div class="hero-actions">
         <a class="btn btn--outline" href="{% url 'template_gallery' %}">
           <span class="hero-heart" aria-hidden="true"></span>
@@ -105,18 +91,15 @@
     </div>
     <div class="grid grid--3">
       {% for p in plans %}
-      <div class="plan{% if p.is_featured %} plan--featured{% endif %}">
+      <!-- التعديل الجذري هنا: max-content و align-self لضمان استقلالية طول كل كارت -->
+      <div class="plan{% if p.is_featured %} plan--featured{% endif %}" style="align-self: flex-start; height: max-content; display: flex; flex-direction: column;">
         {% if p.is_featured %}<span class="plan-badge">{% translate "الأكثر طلباً" %}</span>{% endif %}
         <h3>{{ p.display_name }}</h3>
         {% if p.display_tagline %}<p class="muted" style="margin:0">{{ p.display_tagline }}</p>{% endif %}
         <div class="plan-price">{{ p.price|floatformat:0 }} <small>{{ SITE_CURRENCY }}</small></div>
         <ul>{% for b in p.display_bullets %}<li>{{ b }}</li>{% endfor %}</ul>
 
-        {% comment %}
-          تجميع الأزرار والإضافات في حاوية واحدة بخاصية margin-top: auto
-          لضمان محاذاتها جميعاً في نفس المستوى بأسفل الكارت.
-        {% endcomment %}
-        <div class="plan-bottom-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px;">
+        <div class="plan-bottom-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; width: 100%;">
 
             {% if p.shown_addons %}
             <div class="plan-addons" style="display: none;">
@@ -141,6 +124,8 @@
 
             {% if p.shown_addons %}
             <button type="button" class="btn btn--ghost btn--block toggle-addons-btn">{% translate "عرض الإضافات المتاحة" %}</button>
+            {% else %}
+            <button type="button" class="btn btn--ghost btn--block" disabled style="opacity: 0.6; cursor: not-allowed;">{% translate "لا يوجد إضافات متاحة" %}</button>
             {% endif %}
 
         </div>
@@ -150,12 +135,6 @@
   </div>
 </section>
 
-{% comment %}
-  نموذج الطلب بيتقفل من لوحة التحكم (إعدادات الموقع ← «نموذج اطلب دعوتك»)
-  مش بالكومنت في الكود: الكومنت بيخفي القسم بس بيسيب الـPOST مفتوح
-  وأزرار «اطلب دعوتك» بتودّي على مرساة مش موجودة. التوجل بيقفل التلاتة
-  مع بعض وبيترجع من غير نشر جديد.
-{% endcomment %}
 {% if not SITE_CTA.orders_enabled %}
   {% if SITE_CTA.whatsapp_url %}
   <section class="section section--alt" id="order">
@@ -172,7 +151,7 @@
   </section>
   {% endif %}
 {% else %}
-<section class="section section--alt" id="order">
+<!-- <section class="section section--alt" id="order">
   <div class="wrap" style="max-width:760px">
     <div class="section-head">
       <p class="eyebrow">{% translate "اطلب دعوتك" %}</p>
@@ -188,12 +167,6 @@
       {% csrf_token %}
       {% for f in form %}
         {% if f.name == 'addons' %}
-          {% comment %}
-            الإضافات مربّعات اختيار بأسعارها جنبها مش قائمة منسدلة —
-            العميل لازم يشوف السعر وهو بيختار مش بعد ما يبعت.
-            data-plans فيه أرقام الباقات المسموح فيها الإضافة عشان
-            الجافاسكربت يخفي غير المتاح، والسيرفر بيتحقق تاني في clean().
-          {% endcomment %}
           {% if addons %}
           <div class="field span-2">
             <label>{{ f.label }}</label>
@@ -226,7 +199,7 @@
       <div class="span-2"><button class="btn btn--gold btn--block" type="submit">{% translate "إرسال الطلب" %}</button></div>
     </form>
   </div>
-</section>
+</section> -->
 {% endif %}
 
 <footer class="foot"><div class="wrap">{{ SITE_NAME }} — {{ SITE_TAGLINE }}</div></footer>
@@ -236,15 +209,24 @@
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     var toggleBtns = document.querySelectorAll('.toggle-addons-btn');
+    
     toggleBtns.forEach(function(btn) {
       btn.addEventListener('click', function() {
         var addonsDiv = this.parentElement.querySelector('.plan-addons');
-        if (addonsDiv.style.display === 'none') {
+        var isCurrentlyHidden = (addonsDiv.style.display === 'none');
+        
+        // إغلاق كل قوائم الإضافات المفتوحة
+        document.querySelectorAll('.plan-addons').forEach(function(div) {
+          div.style.display = 'none';
+        });
+        document.querySelectorAll('.toggle-addons-btn').forEach(function(otherBtn) {
+          otherBtn.textContent = '{% translate "عرض الإضافات المتاحة" %}';
+        });
+        
+        // فتح القائمة المضغوطة فقط
+        if (isCurrentlyHidden) {
           addonsDiv.style.display = 'block';
           this.textContent = '{% translate "إخفاء الإضافات" %}';
-        } else {
-          addonsDiv.style.display = 'none';
-          this.textContent = '{% translate "عرض الإضافات المتاحة" %}';
         }
       });
     });
