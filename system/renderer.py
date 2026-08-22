@@ -116,8 +116,40 @@ def theme_css_vars(theme: dict) -> str:
         "--shadow": shadow_map.get(theme.get("shadow"), shadow_map["soft"]),
         "--pattern-opacity": f"{(theme.get('pattern_opacity') or 0)}%",
         "--hero-overlay": f"{(theme.get('hero_overlay') or 0) / 100:g}",
+        # وول بيبر الدعوة كلها. التعتيم بيتعمل بطبقة تدرّج في نفس خاصية
+        # ‎background-image‎ مش بعنصر وهمي — العناصر الوهمية كانت هتتخانق
+        # على ترتيب الطبقات مع النقشة ومع خلفيات الأقسام.
+        "--doc-bg": _css_url(theme.get("bg_image")),
+        "--doc-bg-veil": _veil(theme.get("bg_overlay")),
+        "--doc-bg-attach": "fixed" if theme.get("bg_fixed") else "scroll",
     }
     return ";".join(f"{k}:{v}" for k, v in pairs.items())
+
+
+def _css_url(value) -> str:
+    """‎url("…")‎ آمنة جوّه خاصية style — أو ‎none‎ لو مفيش صورة.
+
+    القيمة بتتحط في سمة ‎style‎ الأزواج فيها مفصولة بـ‎;‎، فأي علامة
+    تنصيص أو فاصلة منقوطة في الرابط كانت هتكسر باقي المتغيّرات.
+    """
+    url = str(value or "").strip()
+    if not url:
+        return "none"
+    url = url.replace('"', "%22").replace(";", "%3B").replace("\\", "")
+    return f'url("{url}")'
+
+
+def _veil(overlay) -> str:
+    """طبقة سودا شفافة فوق صورة الخلفية — أو ‎none‎ لو التعتيم صفر."""
+    try:
+        pct = float(overlay or 0)
+    except (TypeError, ValueError):
+        pct = 0.0
+    pct = max(0.0, min(90.0, pct))
+    if not pct:
+        return "none"
+    a = f"{pct / 100:g}"
+    return f"linear-gradient(rgba(0,0,0,{a}),rgba(0,0,0,{a}))"
 
 
 def _fluid_px(value, fallback, ref) -> str:

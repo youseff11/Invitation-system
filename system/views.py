@@ -747,7 +747,11 @@ def invitation_editor(request, pk):
         "schema_json": blocks_engine.editor_schema(),
         "document_json": document,
         "assets_json": [
+            # ‎source‎ = الأصل قبل أي قص. نافذة القص بتعرضه وبتقص منه —
+            # لو ما بعتناهوش بتعرض النسخة المقصوصة وتقص من الأصل،
+            # فالكادر اللي بتختاره مالوش أي علاقة باللي بيطلع.
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "source": a.source_url,
              "name": a.original_name, "kind": a.kind}
             # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
             for a in Asset.objects.filter(
@@ -948,6 +952,7 @@ def api_upload(request, pk):
     return JsonResponse({
         "ok": True,
         "asset": {"id": asset.pk, "url": asset.url, "thumb": asset.thumb_url,
+                  "source": asset.source_url,
                   "name": asset.original_name, "kind": asset.kind,
                   "width": width, "height": height, "seconds": seconds},
     })
@@ -1014,6 +1019,7 @@ def api_crop(request, pk):
     )
     return JsonResponse({"ok": True, "asset": {
         "id": new.pk, "url": new.url, "thumb": new.thumb_url,
+        "source": new.source_url,
         "name": new.original_name, "kind": "image",
         "width": width, "height": height,
     }})
@@ -1027,7 +1033,11 @@ def api_assets(request, pk):
     return JsonResponse({
         "ok": True,
         "assets": [
+            # ‎source‎ = الأصل قبل أي قص. نافذة القص بتعرضه وبتقص منه —
+            # لو ما بعتناهوش بتعرض النسخة المقصوصة وتقص من الأصل،
+            # فالكادر اللي بتختاره مالوش أي علاقة باللي بيطلع.
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "source": a.source_url,
              "name": a.original_name, "kind": a.kind}
             # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
             for a in Asset.objects.filter(

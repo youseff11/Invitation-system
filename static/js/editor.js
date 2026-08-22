@@ -957,9 +957,15 @@
     };
 
     var tag = node.tagName;
+    /* الكلاسات اللي المحرر نفسه بيحطها مش من القالب — كانت بتطلع في
+       اسم العنصر («صورة · lb-el-picked») وتوهم إنها كلاس التصميم. */
+    var OWN = { "lb-el-picked": 1, "lb-el-typing": 1, "lb-dragging": 1, "lb-el-swap": 1 };
+    var theirs = String(node.className || "").split(/\s+/).filter(function (c) {
+      return c && !OWN[c];
+    });
     var head = el("p", "ed-el-name",
       (EL_NAMES[tag] || tag.toLowerCase()) +
-      (node.className ? " · " + String(node.className).split(" ")[0] : ""));
+      (theirs.length ? " · " + theirs[0] : ""));
     body.appendChild(head);
 
     /* الصورة مش نص. الخط والحجم والسُمك والمحاذاة وتباعد الحروف
@@ -1246,6 +1252,12 @@
     acts.appendChild(hide);
     acts.appendChild(del);
     body.appendChild(acts);
+
+    if (isImg) {
+      body.appendChild(el("p", "ed-hint",
+        "اسحب الصورة وسيبها فوق صورة تانية في نفس القسم عشان يتبدّلوا " +
+        "مع بعض — الهدف بيتعلّم بإطار مقطّع قبل ما تسيب."));
+    }
 
     body.appendChild(el("p", "ed-hint",
       "ضغطة = اختيار · ضغطتين = كتابة · Esc يخرج من الكتابة. " +
@@ -1629,6 +1641,61 @@
     return (stage ? stage.getBoundingClientRect().width : fdoc.documentElement.clientWidth) || 1;
   }
 
+  /* ---------------------------------------------------------------
+     تبديل صورتين بالسحب
+
+     السحب العادي بيزحزح العنصر بإزاحة صغيرة. لو سِبت صورة **فوق**
+     صورة تانية في نفس القسم، النية واضحة إنك عايز تبدّلهم مش تزحزح.
+     شرطين عشان ما يحصلش تبديل بالغلط والصور في شبكة جنب بعض:
+       ١) الهدف لازم يكون ‎<img>‎ تاني في نفس القسم.
+       ٢) الماوس لازم تكون جوّه الـ٦٠٪ الوسطانية منه، مش على حرفه.
+     والهدف بيتعلّم بإطار مقطّع قبل ما تسيب، فمفيش مفاجآت. */
+  var SWAP_INNER = 0.6;
+
+  function swapCandidate(fdoc, node, x, y) {
+    if (node.tagName !== "IMG" || !fdoc) return null;
+    var stack = typeof fdoc.elementsFromPoint === "function"
+      ? fdoc.elementsFromPoint(x, y) : [];
+    var holder = node.closest("[data-block]");
+    for (var i = 0; i < stack.length; i++) {
+      var t = stack[i];
+      if (t === node || t.tagName !== "IMG") continue;
+      if (!t.getAttribute("data-move")) continue;
+      if (t.closest("[data-block]") !== holder) continue;   // نفس القسم بس
+      var r = t.getBoundingClientRect();
+      var mx = r.width * (1 - SWAP_INNER) / 2;
+      var my = r.height * (1 - SWAP_INNER) / 2;
+      if (x < r.left + mx || x > r.right - mx) continue;
+      if (y < r.top + my || y > r.bottom - my) continue;
+      return t;
+    }
+    return null;
+  }
+
+  function clearSwapTarget(d) {
+    if (d && d.swapTarget) d.swapTarget.classList.remove("lb-el-swap");
+    if (d) d.swapTarget = null;
+  }
+
+  function markSwapTarget(d, x, y) {
+    var found = swapCandidate(d.fdoc, d.node, x, y);
+    if (found === d.swapTarget) return;
+    clearSwapTarget(d);
+    if (found) { found.classList.add("lb-el-swap"); d.swapTarget = found; }
+  }
+
+  function swapImages(a, b) {
+    var keep = { src: a.getAttribute("src"), srcset: a.getAttribute("srcset") };
+    var take = { src: b.getAttribute("src"), srcset: b.getAttribute("srcset") };
+    var put = function (n, v) {
+      if (v.src) n.setAttribute("src", v.src); else n.removeAttribute("src");
+      // srcset بيكسب على src — لو سبناها القديمة تفضل ظاهرة
+      if (v.srcset) n.setAttribute("srcset", v.srcset); else n.removeAttribute("srcset");
+    };
+    put(a, take);
+    put(b, keep);
+  }
+
   function bindSlotDrag(node, blockId, slot, onDone) {
     // كان العنصر قابل للكتابة قبل السحب؟ الأقسام المستوردة فيها
     // صور و<div> مش نصوص — مانفتحهاش للكتابة بعد السحب بالغلط.
@@ -1689,6 +1756,7 @@
       drag.dy = Math.round(dy * 100) / 100;
       applySlotOffset(node, drag.dx, drag.dy);
       showGuides(drag.fdoc, node, snapX, snapY, drag.dx, drag.dy);
+      markSwapTarget(drag, e.clientX, e.clientY);
     });
 
     function finish(cancel) {
@@ -1698,10 +1766,33 @@
       clearGuides();
       node.classList.remove("lb-dragging");
 
+      var swapWith = d.swapTarget;
+      clearSwapTarget(d);
+
       if (!d.moved) {                       // ضغطة عادية — رجّع التحرير الكتابي
         if (wasEditable()) node.setAttribute("contenteditable", "plaintext-only");
         return;
       }
+
+      /* سِبت الصورة فوق صورة تانية = تبديل مش تحريك. بنرجّع الإزاحة
+         لمكانها الأصلي عشان الاتنين يفضلوا في خاناتهم، والصور بس اللي
+         بتتبدّل. */
+      if (!cancel && swapWith) {
+        applySlotOffset(node, d.dx0, d.dy0);
+        layoutOf(d.block, d.slot).dx = d.dx0;
+        layoutOf(d.block, d.slot).dy = d.dy0;
+        snapshot();
+        swapImages(node, swapWith);
+        pruneLayout(d.block);
+        markDirty();
+        if (wasEditable()) node.setAttribute("contenteditable", "plaintext-only");
+        if (typeof onDone === "function") onDone();
+        requestPreview();
+        if (state.selected === d.block.id) renderInspector();
+        toast("اتبدّلت الصورتين — Ctrl+Z للتراجع", "ok");
+        return;
+      }
+
       if (cancel) {
         applySlotOffset(node, d.dx0, d.dy0);
         layoutOf(d.block, d.slot).dx = d.dx0;

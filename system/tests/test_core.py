@@ -2858,3 +2858,147 @@ class ElementInspectorTests(TestCase):
     def test_the_guard_helper_would_catch_a_regression(self):
         """ضمان إن الفحص نفسه بيفرّق — مش بيرجع True على طول."""
         self.assertFalse(self._guarded('var isImg = tag === "IMG"'))
+
+    def test_editor_only_classes_are_not_shown_as_the_element_name(self):
+        """‎lb-el-picked‎ كلاس بيحطه المحرر وقت الاختيار، مش كلاس القالب —
+        كان بيطلع في اسم العنصر («صورة · lb-el-picked»)."""
+        self.assertIn('"lb-el-picked": 1', self.body)
+
+
+# ==========================================================================
+class ImageSwapDragTests(TestCase):
+    """سحب صورة وإفلاتها فوق صورة تانية = تبديل مش تحريك."""
+
+    def setUp(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.js = js
+        i = js.index("function swapCandidate(")
+        self.pick = js[i:js.index("\n  function ", i + 10)]
+
+    def test_the_target_must_be_another_image(self):
+        self.assertIn('t.tagName !== "IMG"', self.pick)
+        self.assertIn("t === node", self.pick)
+
+    def test_the_target_must_be_in_the_same_block(self):
+        """الحفظ بيسلسل قسم واحد بس — تبديل بين قسمين كان هيضيّع نص التبديل."""
+        self.assertIn('t.closest("[data-block]") !== holder', self.pick)
+
+    def test_the_edges_do_not_count(self):
+        """الصور في شبكة جنب بعض — زحزحة صغيرة كانت هتبقى تبديل بالغلط."""
+        self.assertIn("SWAP_INNER", self.js)
+        self.assertIn("r.left + mx", self.pick)
+
+    def test_the_target_is_highlighted_before_release(self):
+        self.assertIn("lb-el-swap", self.js)
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn(".lb-el-swap", css)
+
+    def test_swapping_moves_srcset_too(self):
+        """‎srcset‎ بتكسب على ‎src‎ — لو سبناها الصورة القديمة تفضل ظاهرة."""
+        i = self.js.index("function swapImages(")
+        seg = self.js[i:self.js.index("\n  function ", i + 10)]
+        self.assertIn("srcset", seg)
+
+    def test_the_nudge_is_undone_so_both_stay_in_place(self):
+        i = self.js.index("if (!cancel && swapWith)")
+        seg = self.js[i:i + 400]
+        self.assertIn("applySlotOffset(node, d.dx0, d.dy0)", seg)
+        self.assertIn("snapshot()", seg)
+
+
+# ==========================================================================
+class CropUsesTheOriginalTests(BaseAppTest):
+    """نافذة القص كانت بتعرض النسخة المقصوصة وتقص من الأصل.
+
+    ‎api_crop‎ بيقص من ‎asset.source‎ (الأصل قبل أي قص) عشان ما يحصلش فقد
+    جودة متراكم. لكن الـJSON اللي بيروح للمحرر ما كانش فيه ‎source‎
+    خالص، فالنافذة كانت بتعرض ‎asset.url‎ — النسخة المقصوصة. يعني الكادر
+    اللي بترسمه على صورة، بيتطبّق على صورة تانية.
+    """
+
+    def _asset(self):
+        from django.core.files.base import ContentFile
+        from system.models import Asset
+        return Asset.objects.create(
+            file=ContentFile(b"x", name="a.webp"),
+            source=ContentFile(b"y", name="a-source.webp"),
+            kind="image", original_name="a.webp", invitation=self.inv,
+        )
+
+    def test_the_model_can_point_at_the_original(self):
+        a = self._asset()
+        self.assertNotEqual(a.source_url, a.url)
+
+    def test_the_editor_payload_carries_it(self):
+        a = self._asset()
+        self.client.force_login(self.staff)
+        body = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/editor/").content.decode()
+        i = body.index('id="editor-assets"')
+        blob = body[i:body.index("</script>", i)]
+        self.assertIn("source", blob)
+        self.assertIn(a.source.name.rsplit("/", 1)[-1], blob)
+
+    def test_the_assets_api_carries_it(self):
+        a = self._asset()
+        self.client.force_login(self.staff)
+        data = self.client.get(
+            f"/dashboard/invitations/{self.inv.pk}/api/assets/").json()
+        row = next(r for r in data["assets"] if r["id"] == a.pk)
+        self.assertEqual(row["source"], a.source_url)
+
+    def test_the_cropper_prefers_the_original(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        i = js.index("function openCropper(")
+        self.assertIn("asset.source || asset.url", js[i:i + 300])
+
+
+# ==========================================================================
+class DocumentWallpaperTests(BaseAppTest):
+    """وول بيبر على الدعوة كلها — الخلفية لقسم واحد موجودة أصلاً."""
+
+    def _vars(self, **theme):
+        doc = self.inv.document
+        doc["theme"].update(theme)
+        self.inv.document = B.normalize_document(doc)
+        self.inv.save(update_fields=["document"])
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        i = body.index('<body class="lb-doc"')
+        return body[i:body.index(">", i)]
+
+    def test_no_image_means_none_not_a_broken_url(self):
+        self.assertIn("--doc-bg:none", self._vars())
+
+    def test_the_image_reaches_the_page(self):
+        self.assertIn("/media/wall.webp", self._vars(bg_image="/media/wall.webp"))
+
+    def test_a_semicolon_in_the_url_cannot_break_the_other_variables(self):
+        """كل المتغيّرات في سمة ‎style‎ واحدة مفصولة بـ‎;‎."""
+        out = self._vars(bg_image="/media/a;b.webp")
+        self.assertNotIn("/media/a;b.webp", out)
+        self.assertIn("%3B", out)
+        self.assertIn("--doc-bg-attach", out)      # اللي بعده لسه سليم
+
+    def test_no_overlay_means_no_veil_layer(self):
+        self.assertIn("--doc-bg-veil:none", self._vars(bg_image="/media/w.webp"))
+
+    def test_the_overlay_becomes_a_gradient_layer(self):
+        out = self._vars(bg_image="/media/w.webp", bg_overlay=40)
+        self.assertIn("rgba(0,0,0,0.4)", out)
+
+    def test_fixed_is_off_by_default(self):
+        self.assertIn("--doc-bg-attach:scroll", self._vars())
+        self.assertIn("--doc-bg-attach:fixed", self._vars(bg_fixed=True))
+
+    def test_the_css_consumes_both_layers_in_order(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        i = css.index(".lb-stage {")
+        rule = css[i:css.index("}", i)]
+        # التعتيم لازم ييجي **قبل** الصورة — أول طبقة هي الأعلى في CSS
+        self.assertIn("var(--doc-bg-veil, none), var(--doc-bg, none)", rule)
+        self.assertIn("background-color: var(--bg)", rule)
+
+    def test_a_section_can_still_have_its_own_background(self):
+        """الطلب كان «للدعوة كلها ولا لأقسام معينة» — التانية موجودة أصلاً."""
+        keys = [f["key"] for f in B.editor_schema()["blocks"]["text"]["style"]]
+        self.assertIn("bg_image", keys)

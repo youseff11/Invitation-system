@@ -43,11 +43,21 @@
 
 .lb-doc img { max-width: 100%; display: block; }
 
+/* وول بيبر الدعوة كلها: طبقتين في نفس ‎background-image‎ — التعتيم فوق
+   والصورة تحت. عملناها كده مش بعنصر وهمي لأن ‎::before‎ محجوز للنقشة،
+   و‎::after‎ كان هيتطلع فوق الأقسام (بيتولد آخر أبناء الحاوية) فيغطّيها.
+   الأقسام اللي ليها ‎--block-bg‎ بتفضل مغطّية الصورة — ده مقصود: تفضّي
+   لون خلفية القسم عشان الوول بيبر يبان تحته. */
 .lb-stage {
   position: relative;
   max-width: var(--max-width);
   margin-inline: auto;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--doc-bg-veil, none), var(--doc-bg, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: var(--doc-bg-attach, scroll);
   box-shadow: var(--shadow);
   min-height: 100vh;
   isolation: isolate;
@@ -1033,6 +1043,15 @@
   box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 .lb-doc--editing .lb-custom [data-lb-text]:hover { cursor: default; }
+
+/* الصورة اللي هتتبدّل مع اللي بتسحبها لو سِبت الماوس دلوقتي.
+   لازم تبان قبل الإفلات — تبديل بيحصل من غير ما تتوقّعه أسوأ من
+   ميزة ناقصة، والصور في الشبكة بتبقى جنب بعض. */
+.lb-doc--editing .lb-el-swap {
+  outline: 3px dashed var(--accent) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 9px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 
 /* ------------------------------------------------ زر تشغيل فيديو الافتتاحية */
 .lb-intro-play {
