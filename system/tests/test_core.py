@@ -2051,9 +2051,9 @@ class VideoBlockSourceTests(BaseAppTest):
         self.assertEqual(spec["type"], "media")
         self.assertEqual(spec["media_kind"], "video")
 
-    def _render(self, props):
+    def _render(self, props, btype="video"):
         doc = B.normalize_document({"blocks": [
-            {"type": "video", "id": "vid-1", "props": props},
+            {"type": btype, "id": "vid-1", "props": props},
         ]})
         self.inv.document = doc
         self.inv.save(update_fields=["document"])
@@ -2088,13 +2088,27 @@ class VideoBlockSourceTests(BaseAppTest):
             ],
         })
         self.assertIn("lb-video-wrap", body)
-        self.assertIn('data-video-text-index="0"', body)
-        self.assertIn('data-video-text-index="1"', body)
+        self.assertIn('data-section-text-index="0"', body)
+        self.assertIn('data-section-text-index="1"', body)
         self.assertIn("نص أول", body)
         self.assertIn("--video-text-x:-12%", body)
         self.assertIn("--video-text-y:18%", body)
         self.assertIn("--video-text-color:#ff0000", body)
         self.assertIn("--video-text-color:#00aa88", body)
+
+    def test_shared_text_overlay_field_is_available_to_text_sections(self):
+        spec = B.editor_schema()["blocks"]["text"]
+        overlays = next(f for f in spec["props"] if f["key"] == "text_overlays")
+        self.assertEqual(overlays["type"], "list")
+        self.assertEqual(overlays["add_label"], "إضافة نص")
+        body = self._render({
+            "heading": "قسم",
+            "body": "محتوى",
+            "text_overlays": [{"text": "فوق القسم", "color": "#123456"}],
+        }, "text")
+        self.assertIn('data-section-text-index="0"', body)
+        self.assertIn("فوق القسم", body)
+        self.assertIn("--video-text-color:#123456", body)
 
     def test_video_text_overlay_rejects_unsafe_style_values(self):
         body = self._render({

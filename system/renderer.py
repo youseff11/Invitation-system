@@ -532,7 +532,11 @@ def render_document(
         }
         ctx["guest"] = guest
         ctx.update(_block_extras(block, ctx, invitation, editable, guest))
-        chunks.append(render_to_string(f"blocks/{block['type']}.html", ctx, request=request))
+        rendered = render_to_string(f"blocks/{block['type']}.html", ctx, request=request)
+        if block["type"] != "video" and ctx["props"].get("text_overlays"):
+            overlays = render_to_string("blocks/_section_text_overlays.html", ctx, request=request)
+            rendered = rendered.replace("</section>", overlays + "</section>", 1)
+        chunks.append(rendered)
 
     return {
         "html": mark_safe("".join(chunks)),

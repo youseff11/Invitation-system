@@ -233,6 +233,22 @@ BUTTON_SUBFIELDS = [
 
 
 # --------------------------------------------------------------------------
+# نصوص فوق أي قسم — نفس البنية بتتخزن في props عشان تفضل متوافقة
+# مع نصوص الفيديو القديمة، لكنها بتظهر في المحرر لكل أنواع الأقسام.
+# --------------------------------------------------------------------------
+SECTION_TEXT_OVERLAY_FIELD = field(
+    "text_overlays", "نصوص فوق القسم", "list", [], group="التنسيق",
+    add_label="إضافة نص", fields=[
+        field("text", "النص", "textarea", "اكتب النص هنا"),
+        field("color", "لون النص", "color", "#ffffff"),
+        field("font", "الخط", "font", "", options=FONT_CHOICES),
+        field("x", "الموضع أفقياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
+        field("y", "الموضع رأسياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
+    ],
+)
+
+
+# --------------------------------------------------------------------------
 # سجل أنواع البلوكات
 # --------------------------------------------------------------------------
 BLOCK_REGISTRY: dict[str, dict] = {}
@@ -304,13 +320,16 @@ def register(
     category: str = "عام",
     supports_style: bool = True,
 ) -> None:
+    block_props = list(props)
+    if supports_style and not any(f.get("key") == "text_overlays" for f in block_props):
+        block_props.append(SECTION_TEXT_OVERLAY_FIELD)
     BLOCK_REGISTRY[btype] = {
         "type": btype,
         "label": label,
         "icon": icon,
         "description": description,
         "category": category,
-        "props": props,
+        "props": block_props,
         "style": style_fields() if supports_style else [],
         "feature": feature,
         "singleton": singleton,
@@ -537,13 +556,6 @@ register(
                    "رابط يوتيوب/فيميو في الخانة."),
         field("poster", "صورة الغلاف", "image", ""),
         field("heading", "العنوان", "text", ""),
-        field("text_overlays", "نصوص فوق الفيديو", "list", [], add_label="إضافة نص", fields=[
-            field("text", "النص", "textarea", "اكتب النص هنا"),
-            field("color", "لون النص", "color", "#ffffff"),
-            field("font", "الخط", "font", "", options=FONT_CHOICES),
-            field("x", "الموضع أفقياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
-            field("y", "الموضع رأسياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
-        ]),
         field("aspect", "نسبة العرض للارتفاع", "select", "16x9", options=[
             opt("16x9", "١٦:٩ عريض"),
             opt("4x3", "٤:٣"),

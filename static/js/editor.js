@@ -2200,7 +2200,7 @@
     });
   }
 
-  function bindVideoTextDrag(fdoc) {
+  function bindSectionTextDrag(fdoc) {
     var view = fdoc.defaultView || window;
     var clamp = function (value, min, max) { return Math.max(min, Math.min(max, value)); };
     var number = function (value) {
@@ -2208,17 +2208,17 @@
       return isNaN(parsed) ? 0 : parsed;
     };
 
-    fdoc.querySelectorAll("[data-video-text]").forEach(function (node) {
-      if (node.dataset.lbVideoTextBound) return;
-      var holder = node.closest(".lb-video-wrap");
+    fdoc.querySelectorAll("[data-section-text]").forEach(function (node) {
+      if (node.dataset.lbSectionTextBound) return;
+      var holder = node.closest(".lb-video-wrap") || node.closest("[data-block]");
       var blockHolder = node.closest("[data-block]");
       if (!holder || !blockHolder) return;
       var blockId = blockHolder.getAttribute("data-block");
       var block = findBlock(blockId);
-      var index = parseInt(node.getAttribute("data-video-text-index"), 10);
+      var index = parseInt(node.getAttribute("data-section-text-index"), 10);
       if (!block || !block.props || !Array.isArray(block.props.text_overlays) || isNaN(index)) return;
 
-      node.dataset.lbVideoTextBound = "1";
+      node.dataset.lbSectionTextBound = "1";
       var drag = null;
       var suppressClick = false;
 
@@ -2300,7 +2300,7 @@
     var fdoc = frameDoc();
     if (!fdoc) return;
     bindIntroDrag(fdoc);
-    bindVideoTextDrag(fdoc);
+    bindSectionTextDrag(fdoc);
 
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
@@ -2310,7 +2310,7 @@
         /* المستمع ده في مرحلة الالتقاط، يعني بيتنفّذ **قبل** عناصر
            القسم. من غير السطر ده كان بيوقف الضغطة قبل ما توصل لعنصر
            القالب المستورد، فاختيار العنصر كان مستحيل. */
-        if (e.target.closest && (e.target.closest(".lb-custom [data-move]") || e.target.closest("[data-video-text]"))) return;
+        if (e.target.closest && (e.target.closest(".lb-custom [data-move]") || e.target.closest("[data-section-text]"))) return;
         e.preventDefault();
         e.stopPropagation();
         state.fromPreview = true;

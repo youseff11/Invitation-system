@@ -1,0 +1,4 @@
+{% load invite %}
+{% for overlay in props.text_overlays %}
+  {% if overlay.text %}<div class="lb-section-text" data-section-text data-section-text-index="{{ forloop.counter0 }}" style="{{ overlay|video_text_style }}">{{ overlay.text }}</div>{% endif %}
+{% endfor %}
