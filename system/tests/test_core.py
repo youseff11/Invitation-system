@@ -1055,6 +1055,42 @@ class TemplateImportTests(TestCase):
         # body{} اللي كان بيصبغ الصفحة كلها بقى على القسم نفسه
         self.assertNotIn("body{background", html.replace(" ", ""))
 
+    def test_imported_media_forms_svg_and_main_are_preserved(self):
+        page = """<!doctype html><html><body><main>
+          <video controls poster="images/poster.webp"><source src="media/hero.mp4" type="video/mp4"></video>
+          <audio controls src="media/music.mp3"></audio>
+          <form><label>الاسم<input name="name" type="text"></label><button type="submit">إرسال</button></form>
+          <svg viewBox="0 0 20 20"><path d="M1 1h18v18H1z"></path></svg>
+        </main></body></html>"""
+        tpl = templateimport.import_template(self._zip({
+            "index.html": page,
+            "images/poster.webp": b"poster",
+            "media/hero.mp4": b"video",
+            "media/music.mp3": b"audio",
+        }))
+        html = tpl.document["blocks"][0]["props"]["html"]
+        self.assertIn("<main", html)
+        self.assertIn("<video", html)
+        self.assertIn("<source", html)
+        self.assertIn("<audio", html)
+        self.assertIn("<form", html)
+        self.assertIn("<input", html)
+        self.assertIn("<svg", html)
+        self.assertNotIn("media/hero.mp4", html)
+        self.assertIn("/media/", html)
+
+    def test_large_imported_stylesheet_is_not_truncated(self):
+        css = "".join(
+            f".hero-{i}{{color:#{(i * 2654435761) & 0xffffff:06x};}}"
+            for i in range(7000)
+        )
+        tpl = templateimport.import_template(self._zip({
+            "index.html": "<html><head><link rel='stylesheet' href='s.css'></head><body><main class='hero'><h1>دعوة طويلة جداً</h1></main></body></html>",
+            "s.css": css,
+        }))
+        stored_css = tpl.document["blocks"][0]["props"]["css"]
+        self.assertGreater(len(stored_css), 120000)
+
     def test_images_are_stored_and_relinked(self):
         from PIL import Image
         import io as _io

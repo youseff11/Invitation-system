@@ -981,7 +981,14 @@ def _coerce(value: Any, spec: dict) -> Any:
 
     if ftype == "html":
         from .sanitize import clean_html
-        return clean_html(value if isinstance(value, str) else "")
+        # القوالب المستوردة قد تحتوي على صفحة كاملة؛ حد 5000 كان يقطع
+        # أقساماً مهمة من HTML بعد الحفظ. التنقية نفسها ما زالت مطبقة.
+        return clean_html(value if isinstance(value, str) else "", max_length=100000)
+
+    if ftype == "textarea" and spec.get("key") == "css":
+        # stylesheet كامل للقالب المستورد، مع إبقاء حد أعلى مستقل حتى لا
+        # تتسرب قيمة ضخمة إلى قاعدة البيانات.
+        return str(value or "")[:250000]
 
     if ftype in {"image", "media"}:
         # دول مسارات ملفات زي url بالظبط، فبيتصفّوا بنفس الطريقة. الحقل

@@ -11,28 +11,55 @@ from html.parser import HTMLParser
 
 ALLOWED_TAGS = {
     "p", "br", "strong", "b", "em", "i", "u", "s", "small", "mark",
-    "span", "div", "section", "article", "header", "footer",
+    "span", "div", "main", "nav", "aside", "section", "article", "header", "footer",
     "h1", "h2", "h3", "h4", "h5", "h6",
     "ul", "ol", "li", "blockquote", "figure", "figcaption",
     "a", "img", "hr", "sup", "sub", "abbr", "time",
     "table", "thead", "tbody", "tr", "th", "td",
+    # وسائط وعناصر نموذج آمنة للعرض داخل القالب المستورد. لا نسمح
+    # بخاصية action أو أي event handler، لذلك تظل هذه العناصر عرضية فقط.
+    "video", "audio", "source", "track", "form", "label", "input",
+    "textarea", "select", "option", "button",
+    # SVG inline للزخارف والأيقونات؛ السمات المسموحة أدناه لا تشمل href خارجي.
+    "svg", "g", "path", "line", "circle", "rect", "polyline", "polygon",
 }
 
-# وسوم يُحذف محتواها بالكامل لا الوسم فقط
-DROP_CONTENT_TAGS = {"script", "style", "iframe", "object", "embed", "form",
-                     "input", "button", "select", "textarea", "svg", "math",
+# وسوم يُحذف محتواها بالكامل لا الوسم فقط. عناصر العرض والنماذج لم تعد
+# ضمن القائمة: نحتفظ بها بعد تنظيف سماتها حتى لا تختفي أجزاء القالب المستورد.
+DROP_CONTENT_TAGS = {"script", "style", "iframe", "object", "embed", "math",
                      "link", "meta", "noscript", "template"}
 
-VOID_TAGS = {"br", "img", "hr"}
+VOID_TAGS = {"br", "img", "hr", "source", "track", "input"}
 
 # data-move بتربط العنصر بموضعه المحفوظ في block.layout. من غيرها
 # السحب بالماوس جوّه قسم مستورد بيضيع أول ما تحفظ.
 _MOVE_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 ALLOWED_ATTRS = {
-    "*": {"class", "id", "title", "dir", "lang", "style", "data-move"},
-    "a": {"href", "target", "rel"},
-    "img": {"src", "alt", "width", "height", "loading"},
+    "*": {"class", "id", "title", "dir", "lang", "style", "data-move",
+          "role", "aria-hidden", "aria-label"},
+    "a": {"href", "target", "rel", "download"},
+    "img": {"src", "alt", "width", "height", "loading", "decoding"},
+    "video": {"src", "poster", "width", "height", "controls", "autoplay",
+              "loop", "muted", "playsinline", "preload"},
+    "audio": {"src", "controls", "autoplay", "loop", "muted", "preload"},
+    "source": {"src", "type", "media"},
+    "track": {"src", "kind", "srclang", "label", "default"},
+    "form": {"method", "novalidate", "autocomplete"},
+    "input": {"type", "name", "value", "placeholder", "required", "checked",
+              "min", "max", "step", "maxlength", "autocomplete"},
+    "textarea": {"name", "placeholder", "rows", "cols", "required", "maxlength"},
+    "select": {"name", "required", "multiple"},
+    "option": {"value", "selected", "disabled"},
+    "button": {"type", "name", "value", "disabled"},
+    "svg": {"viewBox", "preserveAspectRatio", "width", "height", "fill",
+            "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin"},
+    "path": {"d", "fill", "stroke", "stroke-width", "opacity"},
+    "line": {"x1", "x2", "y1", "y2", "stroke", "stroke-width"},
+    "circle": {"cx", "cy", "r", "fill", "stroke", "stroke-width"},
+    "rect": {"x", "y", "width", "height", "rx", "ry", "fill", "stroke", "stroke-width"},
+    "polyline": {"points", "fill", "stroke", "stroke-width"},
+    "polygon": {"points", "fill", "stroke", "stroke-width"},
     "time": {"datetime"},
     "td": {"colspan", "rowspan"},
     "th": {"colspan", "rowspan", "scope"},

@@ -43,6 +43,7 @@ CSS_EXT = {".css"}
 HTML_EXT = {".html", ".htm"}
 FONT_EXT = {".woff2", ".woff", ".ttf", ".otf"}
 AUDIO_EXT = {".mp3", ".m4a", ".ogg", ".wav"}
+VIDEO_EXT = {".mp4", ".webm", ".mov", ".m4v", ".ogv"}
 
 
 class ImportError_(Exception):
@@ -93,7 +94,7 @@ def _read_zip(raw: bytes) -> dict[str, bytes]:
             if not name:
                 continue
             ext = os.path.splitext(name)[1].lower()
-            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | FONT_EXT | AUDIO_EXT:
+            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | FONT_EXT | AUDIO_EXT | VIDEO_EXT:
                 continue          # لا js ولا أي حاجة بتتنفّذ
             if info.file_size > 8 * 1024 * 1024:
                 continue
@@ -313,7 +314,10 @@ def _looks_scripted(html: str) -> bool:
 
 
 _STYLE_ATTR_RE = re.compile(r'(\sstyle=)(["\'])(.*?)\2', re.I | re.S)
-_SRC_RE = re.compile(r'(<img\b[^>]*?\ssrc=)(["\'])(.*?)\2', re.I | re.S)
+_MEDIA_SRC_RE = re.compile(
+    r'(<(?:img|video|audio|source|track)\b[^>]*?\s(?:src|poster)=)(["\'])(.*?)\2',
+    re.I | re.S,
+)
 _SRCSET_RE = re.compile(r'\ssrcset=(["\']).*?\1', re.I | re.S)
 
 
@@ -328,7 +332,8 @@ def _rewrite_inline_styles(html: str, url_map: dict[str, str]) -> str:
     return _STYLE_ATTR_RE.sub(repl, html)
 
 
-def _rewrite_img_srcs(html: str, url_map: dict[str, str]) -> str:
+def _rewrite_media_srcs(html: str, url_map: dict[str, str]) -> str:
+    """يحل مسارات الصور والفيديو والصوت وposter داخل HTML."""
     html = _SRCSET_RE.sub("", html)      # srcset بيشاور على ملفات مش مخزّنة
     def repl(m):
         raw = (m.group(3) or "").strip()
@@ -338,7 +343,7 @@ def _rewrite_img_srcs(html: str, url_map: dict[str, str]) -> str:
         key = raw.lstrip("./").split("?")[0].split("#")[0]
         mapped = url_map.get(key) or url_map.get(key.rsplit("/", 1)[-1]) or ""
         return f"{m.group(1)}{m.group(2)}{mapped}{m.group(2)}"
-    return _SRC_RE.sub(repl, html)
+    return _MEDIA_SRC_RE.sub(repl, html)
 
 
 # ==========================================================================
@@ -384,28 +389,38 @@ def _store_fonts(files: dict[str, bytes], url_map: dict[str, str]) -> None:
         url_map.setdefault(base, url)
 
 
-def _store_images(files: dict[str, bytes]) -> dict[str, str]:
-    """يخزّن صور الأرشيف كأصول عامة ويرجّع خريطة ``مسار → رابط``."""
+def _store_media(files: dict[str, bytes]) -> dict[str, str]:
+    """يخزّن صور وفيديو وصوت الأرشيف كأصول عامة ويرجع خريطة المسارات."""
+    from django.core.files.base import ContentFile
+
     url_map: dict[str, str] = {}
     for name, data in files.items():
         ext = os.path.splitext(name)[1].lower()
-        if ext not in IMAGE_EXT or not data:
+        if not data:
             continue
         base = os.path.basename(name)
-        upload = InMemoryUploadedFile(
-            io.BytesIO(data), "ImageField", base,
-            f"image/{ext.lstrip('.')}", len(data), None)
-        stored, thumb, w, h = upload, None, 0, 0
-        if ext != ".svg":
-            try:
-                stored, thumb, w, h = images.compress(upload, f"image/{ext.lstrip('.')}")
-            except Exception:
-                upload.seek(0)
-                stored, thumb = upload, None
+        if ext in IMAGE_EXT:
+            upload = InMemoryUploadedFile(
+                io.BytesIO(data), "ImageField", base,
+                f"image/{ext.lstrip('.')}", len(data), None)
+            stored, thumb, w, h = upload, None, 0, 0
+            if ext != ".svg":
+                try:
+                    stored, thumb, w, h = images.compress(upload, f"image/{ext.lstrip('.')}")
+                except Exception:
+                    upload.seek(0)
+                    stored, thumb = upload, None
+            kind = "image"
+        elif ext in VIDEO_EXT:
+            stored, thumb, w, h, kind = ContentFile(data, name=base), None, 0, 0, "video"
+        elif ext in AUDIO_EXT:
+            stored, thumb, w, h, kind = ContentFile(data, name=base), None, 0, 0, "audio"
+        else:
+            continue
         asset = Asset.objects.create(
-            file=stored, thumb=thumb, kind="image", original_name=base[:200],
+            file=stored, thumb=thumb, kind=kind, original_name=base[:200],
             width=w, height=h, size_bytes=getattr(stored, "size", len(data)),
-            invitation=None,            # مكتبة عامة — متاحة لكل الدعوات
+            invitation=None,
         )
         url_map[name] = asset.url
         url_map.setdefault(base, asset.url)
@@ -444,7 +459,7 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     parser.feed(html)
     parser.close()
 
-    url_map = _store_images(files)
+    url_map = _store_media(files)
 
     # CSS: الملفات المربوطة الأول (ترتيب المتصفح) وبعدين <style> الداخلي
     base_dir = posixpath.dirname(main)
@@ -459,6 +474,12 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
 
     # نحلّ روابط url() مرة واحدة هنا — الخريطة موجودة دلوقتي بس
     stylesheet_resolved = cssscope.resolve_urls(stylesheet, url_map)
+    # ملفات JS الخارجية لا تُشغّل داخل القالب المستورد لأسباب أمنية؛ بعض
+    # القوالب تترك الأقسام مخفية حتى يضيف JS class مثل .in-view، أو تترك
+    # preloader ثابتاً فوق الصفحة. هذه القواعد المحلية تحفظ الشكل المرئي
+    # بدون تشغيل كود المصدر الخارجي.
+    stylesheet_resolved += "\n.fade-up{opacity:1 !important;transform:none !important;}"
+    stylesheet_resolved += ".preloader{display:none !important;}"
 
     parts = [p for p in parser.parts if p.strip()][:MAX_BLOCKS]
     if not parts:
@@ -467,7 +488,7 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     blocks = []
     for i, part in enumerate(parts, 1):
         bid = f"imp-{i}"
-        part = _rewrite_inline_styles(_rewrite_img_srcs(part, url_map), url_map)
+        part = _rewrite_inline_styles(_rewrite_media_srcs(part, url_map), url_map)
         cleaned = clean_html(part)
         if not cleaned.strip():
             continue
