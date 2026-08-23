@@ -633,6 +633,95 @@
     }
   }
 
+  // ---------------------------------------------------------- تبديل اللغة بدون إعادة تحميل
+  function initLanguageToggle() {
+    var link = $("[data-lang-toggle]");
+    if (!link || link.dataset.lbLangBound) return;
+    link.dataset.lbLangBound = "1";
+
+    link.addEventListener("click", function (e) {
+      e.preventDefault();
+      if (link.dataset.loading === "1") return;
+
+      var current = $("[data-invite-language-content]");
+      if (!current || !window.fetch || !window.DOMParser) {
+        window.location.href = link.href;
+        return;
+      }
+
+      var scrollX = window.scrollX;
+      var scrollY = window.scrollY;
+      var intro = $(".lb-intro");
+      var introState = intro
+        ? (intro.classList.contains("is-open") ? "open" : "closed")
+        : "gone";
+      link.dataset.loading = "1";
+      link.setAttribute("aria-busy", "true");
+
+      fetch(link.href, {
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error("language request failed");
+          return response.text();
+        })
+        .then(function (markup) {
+          var parsed = new DOMParser().parseFromString(markup, "text/html");
+          var next = parsed.querySelector("[data-invite-language-content]");
+          if (!next) throw new Error("translated content missing");
+
+          var nextLang = parsed.documentElement.getAttribute("lang");
+          var nextDir = parsed.documentElement.getAttribute("dir");
+          if (nextLang) doc.documentElement.setAttribute("lang", nextLang);
+          if (nextDir) doc.documentElement.setAttribute("dir", nextDir);
+
+          var title = parsed.querySelector("title");
+          var description = parsed.querySelector('meta[name="description"]');
+          if (title) doc.title = title.textContent;
+          if (description) {
+            var currentDescription = doc.querySelector('meta[name="description"]');
+            if (currentDescription) currentDescription.setAttribute("content", description.getAttribute("content") || "");
+          }
+
+          var nextLink = next.querySelector("[data-lang-toggle]");
+          var nextUrl = nextLink ? nextLink.href : link.href;
+          current.replaceWith(next);
+          try { window.history.replaceState({}, "", nextUrl); } catch (err) {}
+
+          var newIntro = $(".lb-intro");
+          if (introState === "gone" && newIntro) {
+            newIntro.remove();
+            doc.body.style.overflow = "";
+          } else if (introState === "open" && newIntro) {
+            newIntro.classList.add("is-open");
+          }
+
+          initVideo();
+          initIntro();
+          initRsvp();
+          initAnimations();
+          initLanguageToggle();
+
+          if (introState === "gone" || introState === "open") {
+            var activeIntro = $(".lb-intro");
+            if (activeIntro) activeIntro.classList.remove("is-awaiting-play");
+            doc.body.style.overflow = "";
+          }
+          window.requestAnimationFrame(function () {
+            window.scrollTo(scrollX, scrollY);
+          });
+        })
+        .catch(function () {
+          // لا نغيّر الصفحة لو فشل الطلب — الزر يفضل قابلاً لإعادة المحاولة.
+        })
+        .then(function () {
+          link.dataset.loading = "";
+          link.removeAttribute("aria-busy");
+        });
+    });
+  }
+
   // ---------------------------------------------------------- التمرير التلقائي
   /* الدعوة بتنزل لوحدها بالراحة زي العرض.
 
@@ -760,6 +849,7 @@
     initVideo();
     initMusic();
     initIntro();
+    initLanguageToggle();
     initRsvp();
     initAutoScroll();
     root.setAttribute("data-ready", "1");
@@ -778,6 +868,7 @@
     // المحرر بيستبدل عقدة .lb-intro لما تعدّل إعداداتها — العقدة
     // الجديدة مالهاش مستمعين، فبنربطها تاني
     initIntro();
+    initLanguageToggle();
     $$(".lb-anim").forEach(function (n) { n.classList.add("is-in"); });
   };
 })();

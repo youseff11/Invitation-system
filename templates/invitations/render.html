@@ -23,13 +23,14 @@
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root>
 
+<div data-invite-language-content>
 {% comment %}
   زرار اللغة — بيظهر بس لو المصمّم كتب نسخة إنجليزية فعلاً
   (‎render.has_en‎). دعوة من غير ترجمة مالهاش لازمة تعرض زرار بيرجّع
   نفس الكلام.
 
-  التبديل بالرابط مش بجافاسكربت: كده الرابط اللي الضيف يبعته لصاحبه
-  يفتح بنفس اللغة، والعنوان ووصف المشاركة بيتبنوا صح على السيرفر.
+  الرابط يفضل موجود عشان المشاركة والفتح المباشر يشتغلوا بنفس اللغة،
+  والجافاسكربت بيحمّل النسخة المطلوبة داخل الصفحة بدون إعادة تحميل لو أمكن.
 {% endcomment %}
 {% if render.has_en %}
 <a class="lb-lang" data-lang-toggle
@@ -66,6 +67,7 @@
 {% endif %}
 
 {{ music_config|json_script:"invite-music" }}
+</div>
 <script src="{% static 'js/invite.js' %}" defer></script>
 </body>
 </html>
