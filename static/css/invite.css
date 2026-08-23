@@ -622,7 +622,7 @@
   background: none;
   color: inherit;
 }
-.lb-btn:hover { transform: translateY(-2px); }
+.lb-btn:not([data-intro-open]):hover { transform: translateY(-2px); }
 .lb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .lb-btn--solid { background: var(--accent); color: #fff; }
 .lb-btn--outline { border-color: currentColor; color: var(--accent); }
@@ -839,7 +839,34 @@
   transition: opacity .6s ease, visibility .6s;
 }
 .lb-intro.is-open { opacity: 0; visibility: hidden; }
-.lb-intro-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.lb-intro-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  color: var(--intro-color, var(--text));
+  font-family: var(--intro-font, var(--font-body));
+}
+.lb-intro-inner button { font-family: inherit; }
+.lb-intro .lb-intro-inner .lb-btn {
+  color: var(--intro-item-color, var(--intro-color, #fff));
+  transition: none;
+}
+[data-intro-item] {
+  color: var(--intro-item-color, inherit);
+  transform: translate(var(--intro-item-x, 0vw), var(--intro-item-y, 0vh));
+}
+.lb-doc--editing .lb-intro[data-intro-editable] [data-intro-item] {
+  cursor: grab;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 5px;
+}
+.lb-doc--editing .lb-intro[data-intro-editable] [data-intro-item]:hover {
+  outline-color: var(--accent);
+}
+.lb-doc--editing .lb-intro[data-intro-editable] [data-intro-item].lb-intro-dragging {
+  cursor: grabbing;
+  user-select: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
 
 /* ---------------------------------------------------------- المعاينة المكبرة */
 .lb-lightbox {
@@ -969,7 +996,7 @@
 /* اسم الضيف في الشاشة الافتتاحية لما يفتح رابطه الشخصي */
 .lb-intro-name {
   margin: 6px 0 10px;
-  font-family: var(--font-heading, inherit);
+  font-family: var(--intro-font, var(--font-heading, inherit));
   font-size: clamp(22px, 5vw, 34px);
   color: var(--accent);
 }
@@ -986,9 +1013,13 @@
   background: linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.55));
 }
 .lb-intro--video .lb-intro-inner { position: relative; z-index: 2; }
+.lb-intro .lb-intro-inner .lb-kicker,
+.lb-intro .lb-intro-inner .lb-intro-name { color: var(--intro-item-color, var(--intro-color, var(--accent))); }
+.lb-intro .lb-intro-inner .lb-body { color: var(--intro-item-color, var(--intro-color, var(--muted))); }
 .lb-intro--video .lb-intro-inner,
-.lb-intro--video .lb-kicker,
-.lb-intro--video .lb-body { color: #fff; }
+.lb-intro--video .lb-intro-inner .lb-kicker,
+.lb-intro--video .lb-intro-inner .lb-body,
+.lb-intro--video .lb-intro-inner .lb-intro-name { color: var(--intro-item-color, var(--intro-color, #fff)); }
 
 /* ------------------------------------------------ قسم HTML مخصص/مستورد */
 /* .lb-inner فليكس بمحاذاة وسط، فأي ابن بيتقلّص لعرض محتواه. القالب
@@ -1061,9 +1092,8 @@
   border: 1px solid rgba(255, 255, 255, .5); border-radius: 50%;
   background: rgba(20, 18, 16, .5); color: #fff;
   backdrop-filter: blur(4px); cursor: pointer;
-  transition: transform .2s ease, background .2s ease;
+  transition: none;
 }
-.lb-intro-play:hover { background: rgba(20, 18, 16, .72); transform: scale(1.06); }
 .lb-intro-play svg { inline-size: 34px; block-size: 34px; margin-inline-start: 5px; }
 
 /* لو المستخدم كتب نص على الزر بيتحوّل من دايرة لكبسولة.

@@ -746,14 +746,20 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
   flex: none; min-width: 46px; text-align: center; font-size: 11.5px;
   color: var(--e-muted); font-variant-numeric: tabular-nums; font-weight: 500;
 }
+.ed-color-row {
+  display: flex; align-items: center; gap: 6px; inline-size: 100%;
+}
 .ed-color {
   flex: none; inline-size: 34px; block-size: 30px; padding: 0; cursor: pointer;
   border: 1px solid var(--e-line); border-radius: 8px; background: none;
   -webkit-appearance: none; appearance: none;
 }
+.ed-color-row > .ed-input { flex: 1; min-width: 0; }
+.ed-color-clear { flex: none; padding-inline: 9px; white-space: nowrap; }
 .ed-color::-webkit-color-swatch-wrapper { padding: 2px; }
 .ed-color::-webkit-color-swatch { border: 0; border-radius: 6px; }
 .ed-color::-moz-color-swatch { border: 0; border-radius: 6px; }
+
 .ed-nudge { display: flex; gap: 5px; flex: 1; }
 .ed-nudge .ed-btn { flex: 1; padding: 6px 4px; }
 /* شرائط التمرير بلون المحرر بدل أزرق المتصفح الافتراضي */

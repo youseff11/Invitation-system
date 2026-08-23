@@ -80,6 +80,7 @@ def field(
     add_label: str = "إضافة عنصر",
     media_kind: str = "image",
     translate: bool = True,
+    editor_hidden: bool = False,
 ) -> dict:
     """تعريف حقل واحد داخل المحرر.
 
@@ -99,6 +100,8 @@ def field(
     }
     if not translate:
         spec["translate"] = False
+    if editor_hidden:
+        spec["editor_hidden"] = True
     if help_text:
         spec["help"] = help_text
     if options:
@@ -762,12 +765,20 @@ SETTINGS_FIELDS = [
           help_text="سطر صغير فوق نص الافتتاحية — أسماء العروسين أو أي "
                "كلمة. سيبها فاضية = مايظهرش أي حاجة. الافتتاحية مابقتش "
                "بتاخد الأسماء من تبويب البيانات لوحدها."),
+    field("intro_note_color", "لون النوت", "color", "", group="الافتتاحية",
+          help_text="سيبه فاضي عشان يستخدم لون الافتتاحية العام."),
     field("intro_text", "نص الافتتاحية", "text", "اضغط لفتح الدعوة", group="الافتتاحية"),
+    field("intro_text_color", "لون نص الافتتاحية", "color", "", group="الافتتاحية",
+          help_text="لون الجملة الرئيسية فقط. سيبه فاضي عشان يستخدم اللون العام."),
+    field("intro_guest_name_color", "لون اسم الضيف", "color", "", group="الافتتاحية",
+          help_text="لون اسم الضيف فقط. سيبه فاضي عشان يستخدم اللون العام."),
     field("intro_button", "نص الزر", "text", "التالي ←", group="الافتتاحية",
           help_text="سيبها فاضية = مفيش زر خالص. الضيف ساعتها بيدخل لما "
                "الفيديو يخلص، أو بلمسة في أي مكان على الشاشة. مع افتتاحية "
                "صورة من غير فيديو الأحسن تسيب الزر عشان يبقى واضح إن فيه "
                "حاجة تتضغط."),
+    field("intro_button_color", "لون زر بدء الافتتاحية", "color", "", group="الافتتاحية",
+          help_text="لون كتابة الزر فقط. سيبه فاضي عشان يستخدم لون الافتتاحية العام."),
     field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
           media_kind="video",
           help_text="فيديو قصير (٣-٧ ثواني). بيبدأ صامت إجبارياً — كل "
@@ -793,6 +804,18 @@ SETTINGS_FIELDS = [
           minimum=0, maximum=15, step=1, group="الافتتاحية",
           help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),
     field("intro_image", "صورة خلفية الافتتاحية", "image", "", group="الافتتاحية"),
+    # حقلا الإزاحة القديمة مخفيان للتوافق مع الدعوات التي حُفظت قبل السحب المستقل.
+    field("intro_text_x", "موضع نص الافتتاحية القديم أفقياً", "range", 0,
+          group="الافتتاحية", minimum=-35, maximum=35, step=1, unit="vw",
+          translate=False, editor_hidden=True),
+    field("intro_text_y", "موضع نص الافتتاحية القديم رأسياً", "range", 0,
+          group="الافتتاحية", minimum=-35, maximum=35, step=1, unit="vh",
+          translate=False, editor_hidden=True),
+    field("intro_font", "خط نص الافتتاحية", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES,
+          help_text="سيبه فاضي عشان يستخدم خط الدعوة الأساسي."),
+    field("intro_item_positions", "مواضع عناصر الافتتاحية", "text", "", group="الافتتاحية",
+          translate=False, editor_hidden=True),
 
     field("auto_scroll", "تمرير تلقائي", "toggle", False, group="التمرير",
           help_text="الدعوة بتنزل لوحدها بالراحة زي العرض. بتقف فوراً أول "

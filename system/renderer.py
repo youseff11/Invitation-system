@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 from urllib.parse import quote, urlencode
 
@@ -135,8 +136,10 @@ def _css_url(value) -> str:
     url = str(value or "").strip()
     if not url:
         return "none"
-    url = url.replace('"', "%22").replace(";", "%3B").replace("\\", "")
-    return f'url("{url}")'
+    # style="..." يستخدم علامات تنصيص مزدوجة، لذلك نستخدم المفردة
+    # داخل url ونشفّرها لو جاءت من الرابط حتى لا تنكسر السمة.
+    url = url.replace('"', "%22").replace("'", "%27").replace(";", "%3B").replace("\\", "")
+    return f"url('{url}')"
 
 
 def _veil(overlay) -> str:
@@ -150,6 +153,60 @@ def _veil(overlay) -> str:
         return "none"
     a = f"{pct / 100:g}"
     return f"linear-gradient(rgba(0,0,0,{a}),rgba(0,0,0,{a}))"
+
+
+def _intro_number(value, minimum: float, maximum: float, fallback: float = 0) -> float:
+    """رقم آمن لإزاحة نص الافتتاحية، بعد تقييده داخل حدود المحرر."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = fallback
+    return max(minimum, min(maximum, number))
+
+
+def intro_css(settings: dict) -> str:
+    """يبني متغيرات CSS العامة الخاصة بالافتتاحية من إعدادات آمنة."""
+    pairs = {
+        "--intro-bg": _css_url(settings.get("intro_image")),
+    }
+
+    font = settings.get("intro_font") or ""
+    allowed_fonts = {item["value"] for item in blocks_engine.FONT_CHOICES}
+    if font in allowed_fonts:
+        pairs["--intro-font"] = font
+
+    return mark_safe(";".join(f"{key}:{value}" for key, value in pairs.items()))
+
+
+def _intro_positions(settings: dict) -> dict:
+    """يقرأ مواضع عناصر الافتتاحية مع تجاهل أي بيانات غير صالحة."""
+    raw = settings.get("intro_item_positions")
+    if not isinstance(raw, str) or not raw.strip():
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def intro_item_css(settings: dict, item: str) -> str:
+    """يبني إزاحة عنصر واحد من عناصر الافتتاحية."""
+    positions = _intro_positions(settings)
+    value = positions.get(item) if isinstance(positions.get(item), dict) else {}
+    x = _intro_number(value.get("x", settings.get("intro_text_x")), -35, 35)
+    y = _intro_number(value.get("y", settings.get("intro_text_y")), -35, 35)
+    pairs = [f"--intro-item-x:{x:g}vw", f"--intro-item-y:{y:g}vh"]
+    color_keys = {
+        "note": "intro_note_color",
+        "guest_name": "intro_guest_name_color",
+        "text": "intro_text_color",
+        "button": "intro_button_color",
+    }
+    color = str(settings.get(color_keys.get(item, "")) or "").strip()
+    if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
+        pairs.append(f"--intro-item-color:{color}")
+    return mark_safe(";".join(pairs))
 
 
 def _fluid_px(value, fallback, ref) -> str:
@@ -480,6 +537,11 @@ def render_document(
     return {
         "html": mark_safe("".join(chunks)),
         "css_vars": theme_css_vars(theme),
+        "intro_css": intro_css(doc_settings),
+        "intro_item_styles": {
+            item: intro_item_css(doc_settings, item)
+            for item in ("note", "guest_name", "text", "button")
+        },
         "layout_css": layout_css(doc["blocks"]),
         "theme": theme,
         "settings": doc_settings,

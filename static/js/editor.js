@@ -251,9 +251,20 @@
           if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) picker.value = hex.value;
           setValue(hex.value);
         });
-        var cbox = el("div", "ed-color");
+        var cbox = el("div", "ed-color-row");
         cbox.appendChild(picker);
         cbox.appendChild(hex);
+        if (spec.key === "bg_color") {
+          var clearColor = el("button", "ed-btn ed-btn--sm ed-color-clear", "مسح");
+          clearColor.type = "button";
+          clearColor.title = "مسح لون الخلفية والعودة للون القالب";
+          clearColor.addEventListener("click", function () {
+            hex.value = "";
+            picker.value = "#b8914f";
+            setValue("");
+          });
+          cbox.appendChild(clearColor);
+        }
         wrap.appendChild(label);
         wrap.appendChild(cbox);
         break;
@@ -531,6 +542,7 @@
     var groups = {};
     var order = [];
     specs.forEach(function (spec) {
+      if (spec.editor_hidden) return;
       var g = spec.group || "المحتوى";
       if (!groups[g]) { groups[g] = []; order.push(g); }
       groups[g].push(spec);
@@ -1504,7 +1516,7 @@
     });
 
     (SCHEMA.settings_fields || []).forEach(function (s) {
-      if (!I18N_TEXT[s.type]) return;
+      if (s.translate === false || s.editor_hidden || !I18N_TEXT[s.type]) return;
       push("settings." + s.key, s.label, state.doc.settings[s.key], "إعدادات الدعوة");
     });
 
@@ -2095,9 +2107,103 @@
     toast("رجعت المواضع لأماكنها الأصلية");
   }
 
+  function bindIntroDrag(fdoc) {
+    var intro = fdoc.querySelector(".lb-intro[data-intro-editable]");
+    if (!intro) return;
+
+    var view = fdoc.defaultView || window;
+    var clamp = function (value, min, max) { return Math.max(min, Math.min(max, value)); };
+    var number = function (value) {
+      var parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+    var positions = function () {
+      var raw = (state.doc.settings || {}).intro_item_positions;
+      if (!raw) return {};
+      try {
+        var parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (e) { return {}; }
+    };
+    var savePositions = function (value) {
+      state.doc.settings.intro_item_positions = JSON.stringify(value);
+    };
+
+    intro.querySelectorAll("[data-intro-item]").forEach(function (node) {
+      if (node.dataset.lbIntroBound) return;
+      node.dataset.lbIntroBound = "1";
+      var key = node.getAttribute("data-intro-item");
+      var drag = null;
+      var suppressClick = false;
+
+      node.addEventListener("pointerdown", function (e) {
+        if (e.button !== 0 || (e.target.closest && e.target.closest("a, input, video"))) return;
+        var settings = state.doc.settings || {};
+        var saved = positions()[key] || {};
+        drag = {
+          x: e.clientX,
+          y: e.clientY,
+          startX: number(saved.x != null ? saved.x : settings.intro_text_x),
+          startY: number(saved.y != null ? saved.y : settings.intro_text_y),
+          moved: false,
+          pointerId: e.pointerId
+        };
+        try { node.setPointerCapture(e.pointerId); } catch (err) {}
+        e.stopPropagation();
+      });
+
+      node.addEventListener("pointermove", function (e) {
+        if (!drag) return;
+        var dx = e.clientX - drag.x;
+        var dy = e.clientY - drag.y;
+        if (!drag.moved) {
+          if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+          drag.moved = true;
+          snapshot();
+          node.classList.add("lb-intro-dragging");
+        }
+        e.preventDefault();
+        e.stopPropagation();
+
+        var vw = Math.max(1, view.innerWidth || 1) / 100;
+        var vh = Math.max(1, view.innerHeight || 1) / 100;
+        var x = Math.round(clamp(drag.startX + dx / vw, -35, 35) * 100) / 100;
+        var y = Math.round(clamp(drag.startY + dy / vh, -35, 35) * 100) / 100;
+        var next = positions();
+        next[key] = { x: x, y: y };
+        savePositions(next);
+        node.style.setProperty("--intro-item-x", x + "vw");
+        node.style.setProperty("--intro-item-y", y + "vh");
+      });
+
+      var finish = function (e) {
+        if (!drag) return;
+        var didMove = drag.moved;
+        try { node.releasePointerCapture(drag.pointerId); } catch (err) {}
+        drag = null;
+        node.classList.remove("lb-intro-dragging");
+        if (!didMove) return;
+        suppressClick = true;
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        markDirty();
+      };
+      node.addEventListener("pointerup", finish);
+      node.addEventListener("pointercancel", finish);
+      // زر الافتتاحية لديه مستمع click خاص به في invite.js. نستخدم
+      // مرحلة الالتقاط حتى نمنع ذلك المستمع بعد السحب، قبل وصول الحدث للزر.
+      node.addEventListener("click", function (e) {
+        if (!suppressClick) return;
+        suppressClick = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+    });
+  }
+
   function bindPreviewInteractions() {
     var fdoc = frameDoc();
     if (!fdoc) return;
+    bindIntroDrag(fdoc);
 
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
