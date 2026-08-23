@@ -398,6 +398,28 @@
 
     var video = $("[data-intro-video]", intro);
     var playBtn = $("[data-intro-play]", intro);
+    if (video && !video.getAttribute("poster")) {
+      /* لو مفيش صورة غلاف، نلتقط أول فريم من الفيديو ونستخدمه كغلاف.
+         ده يتعمل في المتصفح عشان يشتغل أيضاً مع فيديوهات المكتبة والروابط
+         الخارجية، ولو منع CORS الرسم على canvas يفضل الفيديو شغال طبيعي. */
+      video.preload = "auto";
+      var captureFirstFrame = function () {
+        if (video.poster || video.readyState < 2) return;
+        try {
+          var canvas = doc.createElement("canvas");
+          canvas.width = video.videoWidth || 1;
+          canvas.height = video.videoHeight || 1;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          video.poster = canvas.toDataURL("image/jpeg", 0.82);
+        } catch (e) {
+          // روابط الفيديو الخارجية قد تمنع canvas بسبب CORS — لا نعطل التشغيل.
+        }
+      };
+      video.addEventListener("loadeddata", captureFirstFrame, { once: true });
+      video.addEventListener("canplay", captureFirstFrame, { once: true });
+      if (video.readyState >= 2) captureFirstFrame();
+    }
     if (video) {
       /* وضعين للبداية:
 
