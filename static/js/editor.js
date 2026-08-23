@@ -2200,10 +2200,107 @@
     });
   }
 
+  function bindVideoTextDrag(fdoc) {
+    var view = fdoc.defaultView || window;
+    var clamp = function (value, min, max) { return Math.max(min, Math.min(max, value)); };
+    var number = function (value) {
+      var parsed = parseFloat(value);
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    fdoc.querySelectorAll("[data-video-text]").forEach(function (node) {
+      if (node.dataset.lbVideoTextBound) return;
+      var holder = node.closest(".lb-video-wrap");
+      var blockHolder = node.closest("[data-block]");
+      if (!holder || !blockHolder) return;
+      var blockId = blockHolder.getAttribute("data-block");
+      var block = findBlock(blockId);
+      var index = parseInt(node.getAttribute("data-video-text-index"), 10);
+      if (!block || !block.props || !Array.isArray(block.props.text_overlays) || isNaN(index)) return;
+
+      node.dataset.lbVideoTextBound = "1";
+      var drag = null;
+      var suppressClick = false;
+
+      function item() { return block.props.text_overlays[index]; }
+      function paint(x, y) {
+        node.style.setProperty("--video-text-x", x + "%");
+        node.style.setProperty("--video-text-y", y + "%");
+      }
+
+      node.addEventListener("pointerdown", function (e) {
+        if (e.button !== 0) return;
+        var current = item();
+        if (!current) return;
+        var rect = holder.getBoundingClientRect();
+        drag = {
+          startX: number(current.x),
+          startY: number(current.y),
+          pointerX: e.clientX,
+          pointerY: e.clientY,
+          width: Math.max(1, rect.width),
+          height: Math.max(1, rect.height),
+          pointerId: e.pointerId,
+          moved: false
+        };
+        try { node.setPointerCapture(e.pointerId); } catch (err) {}
+        e.stopPropagation();
+      });
+
+      node.addEventListener("pointermove", function (e) {
+        if (!drag) return;
+        var dx = e.clientX - drag.pointerX;
+        var dy = e.clientY - drag.pointerY;
+        if (!drag.moved) {
+          if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+          drag.moved = true;
+          snapshot();
+          node.classList.add("is-dragging");
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        var x = Math.round(clamp(drag.startX + (dx / drag.width) * 100, -45, 45) * 100) / 100;
+        var y = Math.round(clamp(drag.startY + (dy / drag.height) * 100, -45, 45) * 100) / 100;
+        var current = item();
+        if (!current) return;
+        current.x = x;
+        current.y = y;
+        paint(x, y);
+      });
+
+      function finish(e) {
+        if (!drag) return;
+        var didMove = drag.moved;
+        try { node.releasePointerCapture(drag.pointerId); } catch (err) {}
+        drag = null;
+        node.classList.remove("is-dragging");
+        if (!didMove) return;
+        suppressClick = true;
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        markDirty();
+      }
+      node.addEventListener("pointerup", finish);
+      node.addEventListener("pointercancel", finish);
+      node.addEventListener("click", function (e) {
+        if (suppressClick) {
+          suppressClick = false;
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        e.stopPropagation();
+        state.fromPreview = true;
+        selectBlock(blockId);
+        state.fromPreview = false;
+      }, true);
+    });
+  }
+
   function bindPreviewInteractions() {
     var fdoc = frameDoc();
     if (!fdoc) return;
     bindIntroDrag(fdoc);
+    bindVideoTextDrag(fdoc);
 
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
@@ -2213,7 +2310,7 @@
         /* المستمع ده في مرحلة الالتقاط، يعني بيتنفّذ **قبل** عناصر
            القسم. من غير السطر ده كان بيوقف الضغطة قبل ما توصل لعنصر
            القالب المستورد، فاختيار العنصر كان مستحيل. */
-        if (e.target.closest && e.target.closest(".lb-custom [data-move]")) return;
+        if (e.target.closest && (e.target.closest(".lb-custom [data-move]") || e.target.closest("[data-video-text]"))) return;
         e.preventDefault();
         e.stopPropagation();
         state.fromPreview = true;

@@ -537,6 +537,13 @@ register(
                    "رابط يوتيوب/فيميو في الخانة."),
         field("poster", "صورة الغلاف", "image", ""),
         field("heading", "العنوان", "text", ""),
+        field("text_overlays", "نصوص فوق الفيديو", "list", [], add_label="إضافة نص", fields=[
+            field("text", "النص", "textarea", "اكتب النص هنا"),
+            field("color", "لون النص", "color", "#ffffff"),
+            field("font", "الخط", "font", "", options=FONT_CHOICES),
+            field("x", "الموضع أفقياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
+            field("y", "الموضع رأسياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
+        ]),
         field("aspect", "نسبة العرض للارتفاع", "select", "16x9", options=[
             opt("16x9", "١٦:٩ عريض"),
             opt("4x3", "٤:٣"),

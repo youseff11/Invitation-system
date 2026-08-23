@@ -573,6 +573,53 @@
   background: var(--text);
   position: relative;
 }
+.lb-video-wrap {
+  width: 100%;
+  max-width: calc(120vh * var(--ar, 16 / 9));
+  margin-inline: auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  isolation: isolate;
+}
+.lb-video-wrap .lb-video {
+  max-width: none;
+  margin-inline: 0;
+}
+.lb-video-wrap .lb-video iframe, .lb-video-wrap .lb-video video {
+  width: 100%; height: 100%; border: 0; display: block;
+}
+.lb-video-wrap .lb-video-text {
+  position: absolute;
+  z-index: 4;
+  left: calc(50% + var(--video-text-x, 0%));
+  top: calc(50% + var(--video-text-y, 0%));
+  transform: translate(-50%, -50%);
+  max-width: 90%;
+  color: var(--video-text-color, #fff);
+  font-family: var(--video-text-font, inherit);
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+.lb-doc--editing .lb-video-wrap [data-video-text] {
+  cursor: grab;
+  pointer-events: auto;
+  outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 5px;
+  user-select: none;
+}
+.lb-doc--editing .lb-video-wrap [data-video-text].is-dragging {
+  cursor: grabbing;
+  outline-style: solid;
+}
+.lb-video-wrap--16x9, .lb-video--16x9 { --ar: 16 / 9; }
+.lb-video-wrap--4x3, .lb-video--4x3  { --ar: 4 / 3; }
+.lb-video-wrap--1x1, .lb-video--1x1  { --ar: 1; }
+.lb-video-wrap--9x16, .lb-video--9x16 { --ar: 9 / 16; }
+.lb-video-wrap--auto, .lb-video--auto { --ar: var(--vid-ratio, 16 / 9); }
 .lb-video iframe, .lb-video video { width: 100%; height: 100%; border: 0; display: block; }
 /* نسبة العرض للارتفاع — اختيار من المحرر. القيمة متغيّر واحد عشان
    ‎aspect-ratio‎ و‎max-width‎ ما يفترقوش أبداً. */

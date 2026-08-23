@@ -2079,6 +2079,38 @@ class VideoBlockSourceTests(BaseAppTest):
         self.assertIn("lb-video--16x9", body)
         self.assertNotIn("rm -rf", body)
 
+    def test_video_text_overlays_render_independently(self):
+        body = self._render({
+            "url": "/media/c.mp4",
+            "text_overlays": [
+                {"text": "نص أول", "color": "#ff0000", "font": "Cairo", "x": -12, "y": 18},
+                {"text": "نص ثان", "color": "#00aa88", "font": "Tajawal", "x": 20, "y": -16},
+            ],
+        })
+        self.assertIn("lb-video-wrap", body)
+        self.assertIn('data-video-text-index="0"', body)
+        self.assertIn('data-video-text-index="1"', body)
+        self.assertIn("نص أول", body)
+        self.assertIn("--video-text-x:-12%", body)
+        self.assertIn("--video-text-y:18%", body)
+        self.assertIn("--video-text-color:#ff0000", body)
+        self.assertIn("--video-text-color:#00aa88", body)
+
+    def test_video_text_overlay_rejects_unsafe_style_values(self):
+        body = self._render({
+            "url": "/media/c.mp4",
+            "text_overlays": [{
+                "text": "آمن",
+                "color": "red; background:url(javascript:1)",
+                "font": "inherit; color:red",
+                "x": "var(--bad)",
+                "y": "0",
+            }],
+        })
+        self.assertIn("--video-text-color:#ffffff", body)
+        self.assertIn("--video-text-font:inherit", body)
+        self.assertIn("--video-text-x:0%", body)
+
     def test_controls_are_on_by_default(self):
         """الدعوات الموجودة ماينفعش يختفي منها الشريط فجأة."""
         self.assertTrue(self._spec("controls")["default"])

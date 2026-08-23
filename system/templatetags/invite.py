@@ -141,6 +141,30 @@ def safe_css(value, block_id=""):
 
 
 @register.filter
+def video_text_style(item):
+    """يبني متغيرات CSS آمنة لنص واحد فوق فيديو."""
+    item = item if hasattr(item, "get") else {}
+    try:
+        x = max(-45.0, min(45.0, float(item.get("x", 0) or 0)))
+    except (TypeError, ValueError):
+        x = 0.0
+    try:
+        y = max(-45.0, min(45.0, float(item.get("y", 0) or 0)))
+    except (TypeError, ValueError):
+        y = 0.0
+    color = str(item.get("color") or "#ffffff").strip()
+    if not re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
+        color = "#ffffff"
+    font = str(item.get("font") or "inherit").strip()
+    if len(font) > 120 or not re.fullmatch(r"[A-Za-z0-9_\s,'-]+", font):
+        font = "inherit"
+    return mark_safe(
+        f"--video-text-x:{x:g}%;--video-text-y:{y:g}%;"
+        f"--video-text-color:{color};--video-text-font:{font}"
+    )
+
+
+@register.filter
 def get(mapping, key):
     if hasattr(mapping, "get"):
         return mapping.get(key, "")
