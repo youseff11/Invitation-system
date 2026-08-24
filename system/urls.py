@@ -19,7 +19,12 @@ urlpatterns = [
     # ------------------------------------------------------------ لوحة التحكم
     path("dashboard/", views.dashboard, name="dashboard"),
     path("dashboard/orders/", views.dashboard_orders, name="dashboard_orders"),
-    path("dashboard/templates/", views.dashboard_templates, name="dashboard_templates"),
+        path("dashboard/templates/", views.dashboard_templates, name="dashboard_templates"),
+    path("dashboard/templates/<int:pk>/editor/", views.template_editor,
+         name="template_editor"),
+    path("dashboard/templates/<int:pk>/preview-frame/", views.template_editor_frame,
+         name="template_editor_frame"),
+
     path("dashboard/music/", views.dashboard_music, name="dashboard_music"),
     path("dashboard/intros/", views.dashboard_intros, name="dashboard_intros"),
     path("dashboard/plans/", views.dashboard_plans, name="dashboard_plans"),
@@ -43,7 +48,16 @@ urlpatterns = [
     path("dashboard/guests/<int:pk>/toggle-checkin/", views.guest_toggle_checkin,
          name="guest_toggle_checkin"),
 
+        # ------------------------------------------------------------ محرر القوالب للأدمن
+    path("dashboard/templates/<int:pk>/api/preview/", views.template_api_preview,
+         name="template_api_preview"),
+    path("dashboard/templates/<int:pk>/api/save/", views.template_api_save,
+         name="template_api_save"),
+    path("dashboard/templates/<int:pk>/api/assets/", views.template_api_assets,
+         name="template_api_assets"),
+
     # ------------------------------------------------------------ واجهة المحرر
+
     path("dashboard/invitations/<int:pk>/api/preview/", views.api_preview, name="api_preview"),
     path("dashboard/invitations/<int:pk>/api/save/", views.api_save, name="api_save"),
     path("dashboard/invitations/<int:pk>/api/upload/", views.api_upload, name="api_upload"),

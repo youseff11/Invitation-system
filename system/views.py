@@ -9,6 +9,7 @@ import mimetypes
 import os
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
@@ -819,9 +820,190 @@ def guest_toggle_checkin(request, pk):
 # ==========================================================================
 # المحرر البصري
 # ==========================================================================
+class _TemplateEditorProxy:
+    """أقل كائن تحتاجه صفحة المحرر عند تعديل Template مباشرة."""
+    STATUS_CHOICES = Invitation.STATUS_CHOICES
+
+    def __init__(self, template):
+        self.pk = template.pk
+        self.title = template.name
+        self.template = template
+        self.plan = SimpleNamespace(name="قالب")
+        self.event_type = ""
+        self.name_one = ""
+        self.name_two = ""
+        self.event_date = None
+        self.venue = ""
+        self.address = ""
+        self.map_url = ""
+        self.whatsapp = ""
+        self.status = "draft"
+        self.password = ""
+        self.expires_at = None
+
+    def get_absolute_url(self):
+        return reverse("template_demo", kwargs={"slug": self.template.slug})
+
+
+def _template_editor_result(template, document, request, *, editable=True, lang="ar"):
+    return render_document(
+        document,
+        invitation=None,
+        request=request,
+        allowed_features=None,
+        editable=editable,
+        lang=lang,
+    )
+
+
+def _template_editor_frame(request, template, document, *, editable=True):
+    result = _template_editor_result(
+        template, document, request, editable=editable, lang=_lang(request)
+    )
+    return render(request, "invitations/render.html", {
+        "render": result,
+        "invitation": None,
+        "editable": editable,
+        "noindex": True,
+        "page_title": f"محرر قالب {template.name}",
+        "page_description": template.description,
+        "share_image": template.cover_src,
+        "canonical_url": "",
+        "music_config": {},
+        "scroll_config": _scroll_config(result["settings"], editable=editable),
+        "cta": None,
+        "site_name": settings.SITE_NAME,
+        "site_url": request.build_absolute_uri("/"),
+    })
+
+
+@login_required
+@ensure_csrf_cookie
+def template_editor(request, pk):
+    """محرر القالب نفسه — متاح لفريق العمل فقط."""
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    proxy = _TemplateEditorProxy(template)
+    return render(request, "editor/editor.html", {
+        "invitation": proxy,
+        "form": None,
+        "template_mode": True,
+        "schema_json": blocks_engine.editor_schema(),
+        "document_json": template.get_document(),
+        "assets_json": [
+            {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "source": a.source_url, "name": a.original_name, "kind": a.kind}
+            for a in Asset.objects.filter(invitation__isnull=True).order_by("-id")[:300]
+        ],
+        "features_json": sorted(blocks_engine.feature_keys()),
+        "intros_json": [
+            {"id": v.pk, "name": v.name, "url": v.url,
+             "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
+            for v in IntroVideo.objects.filter(is_active=True) if v.url
+        ],
+        "music_json": [
+            {"id": m.pk, "name": m.name, "url": m.url, "note": m.note}
+            for m in MusicTrack.objects.filter(is_active=True) if m.url
+        ],
+        "template_categories": Template.CATEGORY_CHOICES,
+        "meta_json": {
+            "mode": "template",
+            "templateId": template.pk,
+            "slug": template.slug,
+            "templateName": template.name,
+            "publicUrl": request.build_absolute_uri(
+                reverse("template_demo", kwargs={"slug": template.slug})
+            ),
+            "urls": {
+                "preview": reverse("template_api_preview", kwargs={"pk": template.pk}),
+                "save": reverse("template_api_save", kwargs={"pk": template.pk}),
+                "upload": "",
+                "saveTemplate": "",
+                "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
+                "crop": "",
+                "frame": reverse("template_editor_frame", kwargs={"pk": template.pk}),
+                "back": reverse("dashboard_templates"),
+                "public": reverse("template_demo", kwargs={"slug": template.slug}),
+            },
+        },
+    })
+
+
+@login_required
+def template_editor_frame(request, pk):
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    return _template_editor_frame(request, template, template.get_document())
+
+
+@login_required
+@require_POST
+def template_api_preview(request, pk):
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    body = _json_body(request)
+    result = _template_editor_result(
+        template, body.get("document") or {}, request,
+        editable=True, lang="en" if body.get("lang") == "en" else "ar",
+    )
+    intro_html = render_to_string("invitations/_intro.html", {
+        "render": result, "editable": True, "guest": None,
+    }, request=request)
+    return JsonResponse({
+        "ok": True,
+        "html": str(result["html"]),
+        "intro": intro_html.strip(),
+        "cssVars": result["css_vars"],
+        "pattern": result["theme"].get("pattern") or "none",
+        "maxWidth": result["theme"].get("max_width"),
+        "direction": result["theme"].get("direction") or "rtl",
+        "music": {},
+        "blockCount": result["block_count"],
+    })
+
+
+@login_required
+@require_POST
+def template_api_save(request, pk):
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    body = _json_body(request)
+    document = blocks_engine.normalize_document(body.get("document") or {})
+    template.document = document
+    template.preview_render = {}
+    template.save(update_fields=["document", "preview_render", "updated_at"])
+    try:
+        get_template_preview(template, lang="ar")
+    except Exception:
+        pass
+    return JsonResponse({
+        "ok": True,
+        "savedAt": timezone.localtime().strftime("%H:%M:%S"),
+        "publicUrl": request.build_absolute_uri(
+            reverse("template_demo", kwargs={"slug": template.slug})
+        ),
+    })
+
+
+@login_required
+@require_GET
+def template_api_assets(request, pk):
+    _staff_required(request)
+    get_object_or_404(Template, pk=pk)
+    return JsonResponse({
+        "ok": True,
+        "assets": [
+            {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
+             "source": a.source_url, "name": a.original_name, "kind": a.kind}
+            for a in Asset.objects.filter(invitation__isnull=True).order_by("-id")[:300]
+        ],
+    })
+
+
 @login_required
 @ensure_csrf_cookie
 def invitation_editor(request, pk):
+
     _staff_required(request)
     invitation = get_object_or_404(
         Invitation.objects.select_related("template", "customer", "plan"), pk=pk

@@ -36,10 +36,11 @@
     </div>
 
     <div class="ed-top-group ed-top-group--grow">
-      <span class="ed-title">
+            <span class="ed-title">
         <strong>{{ invitation.title }}</strong>
-        · {{ invitation.template.name }} · باقة {{ invitation.plan.name }}
+        · {{ invitation.template.name }}{% if not template_mode %} · باقة {{ invitation.plan.name }}{% else %} · تعديل قالب{% endif %}
       </span>
+
     </div>
 
     <div class="ed-top-group">
@@ -74,7 +75,8 @@
         <div class="ed-more-menu">
           <a class="ed-btn ed-btn--sm" data-public-link href="{{ invitation.get_absolute_url }}"
              target="_blank" rel="noopener">فتح الدعوة ↗</a>
-          <button class="ed-btn ed-btn--sm" data-open-template type="button">احفظ كقالب</button>
+                    {% if not template_mode %}<button class="ed-btn ed-btn--sm" data-open-template type="button">احفظ كقالب</button>{% endif %}
+
         </div>
       </div>
 
@@ -99,8 +101,9 @@
       </div>
       <div class="ed-stage">
         <div class="ed-device" data-device-shell data-device="mobile">
-          <iframe data-preview-frame src="{% url 'invitation_preview_frame' invitation.pk %}"
+                    <iframe data-preview-frame src="{% if template_mode %}{% url 'template_editor_frame' invitation.pk %}{% else %}{% url 'invitation_preview_frame' invitation.pk %}{% endif %}"
                   title="معاينة الدعوة"></iframe>
+
           <div class="ed-loading" data-loading>جارٍ التحديث…</div>
         </div>
       </div>
@@ -114,7 +117,8 @@
         <button type="button" data-tab="blocks" class="is-active">الأقسام</button>
         <button type="button" data-tab="inspector">الخصائص</button>
         <button type="button" data-tab="theme">التصميم</button>
-        <button type="button" data-tab="data">البيانات</button>
+                  {% if not template_mode %}<button type="button" data-tab="data">البيانات</button>{% endif %}
+
         <button type="button" data-tab="i18n">الترجمة</button>
         <button type="button" data-tab="settings">إعدادات</button>
       </nav>
@@ -165,7 +169,8 @@
         <section class="ed-tabpane" data-pane="theme" data-theme-pane></section>
 
         {# ---- بيانات المناسبة ---- #}
-        <section class="ed-tabpane" data-pane="data">
+                {% if not template_mode %}<section class="ed-tabpane" data-pane="data">
+
           <p class="ed-kicker">بيانات المناسبة</p>
           <p class="ed-hint">
             هذه البيانات تملأ الأقسام تلقائياً. أي قسم تركت حقله فارغاً سيأخذ قيمته من هنا.
@@ -247,10 +252,11 @@
               </div>
             </div>
           </details>
-        </section>
+                </section>{% endif %}
 
         {# ---- إعدادات المستند ---- #}
         {# ---- الترجمة ---- #}
+
         <section class="ed-tabpane" data-pane="i18n">
           <div class="ed-section-head">
             <p class="ed-kicker">النسخة الإنجليزية</p>

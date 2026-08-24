@@ -22,6 +22,41 @@
     apply(now);
   });
 
+  /* ------------------------------------------------ إجراءات القوالب */
+  var actionMenus = Array.prototype.slice.call(doc.querySelectorAll("[data-template-actions]"));
+  function closeActionMenus(except) {
+    actionMenus.forEach(function (wrap) {
+      if (wrap === except) return;
+      var trigger = wrap.querySelector("[data-template-actions-toggle]");
+      var panel = wrap.querySelector("[data-template-actions-panel]");
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
+      if (panel) panel.hidden = true;
+    });
+  }
+  actionMenus.forEach(function (wrap) {
+    var trigger = wrap.querySelector("[data-template-actions-toggle]");
+    var panel = wrap.querySelector("[data-template-actions-panel]");
+    if (!trigger || !panel) return;
+    trigger.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var open = trigger.getAttribute("aria-expanded") === "true";
+      closeActionMenus(wrap);
+      trigger.setAttribute("aria-expanded", open ? "false" : "true");
+      panel.hidden = open;
+    });
+    panel.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (e.target.closest("a")) {
+        closeActionMenus();
+      }
+    });
+  });
+  doc.addEventListener("click", function () { closeActionMenus(); });
+  doc.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeActionMenus();
+  });
+
   /* ------------------------------------------------ الترويسة العائمة */
   var nav = doc.getElementById("site-nav");
   var burger = doc.getElementById("nav-burger");

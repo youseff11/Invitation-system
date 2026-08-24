@@ -54,21 +54,33 @@
       </span>
       {% if not t.is_active %}<span class="pill pill--archived">مخفي</span>{% endif %}
       {% if not t.document.blocks %}<span class="pill pill--archived">فاضي</span>{% endif %}
-      <div class="tpl-actions">
-        <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">معاينة</a>
-        <a class="btn btn--ghost btn--sm" href="/admin/system/template/{{ t.pk }}/change/">تعديل البيانات</a>
-        <form method="post" style="display:contents">
-          {% csrf_token %}
-          <input type="hidden" name="template" value="{{ t.pk }}">
-          <button class="btn btn--ghost btn--sm" type="submit" name="action" value="toggle">
-            {% if t.is_active %}إخفاء{% else %}إظهار{% endif %}
+            <div class="tpl-actions">
+        {% if request.user.is_staff %}
+        <div class="tpl-action-menu" data-template-actions>
+          <button class="btn btn--ghost btn--sm tpl-action-trigger" type="button"
+                  data-template-actions-toggle aria-expanded="false" aria-haspopup="true">
+            ⋯ <span>الإجراءات</span>
           </button>
-          {% if not t.uses %}
-          <button class="btn btn--ghost btn--sm" type="submit" name="action" value="delete"
-                  onclick="return confirm('تحذف «{{ t.name|escapejs }}» نهائياً؟')">حذف</button>
-          {% endif %}
-        </form>
+          <div class="tpl-action-panel" data-template-actions-panel hidden role="menu">
+            <a href="{% url 'template_editor' t.pk %}" role="menuitem">تعديل القالب</a>
+            <a href="/admin/system/template/{{ t.pk }}/change/" role="menuitem">تعديل البيانات</a>
+            <a href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener" role="menuitem">معاينة ↗</a>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="template" value="{{ t.pk }}">
+              <button type="submit" name="action" value="toggle" role="menuitem">
+                {% if t.is_active %}إخفاء القالب{% else %}إظهار القالب{% endif %}
+              </button>
+              {% if not t.uses %}
+              <button type="submit" name="action" value="delete" role="menuitem"
+                      onclick="return confirm('تحذف «{{ t.name|escapejs }}» نهائياً؟')">حذف القالب</button>
+              {% endif %}
+            </form>
+          </div>
+        </div>
+        {% endif %}
       </div>
+
     </div>
   </article>
   {% empty %}<p class="empty">لا توجد قوالب بعد.</p>{% endfor %}

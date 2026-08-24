@@ -1454,6 +1454,34 @@ class TemplateManageTests(BaseAppTest):
         self.assertIn("/login", res.get("Location", ""))
         self.assertTrue(Template.objects.filter(pk=tpl.pk).exists())
 
+    def test_staff_can_open_template_editor(self):
+        self.client.force_login(self.staff)
+        res = self.client.get(f"/dashboard/templates/{self.template.pk}/editor/")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "editor-document")
+        self.assertContains(res, "تعديل قالب")
+        self.assertNotContains(res, 'data-tab="data"')
+
+    def test_staff_can_save_template_document(self):
+        self.client.force_login(self.staff)
+        document = self.template.get_document()
+        document["theme"]["accent"] = "#123456"
+        res = self.client.post(
+            f"/dashboard/templates/{self.template.pk}/api/save/",
+            data=json.dumps({"document": document, "fields": {}}),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.json()["ok"])
+        self.template.refresh_from_db()
+        self.assertEqual(self.template.get_document()["theme"]["accent"], "#123456")
+
+    def test_template_editor_requires_staff(self):
+        user = User.objects.create_user("reader", password="Pass!12345x")
+        self.client.force_login(user)
+        res = self.client.get(f"/dashboard/templates/{self.template.pk}/editor/")
+        self.assertEqual(res.status_code, 403)
+
 
 # ==========================================================================
 class ImportedAudioTests(TestCase):

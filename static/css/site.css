@@ -385,6 +385,25 @@ p { margin: 0 0 1em; }
 .tpl-body h3 { margin: 0; font-size: 17px; }
 .tpl-meta { font-size: 12px; color: var(--muted); letter-spacing: .1em; }
 .tpl-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
+.tpl-action-menu { position: relative; width: 100%; }
+.tpl-action-trigger { width: 100%; justify-content: center; cursor: pointer; }
+.tpl-action-panel {
+  position: absolute; inset-inline: 0; bottom: calc(100% + 8px); z-index: 30;
+  display: grid; gap: 4px; padding: 8px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 14px 34px rgba(40, 25, 10, .16);
+}
+.tpl-action-panel[hidden] { display: none; }
+.tpl-action-panel a, .tpl-action-panel button {
+  display: block; width: 100%; padding: 9px 10px; border: 0;
+  border-radius: 8px; background: transparent; color: var(--text);
+  font: inherit; font-size: 13px; text-align: start; text-decoration: none; cursor: pointer;
+}
+.tpl-action-panel a:hover, .tpl-action-panel button:hover,
+.tpl-action-panel a:focus-visible, .tpl-action-panel button:focus-visible {
+  background: var(--accent-soft); color: var(--accent); outline: none;
+}
+.tpl-action-panel form { display: grid; gap: 4px; margin: 0; }
 
 .plan {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
