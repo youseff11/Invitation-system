@@ -38,6 +38,130 @@ def available() -> bool:
     return bool(shutil.which("ffmpeg"))
 
 
+# --------------------------------------------------------------------------
+# نقل الـmoov للأول من غير ffmpeg
+# --------------------------------------------------------------------------
+# ملف MP4 فيه صندوقين مهمين: ‎mdat‎ (الفيديو نفسه) و‎moov‎ (الفهرس —
+# مواضع الفريمات والمدة والأبعاد). المتصفح **مايقدرش يبدأ العرض قبل ما
+# يقرا الـmoov**. أغلب برامج التصدير بتكتبه في آخر الملف، فالمتصفح
+# بينزّل الملف كله الأول وبعدين يشغّل. على اللوكال ده ملحوظش لأن
+# التنزيل من نفس الجهاز، وعلى استضافة بطيئة بيبقى ثواني سودا.
+#
+# ffmpeg بيحل ده بـ‎-movflags +faststart‎، لكن لو مش متثبّت كنا بنسيب
+# الملف زي ما هو **من غير أي رسالة**. النقل نفسه مش محتاج إعادة ترميز:
+# بناخد الـmoov ونحطه بعد ‎ftyp‎ ونزوّد كل أوفستات الشُنك بمقداره.
+# الملف بيفضل بنفس الحجم والجودة بالظبط — بس بيبدأ فوراً.
+
+_CONTAINERS = {b"moov", b"trak", b"mdia", b"minf", b"stbl", b"edts", b"udta"}
+
+
+def _atoms(data, start, end):
+    """يمشي على الصناديق في مستوى واحد: ``(النوع, الموضع, الحجم, الترويسة)``."""
+    pos = start
+    while pos + 8 <= end:
+        size = int.from_bytes(data[pos:pos + 4], "big")
+        typ = bytes(data[pos + 4:pos + 8])
+        head = 8
+        if size == 1:                      # حجم ٦٤-بت للملفات الكبيرة
+            if pos + 16 > end:
+                return
+            size = int.from_bytes(data[pos + 8:pos + 16], "big")
+            head = 16
+        elif size == 0:                    # لآخر الملف
+            size = end - pos
+        if size < head or pos + size > end:
+            return                         # ملف مقصوص أو مكسور
+        yield typ, pos, size, head
+        pos += size
+
+
+def _shift_offsets(buf, start, end, delta):
+    """يزوّد كل أوفستات الشُنك جوّه الـmoov.
+
+    الأوفستات دي مطلقة من بداية الملف، فلما الـmoov يتقدّم لازم كلها
+    تتزحزح بنفس المقدار — وإلا الفيديو بيبقى موجود ومش بيتفك.
+    """
+    for typ, pos, size, head in _atoms(buf, start, end):
+        if typ in _CONTAINERS:
+            _shift_offsets(buf, pos + head, pos + size, delta)
+        elif typ in (b"stco", b"co64"):
+            wide = typ == b"co64"
+            step = 8 if wide else 4
+            count = int.from_bytes(buf[pos + head + 4:pos + head + 8], "big")
+            base = pos + head + 8
+            for i in range(count):
+                at = base + i * step
+                if at + step > pos + size:
+                    break
+                value = int.from_bytes(buf[at:at + step], "big") + delta
+                if not wide:
+                    value &= 0xFFFFFFFF
+                buf[at:at + step] = value.to_bytes(step, "big")
+
+
+def moov_is_late(data: bytes) -> bool:
+    """الفهرس في آخر الملف؟ يعني المتصفح هيستنى التنزيل كله."""
+    kinds = [t for t, _p, _s, _h in _atoms(data, 0, len(data))]
+    if b"moov" not in kinds or b"mdat" not in kinds:
+        return False
+    return kinds.index(b"moov") > kinds.index(b"mdat")
+
+
+def faststart_bytes(data: bytes):
+    """يرجّع نفس الملف والـmoov في أوله — أو ``None`` لو مفيش داعي.
+
+    مفيش إعادة ترميز: نفس البايتات بترتيب مختلف، فالجودة والحجم زي ما هم.
+    """
+    try:
+        top = list(_atoms(data, 0, len(data)))
+        if not top:
+            return None
+        kinds = [t for t, _p, _s, _h in top]
+        if b"moov" not in kinds or b"mdat" not in kinds:
+            return None
+        if kinds.index(b"moov") < kinds.index(b"mdat"):
+            return None                    # جاهز أصلاً
+
+        _typ, mpos, msize, mhead = next(a for a in top if a[0] == b"moov")
+        moov = bytearray(data[mpos:mpos + msize])
+        # كل حاجة كانت بين ftyp والـmoov هتتزحزح بمقدار حجم الـmoov
+        _shift_offsets(moov, mhead, len(moov), msize)
+
+        out = bytearray()
+        for typ, pos, size, _h in top:
+            if typ == b"ftyp":
+                out += data[pos:pos + size]
+        out += moov
+        for typ, pos, size, _h in top:
+            if typ not in (b"ftyp", b"moov"):
+                out += data[pos:pos + size]
+        return bytes(out)
+    except Exception:
+        return None                        # أي شك = مانلمسش الملف
+
+
+def _faststart_upload(upload):
+    """يطبّق النقل على ملف مرفوع ويرجّع نسخة جاهزة — أو الأصل."""
+    try:
+        upload.seek(0)
+        data = upload.read()
+        moved = faststart_bytes(data)
+        upload.seek(0)
+        if not moved:
+            return upload
+        stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
+        return InMemoryUploadedFile(
+            io.BytesIO(moved), "FileField", f"{stem}.mp4", "video/mp4",
+            len(moved), None,
+        )
+    except Exception:
+        try:
+            upload.seek(0)
+        except Exception:
+            pass
+        return upload
+
+
 def prepare_for_stream(upload):
     """ينقل بيانات MP4 إلى البداية من غير إعادة ترميز أو فقد جودة.
 
@@ -45,9 +169,13 @@ def prepare_for_stream(upload):
     قبل اكتمال تنزيل الملف. لو كان الملف غير MP4 أو ffmpeg غير متاح،
     نرجع الملف الأصلي بأمان.
     """
-    if not available() or not str(getattr(upload, "name", "")).lower().endswith(".mp4"):
+    if not str(getattr(upload, "name", "")).lower().endswith(".mp4"):
         upload.seek(0)
         return upload, 0.0
+    if not available():
+        # من غير ffmpeg لسه نقدر ننقل الفهرس بنفسنا — ده اللي بيخلي
+        # الفيديو يبدأ فوراً، ومش محتاج إعادة ترميز.
+        return _faststart_upload(upload), 0.0
 
     src_path = dst_path = None
     try:
@@ -73,8 +201,7 @@ def prepare_for_stream(upload):
             io.BytesIO(data), "FileField", f"{stem}.mp4", "video/mp4", len(data), None
         ), _duration(dst_path)
     except Exception:
-        upload.seek(0)
-        return upload, 0.0
+        return _faststart_upload(upload), 0.0
     finally:
         for path in (src_path, dst_path):
             if path and os.path.exists(path):
@@ -90,6 +217,9 @@ def compress(upload, *, max_seconds: int = 0, keep_audio: bool = True):
     ``max_seconds`` بصفر يعني «ماتقصّش» — وده الافتراضي عن قصد.
     """
     if not available():
+        # الضغط محتاج ffmpeg، لكن نقل الفهرس لأ — وده أهم حاجة للسرعة
+        if str(getattr(upload, "name", "")).lower().endswith(".mp4"):
+            return _faststart_upload(upload), 0.0
         upload.seek(0)
         return upload, 0.0
 

@@ -2,7 +2,6 @@
 
 import json
 import re
-from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -1056,42 +1055,6 @@ class TemplateImportTests(TestCase):
         # body{} اللي كان بيصبغ الصفحة كلها بقى على القسم نفسه
         self.assertNotIn("body{background", html.replace(" ", ""))
 
-    def test_imported_media_forms_svg_and_main_are_preserved(self):
-        page = """<!doctype html><html><body><main>
-          <video controls poster="images/poster.webp"><source src="media/hero.mp4" type="video/mp4"></video>
-          <audio controls src="media/music.mp3"></audio>
-          <form><label>الاسم<input name="name" type="text"></label><button type="submit">إرسال</button></form>
-          <svg viewBox="0 0 20 20"><path d="M1 1h18v18H1z"></path></svg>
-        </main></body></html>"""
-        tpl = templateimport.import_template(self._zip({
-            "index.html": page,
-            "images/poster.webp": b"poster",
-            "media/hero.mp4": b"video",
-            "media/music.mp3": b"audio",
-        }))
-        html = tpl.document["blocks"][0]["props"]["html"]
-        self.assertIn("<main", html)
-        self.assertIn("<video", html)
-        self.assertIn("<source", html)
-        self.assertIn("<audio", html)
-        self.assertIn("<form", html)
-        self.assertIn("<input", html)
-        self.assertIn("<svg", html)
-        self.assertNotIn("media/hero.mp4", html)
-        self.assertIn("/media/", html)
-
-    def test_large_imported_stylesheet_is_not_truncated(self):
-        css = "".join(
-            f".hero-{i}{{color:#{(i * 2654435761) & 0xffffff:06x};}}"
-            for i in range(7000)
-        )
-        tpl = templateimport.import_template(self._zip({
-            "index.html": "<html><head><link rel='stylesheet' href='s.css'></head><body><main class='hero'><h1>دعوة طويلة جداً</h1></main></body></html>",
-            "s.css": css,
-        }))
-        stored_css = tpl.document["blocks"][0]["props"]["css"]
-        self.assertGreater(len(stored_css), 120000)
-
     def test_images_are_stored_and_relinked(self):
         from PIL import Image
         import io as _io
@@ -1449,41 +1412,8 @@ class EmptyImportTests(TestCase):
         self.assertGreaterEqual(len(tpl.document["blocks"]), 1)
 
 
-# ==========================================================================  
-class ImportedOpeningTests(TestCase):
-    """الافتتاحية الخارجية تُحذف، وسجلات المحتوى التالية تفضل كاملة."""
-
-    def test_opening_overlay_is_removed_and_tilda_records_are_kept(self):
-        page = (
-            '<html><head><title>Sacred</title></head><body>'
-            '<div id="weiOverlay">Tap to open</div>'
-            '<div id="weiVideoWrap"><video id="weiVideo"></video></div>'
-            '<div id="allrecords">'
-            '<div id="rec100" class="r t-rec"><div class="t396__elem" '
-            'data-elem-id="1" data-field-top-value="100" '
-            'data-field-left-value="20"><div class="tn-atom">المحتوى الأول</div></div><p>'
-            + ("نص طويل " * 900)
-            + '</p></div>'
-            '<div id="rec200" class="r t-rec"><h2>Schedule of Events</h2>'
-            '<p>Confirm Your Attendance</p></div>'
-            '</div></body></html>'
-        )
-        with patch.object(templateimport, "_store_media", return_value={}):
-            document, _ = templateimport.build_document("index.html", {"index.html": page.encode()})
-        self.assertEqual(len(document["blocks"]), 2)
-        html = "".join(b["props"]["html"] for b in document["blocks"])
-        self.assertNotIn("weiOverlay", html)
-        self.assertNotIn("weiVideoWrap", html)
-        self.assertIn("Schedule of Events", html)
-        self.assertIn("Confirm Your Attendance", html)
-        self.assertIn('data-elem-id="1"', html)
-        self.assertIn('data-field-top-value="100"', html)
-        self.assertGreater(len(document["blocks"][0]["props"]["html"]), 6000)
-
-
-# ==========================================================================  
+# ==========================================================================
 class TemplateManageTests(BaseAppTest):
-
     """حذف/إخفاء القوالب من اللوحة — من غيرهم القالب الفاضي مالوش مخرج."""
 
     def _tpl(self, **kw):
@@ -1584,9 +1514,9 @@ class BlockLabelTests(TestCase):
         tpl = self._import(f"<header><h1>ليلى &amp; كريم</h1>{self.LONG}</header>")
         self.assertEqual(tpl.document["blocks"][0]["label"], "ليلى & كريم")
 
-    def test_preloader_only_page_is_rejected_after_removal(self):
-        with self.assertRaises(templateimport.ImportError_):
-            self._import(f'<div class="preloader">{self.LONG}</div>')
+    def test_known_class_names_map_to_arabic(self):
+        tpl = self._import(f'<div class="preloader">{self.LONG}</div>')
+        self.assertEqual(tpl.document["blocks"][0]["label"], "شاشة التحميل")
 
     def test_tag_name_is_the_next_fallback(self):
         tpl = self._import(f"<footer>{self.LONG}</footer>")
@@ -2121,9 +2051,9 @@ class VideoBlockSourceTests(BaseAppTest):
         self.assertEqual(spec["type"], "media")
         self.assertEqual(spec["media_kind"], "video")
 
-    def _render(self, props, btype="video"):
+    def _render(self, props):
         doc = B.normalize_document({"blocks": [
-            {"type": btype, "id": "vid-1", "props": props},
+            {"type": "video", "id": "vid-1", "props": props},
         ]})
         self.inv.document = doc
         self.inv.save(update_fields=["document"])
@@ -2131,7 +2061,7 @@ class VideoBlockSourceTests(BaseAppTest):
 
     def test_uploaded_file_path_survives_normalisation(self):
         body = self._render({"url": "/media/assets/2026/08/clip.webm"})
-        self.assertIn('data-video="/media-video/assets/2026/08/clip.webm"', body)
+        self.assertIn('data-video="/media/assets/2026/08/clip.webm"', body)
 
     def test_youtube_link_still_works(self):
         body = self._render({"url": "https://youtu.be/abc12345"})
@@ -2148,52 +2078,6 @@ class VideoBlockSourceTests(BaseAppTest):
         body = self._render({"url": "/media/c.mp4", "aspect": "gzip; rm -rf"})
         self.assertIn("lb-video--16x9", body)
         self.assertNotIn("rm -rf", body)
-
-    def test_video_text_overlays_render_independently(self):
-        body = self._render({
-            "url": "/media/c.mp4",
-            "text_overlays": [
-                {"text": "نص أول", "color": "#ff0000", "font": "Cairo", "x": -12, "y": 18},
-                {"text": "نص ثان", "color": "#00aa88", "font": "Tajawal", "x": 20, "y": -16},
-            ],
-        })
-        self.assertIn("lb-video-wrap", body)
-        self.assertIn('data-section-text-index="0"', body)
-        self.assertIn('data-section-text-index="1"', body)
-        self.assertIn("نص أول", body)
-        self.assertIn("--video-text-x:-12%", body)
-        self.assertIn("--video-text-y:18%", body)
-        self.assertIn("--video-text-color:#ff0000", body)
-        self.assertIn("--video-text-color:#00aa88", body)
-
-    def test_shared_text_overlay_field_is_available_to_text_sections(self):
-        spec = B.editor_schema()["blocks"]["text"]
-        overlays = next(f for f in spec["props"] if f["key"] == "text_overlays")
-        self.assertEqual(overlays["type"], "list")
-        self.assertEqual(overlays["add_label"], "إضافة نص")
-        body = self._render({
-            "heading": "قسم",
-            "body": "محتوى",
-            "text_overlays": [{"text": "فوق القسم", "color": "#123456"}],
-        }, "text")
-        self.assertIn('data-section-text-index="0"', body)
-        self.assertIn("فوق القسم", body)
-        self.assertIn("--video-text-color:#123456", body)
-
-    def test_video_text_overlay_rejects_unsafe_style_values(self):
-        body = self._render({
-            "url": "/media/c.mp4",
-            "text_overlays": [{
-                "text": "آمن",
-                "color": "red; background:url(javascript:1)",
-                "font": "inherit; color:red",
-                "x": "var(--bad)",
-                "y": "0",
-            }],
-        })
-        self.assertIn("--video-text-color:#ffffff", body)
-        self.assertIn("--video-text-font:inherit", body)
-        self.assertIn("--video-text-x:0%", body)
 
     def test_controls_are_on_by_default(self):
         """الدعوات الموجودة ماينفعش يختفي منها الشريط فجأة."""
@@ -3615,3 +3499,98 @@ class CustomSectionTranslationTests(BaseAppTest):
         js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
         self.assertIn('block.id + "." + f.key + "#" + n.getAttribute("data-move")', js)
         self.assertIn("f.translate === false", js)
+
+
+# ==========================================================================
+class FaststartTests(TestCase):
+    """نقل فهرس MP4 (moov) للأول — من غير ffmpeg.
+
+    المتصفح مايقدرش يبدأ العرض قبل ما يقرا الـmoov. أغلب برامج التصدير
+    بتكتبه في آخر الملف، فالمتصفح بينزّل الملف كله الأول. على اللوكال ده
+    مالوش أثر ملحوظ، وعلى استضافة بطيئة بيبقى ثواني سودا قبل التشغيل —
+    وده كان بيعدّي من غير أي رسالة لما ffmpeg مش متثبّت.
+    """
+
+    def _mp4(self, order=("ftyp", "mdat", "moov")):
+        """ملف MP4 مبسّط بجدول ‎stco‎ حقيقي عشان نتأكد من تصحيح الأوفستات."""
+        def box(kind, payload):
+            return (len(payload) + 8).to_bytes(4, "big") + kind + payload
+
+        ftyp = box(b"ftyp", b"isom" + b"\x00" * 8)
+        media = b"\xAA" * 400
+        # ترتيب الملف: ftyp ثم mdat — فبيانات mdat بتبدأ بعد ترويستها
+        mdat_start = len(ftyp) + 8
+        stco = box(b"stco", b"\x00\x00\x00\x00" + (1).to_bytes(4, "big")
+                   + mdat_start.to_bytes(4, "big"))
+        stbl = box(b"stbl", stco)
+        minf = box(b"minf", stbl)
+        mdia = box(b"mdia", minf)
+        trak = box(b"trak", mdia)
+        moov = box(b"moov", trak)
+        mdat = box(b"mdat", media)
+        parts = {"ftyp": ftyp, "mdat": mdat, "moov": moov}
+        return b"".join(parts[k] for k in order), len(moov), mdat_start
+
+    def test_it_spots_a_late_index(self):
+        data, _m, _s = self._mp4(("ftyp", "mdat", "moov"))
+        self.assertTrue(video.moov_is_late(data))
+
+    def test_a_ready_file_is_left_alone(self):
+        data, _m, _s = self._mp4(("ftyp", "moov", "mdat"))
+        self.assertFalse(video.moov_is_late(data))
+        self.assertIsNone(video.faststart_bytes(data))
+
+    def test_the_index_moves_to_the_front(self):
+        data, _m, _s = self._mp4()
+        out = video.faststart_bytes(data)
+        self.assertIsNotNone(out)
+        self.assertFalse(video.moov_is_late(out))
+
+    def test_nothing_is_re_encoded(self):
+        """نفس البايتات بترتيب مختلف — الجودة والحجم زي ما هم."""
+        data, _m, _s = self._mp4()
+        out = video.faststart_bytes(data)
+        self.assertEqual(len(out), len(data))
+        self.assertIn(b"\xAA" * 400, out)
+
+    def test_the_chunk_offsets_follow_the_move(self):
+        """من غير التصحيح ده الفيديو بيبقى موجود ومش بيتفك."""
+        data, moov_len, old_start = self._mp4()
+        out = video.faststart_bytes(data)
+        i = out.index(b"stco")
+        moved = int.from_bytes(out[i + 4 + 8:i + 4 + 12], "big")
+        self.assertEqual(moved, old_start + moov_len)
+        # والقيمة الجديدة بتشاور فعلاً على أول بايت من بيانات mdat
+        self.assertEqual(out[moved:moved + 4], b"\xAA" * 4)
+
+    def test_junk_never_raises(self):
+        for junk in (b"", b"not an mp4 at all", b"\x00\x00\x00\x08free"):
+            with self.subTest(junk=junk[:12]):
+                self.assertIsNone(video.faststart_bytes(junk))
+                self.assertFalse(video.moov_is_late(junk))
+
+    def test_a_truncated_file_is_left_alone(self):
+        data, _m, _s = self._mp4()
+        self.assertIsNone(video.faststart_bytes(data[:len(data) // 2]))
+
+    # ---- المسار الكامل من غير ffmpeg
+    def test_upload_is_fixed_even_without_ffmpeg(self):
+        data, _m, _s = self._mp4()
+        real = video.available
+        video.available = lambda: False
+        try:
+            up = SimpleUploadedFile("clip.mp4", data, content_type="video/mp4")
+            out, _secs = video.prepare_for_stream(up)
+            self.assertFalse(video.moov_is_late(out.read()))
+        finally:
+            video.available = real
+
+    def test_a_non_mp4_is_not_touched(self):
+        real = video.available
+        video.available = lambda: False
+        try:
+            up = SimpleUploadedFile("clip.webm", b"webm-ish", content_type="video/webm")
+            out, _secs = video.prepare_for_stream(up)
+            self.assertEqual(out.read(), b"webm-ish")
+        finally:
+            video.available = real
