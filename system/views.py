@@ -32,7 +32,8 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.cache import cache_page
+
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 
 from . import blocks as blocks_engine
@@ -294,7 +295,7 @@ def _preview_cta(template) -> dict | None:
 
 
 @require_GET
-@cache_page(300)
+@never_cache
 def template_demo(request, slug):
 
     """معاينة قالب كدعوة تجريبية — بدون إنشاء أي سجل."""

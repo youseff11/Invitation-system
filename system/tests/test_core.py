@@ -1544,6 +1544,26 @@ class TemplateManageTests(BaseAppTest):
         self.template.refresh_from_db()
         self.assertEqual(self.template.get_document()["theme"]["accent"], "#123456")
 
+    def test_template_demo_shows_latest_saved_document(self):
+        # افتح النسخة القديمة أولاً لمحاكاة ضغط المستخدم على «معاينة» قبل التعديل.
+        first = self.client.get(f"/templates/{self.template.slug}/preview/")
+        self.assertEqual(first.status_code, 200)
+
+        self.client.force_login(self.staff)
+        document = self.template.get_document()
+        document["theme"]["accent"] = "#123456"
+        saved = self.client.post(
+            f"/dashboard/templates/{self.template.pk}/api/save/",
+            data=json.dumps({"document": document, "fields": {}}),
+            content_type="application/json",
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertTrue(saved.json()["ok"])
+
+        latest = self.client.get(f"/templates/{self.template.slug}/preview/")
+        self.assertEqual(latest.status_code, 200)
+        self.assertContains(latest, "#123456")
+
     def test_template_editor_requires_staff(self):
         user = User.objects.create_user("reader", password="Pass!12345x")
         self.client.force_login(user)

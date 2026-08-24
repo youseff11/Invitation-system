@@ -1251,3 +1251,17 @@
 .lb-doc--editing .lb-custom :where(*):hover:not(.lb-el-picked):not(.lb-el-typing) {
   cursor: default !important;
 }
+
+/* نصوص الفيديو في المحرر: امنع Hover القالب من تغيير مكان النص أو شكله.
+   إطار التحديد والإطار أثناء السحب يظلان ظاهرين كما هما. */
+.lb-doc--editing .lb-video-wrap [data-video-text]:hover,
+.lb-doc--editing .lb [data-section-text]:hover {
+  transform: translate(-50%, -50%) !important;
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
+}
+.lb-doc--editing .lb-video-wrap [data-video-text]:hover,
+.lb-doc--editing .lb [data-section-text]:hover {
+  cursor: grab;
+}
