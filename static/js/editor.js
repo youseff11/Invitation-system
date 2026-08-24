@@ -773,8 +773,14 @@
 
     box.appendChild(buildLayoutGroup(block, spec));
     if (codeLast) {
+      /* custom_html عنده الآن إضافة نص/صورة من داخل العنصر المحدد.
+         لذلك نخفي مجموعة text_overlays القديمة فقط من هذا النوع،
+         ونترك مجموعة التنسيق العامة الخاصة بالقسم كما هي. */
+      var advancedProps = spec.props.filter(function (s) {
+        return s.key !== "text_overlays";
+      });
       box.appendChild(buildGroups(
-        spec.props,
+        advancedProps,
         function (s) { return block.props[s.key]; },
         function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
         false
@@ -920,8 +926,16 @@
     var root = customRoot(node);
     if (!root) return;
     snapshot();
-    if (node.getAttribute("data-lb-text")) node.insertAdjacentElement("afterend", elem);
-    else node.appendChild(elem);
+    /* الصورة والفيديو عناصر لا تقبل عناصر HTML مرئية بداخلها؛ لو أضفنا
+       نصاً أو صورة داخلهما سيظهر كـfallback أو يختفي. نضع الإضافة بعدهما.
+       العناصر الحاوية مثل div/section تظل الإضافة داخلها. */
+    var tag = (node.tagName || "").toUpperCase();
+    var cannotContain = /^(IMG|VIDEO|AUDIO|SOURCE|BR|HR|INPUT|SELECT|TEXTAREA)$/.test(tag);
+    if (node.getAttribute("data-lb-text") || cannotContain) {
+      node.insertAdjacentElement("afterend", elem);
+    } else {
+      node.appendChild(elem);
+    }
     state.selEl = null;
     commitStructure(block, root);
   }
@@ -1241,7 +1255,7 @@
     });
     addRow.appendChild(addImg);
     addRow.appendChild(addTxt);
-    body.appendChild(ctrlRow("أضف", addRow));
+    body.appendChild(ctrlRow("إضافة نص أو صورة", addRow));
 
     // ---- نسخ ولصق وتكرار
     var clipRow = el("div", "ed-ctrl-line");
