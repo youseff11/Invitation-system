@@ -126,13 +126,27 @@ def icon_names():
 
 
 # --------------------------------------------------------------------------
+def _route_video_url(value):
+    value = str(value or "")
+    base = str(getattr(settings, "MEDIA_URL", "/media/") or "/media/")
+    if not base.endswith("/"):
+        base += "/"
+    path, sep, query = value.partition("?")
+    if path.startswith(base) and os.path.splitext(path)[1].lower() in {".mp4", ".m4v", ".webm", ".ogv"}:
+        value = "/media-video/" + path[len(base):].lstrip("/")
+        if sep:
+            value += "?" + query
+    return value
+
+
 @register.filter(name="safe_html")
+
 def safe_html(value, max_length=20000):
     """ينقّي HTML قبل عرضه؛ الصفر/None يتيحان قسماً كبيراً من غير قص."""
     cleaned = clean_html(value or "", max_length=max_length)
     # يشمل القوالب القديمة التي حُفظت قبل إضافة endpoint الـRange.
     cleaned = _VIDEO_ATTR_RE.sub(
-        lambda m: m.group(1) + video_url(m.group(2)) + m.group(3), cleaned
+        lambda m: m.group(1) + _route_video_url(m.group(2)) + m.group(3), cleaned
     )
     return mark_safe(cleaned)
 

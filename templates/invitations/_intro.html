@@ -20,7 +20,7 @@
   {% endcomment %}
   {% if render.settings.intro_video_start == 'button' %}
   <video class="lb-intro-video" data-intro-video data-intro-manual
-         src="{{ render.settings.intro_video|video_url }}"
+         src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
@@ -39,7 +39,7 @@
   </button>
   {% else %}
   <video class="lb-intro-video" data-intro-video
-         src="{{ render.settings.intro_video|video_url }}"
+         src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          autoplay muted playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
