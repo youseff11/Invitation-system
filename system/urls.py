@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("templates/", views.template_gallery, name="template_gallery"),
     path("templates/<slug:slug>/preview/", views.template_demo, name="template_demo"),
+    path("media-video/<path:path>", views.media_video, name="media_video"),
 
     # ------------------------------------------------------------ دخول
     path("login/", auth_views.LoginView.as_view(

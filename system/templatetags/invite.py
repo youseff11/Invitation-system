@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import re
 
 from django import template
+from django.conf import settings
+
 from django.utils.safestring import mark_safe
 
 from ..cssscope import scope_css
@@ -13,6 +16,10 @@ from ..sanitize import clean_html
 register = template.Library()
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_VIDEO_ATTR_RE = re.compile(
+    r'((?:src|poster)\s*=\s*["\'])(/media/[^"\']+\.(?:mp4|m4v|webm|ogv)(?:\?[^"\']*)?)(["\'])',
+    re.I,
+)
 
 
 # --------------------------------------------------------------------------
@@ -122,7 +129,12 @@ def icon_names():
 @register.filter(name="safe_html")
 def safe_html(value, max_length=20000):
     """ينقّي HTML قبل عرضه؛ الصفر/None يتيحان قسماً كبيراً من غير قص."""
-    return mark_safe(clean_html(value or "", max_length=max_length))
+    cleaned = clean_html(value or "", max_length=max_length)
+    # يشمل القوالب القديمة التي حُفظت قبل إضافة endpoint الـRange.
+    cleaned = _VIDEO_ATTR_RE.sub(
+        lambda m: m.group(1) + video_url(m.group(2)) + m.group(3), cleaned
+    )
+    return mark_safe(cleaned)
 
 
 @register.filter(name="safe_css")
@@ -140,8 +152,24 @@ def safe_css(value, block_id=""):
     return mark_safe(scope_css(str(value), scope))
 
 
+@register.filter(name="video_url")
+def video_url(value):
+    """يوجّه فيديوهات media المحلية إلى المسار الداعم للتحميل الجزئي."""
+    value = str(value or "")
+    base = str(getattr(settings, "MEDIA_URL", "/media/") or "/media/")
+    if not base.endswith("/"):
+        base += "/"
+    path, sep, query = value.partition("?")
+    if path.startswith(base) and os.path.splitext(path)[1].lower() in {".mp4", ".m4v", ".webm", ".ogv"}:
+        value = "/media-video/" + path[len(base):].lstrip("/")
+        if sep:
+            value += "?" + query
+    return value
+
+
 @register.filter
 def video_text_style(item):
+
     """يبني متغيرات CSS آمنة لنص واحد فوق فيديو."""
     item = item if hasattr(item, "get") else {}
     try:

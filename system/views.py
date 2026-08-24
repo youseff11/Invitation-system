@@ -6,6 +6,10 @@ import hashlib
 import io
 import json
 import mimetypes
+import os
+import re
+from pathlib import Path
+
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 
@@ -18,7 +22,9 @@ from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.http import (
     Http404, HttpResponse, HttpResponseBadRequest, JsonResponse,
+    StreamingHttpResponse,
 )
+
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.template.loader import render_to_string
@@ -62,7 +68,64 @@ def _ar_num(n: int) -> str:
     return str(n).translate(_AR_DIGITS)
 
 
-# ==========================================================================
+def media_video(request, path):
+    """يخدم فيديوهات media مع دعم Range Requests للبدء السريع."""
+    if Path(path).suffix.lower() not in {".mp4", ".m4v", ".webm", ".ogv"}:
+        raise Http404
+    root = Path(settings.MEDIA_ROOT).resolve()
+    target = (root / path).resolve()
+    if root not in target.parents or not target.is_file():
+        raise Http404
+    size = target.stat().st_size
+    content_type = mimetypes.guess_type(target.name)[0] or "video/mp4"
+    range_value = request.headers.get("Range", "").strip()
+    start, end = 0, size - 1
+    status = 200
+    if range_value:
+        match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_value)
+        if not match:
+            response = HttpResponse(status=416)
+            response["Content-Range"] = f"bytes */{size}"
+            return response
+        first, last = match.groups()
+        if first:
+            start = int(first)
+            end = int(last) if last else size - 1
+        elif last:
+            count = int(last)
+            start = max(0, size - count)
+            end = size - 1
+        if start >= size or start > end:
+            response = HttpResponse(status=416)
+            response["Content-Range"] = f"bytes */{size}"
+            return response
+        end = min(end, size - 1)
+        status = 206
+
+    length = end - start + 1
+
+    def chunks():
+        with target.open("rb") as fh:
+            fh.seek(start)
+            remaining = length
+            while remaining:
+                data = fh.read(min(1024 * 1024, remaining))
+                if not data:
+                    break
+                remaining -= len(data)
+                yield data
+
+    response = StreamingHttpResponse(chunks(), status=status, content_type=content_type)
+    response["Accept-Ranges"] = "bytes"
+    response["Content-Length"] = str(length)
+    response["Cache-Control"] = "public, max-age=31536000, immutable"
+    if status == 206:
+        response["Content-Range"] = f"bytes {start}-{end}/{size}"
+    return response
+
+
+# ========================================================================== 
+
 # أدوات مشتركة
 # ==========================================================================
 def _client_hash(request) -> str:
@@ -961,10 +1024,11 @@ def api_upload(request, pk):
 
     seconds = 0.0
     if kind == "video":
-        # فيديو الافتتاحية بيتشاف على تليفون وبيشتغل صامت، فبنقصّه على ١٠ ثواني
-        # ونشيل الصوت وننزّله ٧٢٠p. لو ffmpeg مش متثبّت بيرجع الأصل زي ما هو.
+
+        # نجهّز MP4 للبدء السريع من غير إعادة ترميز أو تغيير جودة/مدة الفيديو.
         try:
-            stored, seconds = video.compress(upload)
+            stored, seconds = video.prepare_for_stream(upload)
+
         except Exception:
             upload.seek(0)
             stored, seconds = upload, 0.0

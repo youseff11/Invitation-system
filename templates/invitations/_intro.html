@@ -20,9 +20,9 @@
   {% endcomment %}
   {% if render.settings.intro_video_start == 'button' %}
   <video class="lb-intro-video" data-intro-video data-intro-manual
-         src="{{ render.settings.intro_video }}"
+         src="{{ render.settings.intro_video|video_url }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
-         playsinline preload="metadata"></video>
+         playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
   {% comment %}
     الزر دايرة بعلامة تشغيل لوحدها لما مافيش نص. لو المستخدم كتب نص
@@ -39,9 +39,9 @@
   </button>
   {% else %}
   <video class="lb-intro-video" data-intro-video
-         src="{{ render.settings.intro_video }}"
+         src="{{ render.settings.intro_video|video_url }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
-         autoplay muted playsinline preload="metadata"></video>
+         autoplay muted playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
   {% endif %}
   {% if render.settings.intro_video_sound %}

@@ -27,11 +27,13 @@ import zipfile
 from html import unescape as _unescape
 from html.parser import HTMLParser
 
+from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.utils.text import slugify
 
 from . import blocks as blocks_engine
-from . import cssscope, images
+from . import cssscope, images, video
+
 from .models import Asset, Template
 from .sanitize import clean_html
 
@@ -571,8 +573,23 @@ def _rewrite_inline_styles(html: str, url_map: dict[str, str]) -> str:
     return _STYLE_ATTR_RE.sub(repl, html)
 
 
+def _stream_video_url(url: str) -> str:
+    """يوجّه فيديوهات media المحلية إلى endpoint يدعم Range Requests."""
+    base = str(getattr(settings, "MEDIA_URL", "/media/") or "/media/")
+    if not base.endswith("/"):
+        base += "/"
+    value = str(url or "")
+    path, sep, query = value.partition("?")
+    if path.startswith(base) and os.path.splitext(path)[1].lower() in VIDEO_EXT:
+        value = "/media-video/" + path[len(base):].lstrip("/")
+        if sep:
+            value += "?" + query
+    return value
+
+
 def _rewrite_media_srcs(html: str, url_map: dict[str, str]) -> str:
     """يحل مسارات الصور والفيديو والصوت وposter داخل HTML."""
+
     html = _SRCSET_RE.sub("", html)      # srcset بيشاور على ملفات مش مخزّنة
     def repl(m):
         raw = (m.group(3) or "").strip()
@@ -581,7 +598,10 @@ def _rewrite_media_srcs(html: str, url_map: dict[str, str]) -> str:
             return m.group(0)
         key = raw.lstrip("./").split("?")[0].split("#")[0]
         mapped = url_map.get(key) or url_map.get(key.rsplit("/", 1)[-1]) or ""
+
+        mapped = _stream_video_url(mapped)
         return f"{m.group(1)}{m.group(2)}{mapped}{m.group(2)}"
+
     return _MEDIA_SRC_RE.sub(repl, html)
 
 
@@ -668,7 +688,13 @@ def _store_media(files: dict[str, bytes], *, preserve_original: bool = False) ->
             kind = "image"
 
         elif ext in VIDEO_EXT:
-            stored, thumb, w, h, kind = ContentFile(data, name=base), None, 0, 0, "video"
+            stored = ContentFile(data, name=base)
+            if preserve_original and ext == ".mp4":
+                upload = InMemoryUploadedFile(
+                    io.BytesIO(data), "FileField", base, "video/mp4", len(data), None)
+                stored, _ = video.prepare_for_stream(upload)
+            thumb, w, h, kind = None, 0, 0, "video"
+
         elif ext in AUDIO_EXT:
             stored, thumb, w, h, kind = ContentFile(data, name=base), None, 0, 0, "audio"
         else:

@@ -2131,7 +2131,7 @@ class VideoBlockSourceTests(BaseAppTest):
 
     def test_uploaded_file_path_survives_normalisation(self):
         body = self._render({"url": "/media/assets/2026/08/clip.webm"})
-        self.assertIn('data-video="/media/assets/2026/08/clip.webm"', body)
+        self.assertIn('data-video="/media-video/assets/2026/08/clip.webm"', body)
 
     def test_youtube_link_still_works(self):
         body = self._render({"url": "https://youtu.be/abc12345"})

@@ -38,6 +38,52 @@ def available() -> bool:
     return bool(shutil.which("ffmpeg"))
 
 
+def prepare_for_stream(upload):
+    """ينقل بيانات MP4 إلى البداية من غير إعادة ترميز أو فقد جودة.
+
+    ``-movflags +faststart`` يجعل المتصفح يقرأ metadata ويفك أول فريم
+    قبل اكتمال تنزيل الملف. لو كان الملف غير MP4 أو ffmpeg غير متاح،
+    نرجع الملف الأصلي بأمان.
+    """
+    if not available() or not str(getattr(upload, "name", "")).lower().endswith(".mp4"):
+        upload.seek(0)
+        return upload, 0.0
+
+    src_path = dst_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as src:
+            upload.seek(0)
+            for chunk in getattr(upload, "chunks", lambda: [upload.read()])():
+                src.write(chunk)
+            src_path = src.name
+        dst_path = src_path + ".faststart.mp4"
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path,
+             "-map", "0", "-c", "copy", "-movflags", "+faststart", dst_path],
+            check=True, timeout=TIMEOUT, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        size = os.path.getsize(dst_path)
+        if not size:
+            raise RuntimeError("ناتج فاضي")
+        with open(dst_path, "rb") as fh:
+            data = fh.read()
+        stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
+        return InMemoryUploadedFile(
+            io.BytesIO(data), "FileField", f"{stem}.mp4", "video/mp4", len(data), None
+        ), _duration(dst_path)
+    except Exception:
+        upload.seek(0)
+        return upload, 0.0
+    finally:
+        for path in (src_path, dst_path):
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+
+
 def compress(upload, *, max_seconds: int = 0, keep_audio: bool = True):
     """يرجّع ``(ملف, ثواني)``. لو ffmpeg مش موجود بيرجّع الأصل زي ما هو.
 
