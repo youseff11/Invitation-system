@@ -50,6 +50,7 @@
   var META = readJSON("editor-meta", { urls: {} });
   var FEATURES = readJSON("editor-features", []);
   var FONTS = readJSON("editor-fonts", []);
+  var FAVORITES = readJSON("editor-favorites", []);
   var ASSETS = readJSON("editor-assets", []);
 
   var MUSIC = readJSON("editor-music", []);   // مكتبة الموسيقى المشتركة
@@ -400,7 +401,7 @@
           opts.forEach(function (o) { if (o && o.value) seenFonts[o.value] = true; });
           FONTS.forEach(function (font) {
             if (!font || !font.value || seenFonts[font.value]) return;
-            opts.push({ value: font.value, label: font.label || font.name || font.family });
+            opts.push({ value: font.value, label: "من مكتبة الخطوط — " + (font.label || font.name || font.family) });
             seenFonts[font.value] = true;
           });
           var blank = el("option", null, "— افتراضي القالب —");
@@ -698,6 +699,107 @@
     return frag;
   }
 
+  function favoriteTypeLabel(type) {
+    var spec = blockSpec(type);
+    return spec && spec.label ? spec.label : type || "عنصر";
+  }
+
+  function renderFavorites() {
+    var box = refs.favoritesBody;
+    if (!box) return;
+    box.replaceChildren();
+    if (!FAVORITES.length) {
+      box.appendChild(el("p", "ed-empty", "مكتبة المفضلة فاضية. اختَر قسماً واضغط «حفظ كمفضلة»."));
+      return;
+    }
+    FAVORITES.forEach(function (favorite) {
+      var row = el("div", "ed-favorite-row");
+      var info = el("div", "ed-favorite-info");
+      info.appendChild(el("strong", null, favorite.name));
+      info.appendChild(el("small", "ed-hint", favoriteTypeLabel(favorite.blockType)));
+      var use = el("button", "ed-btn ed-btn--sm ed-btn--primary", "استخدام");
+      use.type = "button";
+      use.addEventListener("click", function () { addFavoriteToDocument(favorite); });
+      var remove = el("button", "ed-btn ed-btn--sm", "حذف");
+      remove.type = "button";
+      remove.addEventListener("click", function () { deleteFavorite(favorite.id); });
+      row.appendChild(info);
+      row.appendChild(use);
+      row.appendChild(remove);
+      box.appendChild(row);
+    });
+  }
+
+  function openFavoriteLibrary() {
+    renderFavorites();
+    openModal(refs.favoritesModal);
+  }
+
+  function saveSelectedAsFavorite() {
+    var block = state.selected ? findBlock(state.selected) : null;
+    if (!block) {
+      toast("اختَر قسماً أولاً لحفظه كمفضلة.", "error");
+      return;
+    }
+    var name = window.prompt("اكتب اسماً لهذا العنصر المفضل:", block.label || favoriteTypeLabel(block.type));
+    if (!name || !name.trim()) return;
+    fetch(META.urls.favoriteCreate, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name.trim(), block: clone(block) })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (!data || !data.ok || !data.favorite) {
+        toast((data && data.error) || "تعذّر حفظ العنصر كمفضلة.", "error");
+        return;
+      }
+      FAVORITES.unshift(data.favorite);
+      toast("اتحفظ العنصر في مكتبة المفضلة.", "ok");
+    }).catch(function () { toast("تعذّر الاتصال لحفظ المفضلة.", "error"); });
+  }
+
+  function addFavoriteToDocument(favorite) {
+    var source = favorite && favorite.block ? clone(favorite.block) : null;
+    if (!source || !source.type || !blockSpec(source.type)) {
+      toast("العنصر المفضل غير صالح أو لم يعد مدعوماً.", "error");
+      return;
+    }
+    var spec = blockSpec(source.type);
+    if (spec.singleton && state.doc.blocks.some(function (b) { return b.type === source.type; })) {
+      toast("هذا القسم موجود بالفعل ولا يمكن تكراره.", "error");
+      return;
+    }
+    snapshot();
+    source.id = uid(source.type);
+    var after = state.selected ? blockIndex(state.selected) : state.doc.blocks.length - 1;
+    state.doc.blocks.splice(Math.max(0, after + 1), 0, source);
+    state.selected = source.id;
+    renderBlockList();
+    renderInspector();
+    markDirty();
+    requestPreview();
+    closeModal(refs.favoritesModal);
+    switchTab("inspector");
+    toast("اتضافت نسخة من العنصر المفضل.", "ok");
+  }
+
+  function deleteFavorite(id) {
+    if (!window.confirm("حذف العنصر من مكتبة المفضلة؟")) return;
+    fetch(META.urls.favoriteDeleteBase + encodeURIComponent(id) + "/", {
+      method: "POST",
+      headers: { "X-CSRFToken": csrf() },
+      credentials: "same-origin"
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (!data || !data.ok) {
+        toast("تعذّر حذف المفضلة.", "error");
+        return;
+      }
+      FAVORITES = FAVORITES.filter(function (item) { return String(item.id) !== String(id); });
+      renderFavorites();
+      toast("اتحذفت المفضلة.", "ok");
+    }).catch(function () { toast("تعذّر الاتصال لحذف المفضلة.", "error"); });
+  }
+
   // ==========================================================
   // قائمة الأقسام
   // ==========================================================
@@ -873,10 +975,17 @@
     title.appendChild(el("strong", null, block.label || spec.label));
     head.appendChild(title);
 
+    var favoriteBtn = el("button", "ed-btn ed-btn--sm", "☆ حفظ كمفضلة");
+    favoriteBtn.type = "button";
+    favoriteBtn.title = "حفظ هذا القسم بكل إعداداته في المكتبة";
+    favoriteBtn.addEventListener("click", saveSelectedAsFavorite);
+    head.appendChild(favoriteBtn);
+
     var back = el("button", "ed-btn ed-btn--sm", "الأقسام ↩");
     back.type = "button";
     back.addEventListener("click", function () { switchTab("blocks"); });
     head.appendChild(back);
+
     box.appendChild(head);
 
     // إعادة تسمية القسم — الاسم بيظهر في قائمة الأقسام
@@ -1170,9 +1279,18 @@
     if (!isImg) {
     var fontSel = el("select", "ed-input");
     fontSel.appendChild(new Option("زي ما هو", ""));
-    (SCHEMA.fonts || []).forEach(function (f) {
+    var fontOptions = (SCHEMA.fonts || []).slice();
+    var seenFontValues = {};
+    fontOptions.forEach(function (f) { if (f && f.value) seenFontValues[f.value] = true; });
+    FONTS.forEach(function (f) {
+      if (!f || !f.value || seenFontValues[f.value]) return;
+      fontOptions.push({ label: "من مكتبة الخطوط — " + (f.label || f.name || f.family), value: f.value });
+      seenFontValues[f.value] = true;
+    });
+    fontOptions.forEach(function (f) {
       fontSel.appendChild(new Option(f.label, f.value));
     });
+
     /* المتصفح بيعيد كتابة font-family بعلامات تنصيص مزدوجة، فمقارنة
        نصية مباشرة مع قيمة الخيار بتفشل والقايمة بتبان فاضية. */
     var fontKey = function (v) {
@@ -3524,8 +3642,11 @@
       pickerModal: $("[data-picker-modal]"),
       pickerBody: $("[data-picker-body]"),
       assetModal: $("[data-asset-modal]"),
-      assetGrid: $("[data-asset-grid]"),
+            assetGrid: $("[data-asset-grid]"),
+      favoritesModal: $("[data-favorites-modal]"),
+      favoritesBody: $("[data-favorites-body]"),
       templateModal: $("[data-template-modal]"),
+
       templateForm: $("[data-template-form]")
     };
 
@@ -3572,10 +3693,14 @@
     var tplSave = $("[data-save-template]");
     if (tplSave) tplSave.addEventListener("click", saveAsTemplate);
 
-    var assetBtn = $("[data-open-assets]");
+        var assetBtn = $("[data-open-assets]");
     if (assetBtn) assetBtn.addEventListener("click", function () { openAssetPicker(null); });
 
+    var favoritesBtn = $("[data-open-favorites]");
+    if (favoritesBtn) favoritesBtn.addEventListener("click", openFavoriteLibrary);
+
     var fileInput = $("[data-file-input]");
+
     if (fileInput) {
       fileInput.addEventListener("change", function () {
         if (fileInput.files.length) uploadFiles(fileInput.files);

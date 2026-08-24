@@ -44,7 +44,7 @@ from .forms import (
 
 )
 from .models import (
-        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+        Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
     OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 
 )
@@ -719,6 +719,35 @@ def font_api_create(request):
 
 
 @login_required
+@require_POST
+def favorite_api_create(request):
+    """يحفظ نسخة من قسم المحرر في مكتبة مشتركة بين الدعوات والقوالب."""
+    _staff_required(request)
+    body = _json_body(request)
+    name = str(body.get("name") or "").strip()
+    source = body.get("block") if isinstance(body.get("block"), dict) else {}
+    normalized = blocks_engine.normalize_document({"blocks": [source]})
+    block = normalized.get("blocks", [None])[0]
+    if not name:
+        return JsonResponse({"ok": False, "error": "اكتب اسماً للعنصر المفضل."}, status=400)
+    if not block or not block.get("type") or not blocks_engine.BLOCK_REGISTRY.get(block["type"]):
+        return JsonResponse({"ok": False, "error": "العنصر المحدد غير صالح للحفظ."}, status=400)
+    favorite = FavoriteBlock.objects.create(
+        name=name[:120], block_type=block["type"], block_data=block, created_by=request.user
+    )
+    return JsonResponse({"ok": True, "favorite": _favorite_payload(favorite)})
+
+
+@login_required
+@require_POST
+def favorite_api_delete(request, pk):
+    _staff_required(request)
+    favorite = get_object_or_404(FavoriteBlock, pk=pk)
+    favorite.delete()
+    return JsonResponse({"ok": True})
+
+
+@login_required
 def dashboard_music(request):
 
     """مكتبة الموسيقى — ترفع المقطوعة مرة وتختارها في أي دعوة."""
@@ -907,6 +936,20 @@ class _TemplateEditorProxy:
         return reverse("template_demo", kwargs={"slug": self.template.slug})
 
 
+def _favorite_payload(favorite):
+    block = favorite.block_data if isinstance(favorite.block_data, dict) else {}
+    return {
+        "id": favorite.pk,
+        "name": favorite.name,
+        "blockType": favorite.block_type,
+        "block": block,
+    }
+
+
+def _favorites_json():
+    return [_favorite_payload(item) for item in FavoriteBlock.objects.all()]
+
+
 def _font_payload(font):
     return {
         "id": font.pk,
@@ -987,6 +1030,7 @@ def template_editor(request, pk):
         ],
         "features_json": sorted(blocks_engine.feature_keys()),
         "fonts_json": _font_library_json(),
+        "favorites_json": _favorites_json(),
         "intros_json": [
             {"id": v.pk, "name": v.name, "url": v.url,
              "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
@@ -1009,6 +1053,8 @@ def template_editor(request, pk):
                 "preview": reverse("template_api_preview", kwargs={"pk": template.pk}),
                 "save": reverse("template_api_save", kwargs={"pk": template.pk}),
                 "fontCreate": reverse("font_api_create"),
+                "favoriteCreate": reverse("favorite_api_create"),
+                "favoriteDeleteBase": "/dashboard/favorites/",
                 "upload": "",
                 "saveTemplate": "",
                 "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
@@ -1137,7 +1183,9 @@ def invitation_editor(request, pk):
         ],
         "features_json": sorted(invitation.allowed_features),
         "fonts_json": _font_library_json(),
+        "favorites_json": _favorites_json(),
         # معرض الافتتاحيات — بيظهر في مُنتقي الفيديو جوه المحرر
+
         "intros_json": [
             {"id": v.pk, "name": v.name, "url": v.url,
              "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
@@ -1162,6 +1210,8 @@ def invitation_editor(request, pk):
                 "preview": f"/dashboard/invitations/{invitation.pk}/api/preview/",
                 "save": f"/dashboard/invitations/{invitation.pk}/api/save/",
                 "fontCreate": "/dashboard/fonts/api/create/",
+                "favoriteCreate": "/dashboard/favorites/api/create/",
+                "favoriteDeleteBase": "/dashboard/favorites/",
                 "upload": f"/dashboard/invitations/{invitation.pk}/api/upload/",
 
                 "saveTemplate": f"/dashboard/invitations/{invitation.pk}/api/save-template/",

@@ -146,7 +146,11 @@
         <section class="ed-tabpane is-active" data-pane="blocks">
           <div class="ed-section-head">
             <p class="ed-kicker">أقسام الدعوة</p>
-            <button class="ed-btn ed-btn--sm" data-add-block type="button">＋ إضافة قسم</button>
+                        <div class="ed-section-actions">
+              <button class="ed-btn ed-btn--sm" data-add-block type="button">＋ إضافة قسم</button>
+              <button class="ed-btn ed-btn--sm" data-open-favorites type="button">★ المفضلة</button>
+            </div>
+
           </div>
           <p class="ed-hint">
             اسحب القسم لتغيير ترتيبه، واضغط ◉ لإخفائه عن الضيوف، و⧉ لتكراره.
@@ -294,7 +298,20 @@
   </div>
 </div>
 
+{# ------------------------------------------------------------ نافذة المفضلة #}
+<div class="ed-modal" data-favorites-modal hidden>
+  <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="مكتبة المفضلة">
+    <h3>مكتبة المفضلة</h3>
+    <p>اختَر عنصراً محفوظاً لإضافته إلى المستند الحالي. سيتم إنشاء نسخة جديدة قابلة للتعديل.</p>
+    <div class="ed-favorites" data-favorites-body></div>
+    <div class="ed-modal-actions">
+      <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
+    </div>
+  </div>
+</div>
+
 {# ------------------------------------------------------------ نافذة الصور #}
+
 {# ---------- قصّ الصورة ---------- #}
 <div class="ed-modal" data-crop-modal hidden>
   <div class="ed-modal-card ed-modal-card--wide" role="dialog" aria-modal="true" aria-label="قصّ الصورة">
@@ -405,6 +422,7 @@
 {{ meta_json|json_script:"editor-meta" }}
 {{ features_json|json_script:"editor-features" }}
 {{ fonts_json|json_script:"editor-fonts" }}
+{{ favorites_json|json_script:"editor-favorites" }}
 {{ assets_json|json_script:"editor-assets" }}
 {{ music_json|json_script:"editor-music" }}
 {{ intros_json|json_script:"editor-intros" }}

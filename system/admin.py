@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
-        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+        Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
     OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 
 )
@@ -123,6 +123,14 @@ class CustomFontAdmin(admin.ModelAdmin):
     list_editable = ("is_active", "order")
     list_filter = ("is_active", "style", "weight")
     search_fields = ("name", "name_en", "family")
+
+
+@admin.register(FavoriteBlock)
+class FavoriteBlockAdmin(admin.ModelAdmin):
+    list_display = ("name", "block_type", "created_by", "updated_at")
+    list_filter = ("block_type",)
+    search_fields = ("name", "block_type")
+    readonly_fields = ("created_by", "block_type")
 
 
 @admin.register(IntroVideo)

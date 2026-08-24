@@ -441,6 +441,27 @@ class CustomFont(TimeStampedModel):
 
 
 # --------------------------------------------------------------------------
+class FavoriteBlock(TimeStampedModel):
+    """قسم محفوظ في مكتبة المفضلة لإعادة استخدامه في أي مستند."""
+
+    name = models.CharField("اسم المفضلة", max_length=120)
+    block_type = models.CharField("نوع القسم", max_length=60)
+    block_data = models.JSONField("بيانات القسم", default=dict)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="favorite_blocks",
+    )
+
+    class Meta:
+        ordering = ["-updated_at", "name"]
+        verbose_name = "عنصر مفضل"
+        verbose_name_plural = "مكتبة المفضلة"
+
+    def __str__(self):
+        return self.name
+
+
+# --------------------------------------------------------------------------
 class IntroVideo(TimeStampedModel):
 
     """معرض فيديوهات الافتتاحية — يترفع مرة ويتختار في أي دعوة.

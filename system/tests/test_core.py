@@ -11,7 +11,7 @@ from datetime import timedelta
 from system import blocks as B
 from system.data import golden_classic
 from system.models import (
-        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+        Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
     OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 
 )
@@ -1620,6 +1620,28 @@ class FontLibraryTests(BaseAppTest):
         self.assertTrue(font.url)
         editor = self.client.get(f"/dashboard/invitations/{self.inv.pk}/editor/")
         self.assertContains(editor, "WeddingFont")
+
+
+# ==========================================================================
+class FavoriteLibraryTests(BaseAppTest):
+    def test_staff_can_save_and_delete_favorite_block(self):
+        self.client.force_login(self.staff)
+        block = self.inv.get_document()["blocks"][0]
+        response = self.client.post(
+            "/dashboard/favorites/api/create/",
+            data=json.dumps({"name": "إطار الزفاف", "block": block}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        favorite = FavoriteBlock.objects.get(name="إطار الزفاف")
+        self.assertEqual(payload["favorite"]["blockType"], favorite.block_type)
+        self.assertEqual(payload["favorite"]["block"]["type"], favorite.block_type)
+
+        deleted = self.client.post(f"/dashboard/favorites/{favorite.pk}/delete/")
+        self.assertEqual(deleted.status_code, 200)
+        self.assertFalse(FavoriteBlock.objects.filter(pk=favorite.pk).exists())
 
 
 # ==========================================================================
