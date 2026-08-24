@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import re
 from urllib.parse import quote, urlencode
@@ -556,3 +557,56 @@ def render_document(
         "lang": lang,
         "has_en": has_en,
     }
+
+
+_PREVIEW_KEYS = (
+    "html", "css_vars", "intro_css", "intro_item_styles", "layout_css",
+    "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
+)
+
+
+def _preview_signature(document: dict) -> str:
+    raw = json.dumps(document or {}, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _preview_payload(result: dict) -> dict:
+    payload = {key: result.get(key) for key in _PREVIEW_KEYS}
+    payload["html"] = str(payload.get("html") or "")
+    payload["css_vars"] = str(payload.get("css_vars") or "")
+    payload["intro_css"] = str(payload.get("intro_css") or "")
+    payload["layout_css"] = str(payload.get("layout_css") or "")
+    payload["intro_item_styles"] = {
+        str(k): str(v) for k, v in (payload.get("intro_item_styles") or {}).items()
+    }
+    return payload
+
+
+def _restore_preview(payload: dict) -> dict:
+    result = dict(payload or {})
+    for key in ("html", "css_vars", "intro_css", "layout_css"):
+        result[key] = mark_safe(str(result.get(key) or ""))
+    result["intro_item_styles"] = {
+        str(k): mark_safe(str(v))
+        for k, v in (result.get("intro_item_styles") or {}).items()
+    }
+    return result
+
+
+def get_template_preview(template, *, lang: str = "ar") -> dict:
+    """يعيد الرندر المحفوظ للقالب أو يبنيه مرة واحدة عند أول استخدام."""
+    signature = _preview_signature(template.document)
+    cache = template.preview_render if isinstance(template.preview_render, dict) else {}
+    entry = cache.get(lang) if isinstance(cache.get(lang), dict) else None
+    if entry and entry.get("signature") == signature and isinstance(entry.get("payload"), dict):
+        return _restore_preview(entry["payload"])
+
+    result = render_document(
+        template.document, invitation=None, request=None,
+        allowed_features=None, editable=False, lang=lang,
+    )
+    cache = dict(cache)
+    cache[lang] = {"signature": signature, "payload": _preview_payload(result)}
+    template.preview_render = cache
+    template.save(update_fields=["preview_render"])
+    return result

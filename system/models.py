@@ -153,8 +153,12 @@ class Template(TimeStampedModel):
 
     document = models.JSONField("مستند القالب", default=blocks_engine.empty_document,
                                 blank=True)
+    # ناتج الرندر الجاهز للمعاينة، يُعاد بناؤه تلقائياً لو تغيّر المستند.
+    preview_render = models.JSONField("نسخة المعاينة الجاهزة", default=dict,
+                                      blank=True, editable=False)
 
     source = models.CharField("المصدر", max_length=20,
+
                               choices=SOURCE_CHOICES, default="editor")
     source_file = models.FileField("الملف الأصلي", upload_to="template_sources/%Y/%m/",
                                    blank=True, null=True)

@@ -45,7 +45,8 @@ from .models import (
     Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
 )
 from django.utils.safestring import mark_safe
-from .renderer import render_document
+from .renderer import get_template_preview, render_document
+
 from django.core.files.base import ContentFile
 
 from . import guestexport, guestimport, images, templateimport, video
@@ -295,9 +296,8 @@ def template_demo(request, slug):
 
     """معاينة قالب كدعوة تجريبية — بدون إنشاء أي سجل."""
     template = get_object_or_404(Template, slug=slug, is_active=True)
-    result = render_document(template.document, invitation=None, request=request,
-                             allowed_features=None, editable=False,
-                             lang=_lang(request))
+    result = get_template_preview(template, lang=_lang(request))
+
     return render(request, "invitations/render.html", {
         "render": result,
         "invitation": None,
@@ -1181,7 +1181,12 @@ def api_save_as_template(request, pk):
         is_active=bool(body.get("is_active", True)),
         created_by=request.user,
     )
+    try:
+        get_template_preview(template, lang="ar")
+    except Exception:
+        pass
     return JsonResponse({
+
         "ok": True, "templateId": template.pk, "slug": template.slug,
         "message": f"تم حفظ القالب «{template.name}» في المكتبة.",
     })

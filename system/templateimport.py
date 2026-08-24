@@ -36,6 +36,7 @@ from . import cssscope, images, video
 
 from .models import Asset, Template
 from .sanitize import clean_html
+from .renderer import get_template_preview
 
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024      # حجم الملف المرفوع نفسه
 MAX_UNPACKED_BYTES = 150 * 1024 * 1024     # مجموع الحجم بعد فك الضغط
@@ -869,6 +870,12 @@ def import_template(upload, *, name: str = "", category: str = "classic") -> Tem
     # عدد المقطوعات اللي دخلت مع الاستيراد ده بالذات — العرض بيعرضها
     # للمستخدم. مش عمود في الداتابيز، بيانات لحظة الاستيراد بس.
     tpl.imported_tracks = added_tracks
+    # نبني نسخة المعاينة مرة واحدة وقت الاستيراد بدل أول زيارة للزائر.
+    try:
+        get_template_preview(tpl, lang="ar")
+    except Exception:
+        # الكاش تحسين اختياري؛ فشل بنائه لا يلغي نجاح استيراد القالب.
+        pass
     return tpl
 
 
