@@ -693,9 +693,38 @@
   // ==========================================================
   // لوحة خصائص القسم
   // ==========================================================
+  // إعادة بناء لوحة الخصائص بعد تعديل الموضع كانت بتقفل كل <details>.
+  // نحتفظ بحالة الفتح حسب عنوان المجموعة، ثم نرجعها بعد البناء.
+  function captureInspectorGroups() {
+    var open = {};
+    var box = refs.inspector;
+    if (!box) return open;
+    $$('details.ed-group', box).forEach(function (group, index) {
+      if (group.parentElement !== box) return;
+      var summary = group.querySelector('summary');
+      var key = summary ? String(summary.textContent || '').trim() : ('group-' + index);
+      if (key) open[key] = !!group.open;
+    });
+    return open;
+  }
+
+  function restoreInspectorGroups(open) {
+    var box = refs.inspector;
+    if (!box || !open) return;
+    $$('details.ed-group', box).forEach(function (group, index) {
+      if (group.parentElement !== box) return;
+      var summary = group.querySelector('summary');
+      var key = summary ? String(summary.textContent || '').trim() : ('group-' + index);
+      if (Object.prototype.hasOwnProperty.call(open, key)) {
+        group.open = open[key];
+      }
+    });
+  }
+
   function renderInspector() {
     var box = refs.inspector;
     if (!box) return;
+    var openGroups = captureInspectorGroups();
     box.replaceChildren();
 
     var block = state.selected ? findBlock(state.selected) : null;
@@ -785,12 +814,14 @@
         function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
         false
       ));
-    }
+        }
+    restoreInspectorGroups(openGroups);
     syncCollapseTool();
   }
 
   // ==========================================================
   // لوحة العنصر — تحكّم كامل في أي حاجة جوّه قسم مستورد
+
   // ==========================================================
   /* القسم المستورد مالوش حقول معروفة مسبقاً، فبدل ما نسيب المستخدم
      يكتب CSS بإيده بنخلي كل تحكّم يتطبّق كـstyle مضمّن على العنصر
@@ -1466,7 +1497,9 @@
         var btn = el("button", "ed-btn ed-btn--sm", b[0]);
         btn.type = "button";
         btn.title = "تحريك خطوة صغيرة";
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
           snapshot();
           pos[b[1]] = Math.round((pos[b[1]] + b[2]) * 100) / 100;
           var n = frameDoc() && frameDoc().querySelector(
