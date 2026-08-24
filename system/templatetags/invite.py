@@ -17,7 +17,7 @@ register = template.Library()
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _VIDEO_ATTR_RE = re.compile(
-    r'((?:src|poster)\s*=\s*["\'])(/media/[^"\']+\.(?:mp4|m4v|webm|ogv)(?:\?[^"\']*)?)(["\'])',
+    r'((?:src|poster)\s*=\s*["\'])(/media/[^"\']+\.(?:mp4|m4v|mov|webm|ogv)(?:\?[^"\']*)?)(["\'])',
     re.I,
 )
 

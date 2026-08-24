@@ -59,7 +59,7 @@ MAX_ASSET_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = video.MAX_UPLOAD_BYTES
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
 ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav"}
-ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm"}
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
 
 # باقي رسايل المشروع بتستخدم الأرقام العربية، فالرقم المولَّد لازم يمشي
 # على نفس النسق — رسالة فيها «40» وسط كلام عربي بتبان غريبة.
@@ -72,7 +72,8 @@ def _ar_num(n: int) -> str:
 
 def media_video(request, path):
     """يخدم فيديوهات media مع دعم Range Requests للبدء السريع."""
-    if Path(path).suffix.lower() not in {".mp4", ".m4v", ".webm", ".ogv"}:
+    if Path(path).suffix.lower() not in {".mp4", ".m4v", ".mov", ".webm", ".ogv"}:
+
         raise Http404
     root = Path(settings.MEDIA_ROOT).resolve()
     target = (root / path).resolve()

@@ -76,7 +76,31 @@
     nodes.forEach(function (n) { io.observe(n); });
   }
 
+    // ---------------------------------------------------------- فيديوهات القوالب المستوردة
+  // القالب المستورد قد يحتوي <video> خاماً بدون data-video؛ بعض القوالب
+  // تعتمد على JavaScript الأصلي لاستدعاء play(). نفعّل الفيديو الصامت
+  // بأمان من Runtime المنصة، بدون تشغيل أي JavaScript مستورد.
+  function initImportedMedia() {
+    $$(".lb-custom video").forEach(function (video) {
+      if (video.dataset.lbMediaBound === "1") return;
+      video.dataset.lbMediaBound = "1";
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      video.style.visibility = "visible";
+      var tryPlay = function () {
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+      };
+      tryPlay();
+      ["pointerdown", "touchstart", "keydown", "scroll"].forEach(function (eventName) {
+        doc.addEventListener(eventName, tryPlay, { once: true, passive: true });
+      });
+    });
+  }
+
   // ---------------------------------------------------------- التمرير الناعم
+
   function initScrollLinks() {
     doc.addEventListener("click", function (e) {
       var link = e.target.closest('a[href^="#"], [data-scroll]');
@@ -846,8 +870,10 @@
     initScrollLinks();
     initShare();
     initLightbox();
-    initVideo();
+        initVideo();
+    initImportedMedia();
     initMusic();
+
     initIntro();
     initLanguageToggle();
     initRsvp();
@@ -864,8 +890,10 @@
   // إعادة التهيئة بعد تحديث المعاينة داخل المحرر
   window.__lbRefresh = function () {
     initCountdowns();
-    initVideo();
+        initVideo();
+    initImportedMedia();
     // المحرر بيستبدل عقدة .lb-intro لما تعدّل إعداداتها — العقدة
+
     // الجديدة مالهاش مستمعين، فبنربطها تاني
     initIntro();
     initLanguageToggle();

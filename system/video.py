@@ -140,21 +140,54 @@ def faststart_bytes(data: bytes):
         return None                        # أي شك = مانلمسش الملف
 
 
+def _browserize_quicktime(data: bytes) -> bytes:
+    """يحوّل علامة QuickTime إلى ISO MP4 بدون إعادة ترميز.
+
+    ملفات MOV التي تحتوي H.264 تستخدم نفس صناديق MP4 تقريباً، لكن بعض
+    المتصفحات ترفضها عندما تكون علامة الحاوية ``qt  `` فقط. نحافظ على
+    نفس الفريمات والبايتات ونغيّر علامة الحاوية ذات الطول الثابت فقط.
+    """
+    try:
+        for typ, pos, size, head in _atoms(data, 0, len(data)):
+            if typ == b"ftyp" and size >= head + 12:
+                major = data[pos + head:pos + head + 4]
+                if major != b"qt  ":
+                    return data
+                out = bytearray(data)
+                out[pos + head:pos + head + 4] = b"isom"
+                if size >= head + 12:
+                    out[pos + head + 8:pos + head + 12] = b"isom"
+                return bytes(out)
+            if typ != b"ftyp":
+                break
+    except Exception:
+        pass
+    return data
+
+
 def _faststart_upload(upload):
+
     """يطبّق النقل على ملف مرفوع ويرجّع نسخة جاهزة — أو الأصل."""
     try:
         upload.seek(0)
         data = upload.read()
         moved = faststart_bytes(data)
         upload.seek(0)
-        if not moved:
+
+        source_name = getattr(upload, "name", "video") or "video"
+        source_ext = os.path.splitext(source_name)[1].lower()
+        if not moved and source_ext == ".mp4":
             return upload
-        stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
+        payload = moved or data
+        if source_ext in {".mov", ".m4v"}:
+            payload = _browserize_quicktime(payload)
+        stem = source_name.rsplit(".", 1)[0][:60]
         return InMemoryUploadedFile(
-            io.BytesIO(moved), "FileField", f"{stem}.mp4", "video/mp4",
-            len(moved), None,
+            io.BytesIO(payload), "FileField", f"{stem}.mp4", "video/mp4",
+            len(payload), None,
         )
     except Exception:
+
         try:
             upload.seek(0)
         except Exception:
@@ -169,9 +202,10 @@ def prepare_for_stream(upload):
     قبل اكتمال تنزيل الملف. لو كان الملف غير MP4 أو ffmpeg غير متاح،
     نرجع الملف الأصلي بأمان.
     """
-    if not str(getattr(upload, "name", "")).lower().endswith(".mp4"):
+    if not str(getattr(upload, "name", "")).lower().endswith((".mp4", ".mov", ".m4v")):
         upload.seek(0)
         return upload, 0.0
+
     if not available():
         # من غير ffmpeg لسه نقدر ننقل الفهرس بنفسنا — ده اللي بيخلي
         # الفيديو يبدأ فوراً، ومش محتاج إعادة ترميز.
@@ -223,8 +257,9 @@ def compress(upload, *, max_seconds: int = 0, keep_audio: bool = True):
         upload.seek(0)
         return upload, 0.0
 
-    src_suffix = os.path.splitext(getattr(upload, "name", "") or "")[1][:8] or ".mp4"
     src_path = dst_path = None
+    src_suffix = (os.path.splitext(getattr(upload, "name", "") or "")[1][:8] or ".mp4")
+
     try:
         with tempfile.NamedTemporaryFile(suffix=src_suffix, delete=False) as src:
             upload.seek(0)

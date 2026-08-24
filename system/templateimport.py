@@ -584,6 +584,7 @@ def _stream_video_url(url: str) -> str:
     if path.startswith(base) and os.path.splitext(path)[1].lower() in VIDEO_EXT:
         value = "/media-video/" + path[len(base):].lstrip("/")
         if sep:
+
             value += "?" + query
     return value
 
@@ -598,9 +599,27 @@ def _rewrite_media_srcs(html: str, url_map: dict[str, str]) -> str:
         if low.startswith(("data:", "http://", "https://", "//")):
             return m.group(0)
         key = raw.lstrip("./").split("?")[0].split("#")[0]
-        mapped = url_map.get(key) or url_map.get(key.rsplit("/", 1)[-1]) or ""
+        decoded_key = urllib.parse.unquote(key)
+        names = [key, decoded_key]
+        # بعض ZIPs القديمة تحفظ UTF-8 كأنها CP437؛ جرّب العكس فقط
+        # للمطابقة، من غير تعديل النص المعروض أو فتح مسارات خارجية.
+        for candidate in (decoded_key, key):
+            try:
+                names.append(candidate.encode("utf-8").decode("cp437"))
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+            try:
+                names.append(candidate.encode("cp437").decode("utf-8"))
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+        mapped = ""
+        for candidate in names:
+            mapped = url_map.get(candidate) or url_map.get(candidate.rsplit("/", 1)[-1]) or ""
+            if mapped:
+                break
 
         mapped = _stream_video_url(mapped)
+
         return f"{m.group(1)}{m.group(2)}{mapped}{m.group(2)}"
 
     return _MEDIA_SRC_RE.sub(repl, html)
@@ -690,10 +709,12 @@ def _store_media(files: dict[str, bytes], *, preserve_original: bool = False) ->
 
         elif ext in VIDEO_EXT:
             stored = ContentFile(data, name=base)
-            if preserve_original and ext == ".mp4":
+            if preserve_original and ext in {".mp4", ".mov", ".m4v"}:
+                mime = "video/quicktime" if ext == ".mov" else "video/mp4"
                 upload = InMemoryUploadedFile(
-                    io.BytesIO(data), "FileField", base, "video/mp4", len(data), None)
+                    io.BytesIO(data), "FileField", base, mime, len(data), None)
                 stored, _ = video.prepare_for_stream(upload)
+
             thumb, w, h, kind = None, 0, 0, "video"
 
         elif ext in AUDIO_EXT:
