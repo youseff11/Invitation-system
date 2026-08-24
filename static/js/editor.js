@@ -1740,8 +1740,30 @@
     if (refs.loading) refs.loading.classList.toggle("is-on", !!on);
   }
 
+  function captureEditorScroll() {
+    return {
+      windowX: window.scrollX || window.pageXOffset || 0,
+      windowY: window.scrollY || window.pageYOffset || 0,
+      panelY: refs.panel ? refs.panel.scrollTop : 0,
+      inspectorY: refs.inspector ? refs.inspector.scrollTop : 0
+    };
+  }
+
+  function restoreEditorScroll(saved) {
+    if (!saved) return;
+    var restore = function () {
+      window.scrollTo(saved.windowX, saved.windowY);
+      if (refs.panel) refs.panel.scrollTop = saved.panelY;
+      if (refs.inspector) refs.inspector.scrollTop = saved.inspectorY;
+    };
+    restore();
+    window.requestAnimationFrame(restore);
+    window.setTimeout(restore, 40);
+  }
+
   var requestPreview = debounce(function () {
     if (!previewReady) return;
+    var editorScroll = captureEditorScroll();
     var fdoc = frameDoc();
     if (!fdoc) return;
 
@@ -1756,7 +1778,7 @@
       .then(function (data) {
         setLoading(false);
         if (!data || !data.ok) { toast("تعذّر تحديث المعاينة.", "error"); return; }
-        applyPreview(data);
+        applyPreview(data, editorScroll);
       })
       .catch(function () {
         setLoading(false);
@@ -1788,13 +1810,24 @@
     else fdoc.body.insertBefore(fresh, fdoc.body.firstChild);
   }
 
-  function applyPreview(data) {
+  function applyPreview(data, editorScroll) {
     drag = null;
     clearGuides();
     var fdoc = frameDoc();
     if (!fdoc) return;
     var stage = fdoc.querySelector(".lb-stage");
     if (!stage) return;
+
+    /* إعادة بناء الـHTML كانت بترجع iframe لأول الصفحة بعد إضافة نص/صورة.
+       نحفظ موضع المستند والـstage ونرجّعهم بعد التحديث، عشان المستخدم
+       يفضل ثابت في نفس المكان اللي كان واقف فيه. */
+    var frameWin = fdoc.defaultView;
+    var savedScroll = {
+      x: frameWin ? frameWin.scrollX : (fdoc.documentElement.scrollLeft || 0),
+      y: frameWin ? frameWin.scrollY : (fdoc.documentElement.scrollTop || 0),
+      stageX: stage.scrollLeft || 0,
+      stageY: stage.scrollTop || 0
+    };
 
     var footer = stage.querySelector(".lb-footer");
     stage.innerHTML = data.html;
@@ -1815,6 +1848,23 @@
     }
     if (refs.blockCount) refs.blockCount.textContent = data.blockCount + " قسم";
     if (state.selected) highlightInPreview(state.selected);
+
+    var restore = function () {
+      var w = fdoc.defaultView;
+      if (w) w.scrollTo(savedScroll.x, savedScroll.y);
+      else {
+        fdoc.documentElement.scrollLeft = savedScroll.x;
+        fdoc.documentElement.scrollTop = savedScroll.y;
+      }
+      stage.scrollLeft = savedScroll.stageX;
+      stage.scrollTop = savedScroll.stageY;
+    };
+    /* نحتاج محاولتين لأن إعادة تهيئة محتوى الفيديو/الخطوط قد تغيّر
+       ارتفاع الصفحة في أول frame بعد استبدال الـHTML. */
+    if (frameWin && frameWin.requestAnimationFrame) frameWin.requestAnimationFrame(restore);
+    else setTimeout(restore, 0);
+    setTimeout(restore, 40);
+    restoreEditorScroll(editorScroll);
   }
 
   /** ربط النقر والتحرير المباشر داخل المعاينة. */
