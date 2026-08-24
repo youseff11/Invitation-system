@@ -985,6 +985,7 @@
        كان بيخلي اللوحة تبان زي ما هي مهما حرّكت فيها، وده أسوأ من
        إنها ناقصة. بنعرض أدوات الصورة بدالها. */
     var isImg = tag === "IMG";
+    var isVideo = tag === "VIDEO";
     if (isImg) {
       body.appendChild(el("p", "ed-hint",
         "دي صورة — أدوات الخط والنص مش بتأثر عليها فمخفية."));
@@ -1092,6 +1093,37 @@
       r.addEventListener("change", function () { started = false; });
       body.appendChild(ctrlRow(spec[1], r, out));
     });
+    }
+
+    // ---- الفيديو: تبديل المصدر مع الحفاظ على نفس العنصر والتنسيق
+    if (isVideo) {
+      body.appendChild(el("p", "ed-hint",
+        "ده فيديو — تقدر تختار فيديو تاني من المكتبة، ومكانه وتنسيقه هيفضلوا زي ما هم."));
+
+      var setVideoSrc = function (url) {
+        if (!url) return;
+        node.setAttribute("src", url);
+        node.setAttribute("preload", "auto");
+        node.removeAttribute("data-src");
+        /* بعض القوالب تستخدم source داخلياً، ووجوده يكسب src الموجود على video. */
+        Array.prototype.forEach.call(node.querySelectorAll("source"), function (source) {
+          source.setAttribute("src", url);
+          source.removeAttribute("srcset");
+        });
+        if (typeof node.load === "function") node.load();
+        commit();
+        requestPreview();
+      };
+
+      var swapVideo = el("button", "ed-btn ed-btn--sm ed-btn--block", "بدّل الفيديو");
+      swapVideo.type = "button";
+      swapVideo.addEventListener("click", function () {
+        openAssetPicker(function (url) {
+          snapshot();
+          setVideoSrc(url);
+        }, "video");
+      });
+      body.appendChild(swapVideo);
     }
 
     // ---- الصور: تبديل وقص
