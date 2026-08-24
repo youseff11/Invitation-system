@@ -2,6 +2,7 @@
 
 import json
 import re
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -1448,8 +1449,41 @@ class EmptyImportTests(TestCase):
         self.assertGreaterEqual(len(tpl.document["blocks"]), 1)
 
 
-# ==========================================================================
+# ==========================================================================  
+class ImportedOpeningTests(TestCase):
+    """الافتتاحية الخارجية تُحذف، وسجلات المحتوى التالية تفضل كاملة."""
+
+    def test_opening_overlay_is_removed_and_tilda_records_are_kept(self):
+        page = (
+            '<html><head><title>Sacred</title></head><body>'
+            '<div id="weiOverlay">Tap to open</div>'
+            '<div id="weiVideoWrap"><video id="weiVideo"></video></div>'
+            '<div id="allrecords">'
+            '<div id="rec100" class="r t-rec"><div class="t396__elem" '
+            'data-elem-id="1" data-field-top-value="100" '
+            'data-field-left-value="20"><div class="tn-atom">المحتوى الأول</div></div><p>'
+            + ("نص طويل " * 900)
+            + '</p></div>'
+            '<div id="rec200" class="r t-rec"><h2>Schedule of Events</h2>'
+            '<p>Confirm Your Attendance</p></div>'
+            '</div></body></html>'
+        )
+        with patch.object(templateimport, "_store_media", return_value={}):
+            document, _ = templateimport.build_document("index.html", {"index.html": page.encode()})
+        self.assertEqual(len(document["blocks"]), 2)
+        html = "".join(b["props"]["html"] for b in document["blocks"])
+        self.assertNotIn("weiOverlay", html)
+        self.assertNotIn("weiVideoWrap", html)
+        self.assertIn("Schedule of Events", html)
+        self.assertIn("Confirm Your Attendance", html)
+        self.assertIn('data-elem-id="1"', html)
+        self.assertIn('data-field-top-value="100"', html)
+        self.assertGreater(len(document["blocks"][0]["props"]["html"]), 6000)
+
+
+# ==========================================================================  
 class TemplateManageTests(BaseAppTest):
+
     """حذف/إخفاء القوالب من اللوحة — من غيرهم القالب الفاضي مالوش مخرج."""
 
     def _tpl(self, **kw):
@@ -1550,9 +1584,9 @@ class BlockLabelTests(TestCase):
         tpl = self._import(f"<header><h1>ليلى &amp; كريم</h1>{self.LONG}</header>")
         self.assertEqual(tpl.document["blocks"][0]["label"], "ليلى & كريم")
 
-    def test_known_class_names_map_to_arabic(self):
-        tpl = self._import(f'<div class="preloader">{self.LONG}</div>')
-        self.assertEqual(tpl.document["blocks"][0]["label"], "شاشة التحميل")
+    def test_preloader_only_page_is_rejected_after_removal(self):
+        with self.assertRaises(templateimport.ImportError_):
+            self._import(f'<div class="preloader">{self.LONG}</div>')
 
     def test_tag_name_is_the_next_fallback(self):
         tpl = self._import(f"<footer>{self.LONG}</footer>")

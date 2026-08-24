@@ -15,11 +15,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import os
 import posixpath
 import re
+import urllib.parse
+import urllib.request
 import zipfile
+
 from html import unescape as _unescape
 from html.parser import HTMLParser
 
@@ -36,7 +40,11 @@ MAX_UNPACKED_BYTES = 150 * 1024 * 1024     # مجموع الحجم بعد فك �
 MAX_MEMBERS = 400
 MAX_RATIO = 120                           # نسبة انتفاخ مشبوهة = zip bomb
 MAX_BLOCKS = 40
+MAX_BLOCK_HTML = 100000
+MAX_REMOTE_IMAGE_BYTES = 8 * 1024 * 1024
 MIN_VISIBLE_CHARS = 60     # أقل من كده = صفحة بلا كلام
+_ALLOWED_REMOTE_IMAGE_HOSTS = {"static.tildacdn.net", "optim.tildacdn.net",
+                               "thb.tildacdn.net", "res.cloudinary.com"}
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"}
 CSS_EXT = {".css"}
@@ -245,7 +253,164 @@ class _Splitter(HTMLParser):
         return self._seen_body
 
 
+
+
+class _OpeningStripper(HTMLParser):
+    """يزيل شاشة الافتتاحية الأصلية من غير لمس باقي محتوى الصفحة."""
+
+    _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input",
+             "link", "meta", "param", "source", "track", "wbr"}
+    _ID_RE = re.compile(
+        r"^(?:wei(?:overlay|img|videowrap|video|audio|audiobtn)|"
+        r"(?:preloader|loader|opening|intro|splash)(?:[-_].*)?)$", re.I)
+    _CLASS_RE = re.compile(
+        r"(?:preloader|loading-screen|opening-screen|opening-overlay|"
+        r"intro-screen|intro-overlay|splash-screen)", re.I)
+    _DATA_RE = re.compile(r"(?:opening|preloader|splash|intro)", re.I)
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.out: list[str] = []
+        self.skip_depth = 0
+        self._skipped: list[str] = []
+
+    @classmethod
+    def _is_opening(cls, attrs):
+        values = {str(k).lower(): str(v or "") for k, v in attrs}
+        ident = values.get("id", "").strip()
+        classes = values.get("class", "")
+        data = " ".join(v for k, v in values.items() if k.startswith("data-"))
+        return bool(
+            (ident and cls._ID_RE.match(ident))
+            or cls._CLASS_RE.search(classes)
+            or (data and cls._DATA_RE.search(data))
+        )
+
+    def handle_starttag(self, tag, attrs):
+        t = tag.lower()
+        text = self.get_starttag_text() or ""
+        if self.skip_depth:
+            self._skipped.append(text)
+            if t not in self._VOID:
+                self.skip_depth += 1
+            return
+        if self._is_opening(attrs):
+            self._skipped = [text]
+            if t not in self._VOID:
+                self.skip_depth = 1
+            else:
+                self._skipped = []
+            return
+        self.out.append(text)
+
+    def handle_startendtag(self, tag, attrs):
+        text = self.get_starttag_text() or ""
+        if not self.skip_depth:
+            self.out.append(text)
+
+    def handle_endtag(self, tag):
+        if self.skip_depth:
+            if tag.lower() not in self._VOID:
+                self.skip_depth -= 1
+            return
+        self.out.append(f"</{tag}>")
+
+    def handle_data(self, data):
+        if not self.skip_depth:
+            self.out.append(data)
+
+    def handle_entityref(self, name):
+        if not self.skip_depth:
+            self.out.append(f"&{name};")
+
+    def handle_charref(self, name):
+        if not self.skip_depth:
+            self.out.append(f"&#{name};")
+
+    def handle_comment(self, data):
+        if not self.skip_depth:
+            self.out.append(f"<!--{data}-->")
+
+    def handle_decl(self, decl):
+        if not self.skip_depth:
+            self.out.append(f"<!{decl}>")
+
+
+def _strip_imported_openings(html: str) -> str:
+    parser = _OpeningStripper()
+    parser.feed(html or "")
+    parser.close()
+    return "".join(parser.out)
+
+
+class _TildaRecordExtractor(HTMLParser):
+    """يستخرج سجلات Tilda recNNN من داخل allrecords كسِجلات مستقلة."""
+
+    _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input",
+             "link", "meta", "param", "source", "track", "wbr"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.parts: list[str] = []
+        self.current: list[str] = []
+        self.depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        text = self.get_starttag_text() or ""
+        t = tag.lower()
+        if self.current:
+            self.current.append(text)
+            if t not in self._VOID:
+                self.depth += 1
+            return
+        ident = dict(attrs).get("id", "")
+        if t == "div" and re.match(r"^rec\d+$", ident or "", re.I):
+            self.current = [text]
+            self.depth = 1
+
+    def handle_startendtag(self, tag, attrs):
+        if self.current:
+            self.current.append(self.get_starttag_text() or "")
+
+    def handle_endtag(self, tag):
+        if not self.current or tag.lower() in self._VOID:
+            return
+        self.current.append(f"</{tag}>")
+        self.depth -= 1
+        if self.depth <= 0:
+            self.parts.append("".join(self.current))
+            self.current = []
+            self.depth = 0
+
+    def handle_data(self, data):
+        if self.current:
+            self.current.append(data)
+
+    def handle_entityref(self, name):
+        if self.current:
+            self.current.append(f"&{name};")
+
+    def handle_charref(self, name):
+        if self.current:
+            self.current.append(f"&#{name};")
+
+    def handle_comment(self, data):
+        if self.current:
+            self.current.append(f"<!--{data}-->")
+
+
+def _split_tilda_records(html: str) -> list[str]:
+    extractor = _TildaRecordExtractor()
+    extractor.feed(html or "")
+    extractor.close()
+    if not extractor.parts:
+        return []
+    wrapper = '<div id="allrecords" class="t-records t-records_animated t-records_visible">'
+    return [wrapper + part + "</div>" for part in extractor.parts]
+
+
 _TAG_RE = re.compile(r"<[^>]+>")
+
 _WS_RE = re.compile(r"\s+")
 _SCRIPT_SRC_RE = re.compile(r"<script[^>]*\ssrc=", re.I)
 _ROOT_DIV_RE = re.compile(
@@ -319,6 +484,80 @@ _MEDIA_SRC_RE = re.compile(
     re.I | re.S,
 )
 _SRCSET_RE = re.compile(r'\ssrcset=(["\']).*?\1', re.I | re.S)
+_IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.I | re.S)
+_ATTR_RE_TEMPLATE = r'({attr}\s*=\s*)(["\'])(.*?)\2'
+
+
+def _remote_image_allowed(url: str) -> bool:
+    try:
+        parsed = urllib.parse.urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme.lower() not in {"http", "https"}:
+        return False
+    host = (parsed.hostname or "").lower().rstrip(".")
+    return host in _ALLOWED_REMOTE_IMAGE_HOSTS
+
+
+def _remote_image_bytes(url: str) -> tuple[bytes, str] | None:
+    """يحاول جلب الصورة الأصلية من مصدر موثوق وبحد حجم صارم."""
+    if not _remote_image_allowed(url):
+        return None
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "FarhaTemplateImporter/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as response:
+            content_type = (response.headers.get("Content-Type") or "").lower()
+            if not content_type.startswith("image/"):
+                return None
+            data = response.read(MAX_REMOTE_IMAGE_BYTES + 1)
+        if not data or len(data) > MAX_REMOTE_IMAGE_BYTES:
+            return None
+        ext = posixpath.splitext(urllib.parse.urlparse(url).path)[1].lower()
+        if ext not in IMAGE_EXT:
+            mime = content_type.split(";", 1)[0].strip()
+            ext = {
+                "image/jpeg": ".jpg", "image/jpg": ".jpg",
+                "image/png": ".png", "image/webp": ".webp",
+                "image/gif": ".gif", "image/avif": ".avif",
+                "image/svg+xml": ".svg",
+            }.get(mime, "")
+        if ext not in IMAGE_EXT:
+            return None
+        return data, ext
+    except Exception:
+        return None
+
+
+def _upgrade_lazy_images(html: str, files: dict[str, bytes]) -> tuple[str, dict[str, bytes]]:
+    """يستبدل thumbnail المحفوظ من SiteOne بصورة data-original الأصلية.
+
+    SiteOne قد يحفظ ``src`` بحجم 20px بينما يضع الصورة الحقيقية في
+    ``data-original``. نحمّل الأصل من نطاقات القالب المسموح بها فقط، ونترك
+    النسخة المحلية كما هي لو فشل الاتصال.
+    """
+    if not html:
+        return html, files
+    expanded = dict(files)
+
+    def replace_img(match):
+        tag = match.group(0)
+        original_match = re.search(_ATTR_RE_TEMPLATE.format(attr="data-original"), tag, re.I | re.S)
+        if not original_match:
+            return tag
+        original_url = (original_match.group(3) or "").strip()
+        downloaded = _remote_image_bytes(original_url)
+        if not downloaded:
+            return tag
+        data, ext = downloaded
+        key = "__remote__/{}/original{}".format(hashlib.sha256(original_url.encode()).hexdigest()[:20], ext)
+        expanded[key] = data
+        src_match = re.search(_ATTR_RE_TEMPLATE.format(attr="src"), tag, re.I | re.S)
+        if not src_match:
+            return tag
+        start, end = src_match.span(3)
+        return tag[:start] + key + tag[end:]
+
+    return _IMG_TAG_RE.sub(replace_img, html), expanded
 
 
 def _rewrite_inline_styles(html: str, url_map: dict[str, str]) -> str:
@@ -389,8 +628,13 @@ def _store_fonts(files: dict[str, bytes], url_map: dict[str, str]) -> None:
         url_map.setdefault(base, url)
 
 
-def _store_media(files: dict[str, bytes]) -> dict[str, str]:
-    """يخزّن صور وفيديو وصوت الأرشيف كأصول عامة ويرجع خريطة المسارات."""
+def _store_media(files: dict[str, bytes], *, preserve_original: bool = False) -> dict[str, str]:
+    """يخزّن وسائط الأرشيف ويرجع خريطة المسارات.
+
+    القوالب المستوردة تُعرض كتصميم جاهز؛ لذلك نحفظ صورها الأصلية كما هي
+    بدلاً من تمريرها على ضغط صور الرفع العادي، حتى لا تظهر الخلفيات مبكسلة.
+    """
+
     from django.core.files.base import ContentFile
 
     url_map: dict[str, str] = {}
@@ -400,17 +644,29 @@ def _store_media(files: dict[str, bytes]) -> dict[str, str]:
             continue
         base = os.path.basename(name)
         if ext in IMAGE_EXT:
-            upload = InMemoryUploadedFile(
-                io.BytesIO(data), "ImageField", base,
-                f"image/{ext.lstrip('.')}", len(data), None)
-            stored, thumb, w, h = upload, None, 0, 0
-            if ext != ".svg":
+
+            if preserve_original:
+                from PIL import Image
+                stored = ContentFile(data, name=base)
+                thumb = None
                 try:
-                    stored, thumb, w, h = images.compress(upload, f"image/{ext.lstrip('.')}")
+                    with Image.open(io.BytesIO(data)) as im:
+                        w, h = im.size
                 except Exception:
-                    upload.seek(0)
-                    stored, thumb = upload, None
+                    w, h = 0, 0
+            else:
+                upload = InMemoryUploadedFile(
+                    io.BytesIO(data), "ImageField", base,
+                    f"image/{ext.lstrip('.')}", len(data), None)
+                stored, thumb, w, h = upload, None, 0, 0
+                if ext != ".svg":
+                    try:
+                        stored, thumb, w, h = images.compress(upload, f"image/{ext.lstrip('.')}")
+                    except Exception:
+                        upload.seek(0)
+                        stored, thumb = upload, None
             kind = "image"
+
         elif ext in VIDEO_EXT:
             stored, thumb, w, h, kind = ContentFile(data, name=base), None, 0, 0, "video"
         elif ext in AUDIO_EXT:
@@ -455,11 +711,16 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     except UnicodeDecodeError:
         html = files[main].decode("cp1256", errors="replace")
 
+    # قوالب الدعوات قد تضع فيديو/صورة افتتاحية فوق كل الصفحة. لا نستورد
+    # هذه الطبقة إطلاقاً؛ المطلوب هو المحتوى الذي يليها فقط.
+    html = _strip_imported_openings(html)
+    html, files = _upgrade_lazy_images(html, files)
+
     parser = _Splitter()
     parser.feed(html)
     parser.close()
 
-    url_map = _store_media(files)
+    url_map = _store_media(files, preserve_original=True)
 
     # CSS: الملفات المربوطة الأول (ترتيب المتصفح) وبعدين <style> الداخلي
     base_dir = posixpath.dirname(main)
@@ -479,9 +740,20 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     # preloader ثابتاً فوق الصفحة. هذه القواعد المحلية تحفظ الشكل المرئي
     # بدون تشغيل كود المصدر الخارجي.
     stylesheet_resolved += "\n.fade-up{opacity:1 !important;transform:none !important;}"
+    # Tilda يترك عناصر النص والصور المتحركة مخفية حتى ينفّذ JS
+    # ويضيف حالة الظهور. بما أن الاستيراد لا يشغّل JS، نعرضها ثابتة.
+    stylesheet_resolved += (
+        ".t-animate,.t-animate_started,.t-sbs-anim_started,.t-sbs-anim_current{"
+        "opacity:1 !important;visibility:visible !important;"
+        "transform:none !important;animation:none !important;}"
+        ".t-animate_wait{opacity:1 !important;visibility:visible !important;}"
+    )
     stylesheet_resolved += ".preloader{display:none !important;}"
 
-    parts = [p for p in parser.parts if p.strip()][:MAX_BLOCKS]
+    # Tilda يضع كل المحتوى داخل allrecords، لذلك parser.parts يعتبره
+    # بلوكاً واحداً ضخماً. نعيد فصل recNNN حتى لا يظهر أول فيديو فقط.
+    tilda_parts = _split_tilda_records(html)
+    parts = [p for p in (tilda_parts or parser.parts) if p.strip()][:MAX_BLOCKS]
     if not parts:
         raise ImportError_("ملف HTML مافيهوش محتوى داخل <body>.")
 
@@ -489,7 +761,8 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     for i, part in enumerate(parts, 1):
         bid = f"imp-{i}"
         part = _rewrite_inline_styles(_rewrite_media_srcs(part, url_map), url_map)
-        cleaned = clean_html(part)
+        cleaned = clean_html(part, max_length=MAX_BLOCK_HTML)
+
         if not cleaned.strip():
             continue
         blocks.append({

@@ -133,8 +133,15 @@ class _Cleaner(HTMLParser):
         for name, value in attrs:
             name = (name or "").lower()
             value = value or ""
-            if name.startswith("on") or name not in allowed:
+            # Tilda Zero blocks store responsive coordinates in data-* attrs;
+            # their CSS selectors need these inert layout values to position
+            # text and images. Preserve only known layout namespaces.
+            tilda_layout_attr = name.startswith((
+                "data-elem-", "data-field-", "data-artboard-", "data-animate-"
+            )) or name in {"data-record-type", "data-animationappear"}
+            if name.startswith("on") or (name not in allowed and not tilda_layout_attr):
                 continue
+
             if name in {"href", "src"}:
                 cleaned = _clean_url(value)
                 if cleaned is None:
@@ -206,12 +213,19 @@ class _Cleaner(HTMLParser):
         return "".join(self.out)
 
 
-def clean_html(value: str, *, max_length: int = 20000) -> str:
-    """ينقّي نص HTML ويعيده آمناً للعرض."""
+def clean_html(value: str, *, max_length: int | None = 20000) -> str:
+    """ينقّي نص HTML ويعيده آمناً للعرض.
+
+    ``None`` أو صفر يعنيان عدم قصّ المحتوى؛ التنقية نفسها تظل مطبقة.
+    ده ضروري لأقسام القوالب المستوردة الكبيرة حتى لا ينقطع HTML في منتصف
+    عنصر Tilda وتتشوه بقية الصفحة.
+    """
     if not value:
         return ""
     parser = _Cleaner()
-    parser.feed(value[:max_length])
+    source = value if max_length in (None, 0) else value[:max_length]
+    parser.feed(source)
+
     parser.close()
     return parser.result()
 

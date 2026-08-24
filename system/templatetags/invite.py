@@ -120,9 +120,9 @@ def icon_names():
 
 # --------------------------------------------------------------------------
 @register.filter(name="safe_html")
-def safe_html(value):
-    """ينقّي نص HTML قبل عرضه — يُستخدم لكل حقل من نوع html."""
-    return mark_safe(clean_html(value or ""))
+def safe_html(value, max_length=20000):
+    """ينقّي HTML قبل عرضه؛ الصفر/None يتيحان قسماً كبيراً من غير قص."""
+    return mark_safe(clean_html(value or "", max_length=max_length))
 
 
 @register.filter(name="safe_css")
