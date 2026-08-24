@@ -1229,3 +1229,25 @@
 @media (max-width: 480px) {
   .lb-lang { inset-block-start: 12px; inset-inline-start: 12px; block-size: 38px; }
 }
+
+/* المحرر: أوقف Hover القالب الذي يحرّك العنصر بعد تغيير موضعه،
+   لكن اترك إطار التحديد .is-selected و .lb-el-picked كما هو. */
+.lb-doc--editing .lb:hover:not(.is-selected),
+.lb-doc--editing .lb-custom :where(*):hover:not(.lb-el-picked):not(.lb-el-typing) {
+  outline: none !important;
+  outline-offset: 0 !important;
+}
+.lb-doc--editing .lb-custom :where(*):hover {
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
+}
+.lb-doc--editing .lb-custom [data-move]:hover {
+  transform: translate(
+    calc(var(--dx, 0cqw) + var(--group-dx, 0cqw)),
+    calc(var(--dy, 0cqw) + var(--group-dy, 0cqw))
+  ) !important;
+}
+.lb-doc--editing .lb-custom :where(*):hover:not(.lb-el-picked):not(.lb-el-typing) {
+  cursor: default !important;
+}
