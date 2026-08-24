@@ -55,13 +55,22 @@ urlpatterns = [
          name="template_api_save"),
     path("dashboard/templates/<int:pk>/api/assets/", views.template_api_assets,
          name="template_api_assets"),
+    path("dashboard/templates/<int:pk>/api/assets/delete/", views.template_api_delete_asset,
+         name="template_api_delete_asset"),
+    path("dashboard/templates/<int:pk>/api/assets/bulk-delete/", views.template_api_delete_assets,
+         name="template_api_delete_assets"),
 
     # ------------------------------------------------------------ واجهة المحرر
 
     path("dashboard/invitations/<int:pk>/api/preview/", views.api_preview, name="api_preview"),
     path("dashboard/invitations/<int:pk>/api/save/", views.api_save, name="api_save"),
     path("dashboard/invitations/<int:pk>/api/upload/", views.api_upload, name="api_upload"),
-    path("dashboard/invitations/<int:pk>/api/assets/", views.api_assets, name="api_assets"),
+        path("dashboard/invitations/<int:pk>/api/assets/", views.api_assets, name="api_assets"),
+    path("dashboard/invitations/<int:pk>/api/assets/delete/", views.api_delete_asset,
+         name="api_delete_asset"),
+    path("dashboard/invitations/<int:pk>/api/assets/bulk-delete/", views.api_delete_assets,
+         name="api_delete_assets"),
+
     path("dashboard/invitations/<int:pk>/api/crop/", views.api_crop, name="api_crop"),
     path("dashboard/invitations/<int:pk>/api/save-template/", views.api_save_as_template,
          name="api_save_as_template"),

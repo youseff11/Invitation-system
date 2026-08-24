@@ -2758,6 +2758,8 @@
   var pickCallback = null;
 
   var pickKind = "image";
+  var imageUsageFilter = "all";
+  var selectedAssetIds = new Set();
 
 
   // ==========================================================
@@ -2948,14 +2950,120 @@
     box.appendChild(el("p", "ed-lib-label", "أو ارفع ملفاً لهذه الدعوة وحدها"));
   }
 
+  function bulkDeleteSelectedAssets() {
+    if (!META.urls.deleteAssets || !selectedAssetIds.size) return;
+    var ids = Array.from(selectedAssetIds);
+    if (!window.confirm("هل تريد حذف " + ids.length + " صورة محددة؟")) return;
+
+    fetch(META.urls.deleteAssets, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+      credentials: "same-origin",
+      body: JSON.stringify({ assets: ids })
+    })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { status: r.status, data: data };
+        });
+      })
+      .then(function (result) {
+        var data = result.data || {};
+        if (!data.ok) {
+          toast(data.error || "تعذّر حذف الصور المحددة.", "error");
+          return;
+        }
+        var deleted = new Set((data.deleted || []).map(Number));
+        ASSETS = ASSETS.filter(function (asset) { return !deleted.has(Number(asset.id)); });
+        selectedAssetIds.clear();
+        renderAssets();
+        toast("تم حذف الصور المحددة من المكتبة.", "ok");
+      })
+      .catch(function () {
+        toast("تعذّر الاتصال لحذف الصور.", "error");
+      });
+  }
+
   function renderAssets() {
     var box = refs.assetGrid;
     box.replaceChildren();
     renderMusicLibrary();
+
+    if (pickKind === "image") {
+      var filter = el("select", "ed-asset-filter");
+      filter.setAttribute("aria-label", "فلترة الصور");
+      [["all", "كل الصور"], ["used", "المستخدمة في قالب أو دعوة"],
+       ["unused", "غير المستخدمة"]].forEach(function (option) {
+        var item = el("option", null, option[1]);
+        item.value = option[0];
+        item.selected = imageUsageFilter === option[0];
+        filter.appendChild(item);
+      });
+      filter.addEventListener("change", function () {
+        imageUsageFilter = filter.value;
+        selectedAssetIds.clear();
+        renderAssets();
+      });
+      box.appendChild(filter);
+    }
+
     var images = ASSETS.filter(function (a) { return a.kind === (pickKind || "image"); });
+    if (pickKind === "image" && imageUsageFilter !== "all") {
+      images = images.filter(function (a) {
+        return imageUsageFilter === "used" ? !!a.used : !a.used;
+      });
+    }
+    var bulkBar = null;
+    var selectedCount = null;
+    var selectAllBtn = null;
+    var bulkDeleteBtn = null;
+    if (pickKind === "image") {
+      bulkBar = el("div", "ed-asset-bulk");
+      selectedCount = el("span", "ed-asset-bulk-count", "لم يتم تحديد صور");
+      bulkBar.appendChild(selectedCount);
+      selectAllBtn = el("button", "ed-btn ed-btn--sm", "تحديد الكل");
+      selectAllBtn.type = "button";
+      selectAllBtn.hidden = imageUsageFilter !== "unused";
+      bulkBar.appendChild(selectAllBtn);
+      bulkDeleteBtn = el("button", "ed-btn ed-btn--sm ed-btn--danger", "حذف المحدد");
+      bulkDeleteBtn.type = "button";
+      bulkDeleteBtn.disabled = !selectedAssetIds.size;
+      bulkBar.appendChild(bulkDeleteBtn);
+      box.appendChild(bulkBar);
+    }
+
+    function refreshBulkBar() {
+      if (!bulkBar) return;
+      var count = selectedAssetIds.size;
+      selectedCount.textContent = count ? ("تم تحديد " + count + " صورة") : "لم يتم تحديد صور";
+      bulkDeleteBtn.disabled = !count;
+      if (selectAllBtn && imageUsageFilter === "unused") {
+        var allSelected = images.length > 0 && images.every(function (a) {
+          return selectedAssetIds.has(a.id);
+        });
+        selectAllBtn.textContent = allSelected ? "إلغاء تحديد الكل" : "تحديد الكل";
+      }
+    }
+
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener("click", function () {
+        var allSelected = images.length > 0 && images.every(function (a) {
+          return selectedAssetIds.has(a.id);
+        });
+        images.forEach(function (a) {
+          if (allSelected) selectedAssetIds.delete(a.id);
+          else selectedAssetIds.add(a.id);
+        });
+        renderAssets();
+      });
+    }
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.addEventListener("click", bulkDeleteSelectedAssets);
+    }
+
     if (!images.length) {
       box.appendChild(el("p", "ed-empty",
         (PICKER_TEXT[pickKind] || PICKER_TEXT.image).empty));
+      refreshBulkBar();
       return;
     }
     images.forEach(function (a) {
@@ -2974,8 +3082,68 @@
         if (pickCallback) pickCallback(a.url);
         closeModal(refs.assetModal);
       });
-      box.appendChild(btn);
+      var tile = el("div", "ed-asset-wrap");
+      var check = el("input", "ed-asset-check");
+      check.type = "checkbox";
+      check.checked = selectedAssetIds.has(a.id);
+      check.title = "تحديد الصورة للحذف الجماعي";
+      check.setAttribute("aria-label", "تحديد " + (a.name || "الصورة"));
+      check.addEventListener("click", function (e) {
+        e.stopPropagation();
+      });
+      check.addEventListener("change", function () {
+        if (check.checked) selectedAssetIds.add(a.id);
+        else selectedAssetIds.delete(a.id);
+        tile.classList.toggle("is-selected", check.checked);
+        refreshBulkBar();
+      });
+      tile.classList.toggle("is-selected", check.checked);
+      tile.appendChild(btn);
+      tile.appendChild(check);
+
+      /* الحذف للصور فقط. زر الحذف منفصل عن زر الاختيار حتى لا تختار
+         الصورة بالخطأ أثناء محاولة حذفها. */
+      if (a.kind === "image" && META.urls.deleteAsset) {
+        var del = el("button", "ed-asset-delete", "×");
+        del.type = "button";
+        del.title = "حذف الصورة من المكتبة";
+        del.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!window.confirm("هل تريد حذف هذه الصورة من المكتبة؟")) return;
+          del.disabled = true;
+          fetch(META.urls.deleteAsset, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
+            credentials: "same-origin",
+            body: JSON.stringify({ asset: a.id })
+          })
+            .then(function (r) {
+              return r.json().then(function (data) {
+                return { status: r.status, data: data };
+              });
+            })
+            .then(function (result) {
+              del.disabled = false;
+              var data = result.data || {};
+              if (!data.ok) {
+                toast(data.error || "تعذّر حذف الصورة.", "error");
+                return;
+              }
+              ASSETS = ASSETS.filter(function (item) { return item.id !== a.id; });
+              renderAssets();
+              toast("تم حذف الصورة من المكتبة.", "ok");
+            })
+            .catch(function () {
+              del.disabled = false;
+              toast("تعذّر الاتصال لحذف الصورة.", "error");
+            });
+        });
+        tile.appendChild(del);
+      }
+      box.appendChild(tile);
     });
+    refreshBulkBar();
   }
 
   function uploadFiles(files) {

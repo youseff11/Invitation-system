@@ -293,9 +293,77 @@ class EditorApiTests(BaseAppTest):
         r = self.client.post(f"/dashboard/invitations/{self.inv.pk}/api/upload/", {"file": evil})
         self.assertEqual(r.status_code, 400)
 
+    def test_delete_unused_image_from_library(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        asset = Asset.objects.create(
+            file=SimpleUploadedFile("extra.png", b"not-used", content_type="image/png"),
+            kind="image", original_name="extra.png", invitation=self.inv,
+            uploaded_by=self.staff,
+        )
+        r = self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/assets/delete/",
+            data=json.dumps({"asset": asset.pk}), content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Asset.objects.filter(pk=asset.pk).exists())
 
-# ==========================================================================
+    def test_delete_used_image_is_rejected(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        asset = Asset.objects.create(
+            file=SimpleUploadedFile("used.png", b"used", content_type="image/png"),
+            kind="image", original_name="used.png", invitation=self.inv,
+            uploaded_by=self.staff,
+        )
+        self.inv.document = {"blocks": [{"type": "text", "props": {"heading": asset.url}}]}
+        self.inv.save(update_fields=["document"])
+        r = self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/assets/delete/",
+            data=json.dumps({"asset": asset.pk}), content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 409)
+        self.assertTrue(Asset.objects.filter(pk=asset.pk).exists())
+
+    def test_bulk_delete_unused_images(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        assets = [Asset.objects.create(
+            file=SimpleUploadedFile(f"extra-{i}.png", b"unused", content_type="image/png"),
+            kind="image", original_name=f"extra-{i}.png", invitation=self.inv,
+            uploaded_by=self.staff,
+        ) for i in range(2)]
+        r = self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/assets/bulk-delete/",
+            data=json.dumps({"assets": [a.pk for a in assets]}),
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Asset.objects.filter(pk__in=[a.pk for a in assets]).exists())
+
+    def test_bulk_delete_aborts_when_any_image_is_used(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        used = Asset.objects.create(
+            file=SimpleUploadedFile("used-bulk.png", b"used", content_type="image/png"),
+            kind="image", original_name="used-bulk.png", invitation=self.inv,
+            uploaded_by=self.staff,
+        )
+        unused = Asset.objects.create(
+            file=SimpleUploadedFile("unused-bulk.png", b"unused", content_type="image/png"),
+            kind="image", original_name="unused-bulk.png", invitation=self.inv,
+            uploaded_by=self.staff,
+        )
+        self.inv.document = {"blocks": [{"type": "text", "props": {"heading": used.url}}]}
+        self.inv.save(update_fields=["document"])
+        r = self.client.post(
+            f"/dashboard/invitations/{self.inv.pk}/api/assets/bulk-delete/",
+            data=json.dumps({"assets": [used.pk, unused.pk]}),
+            content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 409)
+        self.assertEqual(Asset.objects.filter(pk__in=[used.pk, unused.pk]).count(), 2)
+
+
+# ========================================================================== 
 class RsvpTests(BaseAppTest):
+
     def url(self):
         return f"/i/{self.inv.slug}/rsvp/"
 

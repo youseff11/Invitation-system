@@ -49,6 +49,7 @@ from django.utils.safestring import mark_safe
 from .renderer import get_template_preview, render_document
 
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 from . import guestexport, guestimport, images, templateimport, video
 
@@ -884,6 +885,10 @@ def template_editor(request, pk):
     _staff_required(request)
     template = get_object_or_404(Template, pk=pk)
     proxy = _TemplateEditorProxy(template)
+    template_assets = list(Asset.objects.filter(
+        invitation__isnull=True
+    ).order_by("-id")[:300])
+    template_usage = _asset_usage_map(template_assets)
     return render(request, "editor/editor.html", {
         "invitation": proxy,
         "form": None,
@@ -892,8 +897,9 @@ def template_editor(request, pk):
         "document_json": template.get_document(),
         "assets_json": [
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
-             "source": a.source_url, "name": a.original_name, "kind": a.kind}
-            for a in Asset.objects.filter(invitation__isnull=True).order_by("-id")[:300]
+             "source": a.source_url, "name": a.original_name, "kind": a.kind,
+             "used": template_usage.get(a.pk, False)}
+            for a in template_assets
         ],
         "features_json": sorted(blocks_engine.feature_keys()),
         "intros_json": [
@@ -920,6 +926,8 @@ def template_editor(request, pk):
                 "upload": "",
                 "saveTemplate": "",
                 "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
+                "deleteAsset": reverse("template_api_delete_asset", kwargs={"pk": template.pk}),
+                "deleteAssets": reverse("template_api_delete_assets", kwargs={"pk": template.pk}),
                 "crop": "",
                 "frame": reverse("template_editor_frame", kwargs={"pk": template.pk}),
                 "back": reverse("dashboard_templates"),
@@ -990,12 +998,17 @@ def template_api_save(request, pk):
 def template_api_assets(request, pk):
     _staff_required(request)
     get_object_or_404(Template, pk=pk)
+    assets = list(Asset.objects.filter(
+        invitation__isnull=True
+    ).order_by("-id")[:300])
+    usage = _asset_usage_map(assets)
     return JsonResponse({
         "ok": True,
         "assets": [
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
-             "source": a.source_url, "name": a.original_name, "kind": a.kind}
-            for a in Asset.objects.filter(invitation__isnull=True).order_by("-id")[:300]
+             "source": a.source_url, "name": a.original_name,
+             "kind": a.kind, "used": usage.get(a.pk, False)}
+            for a in assets
         ],
     })
 
@@ -1013,8 +1026,13 @@ def invitation_editor(request, pk):
         document = invitation.template.get_document()
 
     settings_form = InvitationSettingsForm(instance=invitation)
+    invitation_assets = list(Asset.objects.filter(
+        Q(invitation=invitation) | Q(invitation__isnull=True)
+    ).order_by("-id")[:300])
+    invitation_usage = _asset_usage_map(invitation_assets)
 
     return render(request, "editor/editor.html", {
+
         "invitation": invitation,
         "form": settings_form,
         "schema_json": blocks_engine.editor_schema(),
@@ -1024,12 +1042,11 @@ def invitation_editor(request, pk):
             # لو ما بعتناهوش بتعرض النسخة المقصوصة وتقص من الأصل،
             # فالكادر اللي بتختاره مالوش أي علاقة باللي بيطلع.
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
-             "source": a.source_url,
-             "name": a.original_name, "kind": a.kind}
+             "source": a.source_url, "name": a.original_name, "kind": a.kind,
+             "used": invitation_usage.get(a.pk, False)}
             # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
-            for a in Asset.objects.filter(
-                Q(invitation=invitation) | Q(invitation__isnull=True)
-            ).order_by("-id")[:300]
+            for a in invitation_assets
+
         ],
         "features_json": sorted(invitation.allowed_features),
         # معرض الافتتاحيات — بيظهر في مُنتقي الفيديو جوه المحرر
@@ -1058,8 +1075,11 @@ def invitation_editor(request, pk):
                 "save": f"/dashboard/invitations/{invitation.pk}/api/save/",
                 "upload": f"/dashboard/invitations/{invitation.pk}/api/upload/",
                 "saveTemplate": f"/dashboard/invitations/{invitation.pk}/api/save-template/",
-                "assets": f"/dashboard/invitations/{invitation.pk}/api/assets/",
+                                "assets": f"/dashboard/invitations/{invitation.pk}/api/assets/",
+                "deleteAsset": f"/dashboard/invitations/{invitation.pk}/api/assets/delete/",
+                "deleteAssets": f"/dashboard/invitations/{invitation.pk}/api/assets/bulk-delete/",
                 "crop": f"/dashboard/invitations/{invitation.pk}/api/crop/",
+
                 "frame": f"/dashboard/invitations/{invitation.pk}/preview-frame/",
                 "back": "/dashboard/invitations/",
                 "public": invitation.get_absolute_url(),
@@ -1306,26 +1326,177 @@ def api_crop(request, pk):
 def api_assets(request, pk):
     _staff_required(request)
     invitation = get_object_or_404(Invitation, pk=pk)
+    assets = list(Asset.objects.filter(
+        Q(invitation=invitation) | Q(invitation__isnull=True)
+    ).order_by("-id")[:300])
+    usage = _asset_usage_map(assets)
     return JsonResponse({
         "ok": True,
         "assets": [
-            # ‎source‎ = الأصل قبل أي قص. نافذة القص بتعرضه وبتقص منه —
-            # لو ما بعتناهوش بتعرض النسخة المقصوصة وتقص من الأصل،
-            # فالكادر اللي بتختاره مالوش أي علاقة باللي بيطلع.
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
-             "source": a.source_url,
-             "name": a.original_name, "kind": a.kind}
-            # الملفات العامة (invitation=None) مكتبة مشتركة بين كل الدعوات
-            for a in Asset.objects.filter(
-                Q(invitation=invitation) | Q(invitation__isnull=True)
-            ).order_by("-id")[:300]
+             "source": a.source_url, "name": a.original_name,
+             "kind": a.kind, "used": usage.get(a.pk, False)}
+            for a in assets
         ],
     })
+
+
+def _value_contains_asset(value, needles):
+    """Search JSON-like document data without assuming a fixed block schema."""
+    if isinstance(value, dict):
+        return any(_value_contains_asset(v, needles) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_value_contains_asset(v, needles) for v in value)
+    if isinstance(value, str):
+        return any(needle and needle in value for needle in needles)
+    return False
+
+
+def _asset_needles(asset):
+    names = {
+        str(asset.file.name or ""),
+        str(asset.thumb.name or ""),
+        str(asset.source.name or ""),
+        str(asset.url or ""),
+        str(asset.thumb_url or ""),
+        str(asset.source_url or ""),
+    }
+    names.discard("")
+    return names
+
+
+def _asset_usage_map(assets):
+    """Return usage flags by scanning saved template/invitation JSON once."""
+    documents = list(Template.objects.values_list("document", flat=True))
+    documents += list(Invitation.objects.values_list("document", flat=True))
+    text_documents = [json.dumps(d, ensure_ascii=False, default=str) for d in documents]
+    return {
+        asset.pk: any(
+            needle in text
+            for needle in _asset_needles(asset)
+            for text in text_documents
+        )
+        for asset in assets
+    }
+
+
+def _asset_is_used(asset):
+    """Do not remove a media file while a template or invitation still points to it."""
+    return _asset_usage_map([asset]).get(asset.pk, False)
+
+
+def _delete_asset_files(asset):
+    """Delete physical files only when no other Asset row shares them."""
+    names = {asset.file.name, asset.thumb.name, asset.source.name}
+    names.discard("")
+    for name in names:
+        shared = Asset.objects.exclude(pk=asset.pk).filter(
+            Q(file=name) | Q(thumb=name) | Q(source=name)
+        ).exists()
+        if not shared:
+            try:
+                default_storage.delete(name)
+            except Exception:
+                pass
+
+
+def _delete_asset_for_editor(request, asset_id, *, invitation=None, template=None):
+    try:
+        asset_id = int(asset_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "الصورة غير صالحة."}, status=400)
+    asset = Asset.objects.filter(pk=asset_id, kind="image").first()
+    if asset is None:
+        return JsonResponse({"ok": False, "error": "الصورة غير موجودة."}, status=404)
+    if invitation is not None:
+        if asset.invitation_id not in (None, invitation.pk):
+            return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة الدعوة دي."}, status=403)
+    if template is not None:
+        if asset.invitation_id is not None or asset.template_id not in (None, template.pk):
+            return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة القالب ده."}, status=403)
+    if _asset_is_used(asset):
+        return JsonResponse({
+            "ok": False,
+            "used": True,
+            "error": "مينفعش تمسح صورة مستخدمة داخل قالب أو دعوة.",
+        }, status=409)
+    _delete_asset_files(asset)
+    asset.delete()
+    return JsonResponse({"ok": True, "deleted": asset_id})
+
+
+@login_required
+@require_POST
+def api_delete_asset(request, pk):
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+    body = _json_body(request)
+    return _delete_asset_for_editor(request, body.get("asset"), invitation=invitation)
+
+
+@login_required
+@require_POST
+def template_api_delete_asset(request, pk):
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    body = _json_body(request)
+    return _delete_asset_for_editor(request, body.get("asset"), template=template)
+
+
+def _bulk_delete_assets_for_editor(asset_ids, *, invitation=None, template=None):
+    try:
+        ids = {int(value) for value in (asset_ids or [])}
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "error": "اختيار الصور غير صالح."}, status=400)
+    if not ids or len(ids) > 300:
+        return JsonResponse({"ok": False, "error": "اختار صورة واحدة على الأقل."}, status=400)
+
+    assets = list(Asset.objects.filter(pk__in=ids, kind="image"))
+    if len(assets) != len(ids):
+        return JsonResponse({"ok": False, "error": "بعض الصور لم تعد موجودة."}, status=404)
+    for asset in assets:
+        if invitation is not None and asset.invitation_id not in (None, invitation.pk):
+            return JsonResponse({"ok": False, "error": "فيه صورة مش من مكتبة الدعوة دي."}, status=403)
+        if template is not None and (asset.invitation_id is not None or asset.template_id not in (None, template.pk)):
+            return JsonResponse({"ok": False, "error": "فيه صورة مش من مكتبة القالب ده."}, status=403)
+
+    usage = _asset_usage_map(assets)
+    blocked = [asset.original_name or str(asset.pk) for asset in assets if usage.get(asset.pk)]
+    if blocked:
+        return JsonResponse({
+            "ok": False,
+            "used": True,
+            "blocked": blocked,
+            "error": "لم يتم حذف أي صورة؛ بعض الصور المحددة مستخدمة داخل قالب أو دعوة.",
+        }, status=409)
+
+    with transaction.atomic():
+        for asset in assets:
+            _delete_asset_files(asset)
+            asset.delete()
+    return JsonResponse({"ok": True, "deleted": sorted(ids)})
+
+
+@login_required
+@require_POST
+def api_delete_assets(request, pk):
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+    return _bulk_delete_assets_for_editor(_json_body(request).get("assets"), invitation=invitation)
+
+
+@login_required
+@require_POST
+def template_api_delete_assets(request, pk):
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    return _bulk_delete_assets_for_editor(_json_body(request).get("assets"), template=template)
 
 
 @login_required
 @require_POST
 def api_save_as_template(request, pk):
+
     """يحوّل الدعوة الحالية إلى قالب جديد في المكتبة — بدون كتابة كود."""
     _staff_required(request)
     invitation = get_object_or_404(Invitation, pk=pk)

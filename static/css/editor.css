@@ -428,10 +428,40 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
   cursor: pointer; padding: 0;
 }
 .ed-asset:hover { border-color: var(--e-accent); }
+.ed-asset-wrap { position: relative; min-width: 0; }
+.ed-asset-wrap .ed-asset { width: 100%; display: block; }
+.ed-asset-delete {
+  position: absolute; inset-block-start: 4px; inset-inline-start: 4px;
+  z-index: 2; width: 24px; height: 24px; padding: 0;
+  border: 1px solid rgba(255,255,255,.75); border-radius: 50%;
+  background: #a62d2d; color: #fff; font-size: 18px; line-height: 20px;
+  cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+.ed-asset-delete:hover { background: #7f1f1f; }
+.ed-asset-delete:disabled { opacity: .55; cursor: wait; }
+.ed-asset-check {
+  position: absolute; inset-block-end: 5px; inset-inline-start: 5px;
+  z-index: 3; width: 21px; height: 21px; margin: 0;
+  accent-color: var(--e-accent); cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+}
+.ed-asset-wrap.is-selected .ed-asset { border-color: var(--e-accent); box-shadow: 0 0 0 2px var(--e-accent-dim); }
+.ed-asset-bulk {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 7px;
+  flex-wrap: wrap; padding: 7px; border: 1px solid var(--e-line);
+  border-radius: 8px; background: var(--e-panel-2);
+}
+.ed-asset-bulk-count { flex: 1; min-width: 110px; color: var(--e-muted); font-size: 11.5px; }
+.ed-asset-bulk .ed-btn { padding: 5px 9px; }
 
 .ed-empty { color: var(--e-muted); font-size: 12.5px; text-align: center; padding: 26px 10px; }
 /* .ed-assets جريد بأعمدة ٩٢px — من غير كده الرسالة بتتحشر في عمود واحد */
 .ed-assets .ed-empty { grid-column: 1 / -1; }
+.ed-asset-filter {
+  grid-column: 1 / -1; width: 100%; padding: 8px 10px;
+  border: 1px solid var(--e-line); border-radius: 7px;
+  background: var(--e-bg); color: var(--e-text); cursor: pointer;
+}
 
 /* ---------------------------------------------------------- التنبيهات */
 .ed-toasts {
