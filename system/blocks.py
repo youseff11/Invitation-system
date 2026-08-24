@@ -943,8 +943,12 @@ def _coerce(value: Any, spec: dict) -> Any:
 
     if ftype == "font":
         allowed = {o["value"] for o in FONT_CHOICES}
-        if value in allowed or value == "":
-            return value
+        custom = isinstance(value, str) and re.fullmatch(
+            r"'[A-Za-z][A-Za-z0-9 _-]{0,119}'(?:,\s*(?:sans-serif|serif|cursive))?",
+            value.strip(),
+        )
+        if value in allowed or value == "" or custom:
+            return value.strip() if isinstance(value, str) else value
         return default
 
     if ftype == "color":

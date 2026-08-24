@@ -447,7 +447,32 @@ def layout_css(blocks: list[dict]) -> str:
     return mark_safe("".join(rules))
 
 
+def _custom_font_css() -> str:
+    """يبني @font-face للخطوط النشطة المرفوعة أو المرتبطة بروابط مباشرة."""
+    from .models import CustomFont
+
+    formats = {"ttf": "truetype", "otf": "opentype", "woff": "woff", "woff2": "woff2"}
+    rules = []
+    for font in CustomFont.objects.filter(is_active=True).order_by("order", "name"):
+        url = font.url
+        if not url or not re.fullmatch(r"[A-Za-z][A-Za-z0-9 _-]{0,119}", str(font.family)):
+            continue
+        suffix = str(font.file.name if font.file else url).lower().rsplit(".", 1)[-1]
+        fmt = formats.get(suffix, "")
+        src = f"url({json.dumps(str(url), ensure_ascii=False)})"
+        if fmt:
+            src += f" format('{fmt}')"
+        family = json.dumps(str(font.family), ensure_ascii=False)
+        rules.append(
+            "@font-face{" +
+            f"font-family:{family};src:{src};font-weight:{int(font.weight)};" +
+            f"font-style:{font.style};font-display:swap;}}"
+        )
+    return mark_safe("".join(rules))
+
+
 def render_document(
+
     document: dict,
     *,
     invitation=None,
@@ -509,10 +534,13 @@ def render_document(
             and spec["feature"]
             and spec["feature"] not in allowed_features
         )
-        hidden = (not block.get("visible", True)) or gated
+        # الباقة تعرض تحذيراً فقط؛ لا تمنع القسم من الظهور أو الحفظ.
+        # hidden يخص الإخفاء اليدوي فقط، بينما gated يظل متاحاً للقوالب
+        # كي تعرض تنبيهاً داخل وضع التحرير إن لزم.
+        hidden = not block.get("visible", True)
 
         if hidden and not editable:
-            continue  # لا يصل للضيف أصلاً
+            continue  # القسم مخفي يدوياً
 
         ctx = {
             "block": block,
@@ -542,7 +570,9 @@ def render_document(
     return {
         "html": mark_safe("".join(chunks)),
         "css_vars": theme_css_vars(theme),
+        "font_css": _custom_font_css(),
         "intro_css": intro_css(doc_settings),
+
         "intro_item_styles": {
             item: intro_item_css(doc_settings, item)
             for item in ("note", "guest_name", "text", "button")
@@ -560,7 +590,8 @@ def render_document(
 
 
 _PREVIEW_KEYS = (
-    "html", "css_vars", "intro_css", "intro_item_styles", "layout_css",
+    "html", "css_vars", "font_css", "intro_css", "intro_item_styles", "layout_css",
+
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
 )
 
@@ -574,7 +605,9 @@ def _preview_payload(result: dict) -> dict:
     payload = {key: result.get(key) for key in _PREVIEW_KEYS}
     payload["html"] = str(payload.get("html") or "")
     payload["css_vars"] = str(payload.get("css_vars") or "")
+    payload["font_css"] = str(payload.get("font_css") or "")
     payload["intro_css"] = str(payload.get("intro_css") or "")
+
     payload["layout_css"] = str(payload.get("layout_css") or "")
     payload["intro_item_styles"] = {
         str(k): str(v) for k, v in (payload.get("intro_item_styles") or {}).items()
@@ -584,8 +617,9 @@ def _preview_payload(result: dict) -> dict:
 
 def _restore_preview(payload: dict) -> dict:
     result = dict(payload or {})
-    for key in ("html", "css_vars", "intro_css", "layout_css"):
+    for key in ("html", "css_vars", "font_css", "intro_css", "layout_css"):
         result[key] = mark_safe(str(result.get(key) or ""))
+
     result["intro_item_styles"] = {
         str(k): mark_safe(str(v))
         for k, v in (result.get("intro_item_styles") or {}).items()
@@ -598,7 +632,9 @@ def get_template_preview(template, *, lang: str = "ar") -> dict:
     signature = _preview_signature(template.document)
     cache = template.preview_render if isinstance(template.preview_render, dict) else {}
     entry = cache.get(lang) if isinstance(cache.get(lang), dict) else None
-    if entry and entry.get("signature") == signature and isinstance(entry.get("payload"), dict):
+    if (entry and entry.get("signature") == signature
+            and isinstance(entry.get("payload"), dict)
+            and "font_css" in entry["payload"]):
         return _restore_preview(entry["payload"])
 
     result = render_document(

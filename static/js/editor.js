@@ -49,7 +49,9 @@
   var SCHEMA = readJSON("editor-schema", { blocks: {}, theme_fields: [], settings_fields: [] });
   var META = readJSON("editor-meta", { urls: {} });
   var FEATURES = readJSON("editor-features", []);
+  var FONTS = readJSON("editor-fonts", []);
   var ASSETS = readJSON("editor-assets", []);
+
   var MUSIC = readJSON("editor-music", []);   // مكتبة الموسيقى المشتركة
   var INTROS = readJSON("editor-intros", []); // معرض فيديوهات الافتتاحية
 
@@ -145,15 +147,133 @@
   // ==========================================================
   // بناء الحقول من الـschema
   // ==========================================================
+  function addFontOption(select, font) {
+    if (!select || !font || !font.value) return;
+    var exists = Array.prototype.some.call(select.options, function (o) {
+      return o.value === font.value;
+    });
+    if (exists) return;
+    var option = el("option", null, font.label || font.name || font.family);
+    option.value = font.value;
+    option.style.fontFamily = font.value;
+    select.appendChild(option);
+  }
+
+  function fontUploadError(data) {
+    var errors = data && data.errors;
+    if (errors && typeof errors === "object") {
+      return Object.keys(errors).map(function (key) {
+        return Array.isArray(errors[key]) ? errors[key].join("، ") : String(errors[key]);
+      }).join(" — ");
+    }
+    return (data && data.error) || "تعذّر إضافة الخط.";
+  }
+
+  function createFontFromField(select, setValue, controls, source) {
+    var name = (controls.name.value || "").trim();
+    var family = (controls.family.value || "").trim();
+    if (!name || !family) {
+      toast("اكتب اسم الخط واسم العائلة بالإنجليزية أولاً.", "error");
+      return;
+    }
+    var fd = new FormData();
+    fd.append("name", name);
+    fd.append("family", family);
+    fd.append("weight", controls.weight.value || "400");
+    fd.append("style", controls.style.value || "normal");
+    fd.append("is_active", "on");
+    if (source === "file") {
+      if (!controls.file.files || !controls.file.files[0]) {
+        toast("اختر ملف الخط أولاً.", "error");
+        return;
+      }
+      fd.append("file", controls.file.files[0]);
+    } else {
+      var url = (controls.url.value || "").trim();
+      if (!url) {
+        toast("اكتب رابط ملف الخط أولاً.", "error");
+        return;
+      }
+      fd.append("external_url", url);
+    }
+    var button = source === "file" ? controls.upload : controls.addUrl;
+    button.disabled = true;
+    fetch(META.urls.fontCreate, {
+      method: "POST",
+      headers: { "X-CSRFToken": csrf() },
+      credentials: "same-origin",
+      body: fd
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      button.disabled = false;
+      if (!data || !data.ok || !data.font) {
+        toast(fontUploadError(data), "error");
+        return;
+      }
+      FONTS.push(data.font);
+      addFontOption(select, data.font);
+      select.value = data.font.value;
+      setValue(select.value);
+      controls.file.value = "";
+      controls.url.value = "";
+      toast("اتضاف الخط واتطبق على النص.", "ok");
+    }).catch(function () {
+      button.disabled = false;
+      toast("تعذّر الاتصال لإضافة الخط.", "error");
+    });
+  }
+
+  function buildInlineFontTools(select, setValue) {
+    var tools = el("div", "ed-font-tools");
+    var name = el("input", "ed-input");
+    name.type = "text";
+    name.placeholder = "اسم الخط الظاهر";
+    var family = el("input", "ed-input");
+    family.type = "text";
+    family.placeholder = "اسم العائلة بالإنجليزية مثل MyFont";
+    var weight = doc.createElement("select");
+    weight.className = "ed-input";
+    [["400", "الوزن 400"], ["500", "الوزن 500"], ["600", "الوزن 600"], ["700", "الوزن 700"]].forEach(function (pair) {
+      var option = el("option", null, pair[1]);
+      option.value = pair[0];
+      weight.appendChild(option);
+    });
+    var style = doc.createElement("select");
+    style.className = "ed-input";
+    [["normal", "عادي"], ["italic", "مائل"]].forEach(function (pair) {
+      var option = el("option", null, pair[1]);
+      option.value = pair[0];
+      style.appendChild(option);
+    });
+    var file = doc.createElement("input");
+    file.type = "file";
+    file.accept = ".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2";
+    var upload = el("button", "ed-btn ed-btn--sm", "رفع ملف الخط");
+    upload.type = "button";
+    var url = el("input", "ed-input");
+    url.type = "url";
+    url.placeholder = "أو ضع رابطاً مباشراً لملف الخط";
+    var addUrl = el("button", "ed-btn ed-btn--sm", "إضافة الرابط");
+    addUrl.type = "button";
+    var controls = { name: name, family: family, weight: weight, style: style, file: file, upload: upload, url: url, addUrl: addUrl };
+    upload.addEventListener("click", function () { createFontFromField(select, setValue, controls, "file"); });
+    addUrl.addEventListener("click", function () { createFontFromField(select, setValue, controls, "url"); });
+    [name, family, weight, style, file, upload, url, addUrl].forEach(function (item) { tools.appendChild(item); });
+    return tools;
+  }
+
   function buildField(spec, getValue, setValue) {
+
     var wrap = el("div", "ed-field");
-    var disabled = !hasFeature(spec.feature);
+    // الميزة خارج الباقة = تحذير فقط؛ الحقل يظل قابلاً للتعديل والحفظ.
+    var gated = !hasFeature(spec.feature);
+    var disabled = false;
 
     var label = el("label");
     label.appendChild(el("span", null, spec.label));
-    if (disabled) {
-      var lock = el("b", null, "غير متاح في الباقة");
+    if (gated) {
+      var lock = el("b", null, "تحذير: خارج الباقة");
       lock.style.fontSize = "10px";
+      lock.style.color = "var(--e-warn, #a66a00)";
       label.appendChild(lock);
     }
 
@@ -274,9 +394,17 @@
       case "select":
       case "font": {
         input = doc.createElement("select");
-        var opts = spec.options || SCHEMA.fonts || [];
+        var opts = (spec.options || SCHEMA.fonts || []).slice();
         if (spec.type === "font") {
+          var seenFonts = {};
+          opts.forEach(function (o) { if (o && o.value) seenFonts[o.value] = true; });
+          FONTS.forEach(function (font) {
+            if (!font || !font.value || seenFonts[font.value]) return;
+            opts.push({ value: font.value, label: font.label || font.name || font.family });
+            seenFonts[font.value] = true;
+          });
           var blank = el("option", null, "— افتراضي القالب —");
+
           blank.value = "";
           input.appendChild(blank);
         }
@@ -290,10 +418,13 @@
         input.addEventListener("change", function () { setValue(input.value); });
         wrap.appendChild(label);
         wrap.appendChild(input);
+        wrap.appendChild(el("small", "ed-hint", "لا ترى الخط؟ أضفه من ملف أو رابط مباشر:"));
+        wrap.appendChild(buildInlineFontTools(input, setValue));
         break;
       }
 
       // ---------------------------------------------------- محاذاة
+
       case "align": {
         var group = el("div", "ed-align");
         [["right", "يمين"], ["center", "وسط"], ["left", "يسار"]].forEach(function (pair) {
@@ -590,7 +721,7 @@
       row.dataset.id = block.id;
       row.draggable = true;
       if (block.id === state.selected) row.classList.add("is-selected");
-      if (!block.visible || gated) row.classList.add("is-hidden");
+      if (!block.visible) row.classList.add("is-hidden");
 
       row.appendChild(el("span", "ed-block-grip", "⠿"));
       row.appendChild(el("span", "ed-block-icon", spec.icon));
@@ -599,7 +730,7 @@
       var nameEl = el("span", "ed-block-name", block.label || spec.label);
       if (block.label) nameEl.title = block.label + " — " + spec.label;
       row.appendChild(nameEl);
-      if (gated) row.appendChild(el("span", "ed-block-tag", "الباقة"));
+      if (gated) row.appendChild(el("span", "ed-block-tag", "تحذير"));
 
       var actions = el("div", "ed-block-actions");
 
@@ -1843,7 +1974,22 @@
     else fdoc.body.insertBefore(fresh, fdoc.body.firstChild);
   }
 
+  function applyFontCss(fdoc, css) {
+    var style = fdoc.querySelector("style[data-font-faces]");
+    if (!css) {
+      if (style) style.remove();
+      return;
+    }
+    if (!style) {
+      style = fdoc.createElement("style");
+      style.setAttribute("data-font-faces", "");
+      (fdoc.head || fdoc.documentElement).appendChild(style);
+    }
+    style.textContent = css;
+  }
+
   function applyPreview(data, editorScroll) {
+
     drag = null;
     clearGuides();
     var fdoc = frameDoc();
@@ -1867,6 +2013,7 @@
     if (footer) stage.appendChild(footer);
 
     if (fdoc.body) fdoc.body.setAttribute("style", data.cssVars || "");
+    applyFontCss(fdoc, data.fontCss || "");
     fdoc.documentElement.setAttribute("dir", data.direction || "rtl");
 
     stage.className = "lb-stage" +
@@ -2743,7 +2890,7 @@
         txt.appendChild(el("strong", null, spec.label));
         txt.appendChild(el("small", null,
           exists ? "مضاف بالفعل" :
-            (!hasFeature(spec.feature) ? "غير متاح في الباقة" : (spec.description || ""))));
+            (!hasFeature(spec.feature) ? "تحذير: خارج الباقة — سيُضاف" : (spec.description || ""))));
         btn.appendChild(txt);
         btn.addEventListener("click", function () {
           addBlock(spec.type);

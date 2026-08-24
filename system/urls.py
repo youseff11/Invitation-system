@@ -25,7 +25,10 @@ urlpatterns = [
     path("dashboard/templates/<int:pk>/preview-frame/", views.template_editor_frame,
          name="template_editor_frame"),
 
+        path("dashboard/fonts/", views.dashboard_fonts, name="dashboard_fonts"),
+    path("dashboard/fonts/api/create/", views.font_api_create, name="font_api_create"),
     path("dashboard/music/", views.dashboard_music, name="dashboard_music"),
+
     path("dashboard/intros/", views.dashboard_intros, name="dashboard_intros"),
     path("dashboard/plans/", views.dashboard_plans, name="dashboard_plans"),
     path("dashboard/site/", views.dashboard_site, name="dashboard_site"),

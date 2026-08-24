@@ -2,8 +2,9 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
-    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+
 )
 
 
@@ -114,8 +115,19 @@ class MusicTrackAdmin(admin.ModelAdmin):
     search_fields = ("name", "note")
 
 
+
+
+@admin.register(CustomFont)
+class CustomFontAdmin(admin.ModelAdmin):
+    list_display = ("name", "family", "weight", "style", "is_active", "order", "created_at")
+    list_editable = ("is_active", "order")
+    list_filter = ("is_active", "style", "weight")
+    search_fields = ("name", "name_en", "family")
+
+
 @admin.register(IntroVideo)
 class IntroVideoAdmin(admin.ModelAdmin):
+
     list_display = ("name", "seconds", "is_active", "order", "created_at")
     list_editable = ("is_active", "order")
     search_fields = ("name", "note")

@@ -389,8 +389,60 @@ class MusicTrack(TimeStampedModel):
         return self.external_url or ""
 
 
+
+
+# --------------------------------------------------------------------------
+class CustomFont(TimeStampedModel):
+    """خط مرفوع أو مرتبط برابط مباشر لاستخدامه في الدعوات والقوالب."""
+
+    STYLE_CHOICES = [
+        ("normal", "عادي"),
+        ("italic", "مائل"),
+    ]
+
+    name = models.CharField("اسم الخط", max_length=120)
+    name_en = models.CharField("الاسم الإنجليزي", max_length=120, blank=True)
+    family = models.CharField(
+        "اسم العائلة في CSS", max_length=120,
+        help_text="اكتب اسم العائلة كما سيظهر في CSS، مثل MyFont.",
+    )
+    file = models.FileField("ملف الخط", upload_to="fonts/%Y/%m/", blank=True)
+    external_url = models.URLField(
+        "رابط مباشر للخط", blank=True,
+        help_text="اختياري — استخدمه بدلاً من رفع الملف.",
+    )
+    weight = models.PositiveIntegerField("الوزن", default=400)
+    style = models.CharField("النمط", max_length=10, choices=STYLE_CHOICES, default="normal")
+    is_active = models.BooleanField("متاح للاستخدام", default=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="fonts_uploaded",
+    )
+
+    class Meta:
+        ordering = ["order", "name"]
+        verbose_name = "خط مرفوع"
+        verbose_name_plural = "مكتبة الخطوط"
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def url(self) -> str:
+        if self.file:
+            return self.file.url
+        return self.external_url or ""
+
+    @property
+    def css_family(self) -> str:
+        # اسم العائلة يدخل كقيمة CSS؛ الاقتباس يحمي الأسماء التي تحتوي مسافات.
+        return "'" + self.family.replace("'", "\\'") + "'"
+
+
 # --------------------------------------------------------------------------
 class IntroVideo(TimeStampedModel):
+
     """معرض فيديوهات الافتتاحية — يترفع مرة ويتختار في أي دعوة.
 
     نفس فكرة ``MusicTrack``: مكتبة منسّقة بأسماء عربية وترتيب عرض، مش

@@ -11,8 +11,9 @@ from datetime import timedelta
 from system import blocks as B
 from system.data import golden_classic
 from system.models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
-    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+
 )
 from system.forms import OrderForm, PlanAddonForm
 from decimal import Decimal
@@ -123,13 +124,25 @@ class RendererTests(TestCase):
         out = render_document(doc, editable=True)
         self.assertIn("سرّي", str(out["html"]))
 
-    def test_feature_gating_hides_block_from_guest(self):
+    def test_feature_outside_plan_still_renders(self):
         doc = B.empty_document()
         doc["blocks"] = [B.make_block("gallery", props={"heading": "المعرض"})]
         out = render_document(doc, allowed_features={"rsvp"}, editable=False)
-        self.assertNotIn("المعرض", str(out["html"]))
+        self.assertIn("المعرض", str(out["html"]))
+
+    def test_uploaded_font_is_emitted_as_font_face(self):
+        font = CustomFont.objects.create(
+            name="خط الدعوة", family="WeddingFont",
+            file=SimpleUploadedFile("wedding.woff2", b"fake-font", content_type="font/woff2"),
+        )
+        out = render_document(B.empty_document())
+        css = str(out["font_css"])
+        self.assertIn("font-family:\"WeddingFont\"", css)
+        self.assertIn(font.url, css)
+        self.assertIn("format('woff2')", css)
 
     def test_xss_in_text_field_is_escaped(self):
+
         doc = B.empty_document()
         doc["blocks"] = [B.make_block("text", props={"heading": '<img src=x onerror=alert(1)>'})]
         html = str(render_document(doc)["html"])
@@ -224,6 +237,7 @@ class EditorApiTests(BaseAppTest):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "editor-schema")
         self.assertContains(r, "editor-document")
+        self.assertContains(r, "editor-fonts")
 
     def test_preview_api_returns_html(self):
         r = self.client.post(
@@ -401,13 +415,14 @@ class RsvpTests(BaseAppTest):
                 break
         self.assertTrue(blocked, "لم يُفعَّل تحديد المعدّل")
 
-    def test_rsvp_blocked_when_plan_lacks_feature(self):
+    def test_rsvp_works_when_plan_lacks_feature(self):
         self.inv.plan = self.basic
         self.inv.save()
         r = self.client.post(self.url(), {"name": "منى", "status": "attending"},
                              HTTP_X_REQUESTED_WITH="XMLHttpRequest")
-        self.assertEqual(r.status_code, 403)
-        self.assertEqual(RSVPResponse.objects.count(), 0)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()["ok"])
+        self.assertEqual(RSVPResponse.objects.count(), 1)
 
 
 # ==========================================================================
@@ -1571,8 +1586,45 @@ class TemplateManageTests(BaseAppTest):
         self.assertEqual(res.status_code, 403)
 
 
+
+
+# ==========================================================================
+class FontLibraryTests(BaseAppTest):
+    def test_staff_can_open_font_library(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/dashboard/fonts/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "مكتبة الخطوط")
+        self.assertContains(response, "WOFF2")
+
+    def test_staff_can_upload_font(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            "/dashboard/fonts/",
+            {
+                "name": "خط الزفاف",
+                "name_en": "Wedding Font",
+                "family": "WeddingFont",
+                "weight": "400",
+                "style": "normal",
+                "is_active": "on",
+                "order": "0",
+                "file": SimpleUploadedFile(
+                    "wedding.woff2", b"fake-font", content_type="font/woff2"
+                ),
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        font = CustomFont.objects.get(family="WeddingFont")
+        self.assertEqual(font.name, "خط الزفاف")
+        self.assertTrue(font.url)
+        editor = self.client.get(f"/dashboard/invitations/{self.inv.pk}/editor/")
+        self.assertContains(editor, "WeddingFont")
+
+
 # ==========================================================================
 class ImportedAudioTests(TestCase):
+
     """قوالب الدعوات بتيجي ومعاها ملف موسيقى — ما نتجاهلوش."""
 
     def _zip(self, files):

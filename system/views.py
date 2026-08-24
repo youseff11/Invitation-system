@@ -39,12 +39,14 @@ from django.views.decorators.http import require_GET, require_POST
 from . import blocks as blocks_engine
 from . import qrcodes
 from .forms import (
-    GuestForm, IntroVideoForm, InvitationSettingsForm, MusicTrackForm, OrderForm,
-    PlanAddonForm, SiteSettingForm,
+        CustomFontForm, GuestForm, IntroVideoForm, InvitationSettingsForm,
+    MusicTrackForm, OrderForm, PlanAddonForm, SiteSettingForm,
+
 )
 from .models import (
-    Asset, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon,
-    Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+        Asset, CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+
 )
 from django.utils.safestring import mark_safe
 from .renderer import get_template_preview, render_document
@@ -200,8 +202,9 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
     ).strip(" —")
 
     music = {}
-    if "music" in invitation.allowed_features and doc_settings.get("music_url"):
+    if doc_settings.get("music_url"):
         music = {
+
             "url": doc_settings["music_url"],
             "autoplay": bool(doc_settings.get("music_autoplay")),
             "loop": bool(doc_settings.get("music_loop")),
@@ -379,8 +382,9 @@ def invitation_rsvp(request, slug):
 
     if not invitation.is_live:
         return fail("الدعوة غير متاحة حالياً.", 404)
-    if "rsvp" not in invitation.allowed_features:
-        return fail("تأكيد الحضور غير مفعّل لهذه الدعوة.", 403)
+    # الباقة تحذير فقط؛ إذا أضاف صاحب الدعوة RSVP يظل النموذج يعمل.
+
+
 
     # مصيدة الروبوتات — حقل مخفي يجب أن يبقى فارغاً
     if request.POST.get("website"):
@@ -659,8 +663,64 @@ def dashboard_templates(request):
     })
 
 
+
+
+@login_required
+def dashboard_fonts(request):
+    """مكتبة الخطوط — ترفع الخط مرة وتستخدمه في كل الدعوات والقوالب."""
+    _staff_required(request)
+    form = CustomFontForm()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action in {"delete", "toggle"}:
+            font = get_object_or_404(CustomFont, pk=request.POST.get("font") or 0)
+            if action == "delete":
+                name = font.name
+                font.delete()
+                messages.success(request, f"اتشال الخط «{name}» من المكتبة.")
+            else:
+                font.is_active = not font.is_active
+                font.save(update_fields=["is_active", "updated_at"])
+                messages.success(
+                    request,
+                    ("رجّعت" if font.is_active else "خبّيت") + f" الخط «{font.name}»."
+                )
+            return redirect("dashboard_fonts")
+
+        form = CustomFontForm(request.POST, request.FILES)
+        if form.is_valid():
+            font = form.save(commit=False)
+            font.uploaded_by = request.user
+            font.save()
+            messages.success(request, f"اتضاف الخط «{font.name}» للمكتبة.")
+            return redirect("dashboard_fonts")
+        messages.error(request, "راجع البيانات — ارفع ملفاً صالحاً أو ضع رابطاً مباشراً.")
+
+    return render(request, "dashboard/fonts.html", {
+        "nav": "fonts",
+        "form": form,
+        "fonts": CustomFont.objects.all(),
+    })
+
+
+@login_required
+@require_POST
+def font_api_create(request):
+    """إنشاء خط من داخل أي حقل font في المحرر."""
+    _staff_required(request)
+    form = CustomFontForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return JsonResponse({"ok": False, "errors": form.errors.get_json_data()}, status=400)
+    font = form.save(commit=False)
+    font.uploaded_by = request.user
+    font.save()
+    return JsonResponse({"ok": True, "font": _font_payload(font)})
+
+
 @login_required
 def dashboard_music(request):
+
     """مكتبة الموسيقى — ترفع المقطوعة مرة وتختارها في أي دعوة."""
     _staff_required(request)
     form = MusicTrackForm()
@@ -847,6 +907,29 @@ class _TemplateEditorProxy:
         return reverse("template_demo", kwargs={"slug": self.template.slug})
 
 
+def _font_payload(font):
+    return {
+        "id": font.pk,
+        "name": font.name,
+        "nameEn": font.name_en,
+        "label": font.name,
+        "value": font.css_family + ", sans-serif",
+        "family": font.family,
+        "url": font.url,
+        "weight": font.weight,
+        "style": font.style,
+    }
+
+
+def _font_library_json():
+    """بيانات الخطوط التي يحتاجها المحرر وقواعد @font-face في المعاينة."""
+    return [
+        _font_payload(font)
+        for font in CustomFont.objects.filter(is_active=True).order_by("order", "name")
+        if font.url
+    ]
+
+
 def _template_editor_result(template, document, request, *, editable=True, lang="ar"):
     return render_document(
         document,
@@ -903,6 +986,7 @@ def template_editor(request, pk):
             for a in template_assets
         ],
         "features_json": sorted(blocks_engine.feature_keys()),
+        "fonts_json": _font_library_json(),
         "intros_json": [
             {"id": v.pk, "name": v.name, "url": v.url,
              "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
@@ -924,6 +1008,7 @@ def template_editor(request, pk):
             "urls": {
                 "preview": reverse("template_api_preview", kwargs={"pk": template.pk}),
                 "save": reverse("template_api_save", kwargs={"pk": template.pk}),
+                "fontCreate": reverse("font_api_create"),
                 "upload": "",
                 "saveTemplate": "",
                 "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
@@ -963,6 +1048,7 @@ def template_api_preview(request, pk):
         "html": str(result["html"]),
         "intro": intro_html.strip(),
         "cssVars": result["css_vars"],
+        "fontCss": result["font_css"],
         "pattern": result["theme"].get("pattern") or "none",
         "maxWidth": result["theme"].get("max_width"),
         "direction": result["theme"].get("direction") or "rtl",
@@ -1050,6 +1136,7 @@ def invitation_editor(request, pk):
 
         ],
         "features_json": sorted(invitation.allowed_features),
+        "fonts_json": _font_library_json(),
         # معرض الافتتاحيات — بيظهر في مُنتقي الفيديو جوه المحرر
         "intros_json": [
             {"id": v.pk, "name": v.name, "url": v.url,
@@ -1074,9 +1161,11 @@ def invitation_editor(request, pk):
             "urls": {
                 "preview": f"/dashboard/invitations/{invitation.pk}/api/preview/",
                 "save": f"/dashboard/invitations/{invitation.pk}/api/save/",
+                "fontCreate": "/dashboard/fonts/api/create/",
                 "upload": f"/dashboard/invitations/{invitation.pk}/api/upload/",
+
                 "saveTemplate": f"/dashboard/invitations/{invitation.pk}/api/save-template/",
-                                "assets": f"/dashboard/invitations/{invitation.pk}/api/assets/",
+                "assets": f"/dashboard/invitations/{invitation.pk}/api/assets/",
                 "deleteAsset": f"/dashboard/invitations/{invitation.pk}/api/assets/delete/",
                 "deleteAssets": f"/dashboard/invitations/{invitation.pk}/api/assets/bulk-delete/",
                 "crop": f"/dashboard/invitations/{invitation.pk}/api/crop/",
@@ -1128,7 +1217,9 @@ def api_preview(request, pk):
         "html": str(result["html"]),
         "intro": intro_html.strip(),
         "cssVars": result["css_vars"],
+        "fontCss": result["font_css"],
         "pattern": result["theme"].get("pattern") or "none",
+
         "maxWidth": result["theme"].get("max_width"),
         "direction": result["theme"].get("direction") or "rtl",
         "music": {

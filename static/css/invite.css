@@ -1265,3 +1265,8 @@
 .lb-doc--editing .lb [data-section-text]:hover {
   cursor: grab;
 }
+
+/* تنبيه الباقة داخل المحرر لا يحجب اختيار أو سحب القسم تحته. */
+.lb-doc--editing .lb-gate {
+  pointer-events: none;
+}

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import re
+
 from django import forms
 
 from . import blocks as blocks_engine
 from . import video
 from .models import (
-    Customer, Guest, Invitation, IntroVideo, MusicTrack, Order, OrderAddon, Plan,
-    PlanAddon, SiteSetting, Template,
+        CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
+    OrderAddon, Plan, PlanAddon, SiteSetting, Template,
+
 )
 
 
@@ -127,7 +130,62 @@ class TemplateForm(forms.ModelForm):
         self.fields["slug"].required = False
 
 
+
+
+class CustomFontForm(forms.ModelForm):
+    """رفع خط صالح للاستخدام داخل CSS والمعاينة."""
+
+    ALLOWED_EXTENSIONS = {"ttf", "otf", "woff", "woff2"}
+    MAX_BYTES = 8 * 1024 * 1024
+
+    class Meta:
+        model = CustomFont
+        fields = [
+            "name", "name_en", "family", "file", "external_url",
+            "weight", "style", "is_active", "order",
+        ]
+        widgets = {
+            "file": forms.ClearableFileInput(
+                attrs={"accept": ".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"}
+            ),
+            "external_url": forms.URLInput(attrs={"placeholder": "https://.../font.woff2"}),
+            "weight": forms.NumberInput(attrs={"min": 100, "max": 900, "step": 100}),
+        }
+
+    def clean(self):
+        data = super().clean()
+        if not data.get("file") and not data.get("external_url"):
+            raise forms.ValidationError("ارفع ملف خط أو ضع رابطاً مباشراً.")
+        return data
+
+    def clean_family(self):
+        family = (self.cleaned_data.get("family") or "").strip()
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9 _-]{0,119}", family):
+            raise forms.ValidationError(
+                "اسم العائلة لازم يبدأ بحرف إنجليزي ويحتوي حروفاً أو أرقاماً أو مسافات أو - فقط."
+            )
+        return family
+
+    def clean_weight(self):
+        weight = self.cleaned_data.get("weight")
+        if weight is None or not 100 <= weight <= 900 or weight % 100:
+            raise forms.ValidationError("الوزن لازم يكون من 100 إلى 900 بمضاعفات 100.")
+        return weight
+
+    def clean_file(self):
+        f = self.cleaned_data.get("file")
+        if not f:
+            return f
+        suffix = str(f.name).lower().rsplit(".", 1)[-1] if "." in str(f.name) else ""
+        if suffix not in self.ALLOWED_EXTENSIONS:
+            raise forms.ValidationError("امتداد الخط المسموح: TTF أو OTF أو WOFF أو WOFF2.")
+        if f.size > self.MAX_BYTES:
+            raise forms.ValidationError("حجم ملف الخط أكبر من ٨ ميجابايت.")
+        return f
+
+
 class MusicTrackForm(forms.ModelForm):
+
     """رفع مقطوعة للمكتبة المشتركة.
 
     الملف أو الرابط — واحد منهم كفاية، بس لازم واحد على الأقل، وإلا هتبقى

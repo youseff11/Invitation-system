@@ -1,0 +1,72 @@
+{% extends 'dashboard/_base.html' %}
+
+{% block title %}مكتبة الخطوط — {{ SITE_NAME }}{% endblock %}
+
+{% block dash %}
+<div class="dash-head">
+  <div>
+    <h1>مكتبة الخطوط</h1>
+    <p class="muted">ارفع الخط مرة واحدة، وسيظهر كخيار في كل خاصية تحتوي نصاً داخل المحرر.</p>
+  </div>
+  <a class="btn btn--ghost" href="{% url 'dashboard_invitations' %}">↩ الدعوات</a>
+</div>
+
+<div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(300px,1fr);align-items:start">
+  <section class="card">
+    <h2 style="font-size:18px;margin-top:0">الخطوط المضافة ({{ fonts|length }})</h2>
+    <p class="muted" style="font-size:13px">الخط النشط يظهر تلقائياً في قوائم الخطوط داخل محرر الدعوات والقوالب.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>الاسم</th><th>المعاينة</th><th>المصدر</th><th>الحالة</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for font in fonts %}
+          <tr>
+            <td>
+              <strong>{{ font.name }}</strong>
+              {% if font.name_en %}<br><span class="muted">{{ font.name_en }}</span>{% endif %}
+              <br><small class="muted">{{ font.family }} · {{ font.weight }} · {{ font.get_style_display }}</small>
+            </td>
+            <td style="font-family:'{{ font.family }}';font-size:22px">أهلاً بكم</td>
+            <td>
+              {% if font.url %}<a href="{{ font.url }}" target="_blank" rel="noopener">فتح الملف ↗</a>{% else %}<span class="muted">—</span>{% endif %}
+            </td>
+            <td>{% if font.is_active %}<span class="status status--ok">متاح</span>{% else %}<span class="status">مخفي</span>{% endif %}</td>
+            <td>
+              <form method="post" class="toolbar" style="margin:0;gap:5px">
+                {% csrf_token %}
+                <input type="hidden" name="font" value="{{ font.pk }}">
+                <button class="btn btn--ghost btn--sm" type="submit" name="action" value="toggle">{% if font.is_active %}إخفاء{% else %}إظهار{% endif %}</button>
+                <button class="btn btn--ghost btn--sm" type="submit" name="action" value="delete" onclick="return confirm('تشيل الخط «{{ font.name|escapejs }}» من المكتبة؟')">حذف</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="empty">المكتبة فاضية — ارفع أول خط من الجنب.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2 style="font-size:17px;margin-top:0">إضافة خط جديد</h2>
+    <p class="muted" style="font-size:13px">يمكنك رفع TTF أو OTF أو WOFF أو WOFF2، أو وضع رابط مباشر لملف الخط.</p>
+    <form method="post" enctype="multipart/form-data" class="form">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for f in form %}
+        <div class="field">
+          <label for="{{ f.id_for_label }}">{{ f.label }}</label>
+          {{ f }}
+          {% if f.help_text %}<small class="muted">{{ f.help_text }}</small>{% endif %}
+          {{ f.errors }}
+        </div>
+      {% endfor %}
+      <button class="btn btn--gold btn--block" type="submit">إضافة الخط</button>
+    </form>
+    <p class="muted" style="font-size:12.5px;margin-bottom:0">اسم العائلة لازم يكون مطابقاً للاسم الداخلي للخط، مثل Cairo أو MyFont. الحد الأقصى للملف ٨ ميجابايت.</p>
+  </aside>
+</div>
+{% endblock %}
