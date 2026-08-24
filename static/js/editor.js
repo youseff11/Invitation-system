@@ -751,7 +751,8 @@
       box.appendChild(buildGroups(
         spec.props,
         function (s) { return block.props[s.key]; },
-        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); }
+        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
+        false
       ));
     }
 
@@ -955,8 +956,6 @@
         "اضغط على أي حاجة جوّه المعاينة — كلمة، صورة، زر — وهتتحكّم فيها من هنا."));
       return wrap;
     }
-    wrap.open = true;
-
     var commit = function () {
       block.props.html = serializeCustom(
         node.closest("[data-block]").querySelector(".lb-custom"));
@@ -1379,7 +1378,6 @@
       wrap.appendChild(body);
       return wrap;
     }
-    wrap.open = true;
     body.appendChild(el("p", "ed-hint",
       "غيّر أي لون هنا وهيتبدّل في كل مكان مستعمَل فيه داخل القسم."));
 
@@ -1431,8 +1429,6 @@
       wrap.appendChild(body);
       return wrap;
     }
-    wrap.open = true;
-
     var labels = {
       buttons: "الأزرار", ornament_top: "الزخرفة العلوية",
       ornament_bottom: "الزخرفة السفلية", image: "الصورة", gallery: "المعرض",
