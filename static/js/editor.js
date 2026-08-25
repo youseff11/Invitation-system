@@ -2170,6 +2170,49 @@
     style.textContent = css;
   }
 
+  function restartTemplateRuntime(fdoc) {
+    if (!fdoc) return Promise.resolve();
+    var current = Array.prototype.slice.call(fdoc.querySelectorAll("script[data-lb-template-runtime]"));
+    if (!current.length) return Promise.resolve();
+    var descriptors = current.map(function (script) {
+      return {
+        src: script.getAttribute("src") || "",
+        type: script.getAttribute("type") || "",
+        code: script.textContent || ""
+      };
+    });
+    current.forEach(function (script) { script.remove(); });
+
+    var chain = Promise.resolve();
+    descriptors.forEach(function (item) {
+      chain = chain.then(function () {
+        return new Promise(function (resolve) {
+          var script = fdoc.createElement("script");
+          script.setAttribute("data-lb-template-runtime", "");
+          if (item.type) script.setAttribute("type", item.type);
+          var done = false;
+          var finish = function () {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+          if (item.src) {
+            script.src = item.src;
+            script.onload = finish;
+            script.onerror = finish;
+            // لا نسمح لملف خارجي واحد أن يعلق تحديث المحرر.
+            setTimeout(finish, 4000);
+          } else {
+            script.text = item.code;
+          }
+          (fdoc.body || fdoc.documentElement).appendChild(script);
+          if (!item.src) finish();
+        });
+      });
+    });
+    return chain;
+  }
+
   function applyPreview(data, editorScroll) {
 
     drag = null;
@@ -2204,12 +2247,15 @@
 
     applyIntro(fdoc, data.intro);
 
-    bindPreviewInteractions();
-    if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
-      refs.frame.contentWindow.__lbRefresh();
-    }
-    if (refs.blockCount) refs.blockCount.textContent = data.blockCount + " قسم";
-    if (state.selected) highlightInPreview(state.selected);
+    var runtimeReady = restartTemplateRuntime(fdoc);
+    runtimeReady.then(function () {
+      bindPreviewInteractions();
+      if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
+        refs.frame.contentWindow.__lbRefresh();
+      }
+      if (refs.blockCount) refs.blockCount.textContent = data.blockCount + " قسم";
+      if (state.selected) highlightInPreview(state.selected);
+    });
 
     var restore = function () {
       var w = fdoc.defaultView;
@@ -2817,10 +2863,12 @@
       bindSlotDrag(node, blockId, key);
     });
 
-    bindElementKeys(fdoc);
+        bindElementKeys(fdoc);
     bindCustomHtml(fdoc);
+    bindDelegatedCustomTextEditing(fdoc);
 
     // السحب مش للنصوص بس — أي جزء متعلّم بـdata-move يتحرك (الأزرار،
+
     // الصور، الخريطة، العدّاد، الفورم…). النصوص متعلّمة تلقائياً في القوالب.
     fdoc.querySelectorAll("[data-move]").forEach(function (node) {
       if (node.hasAttribute("data-slot")) return;      // اتربط فوق
@@ -2900,7 +2948,64 @@
     return clone.innerHTML;
   }
 
+    function beginCustomTextEdit(node) {
+    if (!node) return;
+    node.setAttribute("contenteditable", "plaintext-only");
+    node.classList.add("lb-el-typing");
+    node.focus();
+    var sel = node.ownerDocument.getSelection();
+    if (sel && sel.rangeCount === 0) {
+      var range = node.ownerDocument.createRange();
+      range.selectNodeContents(node);
+      range.collapse(false);
+      sel.addRange(range);
+    }
+  }
+
+  function delegatedCustomTextWriteBack(node) {
+    var section = node && node.closest('[data-block-type="custom_html"]');
+    if (!section) return;
+    var block = findBlock(section.getAttribute("data-block"));
+    var root = section.querySelector(".lb-custom");
+    if (!block || !root || !("html" in block.props)) return;
+    block.props.html = serializeCustom(root);
+    markDirty();
+  }
+
+  function bindDelegatedCustomTextEditing(fdoc) {
+    if (!fdoc || fdoc.__lbDelegatedTextEditing) return;
+    fdoc.__lbDelegatedTextEditing = true;
+    fdoc.addEventListener("dblclick", function (e) {
+      var node = e.target && e.target.closest && e.target.closest("[data-lb-text]");
+      if (!node) return;
+      e.preventDefault();
+      e.stopPropagation();
+      beginCustomTextEdit(node);
+      if (node.dataset.lbDelegatedEdit !== "1") {
+        node.dataset.lbDelegatedEdit = "1";
+        node.addEventListener("input", function () { delegatedCustomTextWriteBack(node); });
+        node.addEventListener("blur", function () {
+          node.removeAttribute("contenteditable");
+          node.classList.remove("lb-el-typing");
+          delegatedCustomTextWriteBack(node);
+        });
+        node.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            node.blur();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            node.blur();
+          }
+        });
+      }
+    }, true);
+  }
+
   function bindCustomHtml(fdoc) {
+
     fdoc.querySelectorAll('[data-block-type="custom_html"]').forEach(function (sec) {
       var root = sec.querySelector(".lb-custom");
       if (!root) return;
@@ -2952,10 +3057,10 @@
              والأسهم بتحرّك المؤشّر مش العنصر، وCtrl+C بينسخ نص مش
              العنصر. ده نفس سلوك أدوات التصميم المحترفة. */
           n.style.outline = "none";
-          n.addEventListener("dblclick", function () {
-            n.setAttribute("contenteditable", "plaintext-only");
-            n.classList.add("lb-el-typing");
-            n.focus();
+                    n.addEventListener("dblclick", function (e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            beginCustomTextEdit(n);
+
             var sel = n.ownerDocument.getSelection();
             if (sel && sel.rangeCount === 0) {
               var range = n.ownerDocument.createRange();

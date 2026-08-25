@@ -224,8 +224,10 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         "share_image": doc_settings.get("share_image") or "",
         "canonical_url": request.build_absolute_uri(invitation.get_absolute_url()),
         "music_config": music,
-        "scroll_config": _scroll_config(doc_settings, editable=editable),
+                "scroll_config": _scroll_config(doc_settings, editable=editable),
+        "run_template_runtime": bool(editable and getattr(invitation.template, "runtime_scripts", [])),
         "guest": guest,
+
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
     })
@@ -1007,6 +1009,7 @@ def _template_editor_frame(request, template, document, *, editable=True):
         "canonical_url": "",
         "music_config": {},
         "scroll_config": _scroll_config(result["settings"], editable=editable),
+        "run_template_runtime": bool(editable and getattr(template, "runtime_scripts", [])),
         "cta": None,
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
