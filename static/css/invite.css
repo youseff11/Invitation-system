@@ -1270,3 +1270,27 @@
 .lb-doc--editing .lb-gate {
   pointer-events: none;
 }
+
+/* القوالب المستوردة التي تشغّل JavaScript الأصلي تحتاج عرض الصفحة الكامل؛
+   كارت الدعوة 720px كان يغيّر حسابات Tilda Zero ويقص العناصر من اليمين. */
+.lb-stage--runtime {
+  max-width: none;
+  margin-inline: 0;
+  box-shadow: none;
+  overflow: visible;
+  isolation: auto;
+}
+.lb-stage--runtime > .lb {
+  margin: 0;
+  padding-inline: 0;
+  overflow: visible;
+  background: transparent;
+}
+.lb-stage--runtime > .lb > .lb-inner {
+  max-width: none;
+  width: 100%;
+  gap: 0;
+}
+.lb-stage--runtime .lb-custom {
+  width: 100%;
+}

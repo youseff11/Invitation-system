@@ -158,12 +158,16 @@ class Template(TimeStampedModel):
                                       blank=True, editable=False)
 
     source = models.CharField("المصدر", max_length=20,
-
                               choices=SOURCE_CHOICES, default="editor")
     source_file = models.FileField("الملف الأصلي", upload_to="template_sources/%Y/%m/",
                                    blank=True, null=True)
 
+    # سكربتات القالب المستورد المسموح بتشغيلها في وضع sandbox.
+    runtime_scripts = models.JSONField("JavaScript القالب", default=list, blank=True)
+    runtime_root_attrs = models.JSONField("بيانات غلاف JavaScript", default=dict, blank=True)
+
     required_features = models.JSONField("المزايا التي يحتاجها", default=list, blank=True)
+
     is_active = models.BooleanField("معروض للعملاء", default=True)
     sort_order = models.PositiveIntegerField("الترتيب", default=0)
     usage_count = models.PositiveIntegerField("عدد مرات الاستخدام", default=0)

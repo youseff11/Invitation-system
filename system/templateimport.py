@@ -44,7 +44,11 @@ MAX_MEMBERS = 400
 MAX_RATIO = 120                           # نسبة انتفاخ مشبوهة = zip bomb
 MAX_BLOCKS = 40
 MAX_BLOCK_HTML = 100000
+MAX_RUNTIME_SCRIPTS = 80
+MAX_RUNTIME_SCRIPT_BYTES = 8 * 1024 * 1024
+MAX_INLINE_SCRIPT_BYTES = 256 * 1024
 MAX_REMOTE_IMAGE_BYTES = 8 * 1024 * 1024
+
 MIN_VISIBLE_CHARS = 60     # أقل من كده = صفحة بلا كلام
 _ALLOWED_REMOTE_IMAGE_HOSTS = {"static.tildacdn.net", "optim.tildacdn.net",
                                "thb.tildacdn.net", "res.cloudinary.com"}
@@ -52,7 +56,9 @@ _ALLOWED_REMOTE_IMAGE_HOSTS = {"static.tildacdn.net", "optim.tildacdn.net",
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".svg"}
 CSS_EXT = {".css"}
 HTML_EXT = {".html", ".htm"}
+JS_EXT = {".js"}
 FONT_EXT = {".woff2", ".woff", ".ttf", ".otf"}
+
 AUDIO_EXT = {".mp3", ".m4a", ".ogg", ".wav"}
 VIDEO_EXT = {".mp4", ".webm", ".mov", ".m4v", ".ogv"}
 
@@ -105,8 +111,9 @@ def _read_zip(raw: bytes) -> dict[str, bytes]:
             if not name:
                 continue
             ext = os.path.splitext(name)[1].lower()
-            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | FONT_EXT | AUDIO_EXT | VIDEO_EXT:
-                continue          # لا js ولا أي حاجة بتتنفّذ
+            if ext not in IMAGE_EXT | CSS_EXT | HTML_EXT | JS_EXT | FONT_EXT | AUDIO_EXT | VIDEO_EXT:
+                continue          # الأنواع الأخرى لا تدخل التخزين
+
             if info.file_size > 8 * 1024 * 1024:
                 continue
             with zf.open(info) as fh:
@@ -256,9 +263,171 @@ class _Splitter(HTMLParser):
         return self._seen_body
 
 
+class _ScriptExtractor(HTMLParser):
+    """يستخرج script بالترتيب من غير إدخاله داخل HTML المنقّى."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=False)
+        self.scripts: list[dict[str, str]] = []
+        self.current: dict[str, str] | None = None
+        self.buf: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "script" and self.current is None:
+            self.current = {str(k).lower(): str(v or "") for k, v in attrs}
+            self.buf = []
+
+    def handle_startendtag(self, tag, attrs):
+        if tag.lower() == "script":
+            self.scripts.append({
+                "src": str(dict(attrs).get("src") or "").strip(),
+                "code": "",
+            })
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.buf.append(data)
+
+    def handle_entityref(self, name):
+        if self.current is not None:
+            self.buf.append(f"&{name};")
+
+    def handle_charref(self, name):
+        if self.current is not None:
+            self.buf.append(f"&#{name};")
+
+    def handle_endtag(self, tag):
+        if tag.lower() != "script" or self.current is None:
+            return
+        item = dict(self.current)
+        item["src"] = str(item.get("src") or "").strip()
+        item["code"] = "".join(self.buf)
+        self.scripts.append(item)
+        self.current = None
+        self.buf = []
+
+    def close(self):
+        super().close()
+        if self.current is not None:
+            item = dict(self.current)
+            item["src"] = str(item.get("src") or "").strip()
+            item["code"] = "".join(self.buf)
+            self.scripts.append(item)
+            self.current = None
+            self.buf = []
+
+
+_COUNTDOWN_EXPIRED_RE = re.compile(
+    r"if\s*\(\s*dist\s*<\s*0\s*\)\s*\{.*?return\s*;\s*\}",
+    re.I | re.S,
+)
+
+
+def _keep_expired_countdown_visible(code: str) -> str:
+    """يُبقي عدّاد القالب ظاهراً ويحوّل القيمة المنتهية إلى أصفار."""
+    if "countdowncontainer" not in (code or "").lower():
+        return code
+    return _COUNTDOWN_EXPIRED_RE.sub("if (dist < 0) { dist = 0; }", code, count=1)
+
+
+_OPENING_SCRIPT_MARKERS = {
+    "weioverlay", "weivideo", "weiaudio", "weitapwrap", "open your invitation",
+}
+
+
+def _is_javascript_type(value: str) -> bool:
+    value = (value or "").strip().lower()
+    return not value or value in {"text/javascript", "application/javascript", "module"}
+
+
+def _looks_like_opening_script(item: dict[str, str]) -> bool:
+    blob = (str(item.get("src") or "") + " " + str(item.get("code") or "")).lower()
+    return any(marker in blob for marker in _OPENING_SCRIPT_MARKERS)
+
+
+def _runtime_root_attrs(html: str) -> dict[str, str]:
+    """يأخذ خصائص غلاف allrecords اللازمة لتشغيل مكتبات Tilda."""
+    match = re.search(
+        r"<div\b(?=[^>]*\bid\s*=\s*['\"]allrecords['\"])[^>]*>",
+        html or "", re.I,
+    )
+    if not match:
+        return {}
+    attrs: dict[str, str] = {"id": "allrecords"}
+    for key, _quote, value in re.findall(
+        r"([A-Za-z_:][A-Za-z0-9_.:-]*)\s*=\s*(['\"])(.*?)\2",
+        match.group(0), re.S,
+    ):
+        key = key.lower()
+        if key in {"id", "class"} or key.startswith("data-"):
+            attrs[key] = value[:300]
+    return attrs
+
+
+def _unwrap_allrecords(part: str) -> str:
+    """يشيل غلاف allrecords من البلوك؛ الصفحة النهائية تضيف غلافاً واحداً."""
+    part = re.sub(
+        r"^\s*<div\b(?=[^>]*\bid\s*=\s*['\"]allrecords['\"])[^>]*>",
+        "", part, count=1, flags=re.I,
+    )
+    part = re.sub(r"</div>\s*</div>\s*$", "</div>", part, count=1, flags=re.S)
+    return part
+
+
+def _store_runtime_scripts(html: str, main: str, files: dict[str, bytes],
+                           url_map: dict[str, str]) -> list[dict[str, str]]:
+    """يخزن كل سكربتات القالب المشار إليها لتُشغّل في صفحة القالب فقط.
+
+    لا نضع script داخل custom_html؛ لأن منقّي HTML يحذفه عمداً. بدلاً من ذلك
+    نحفظه كبيانات runtime منفصلة، ونُحقنه في الصفحة العامة بعد HTML القالب.
+    """
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    parser = _ScriptExtractor()
+    parser.feed(html or "")
+    parser.close()
+    scripts: list[dict[str, str]] = []
+    stored_bytes = 0
+    base_dir = posixpath.dirname(main)
+
+    for item in parser.scripts[:MAX_RUNTIME_SCRIPTS]:
+        if not _is_javascript_type(item.get("type", "")):
+            continue
+        src = (item.get("src") or "").strip()
+        code = _keep_expired_countdown_visible(item.get("code") or "")
+        if src:
+            parsed = urllib.parse.urlparse(src)
+            if parsed.scheme or parsed.netloc:
+                # بعض القوالب تحتاج مكتبات Tilda/Google من CDN. نسمح
+                # بروابط HTTPS فقط ونحافظ على ترتيبها داخل صفحة المعاينة.
+                if parsed.scheme.lower() == "https" and parsed.netloc:
+                    scripts.append({"src": src, "type": item.get("type") or ""})
+                elif not parsed.scheme and parsed.netloc:
+                    scripts.append({"src": "https:" + src, "type": item.get("type") or ""})
+                continue
+            key = posixpath.normpath(posixpath.join(base_dir, parsed.path.lstrip("./")))
+            data = files.get(key) or files.get(os.path.basename(key))
+            if not data or stored_bytes + len(data) > MAX_RUNTIME_SCRIPT_BYTES:
+                continue
+            safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(key)) or "script.js"
+            digest = hashlib.sha256(data).hexdigest()[:16]
+            path = default_storage.save(
+                f"template_scripts/{digest}-{safe_name}", ContentFile(data)
+            )
+            url = default_storage.url(path)
+            url_map[key] = url
+            url_map.setdefault(os.path.basename(key), url)
+            scripts.append({"src": url, "type": item.get("type") or ""})
+            stored_bytes += len(data)
+        elif code.strip() and len(code.encode("utf-8")) <= MAX_INLINE_SCRIPT_BYTES:
+            scripts.append({"code": code, "type": item.get("type") or ""})
+
+    return scripts
 
 
 class _OpeningStripper(HTMLParser):
+
     """يزيل شاشة الافتتاحية الأصلية من غير لمس باقي محتوى الصفحة."""
 
     _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input",
@@ -486,6 +655,10 @@ _MEDIA_SRC_RE = re.compile(
     r'(<(?:img|video|audio|source|track)\b[^>]*?\s(?:src|poster)=)(["\'])(.*?)\2',
     re.I | re.S,
 )
+_IFRAME_SRC_RE = re.compile(
+    r'(<iframe\b[^>]*?\ssrc=)(["\'])(.*?)\2', re.I | re.S,
+)
+
 _SRCSET_RE = re.compile(r'\ssrcset=(["\']).*?\1', re.I | re.S)
 _IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.I | re.S)
 _ATTR_RE_TEMPLATE = r'({attr}\s*=\s*)(["\'])(.*?)\2'
@@ -589,7 +762,177 @@ def _stream_video_url(url: str) -> str:
     return value
 
 
+_COORDINATE_PAIR_RE = re.compile(
+    r"\[\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*\]"
+)
+
+
+def _google_maps_embed_fallback(page: str) -> str | None:
+    """يستخرج إحداثيات embed المحفوظ ويستخدم رابط Google Maps عام بدلاً من API key قديم."""
+    low = (page or "").lower()
+    if not any(marker in low for marker in ("mapdiv", "initembed", "maps.googleapis.com")):
+        return None
+    pairs = []
+    for match in _COORDINATE_PAIR_RE.finditer(page or ""):
+        lat, lon = float(match.group(1)), float(match.group(2))
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
+            pairs.append((lat, lon))
+    if not pairs:
+        return None
+    lat, lon = pairs[-1]
+    return "https://www.google.com/maps?q=" + urllib.parse.quote(
+        f"{lat:.7f},{lon:.7f}", safe=","
+    ) + "&output=embed"
+
+
+_TN_ELEM_START_RE = re.compile(
+    r"<div\b[^>]*\bclass=(['\"])[^'\"]*\btn-elem\b[^'\"]*\1[^>]*>",
+    re.I | re.S,
+)
+_ATTR_RE = re.compile(r"\b([A-Za-z][A-Za-z0-9_-]*)\s*=\s*(['\"])(.*?)\2", re.S)
+
+
+def _tag_attr(tag: str, name: str) -> str:
+    match = re.search(
+        rf"\b{re.escape(name)}\s*=\s*(['\"])(.*?)\1", tag, re.I | re.S
+    )
+    return match.group(2) if match else ""
+
+
+def _set_tag_attr(tag: str, name: str, value: str) -> str:
+    pattern = rf"(\b{re.escape(name)}\s*=\s*)(['\"])(.*?)\2"
+    if re.search(pattern, tag, re.I | re.S):
+        return re.sub(
+            pattern, lambda m: f'{m.group(1)}{m.group(2)}{value}{m.group(2)}',
+            tag, count=1, flags=re.I | re.S,
+        )
+    return tag[:-1] + f' {name}="{value}"' + tag[-1:]
+
+
+def _align_embedded_map_element(html: str) -> str:
+    """يضع عنصر خريطة Tilda فوق الإطار الزخرفي بدلاً من إحداثيات window العامة."""
+    low = (html or "").lower()
+    if "<iframe" not in low or not any(
+        marker in low for marker in ("google.com/maps", "maps.googleapis.com", "mapdiv")
+    ):
+        return html
+    iframe_pos = low.find("<iframe")
+    starts = list(_TN_ELEM_START_RE.finditer(html))
+    html_candidates = [
+        match for match in starts
+        if match.start() < iframe_pos
+        and _tag_attr(match.group(0), "data-elem-type").lower() == "html"
+    ]
+    if not html_candidates:
+        return html
+    html_match = html_candidates[-1]
+    image_candidates = []
+    for match in starts:
+        if match.start() >= html_match.start():
+            break
+        tag = match.group(0)
+        if _tag_attr(tag, "data-elem-type").lower() != "image":
+            continue
+        try:
+            width = float(_tag_attr(tag, "data-field-width-value"))
+            height = float(_tag_attr(tag, "data-field-height-value"))
+        except (TypeError, ValueError):
+            continue
+        if 160 <= width <= 700 and 160 <= height <= 700 and abs(width - height) <= 24:
+            image_candidates.append((abs(html_match.start() - match.start()), tag))
+    if not image_candidates:
+        return html
+    frame_tag = min(image_candidates, key=lambda item: item[0])[1]
+    map_tag = html_match.group(0)
+    names = {
+        "data-field-top-value", "data-field-left-value",
+        "data-field-height-value", "data-field-width-value",
+        "data-field-axisx-value", "data-field-axisy-value",
+        "data-field-container-value", "data-field-topunits-value",
+        "data-field-leftunits-value", "data-field-heightunits-value",
+        "data-field-widthunits-value",
+    }
+    for match in _ATTR_RE.finditer(frame_tag):
+        name, _quote, value = match.groups()
+        if name.startswith("data-field-") and re.match(
+            r"data-field-(?:top|left|height|width)(?:-res-[^-]+)?-value$", name, re.I
+        ):
+            names.add(name)
+    for name in names:
+        value = _tag_attr(frame_tag, name)
+        if value:
+            map_tag = _set_tag_attr(map_tag, name, value)
+    start, end = html_match.span()
+    return html[:start] + map_tag + html[end:]
+
+
+def _rewrite_iframe_srcs(html: str, url_map: dict[str, str]) -> str:
+    """يربط iframe محلياً بصفحة مخزنة، ويترك روابط Google الخارجية كما هي."""
+    def repl(m):
+        raw = (m.group(3) or "").strip()
+        if raw.lower().startswith(("data:", "http://", "https://", "//")):
+            return m.group(0)
+        key = urllib.parse.unquote(raw.split("?", 1)[0].split("#", 1)[0]).lstrip("./")
+        mapped = url_map.get(key) or url_map.get(os.path.basename(key))
+        return f"{m.group(1)}{m.group(2)}{mapped or raw}{m.group(2)}"
+    return _IFRAME_SRC_RE.sub(repl, html)
+
+
+def _store_embedded_pages(files: dict[str, bytes], main: str,
+                          url_map: dict[str, str]) -> None:
+    """يحفظ صفحات iframe المحلية مع سكربتاتها التابعة ويعيد كتابة روابطها."""
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    for name, data in files.items():
+        if name == main or os.path.splitext(name)[1].lower() not in HTML_EXT:
+            continue
+        if not data or len(data) > 2 * 1024 * 1024:
+            continue
+        try:
+            page = data.decode("utf-8")
+        except UnicodeDecodeError:
+            page = data.decode("cp1256", errors="replace")
+        maps_fallback = _google_maps_embed_fallback(page)
+        if maps_fallback:
+            url_map[name] = maps_fallback
+            url_map.setdefault(os.path.basename(name), maps_fallback)
+            continue
+        page_dir = posixpath.dirname(name)
+        for match in re.finditer(
+            r'(<script\b[^>]*?\bsrc\s*=\s*)(["\'])([^"\']+)(\2)',
+            page, re.I,
+        ):
+            ref = match.group(3).strip()
+            parsed = urllib.parse.urlparse(ref)
+            if parsed.scheme or parsed.netloc:
+                continue
+            key = posixpath.normpath(posixpath.join(page_dir, parsed.path.lstrip("./")))
+            script_data = files.get(key) or files.get(os.path.basename(key))
+            if not script_data or len(script_data) > MAX_RUNTIME_SCRIPT_BYTES:
+                continue
+            safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(key)) or "script.js"
+            digest = hashlib.sha256(script_data).hexdigest()[:16]
+            script_path = default_storage.save(
+                f"template_pages/{digest}-{safe_name}", ContentFile(script_data)
+            )
+            script_url = default_storage.url(script_path)
+            url_map[key] = script_url
+            url_map.setdefault(os.path.basename(key), script_url)
+            page = page.replace(f'src="{ref}"', f'src="{script_url}"')
+            page = page.replace(f"src='{ref}'", f"src='{script_url}'")
+        safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(name)) or "embed.html"
+        digest = hashlib.sha256(page.encode("utf-8")).hexdigest()[:16]
+        page_path = default_storage.save(
+            f"template_pages/{digest}-{safe_name}", ContentFile(page.encode("utf-8"))
+        )
+        page_url = default_storage.url(page_path)
+        url_map[name] = page_url
+        url_map.setdefault(os.path.basename(name), page_url)
+
+
 def _rewrite_media_srcs(html: str, url_map: dict[str, str]) -> str:
+
     """يحل مسارات الصور والفيديو والصوت وposter داخل HTML."""
 
     html = _SRCSET_RE.sub("", html)      # srcset بيشاور على ملفات مش مخزّنة
@@ -752,16 +1095,17 @@ def parse_upload(upload) -> tuple[str, dict[str, bytes]]:
     return "index.html", {"index.html": raw}
 
 
-def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
-    """يحوّل الملفات لمستند بلوكات. يرجّع ``(المستند, العنوان_المستخرج)``."""
+def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str, list[dict[str, str]], dict[str, str]]:
+    """يحوّل الملفات لمستند بلوكات ويرجّع المستند والعنوان والـruntime scripts."""
+
     try:
         html = files[main].decode("utf-8")
     except UnicodeDecodeError:
         html = files[main].decode("cp1256", errors="replace")
 
-    # قوالب الدعوات قد تضع فيديو/صورة افتتاحية فوق كل الصفحة. لا نستورد
-    # هذه الطبقة إطلاقاً؛ المطلوب هو المحتوى الذي يليها فقط.
-    html = _strip_imported_openings(html)
+    # نحتفظ بالافتتاحية الأصلية؛ تشغيلها أصبح جزءاً من runtime الخاص بالقالب.
+    # لا يتم تشغيلها داخل المحرر، وتظهر فقط في المعاينة العامة/الدعوة المنشورة.
+
     html, files = _upgrade_lazy_images(html, files)
 
     parser = _Splitter()
@@ -769,8 +1113,11 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     parser.close()
 
     url_map = _store_media(files, preserve_original=True)
+    _store_embedded_pages(files, main, url_map)
+    runtime_scripts = _store_runtime_scripts(html, main, files, url_map)
 
     # CSS: الملفات المربوطة الأول (ترتيب المتصفح) وبعدين <style> الداخلي
+
     base_dir = posixpath.dirname(main)
     raw_css = []
     for href in parser.css_links:
@@ -808,7 +1155,13 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     blocks = []
     for i, part in enumerate(parts, 1):
         bid = f"imp-{i}"
-        part = _rewrite_inline_styles(_rewrite_media_srcs(part, url_map), url_map)
+        part = _unwrap_allrecords(part)
+        part = _align_embedded_map_element(
+            _rewrite_iframe_srcs(
+                _rewrite_inline_styles(_rewrite_media_srcs(part, url_map), url_map), url_map
+            )
+        )
+
         cleaned = clean_html(part, max_length=MAX_BLOCK_HTML)
 
         if not cleaned.strip():
@@ -841,7 +1194,8 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     # الصفحة اتقرت، بس هل فيها كلام أصلاً؟
     #
     # المواقع الحديثة بتبعت HTML شبه فاضي (<div id="root"></div>) والمحتوى
-    # كله بيتبني بجافاسكربت في المتصفح. إحنا بنشيل الجافاسكربت لأسباب أمنية،
+    # كله بيتبني بجافاسكربت في المتصفح. الملفات المحلية تُحفظ كـruntime منفصل،
+
     # فالناتج بيبقى هيكل فاضي. أسوأ حاجة نعملها إننا نسيبه يتحفظ كقالب
     # ويكتشف بنفسه إنه فاضي — فبنوقف هنا ونقول السبب.
     visible = _visible_text("".join(b["props"]["html"] for b in blocks))
@@ -849,25 +1203,29 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str]:
     # الاستيراد مالوش أي فايدة والنتيجة هتبقى هيكل فاضي مضمون.
     # صفحة قصيرة وخلاص بتعدّي عادي، والعرض بيحذّر منها (شوف
     # document_text_length) — مش شغلنا نمنع حد من ملف صغير.
-    if len(visible) < MIN_VISIBLE_CHARS and _looks_scripted(html):
+    if len(visible) < MIN_VISIBLE_CHARS and _looks_scripted(html) and not runtime_scripts:
         raise ImportError_(
+
             f"القالب طلع فاضي: لقينا {len(blocks)} قسم بس مفيش فيهم كلام "
             f"(‎{len(visible)}‎ حرف). الصفحة دي بتتبني بجافاسكربت — الكلام "
             "مش موجود في ملف HTML نفسه، بيتحط في المتصفح وقت التشغيل، "
-            "وإحنا بنشيل الجافاسكربت لأسباب أمنية. "
+            "ولم نجد ملفات JavaScript محلية كافية لتشغيله. "
+
             "افتح الصفحة في المتصفح واستنى تحمّل، وبعدين Ctrl+S ← "
             "«صفحة كاملة»، أو انسخ الـHTML النهائي من أدوات المطوّر."
         )
 
+    runtime_root_attrs = _runtime_root_attrs(html)
+
     document = blocks_engine.normalize_document({
         "version": 1, "blocks": blocks, "theme": {}, "settings": {},
     })
-    return document, parser.title.strip()[:120]
+    return document, parser.title.strip()[:120], runtime_scripts, runtime_root_attrs
 
 
 def import_template(upload, *, name: str = "", category: str = "classic") -> Template:
     main, files = parse_upload(upload)
-    document, title = build_document(main, files)
+    document, title, runtime_scripts, runtime_root_attrs = build_document(main, files)
 
     label = (name or title
              or os.path.splitext(os.path.basename(getattr(upload, "name", "")))[0]
@@ -886,7 +1244,9 @@ def import_template(upload, *, name: str = "", category: str = "classic") -> Tem
         name=label, slug=slug, category=category, source="import",
         source_file=upload,
         description="قالب مستورد من ملف — الأقسام قابلة للترتيب والإخفاء من المحرر.",
-        document=document, is_active=True,
+        document=document, runtime_scripts=runtime_scripts,
+        runtime_root_attrs=runtime_root_attrs, is_active=True,
+
     )
     # عدد المقطوعات اللي دخلت مع الاستيراد ده بالذات — العرض بيعرضها
     # للمستخدم. مش عمود في الداتابيز، بيانات لحظة الاستيراد بس.

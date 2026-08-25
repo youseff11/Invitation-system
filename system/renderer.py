@@ -471,6 +471,17 @@ def _custom_font_css() -> str:
     return mark_safe("".join(rules))
 
 
+def _unwrap_runtime_allrecords(value: str) -> str:
+    """يصلح النسخ المستوردة قبل إصلاح allrecords بدون لمس القوالب العادية."""
+    if 'id="allrecords"' not in (value or '').lower():
+        return value
+    value = re.sub(
+        r"^\s*<div\b(?=[^>]*\bid\s*=\s*['\"]allrecords['\"])[^>]*>",
+        "", value, count=1, flags=re.I,
+    )
+    return re.sub(r"</div>\s*</div>\s*$", "</div>", value, count=1, flags=re.S)
+
+
 def render_document(
 
     document: dict,
@@ -481,7 +492,10 @@ def render_document(
     editable: bool = False,
     guest=None,
     lang: str = "ar",
+    runtime_scripts: list[dict] | None = None,
+    runtime_root_attrs: dict[str, str] | None = None,
 ) -> dict:
+
     """يعرض المستند ويعيد ``{"html", "css_vars", "theme", "settings"}``."""
     doc = blocks_engine.normalize_document(document)
 
@@ -542,9 +556,16 @@ def render_document(
         if hidden and not editable:
             continue  # القسم مخفي يدوياً
 
+        resolved_props = _resolve_props(block, data)
+        if runtime_scripts and isinstance(resolved_props.get("html"), str):
+            resolved_props["html"] = _unwrap_runtime_allrecords(resolved_props["html"])
+            # أصلح النسخ القديمة التي حُفظت قبل محاذاة iframe الخريطة.
+            from .templateimport import _align_embedded_map_element
+            resolved_props["html"] = _align_embedded_map_element(resolved_props["html"])
         ctx = {
             "block": block,
-            "props": _resolve_props(block, data),
+            "props": resolved_props,
+
             "style": block.get("style") or {},
             "theme": theme,
             "settings": doc_settings,
@@ -586,18 +607,31 @@ def render_document(
         # القالب بيقرر ظهور زرار اللغة من دول: مفيش نسخة = مفيش زرار.
         "lang": lang,
         "has_en": has_en,
+        "runtime_scripts": runtime_scripts or [],
+        "runtime_root_attrs": runtime_root_attrs or {},
     }
 
 
 _PREVIEW_KEYS = (
     "html", "css_vars", "font_css", "intro_css", "intro_item_styles", "layout_css",
+    "runtime_scripts", "runtime_root_attrs",
 
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
+
 )
 
 
-def _preview_signature(document: dict) -> str:
-    raw = json.dumps(document or {}, sort_keys=True, ensure_ascii=False, default=str)
+_PREVIEW_RENDER_REVISION = "2026-08-25-map-frame-v1"
+
+
+def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
+    raw = json.dumps(
+        {"render_revision": _PREVIEW_RENDER_REVISION,
+         "document": document or {}, "runtime_scripts": runtime_scripts or [],
+         "runtime_root_attrs": runtime_root_attrs or {}},
+        sort_keys=True, ensure_ascii=False, default=str,
+    )
+
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -605,6 +639,11 @@ def _preview_payload(result: dict) -> dict:
     payload = {key: result.get(key) for key in _PREVIEW_KEYS}
     payload["html"] = str(payload.get("html") or "")
     payload["css_vars"] = str(payload.get("css_vars") or "")
+    payload["runtime_scripts"] = [
+        item for item in (payload.get("runtime_scripts") or [])
+        if isinstance(item, dict) and (item.get("src") or item.get("code"))
+    ]
+
     payload["font_css"] = str(payload.get("font_css") or "")
     payload["intro_css"] = str(payload.get("intro_css") or "")
 
@@ -624,23 +663,41 @@ def _restore_preview(payload: dict) -> dict:
         str(k): mark_safe(str(v))
         for k, v in (result.get("intro_item_styles") or {}).items()
     }
+    result["runtime_scripts"] = [
+        item for item in (result.get("runtime_scripts") or [])
+        if isinstance(item, dict) and (item.get("src") or item.get("code"))
+    ]
+    result["runtime_root_attrs"] = {
+        str(k): str(v)[:300]
+        for k, v in (result.get("runtime_root_attrs") or {}).items()
+        if str(k) == "id" or str(k) == "class" or str(k).startswith("data-")
+    }
     return result
 
 
 def get_template_preview(template, *, lang: str = "ar") -> dict:
     """يعيد الرندر المحفوظ للقالب أو يبنيه مرة واحدة عند أول استخدام."""
-    signature = _preview_signature(template.document)
+    signature = _preview_signature(
+        template.document, getattr(template, "runtime_scripts", []),
+        getattr(template, "runtime_root_attrs", {}),
+    )
+
     cache = template.preview_render if isinstance(template.preview_render, dict) else {}
     entry = cache.get(lang) if isinstance(cache.get(lang), dict) else None
     if (entry and entry.get("signature") == signature
             and isinstance(entry.get("payload"), dict)
-            and "font_css" in entry["payload"]):
+            and "font_css" in entry["payload"]
+            and "runtime_scripts" in entry["payload"]
+            and "runtime_root_attrs" in entry["payload"]):
         return _restore_preview(entry["payload"])
 
     result = render_document(
         template.document, invitation=None, request=None,
         allowed_features=None, editable=False, lang=lang,
+        runtime_scripts=getattr(template, "runtime_scripts", []),
+        runtime_root_attrs=getattr(template, "runtime_root_attrs", {}),
     )
+
     cache = dict(cache)
     cache[lang] = {"signature": signature, "payload": _preview_payload(result)}
     template.preview_render = cache

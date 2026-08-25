@@ -18,7 +18,8 @@ ALLOWED_TAGS = {
     "table", "thead", "tbody", "tr", "th", "td",
     # وسائط وعناصر نموذج آمنة للعرض داخل القالب المستورد. لا نسمح
     # بخاصية action أو أي event handler، لذلك تظل هذه العناصر عرضية فقط.
-    "video", "audio", "source", "track", "form", "label", "input",
+        "video", "audio", "source", "track", "iframe", "form", "label", "input",
+
     "textarea", "select", "option", "button",
     # SVG inline للزخارف والأيقونات؛ السمات المسموحة أدناه لا تشمل href خارجي.
     "svg", "g", "path", "line", "circle", "rect", "polyline", "polygon",
@@ -26,10 +27,14 @@ ALLOWED_TAGS = {
 
 # وسوم يُحذف محتواها بالكامل لا الوسم فقط. عناصر العرض والنماذج لم تعد
 # ضمن القائمة: نحتفظ بها بعد تنظيف سماتها حتى لا تختفي أجزاء القالب المستورد.
-DROP_CONTENT_TAGS = {"script", "style", "iframe", "object", "embed", "math",
+DROP_CONTENT_TAGS = {"script", "style", "object", "embed", "math",
+
                      "link", "meta", "noscript", "template"}
 
-VOID_TAGS = {"br", "img", "hr", "source", "track", "input"}
+VOID_TAGS = {
+    "area", "base", "br", "col", "embed", "hr", "img", "input",
+    "link", "meta", "param", "source", "track", "wbr",
+}
 
 # data-move بتربط العنصر بموضعه المحفوظ في block.layout. من غيرها
 # السحب بالماوس جوّه قسم مستورد بيضيع أول ما تحفظ.
@@ -44,7 +49,10 @@ ALLOWED_ATTRS = {
               "loop", "muted", "playsinline", "preload"},
     "audio": {"src", "controls", "autoplay", "loop", "muted", "preload"},
     "source": {"src", "type", "media"},
-    "track": {"src", "kind", "srclang", "label", "default"},
+        "track": {"src", "kind", "srclang", "label", "default"},
+    "iframe": {"src", "title", "width", "height", "loading", "allow",
+                "allowfullscreen", "frameborder", "referrerpolicy"},
+
     "form": {"method", "novalidate", "autocomplete"},
     "input": {"type", "name", "value", "placeholder", "required", "checked",
               "min", "max", "step", "maxlength", "autocomplete"},
@@ -166,10 +174,15 @@ class _Cleaner(HTMLParser):
     # -- parser hooks -----------------------------------------------------
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
-        if self.skip_depth or tag in DROP_CONTENT_TAGS:
-            if tag in DROP_CONTENT_TAGS:
+        if tag in DROP_CONTENT_TAGS:
+            # meta/link/embed عناصر فارغة؛ لا يجوز أن تظل skip_depth مفتوحة
+            # فتخفي كل ما بعدها داخل سجل Tilda.
+            if tag not in VOID_TAGS:
                 self.skip_depth += 1
             return
+        if self.skip_depth:
+            return
+
         if tag not in ALLOWED_TAGS:
             return
         self.out.append(f"<{tag}{self._attrs(tag, attrs)}>")
@@ -185,8 +198,10 @@ class _Cleaner(HTMLParser):
     def handle_endtag(self, tag):
         tag = tag.lower()
         if tag in DROP_CONTENT_TAGS:
-            self.skip_depth = max(0, self.skip_depth - 1)
+            if tag not in VOID_TAGS:
+                self.skip_depth = max(0, self.skip_depth - 1)
             return
+
         if self.skip_depth or tag in VOID_TAGS or tag not in ALLOWED_TAGS:
             return
         if tag in self.stack:

@@ -1115,7 +1115,7 @@ class TemplateImportTests(TestCase):
         up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
         self.assertEqual(templateimport.import_template(up, name="اسمي").name, "اسمي")
 
-    def test_scripts_and_handlers_are_stripped(self):
+    def test_scripts_and_handlers_are_stripped_from_editable_html(self):
         up = SimpleUploadedFile("t.html", self.PAGE.encode(), "text/html")
         tpl = templateimport.import_template(up)
         blob = json.dumps(tpl.document, ensure_ascii=False)
@@ -1123,7 +1123,69 @@ class TemplateImportTests(TestCase):
         self.assertNotIn("onload", blob)
         self.assertNotIn("<script", blob)
 
+    def test_local_scripts_are_saved_as_runtime_metadata(self):
+        page = "<html><head><script src='js/app.js'></script></head><body><h1>دعوة</h1><p>محتوى كافٍ للمعاينة والتجربة.</p></body></html>"
+        tpl = templateimport.import_template(
+            self._zip({"index.html": page, "js/app.js": "window.__templateLoaded = true;"}),
+            name="قالب JavaScript",
+        )
+        self.assertEqual(len(tpl.runtime_scripts), 1)
+        self.assertTrue(tpl.runtime_scripts[0]["src"].startswith("/media/"))
+        blob = json.dumps(tpl.document, ensure_ascii=False).lower()
+        self.assertNotIn("window.__templateloaded", blob)
+        self.assertNotIn("<script", blob)
+        body = self.client.get(f"/templates/{tpl.slug}/preview/").content.decode()
+        self.assertIn(tpl.runtime_scripts[0]["src"], body)
+
+
+
+    def test_full_runtime_keeps_intro_and_embedded_iframe(self):
+        page = (
+            '<html><head><script src="js/app.js"></script></head><body>'
+            '<div id="weiOverlay"><video id="weiVideo"></video></div>'
+            '<section class="countdown"><div id="countdownContainer">00:00:00</div>'
+            '<iframe src="embed.html" title="Map"></iframe></section>'
+            '<p>محتوى كافٍ لاختبار القالب الكامل وتشغيل السكربتات.</p>'
+            '</body></html>'
+        )
+        tpl = templateimport.import_template(
+            self._zip({
+                "index.html": page,
+                "js/app.js": "window.__fullRuntime = true;",
+                "embed.html": '<html><body><div id="mapDiv"></div><script src="js/map.js"></script></body></html>',
+                "js/map.js": "window.__mapRuntime = true;",
+            }),
+            name="قالب Runtime كامل",
+        )
+        blob = json.dumps(tpl.document, ensure_ascii=False)
+        self.assertIn("weiOverlay", blob)
+        self.assertIn("countdownContainer", blob)
+        self.assertIn("/media/template_pages/", blob)
+        self.assertEqual(len(tpl.runtime_scripts), 1)
+        page_html = self.client.get(f"/templates/{tpl.slug}/preview/").content.decode()
+        self.assertIn("weiOverlay", page_html)
+        self.assertIn("countdownContainer", page_html)
+        self.assertIn(tpl.runtime_scripts[0]["src"], page_html)
+
+    def test_expired_countdown_stays_visible_as_zero(self):
+        page = (
+            '<html><body><div id="countdownContainer">'
+            '<div id="days">168</div><div id="hours">00</div>'
+            '</div><script>'
+            "var dist=eventDate-now;if(dist<0) {document.getElementById('countdownContainer').innerHTML='See you there!';return;}"
+            '</script><p>محتوى كافٍ لاختبار العدّاد المنتهي.</p></body></html>'
+        )
+        tpl = templateimport.import_template(
+            SimpleUploadedFile("countdown.html", page.encode(), "text/html"),
+            name="عداد منتهي",
+        )
+        code = "\n".join(s.get("code") or "" for s in tpl.runtime_scripts)
+        self.assertIn("if (dist < 0) { dist = 0; }", code)
+        self.assertNotIn("See you there!", code)
+        self.assertIn("countdownContainer", tpl.document["blocks"][0]["props"]["html"])
+
     def test_linked_stylesheet_is_picked_up(self):
+
         tpl = templateimport.import_template(
             self._zip({"index.html": self.PAGE, "s.css": self.CSS}))
         self.assertIn("min-height:100vh", tpl.document["blocks"][0]["props"]["css"])
@@ -1165,11 +1227,11 @@ class TemplateImportTests(TestCase):
             self._zip({"/etc/x.html": "<body><p>x</p></body>", "index.html": self.PAGE}))
         self.assertNotIn("/etc/x.html", files)
 
-    def test_executable_members_are_dropped(self):
+    def test_unsupported_members_are_dropped_but_js_is_kept_for_runtime(self):
         _, files = templateimport.parse_upload(
             self._zip({"index.html": self.PAGE, "x.js": "steal()",
                        "x.php": "<?php ?>", "x.exe": "MZ"}))
-        self.assertEqual(set(files), {"index.html"})
+        self.assertEqual(set(files), {"index.html", "x.js"})
 
     def test_zip_bomb_is_refused(self):
         bomb = self._zip({"index.html": self.PAGE, "big.css": "a" * (30 * 1024 * 1024)})
@@ -1455,11 +1517,16 @@ class EmptyImportTests(TestCase):
     SPA = ('<html><head><title>Site</title></head><body>'
            '<div id="__next"></div><script src="js/main.js"></script></body></html>')
 
-    def test_javascript_built_page_is_refused_with_a_reason(self):
-        with self.assertRaises(templateimport.ImportError_) as cm:
-            templateimport.build_document(
-                *templateimport.parse_upload(self._zip({"index.html": self.SPA})))
-        self.assertIn("جافاسكربت", str(cm.exception))
+    def test_javascript_built_page_is_allowed_with_a_local_script(self):
+        document, _title, scripts, root_attrs = templateimport.build_document(
+            *templateimport.parse_upload(self._zip({
+                "index.html": self.SPA,
+                "js/main.js": "document.body.dataset.loaded = 'yes';",
+            })))
+        self.assertGreaterEqual(len(document["blocks"]), 1)
+        self.assertEqual(len(scripts), 1)
+        self.assertTrue(scripts[0]["src"].startswith("/media/"))
+        self.assertEqual(root_attrs, {})
 
     def test_nothing_is_saved_when_the_page_is_empty(self):
         before = Template.objects.count()

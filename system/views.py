@@ -188,6 +188,9 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         request=request,
         allowed_features=invitation.allowed_features,
         editable=editable,
+        runtime_scripts=getattr(invitation.template, "runtime_scripts", []),
+        runtime_root_attrs=getattr(invitation.template, "runtime_root_attrs", {}),
+
         guest=guest,
         lang=_lang(request),
     )
@@ -640,20 +643,23 @@ def dashboard_templates(request):
         else:
             chars = templateimport.document_text_length(tpl.document)
             tracks = getattr(tpl, "imported_tracks", 0)
+            scripts = len(getattr(tpl, "runtime_scripts", []) or [])
             extra = f" ولقينا {tracks} ملف موسيقى ضفناهم للمكتبة." if tracks else ""
+            script_extra = f" واتحفظ {scripts} ملف JavaScript للتشغيل." if scripts else ""
             messages.success(
                 request,
                 f"اتستورد «{tpl.name}» بـ{len(tpl.document.get('blocks', []))} قسم "
-                f"و{chars} حرف نص.{extra} افتحه في المحرر وظبّطه.",
+                f"و{chars} حرف نص.{extra}{script_extra} افتحه في المحرر وظبّطه.",
             )
-            # ملف صغير بيعدّي، بس ما نسيبوش المستخدم يكتشف بنفسه إنه شبه فاضي
+
+            # ملف صغير بيعدّي، بس ننبّه المستخدم عشان يراجعه في المعاينة.
             if chars < templateimport.MIN_VISIBLE_CHARS:
-                messages.error(
+                messages.warning(
                     request,
-                    f"بس خد بالك: النص الظاهر فيه {chars} حرف بس. لو المفروض "
-                    "فيه كلام أكتر، غالباً الصفحة بتتبني بجافاسكربت — احفظها "
-                    "من المتصفح بعد ما تحمّل (Ctrl+S ← «صفحة كاملة») وجرّب تاني.",
+                    f"خد بالك: النص المحفوظ فيه {chars} حرف بس. راجع المعاينة؛ "
+                    "لو محتوى الصفحة بيتكوّن من خدمة خارجية أو CDN، قد يحتاج إعداداً إضافياً.",
                 )
+
             return redirect("dashboard_templates")
 
     return render(request, "dashboard/templates.html", {
@@ -981,6 +987,8 @@ def _template_editor_result(template, document, request, *, editable=True, lang=
         allowed_features=None,
         editable=editable,
         lang=lang,
+        runtime_scripts=getattr(template, "runtime_scripts", []),
+        runtime_root_attrs=getattr(template, "runtime_root_attrs", {}),
     )
 
 
@@ -1253,7 +1261,10 @@ def api_preview(request, pk):
         request=request,
         allowed_features=invitation.allowed_features,
         editable=True,
+        runtime_scripts=getattr(invitation.template, "runtime_scripts", []),
+        runtime_root_attrs=getattr(invitation.template, "runtime_root_attrs", {}),
         # المحرر بيعاين اللغة اللي المصمّم واقف عليها في تبويب الترجمة
+
         lang="en" if body.get("lang") == "en" else "ar",
     )
     doc_settings = result["settings"]

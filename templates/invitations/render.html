@@ -45,7 +45,8 @@
 {# الافتتاحية في ملف لوحدها عشان المحرر يقدر يحدّثها لحظياً #}
 {% include 'invitations/_intro.html' %}
 
-<div class="lb-stage{% if render.theme.max_width >= 1100 %} lb-stage--full{% endif %}{% if render.theme.pattern and render.theme.pattern != 'none' %} lb-pattern lb-pattern--{{ render.theme.pattern }}{% endif %}">
+<div{% if not editable and render.runtime_scripts %} id="allrecords"{% for attr, value in render.runtime_root_attrs.items %}{% if attr != 'id' and attr != 'class' %} {{ attr }}="{{ value }}"{% endif %}{% endfor %}{% endif %} class="lb-stage{% if not editable and render.runtime_scripts %} lb-stage--runtime t-records t-records_animated t-records_visible{% endif %}{% if render.theme.max_width >= 1100 %} lb-stage--full{% endif %}{% if render.theme.pattern and render.theme.pattern != 'none' %} lb-pattern lb-pattern--{{ render.theme.pattern }}{% endif %}">
+
   {{ render.html }}
 
   {% if render.settings.show_branding %}
@@ -69,6 +70,13 @@
 
 {{ music_config|json_script:"invite-music" }}
 </div>
+{% if not editable and render.runtime_scripts %}
+  {% for script in render.runtime_scripts %}
+    {% if script.src %}<script src="{{ script.src }}"{% if script.type %} type="{{ script.type }}"{% endif %} defer></script>{% else %}<script{% if script.type %} type="{{ script.type }}"{% endif %}>{{ script.code|safe }}</script>{% endif %}
+  {% endfor %}
+{% endif %}
 <script src="{% static 'js/invite.js' %}" defer></script>
+
 </body>
+
 </html>
