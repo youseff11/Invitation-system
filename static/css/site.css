@@ -222,9 +222,9 @@ p { margin: 0 0 1em; }
 }
 
 .hero-art {
-  --hero-img: url("../images/hero-light.webp");
+  --hero-img: url("../images/arabic-light.webp");
   position: relative;
-  aspect-ratio: 9 / 5;
+  aspect-ratio: 1672 / 941;
   background-image: var(--hero-img);
   background-size: cover;
   background-position: center;
@@ -233,9 +233,15 @@ p { margin: 0 0 1em; }
   --card-x: 69.2%; --card-y: 50.5%; --card-w: 20.5%; --card-rot: 7.5deg;
   container-type: inline-size;     /* مرجع وحدات cqw لكتابة الكارت */
 }
+html[lang="en"] .hero-art {
+  --hero-img: url("../images/english-light.webp");
+}
 [data-theme="dark"] .hero-art {
-  --hero-img: url("../images/hero-dark.webp");
+  --hero-img: url("../images/arabic-dark.webp");
   --card-x: 69.3%; --card-y: 50.8%; --card-w: 20.5%; --card-rot: 7.2deg;
+}
+html[lang="en"][data-theme="dark"] .hero-art {
+  --hero-img: url("../images/english-dark.webp");
 }
 
 /* شبكة أمان للتباين: تدرّج من حافة الصورة الشمال (مكان النص) ناحية النص.
@@ -327,6 +333,71 @@ p { margin: 0 0 1em; }
   padding: 13px 30px; gap: 15px; font-size: 15px;
 }
 .btn--outline:hover { background: var(--accent-soft); }
+
+/* ---- كتابة داخل شاشة الهاتف ----
+   الطبقة تدور مع الهاتف وتبدّل النص تلقائياً حسب لغة الصفحة. */
+.hero-phone-copy {
+  position: absolute; z-index: 2; pointer-events: none;
+  left: 64.8%; top: 48.5%; width: 13.4%; height: 58%;
+  transform: translate(-50%, -50%) rotate(7.5deg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4%; padding: 8% 8%; overflow: hidden;
+  text-align: center; color: #a98750;
+  font-family: "Cormorant Garamond", "Amiri", Georgia, serif;
+  line-height: 1.15; text-shadow: 0 1px 0 rgba(255,255,255,.35);
+}
+[data-theme="dark"] .hero-phone-copy { color: #e3bd73; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.hero-phone-copy--ar { display: flex; }
+.hero-phone-copy--en { display: none; }
+.hero-phone-mark { display: block; width: 22%; aspect-ratio: 64 / 48; margin-bottom: 3%; }
+.hero-phone-mark svg { display: block; width: 100%; height: 100%; }
+.hero-phone-message {
+  display: block; font-family: "Tajawal", sans-serif; font-size: clamp(5px, .72vw, 11px);
+  line-height: 1.75; white-space: nowrap; color: currentColor; opacity: .82;
+}
+.hero-phone-meta {
+  display: flex; align-items: flex-start; justify-content: center; gap: 13%; width: 88%;
+  margin-top: 2%; padding-top: 6%; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  font-family: "Tajawal", sans-serif;
+}
+.hero-phone-meta > span { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.hero-phone-meta small { font-size: clamp(4px, .5vw, 8px); line-height: 1; white-space: nowrap; opacity: .78; }
+.phone-icon { position: relative; display: block; width: clamp(8px, 1vw, 16px); height: clamp(8px, 1vw, 16px); }
+.phone-icon::before, .phone-icon::after { content: ""; position: absolute; box-sizing: border-box; }
+.phone-icon--calendar { border: 1px solid currentColor; border-radius: 2px; }
+.phone-icon--calendar::before { inset-inline: 2px; top: 3px; border-top: 1px solid currentColor; }
+.phone-icon--calendar::after { left: 3px; top: -2px; width: 1px; height: 4px; background: currentColor; box-shadow: 5px 0 currentColor; }
+.phone-icon--clock { border: 1px solid currentColor; border-radius: 50%; }
+.phone-icon--clock::before { left: 50%; top: 25%; width: 1px; height: 35%; background: currentColor; transform-origin: bottom; }
+.phone-icon--clock::after { left: 50%; top: 50%; width: 30%; height: 1px; background: currentColor; transform: rotate(28deg); transform-origin: left; }
+.phone-icon--pin { border: 1px solid currentColor; border-radius: 50% 50% 50% 0; transform: rotate(-45deg) scale(.78); }
+.phone-icon--pin::before { inset: 3px; border: 1px solid currentColor; border-radius: 50%; }
+.hero-phone-cta { box-shadow: 0 4px 10px rgba(105, 75, 30, .12); }
+.hero-phone-chevron {
+  display: block; width: 8%; aspect-ratio: 1; border-inline-end: 1px solid currentColor;
+  border-block-end: 1px solid currentColor; transform: rotate(45deg); opacity: .7; margin-top: 2%;
+}
+html[lang="en"] .hero-phone-copy--ar { display: none; }
+html[lang="en"] .hero-phone-copy--en { display: flex; }
+.hero-phone-kicker {
+  display: block; font-family: "Tajawal", sans-serif;
+  font-size: clamp(6px, .72vw, 12px); font-weight: 500;
+  letter-spacing: .12em; white-space: nowrap;
+}
+.hero-phone-title { display: block; font-size: clamp(12px, 1.55vw, 25px); white-space: nowrap; line-height: 1.05; }
+.hero-phone-copy--all .hero-phone-title {
+  font-family: "Cormorant Garamond", Georgia, serif; font-weight: 600;
+  font-size: clamp(10px, 1.12vw, 20px); letter-spacing: .055em; line-height: 1.22;
+  text-align: center;
+}
+.hero-phone-copy--all .hero-phone-rule { width: 62%; margin-top: 4%; }
+.hero-phone-rule { display: block; width: 48%; height: 1px; flex: none; background: currentColor; opacity: .65; }
+.hero-phone-detail { display: block; max-width: 100%; font-family: "Tajawal", sans-serif; font-size: clamp(6px, .75vw, 12px); white-space: nowrap; }
+.hero-phone-cta {
+  display: block; margin-top: 3%; padding: 3% 8%; border: 1px solid currentColor;
+  border-radius: 999px; font-family: "Tajawal", sans-serif;
+  font-size: clamp(5px, .62vw, 10px); white-space: nowrap;
+}
 
 /* ---- كتابة الكارت ---- */
 .hero-card {
@@ -508,8 +579,10 @@ tbody tr:hover { background: var(--surface-2); }
 
 /* شاشات متوسطة: نسخة أخف من صورة الهيرو */
 @media (min-width: 781px) and (max-width: 1200px) {
-  .hero-art { --hero-img: url("../images/hero-light-1200.webp"); }
-  [data-theme="dark"] .hero-art { --hero-img: url("../images/hero-dark-1200.webp"); }
+  .hero-art { --hero-img: url("../images/arabic-light.webp"); }
+  html[lang="en"] .hero-art { --hero-img: url("../images/english-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("../images/arabic-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("../images/english-dark.webp"); }
   .hero-copy-in { width: min(48%, 460px); }
 }
 
@@ -547,19 +620,37 @@ tbody tr:hover { background: var(--surface-2); }
      مفيش سحب تحت الترويسة هنا: الصورة قصيرة والشريط كان هيغطي ثلثها. */
   .hero { margin-top: 0; }
   .hero-art {
-    aspect-ratio: 9 / 5;
+    aspect-ratio: 1672 / 941;
     width: 100%;
-    background-size: 100% auto;      /* العرض كامل بلا قص */
+    background-size: cover;           /* الخلفية الجديدة مع الهاتف داخلها */
     background-position: center top;
-    --hero-img: url("../images/hero-light-800.webp");
+    --hero-img: url("../images/arabic-light.webp");
   }
-  [data-theme="dark"] .hero-art { --hero-img: url("../images/hero-dark-800.webp"); }
+  html[lang="en"] .hero-art { --hero-img: url("../images/english-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("../images/arabic-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("../images/english-dark.webp"); }
   .hero-art::before { display: none; }          /* مفيش نص فوق الصورة هنا */
   /* الكارت فاضل ظاهر على التليفون — بنكبّر نسبته شوية عشان يبان،
      وهو لسه جوه حدود الكارت بهامش مريح. */
-  .hero-card { --card-w: 24%; }
-  .hero-card-line { font-size: 1.6cqw; letter-spacing: .14em; line-height: 1.6; }
-  .hero-rule--sm { font-size: 1.2cqw; width: 82%; }
+  .hero-phone-copy {
+    left: 65.2%; top: 48%; width: 18%; height: 58%;
+    padding-inline: 0;
+    transform: translate(-50%, -50%) rotate(7.5deg) scale(1.02);
+  }
+  .hero-phone-mark { width: 22%; }
+  .hero-phone-title { font-size: clamp(8px, 2.1vw, 14px); }
+  .hero-phone-copy--all .hero-phone-title {
+    width: 100%;
+    white-space: nowrap;
+    font-size: clamp(6px, 1.65vw, 7px);
+    letter-spacing: 0;
+    line-height: 1.08;
+    transform: scaleX(.92);
+  }
+  .hero-phone-message { font-size: clamp(5px, 1.3vw, 8px); }
+  .hero-phone-meta { padding-top: 5%; }
+  .hero-phone-meta small { font-size: clamp(4px, 1vw, 6px); }
+  .hero-phone-cta { font-size: clamp(4px, 1.05vw, 7px); }
   .hero-art::after  { height: 26%; }
 
   .hero-copy {

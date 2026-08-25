@@ -588,6 +588,16 @@ def render_document(
             rendered = rendered.replace("</section>", overlays + "</section>", 1)
         chunks.append(rendered)
 
+    runtime_attrs = dict(runtime_root_attrs or {})
+    runtime_is_spa = False
+    if runtime_scripts:
+        imported_html = "".join(
+            str((block.get("props") or {}).get("html") or "")
+            for block in doc.get("blocks") or []
+        )
+        if re.search(r'''<(?:div|main)\b[^>]*\bid=["'](?:root|app|__next|__nuxt|___gatsby)["']''', imported_html, re.I):
+            runtime_is_spa = True
+
     return {
         "html": mark_safe("".join(chunks)),
         "css_vars": theme_css_vars(theme),
@@ -608,20 +618,21 @@ def render_document(
         "lang": lang,
         "has_en": has_en,
         "runtime_scripts": runtime_scripts or [],
-        "runtime_root_attrs": runtime_root_attrs or {},
+        "runtime_root_attrs": runtime_attrs,
+        "runtime_is_spa": runtime_is_spa,
     }
 
 
 _PREVIEW_KEYS = (
     "html", "css_vars", "font_css", "intro_css", "intro_item_styles", "layout_css",
-    "runtime_scripts", "runtime_root_attrs",
+    "runtime_scripts", "runtime_root_attrs", "runtime_is_spa",
 
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
 
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-25-map-frame-v1"
+_PREVIEW_RENDER_REVISION = "2026-08-25-spa-preview-bridge-v2"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
@@ -667,6 +678,7 @@ def _restore_preview(payload: dict) -> dict:
         item for item in (result.get("runtime_scripts") or [])
         if isinstance(item, dict) and (item.get("src") or item.get("code"))
     ]
+    result["runtime_is_spa"] = bool(result.get("runtime_is_spa"))
     result["runtime_root_attrs"] = {
         str(k): str(v)[:300]
         for k, v in (result.get("runtime_root_attrs") or {}).items()
@@ -688,7 +700,8 @@ def get_template_preview(template, *, lang: str = "ar") -> dict:
             and isinstance(entry.get("payload"), dict)
             and "font_css" in entry["payload"]
             and "runtime_scripts" in entry["payload"]
-            and "runtime_root_attrs" in entry["payload"]):
+            and "runtime_root_attrs" in entry["payload"]
+            and "runtime_is_spa" in entry["payload"]):
         return _restore_preview(entry["payload"])
 
     result = render_document(

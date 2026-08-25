@@ -374,6 +374,29 @@ def _unwrap_allrecords(part: str) -> str:
     return part
 
 
+def _rewrite_runtime_asset_refs(code: str, url_map: dict[str, str]) -> str:
+    """يحوّل مراجع assets داخل JavaScript المجمّع إلى روابط التخزين.
+
+    Vite يبقي صوراً مثل ``assets/hero-frame.png`` داخل bundle JavaScript
+    بدلاً من وضعها في ``index.html``. إعادة كتابة HTML/CSS وحدها لا تكفي
+    لهذه الحالة؛ لذلك نصلح السلاسل المحلية قبل حفظ runtime نفسه.
+    """
+    text = code or ""
+    items = []
+    for key, url in (url_map or {}).items():
+        key = str(key).replace("\\\\", "/").lstrip("./")
+        if "/" not in key or not url or key.startswith("__remote__/"):
+            continue
+        items.append((key, str(url)))
+    for key, url in sorted(items, key=lambda item: len(item[0]), reverse=True):
+        # نبدّل المسار الذي يبدأ بشرطة أولاً؛ لو بدأنا بالجزء الداخلي
+        # ``__l5e/...`` لتحوّل ``/__l5e/...`` بالخطأ إلى ``//media/...``.
+        for ref in ("/" + key, "./" + key, key):
+            text = text.replace(ref, url)
+    return text.replace("//media/", "/media/")
+
+
+
 def _store_runtime_scripts(html: str, main: str, files: dict[str, bytes],
                            url_map: dict[str, str]) -> list[dict[str, str]]:
     """يخزن كل سكربتات القالب المشار إليها لتُشغّل في صفحة القالب فقط.
@@ -410,6 +433,11 @@ def _store_runtime_scripts(html: str, main: str, files: dict[str, bytes],
             data = files.get(key) or files.get(os.path.basename(key))
             if not data or stored_bytes + len(data) > MAX_RUNTIME_SCRIPT_BYTES:
                 continue
+            try:
+                script_text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                script_text = data.decode("utf-8", errors="replace")
+            data = _rewrite_runtime_asset_refs(script_text, url_map).encode("utf-8")
             safe_name = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.basename(key)) or "script.js"
             digest = hashlib.sha256(data).hexdigest()[:16]
             path = default_storage.save(
@@ -648,6 +676,17 @@ def _visible_text(html: str) -> str:
 def _looks_scripted(html: str) -> bool:
     """هل الصفحة دي بتعتمد على جافاسكربت في بناء محتواها؟"""
     return bool(_ROOT_DIV_RE.search(html) or _SCRIPT_SRC_RE.search(html))
+
+
+def _looks_like_spa_shell(html: str) -> bool:
+    """هل الملف غلاف تطبيق SPA يحتاج مسار الجذر وقت التشغيل؟
+
+    تطبيقات Vite/React المصدّرة غالباً تحفظ ``<div id="root">`` فقط،
+    ثم يبني JavaScript كل الصفحة. لو شغّلناها على مسار المعاينة المتداخل
+    ``/templates/<slug>/preview/``، Router التطبيق يعتبره مساراً غير معروف
+    ويعرض 404 رغم أن كل ملفات الأصول موجودة.
+    """
+    return bool(_ROOT_DIV_RE.search(html) and _SCRIPT_SRC_RE.search(html))
 
 
 _STYLE_ATTR_RE = re.compile(r'(\sstyle=)(["\'])(.*?)\2', re.I | re.S)
@@ -1216,6 +1255,8 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str, list[
         )
 
     runtime_root_attrs = _runtime_root_attrs(html)
+    if _looks_like_spa_shell(html):
+        runtime_root_attrs["data-lb-spa"] = "true"
 
     document = blocks_engine.normalize_document({
         "version": 1, "blocks": blocks, "theme": {}, "settings": {},

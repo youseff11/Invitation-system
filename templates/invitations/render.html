@@ -71,6 +71,28 @@
 {{ music_config|json_script:"invite-music" }}
 </div>
   {% if render.runtime_scripts and not editable or run_template_runtime %}
+  {% if render.runtime_is_spa %}
+  <script data-lb-spa-bridge>
+  (function () {
+    /* تطبيقات Vite/React تستخدم BrowserRouter. رابط المعاينة المتداخل
+       يبدو لها مساراً غير معروف، فتظهر صفحة 404. نعرض التطبيق على الجذر
+       مؤقتاً أثناء الإقلاع، ثم نعيد عنوان المعاينة من غير إطلاق popstate
+       حتى يظل التطبيق على الصفحة الرئيسية ويظل رابط المعاينة قابلاً لإعادة
+       التحميل. */
+    var original = location.pathname + location.search + location.hash;
+    if (!original || original === "/") return;
+    var internal = "/" + location.search + location.hash;
+    history.replaceState(history.state, document.title, internal);
+    var restore = function () {
+      window.setTimeout(function () {
+        history.replaceState(history.state, document.title, original);
+      }, 300);
+    };
+    if (document.readyState === "complete") restore();
+    else window.addEventListener("load", restore, { once: true });
+  })();
+  </script>
+  {% endif %}
   {% for script in render.runtime_scripts %}
     {% if script.src %}<script data-lb-template-runtime src="{{ script.src }}"{% if script.type %} type="{{ script.type }}"{% endif %}></script>{% else %}<script data-lb-template-runtime{% if script.type %} type="{{ script.type }}"{% endif %}>{{ script.code|safe }}</script>{% endif %}
   {% endfor %}
