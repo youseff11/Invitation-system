@@ -25,17 +25,15 @@
          playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
   {% comment %}
-    الزر دايرة بعلامة تشغيل لوحدها لما مافيش نص. لو المستخدم كتب نص
-    بيتحوّل لكبسولة — والـaria-label بيبقى النص نفسه بدل الوصف العام،
+    الزر كبسولة نصية واضحة بدون علامة تشغيل مثلثة، والـaria-label
+    بيبقى النص نفسه بدل الوصف العام،
     عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
   {% endcomment %}
-  <button type="button" data-intro-play
-          class="lb-intro-play{% if render.settings.intro_play_label %} lb-intro-play--label{% endif %}"
-          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}">
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M8 5.2v13.6L19 12 8 5.2Z"/>
-    </svg>
-    {% if render.settings.intro_play_label %}<span class="lb-intro-play-text">{{ render.settings.intro_play_label }}</span>{% endif %}
+  <button type="button" data-intro-play data-intro-item="play"
+          class="lb-intro-play lb-intro-play--label"
+          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}"
+          style="{{ render.intro_item_styles.play }}">
+    <span class="lb-intro-play-text">{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}</span>
   </button>
   {% else %}
   <video class="lb-intro-video" data-intro-video

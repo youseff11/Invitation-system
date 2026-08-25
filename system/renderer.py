@@ -203,6 +203,7 @@ def intro_item_css(settings: dict, item: str) -> str:
         "guest_name": "intro_guest_name_color",
         "text": "intro_text_color",
         "button": "intro_button_color",
+        "play": "intro_button_color",
     }
     color = str(settings.get(color_keys.get(item, "")) or "").strip()
     if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
@@ -606,7 +607,7 @@ def render_document(
 
         "intro_item_styles": {
             item: intro_item_css(doc_settings, item)
-            for item in ("note", "guest_name", "text", "button")
+            for item in ("note", "guest_name", "text", "button", "play")
         },
         "layout_css": layout_css(doc["blocks"]),
         "theme": theme,
@@ -632,7 +633,7 @@ _PREVIEW_KEYS = (
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-25-spa-preview-bridge-v2"
+_PREVIEW_RENDER_REVISION = "2026-08-25-intro-play-drag-v1"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
