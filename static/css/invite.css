@@ -1294,3 +1294,29 @@
 .lb-stage--runtime .lb-custom {
   width: 100%;
 }
+
+/* خرائط القوالب المستوردة: التفاعل الحقيقي خارج المحرر فقط.
+   داخل المحرر يجب أن يصل الضغط والسحب إلى عنصر Tilda الأب للتحريك. */
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"] iframe[src*="google.com/maps"],
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"] iframe[src*="maps.google"] {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]),
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) {
+  cursor: grab !important;
+}
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]).lb-dragging,
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]).lb-dragging {
+  cursor: grabbing !important;
+}
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) iframe,
+.lb-doc--editing .lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) .tn-atom,
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) .tn-atom {
+  width: 100%;
+  height: 100%;
+}

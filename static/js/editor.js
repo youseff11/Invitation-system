@@ -1268,16 +1268,24 @@
        وارتفاع السطر ولون النص مالهمش أي تأثير على ‎<img>‎ — عرضها
        كان بيخلي اللوحة تبان زي ما هي مهما حرّكت فيها، وده أسوأ من
        إنها ناقصة. بنعرض أدوات الصورة بدالها. */
-    var isImg = tag === "IMG";
+        var isImg = tag === "IMG";
     var isVideo = tag === "VIDEO";
+    var mapFrame = tag === "IFRAME" ? node : node.querySelector("iframe");
+    var isMap = !!mapFrame && (
+      /google\.com\/maps|maps\.googleapis\.com/i.test(mapFrame.getAttribute("src") || "")
+      || node.getAttribute("data-map") === "1"
+    );
+    var mapBox = isMap ? (node.closest(".tn-elem") || node) : null;
     if (isImg) {
+
       body.appendChild(el("p", "ed-hint",
         "دي صورة — أدوات الخط والنص مش بتأثر عليها فمخفية."));
     }
 
     // ---- الخط
-    if (!isImg) {
+        if (!isImg && !isMap) {
     var fontSel = el("select", "ed-input");
+
     fontSel.appendChild(new Option("زي ما هو", ""));
     var fontOptions = (SCHEMA.fonts || []).slice();
     var seenFontValues = {};
@@ -1339,10 +1347,11 @@
 
     /* لون الخلفية بيفضل مفيد على الصورة — بيبان ورا PNG شفاف ووقت
        التحميل. لون النص لأ. */
-    // ---- الألوان
-    (isImg ? [["background-color", "لون الخلفية"]]
-           : [["color", "لون النص"], ["background-color", "لون الخلفية"]]
-    ).forEach(function (spec) {
+        // ---- الألوان
+    (isMap ? [] : (isImg ? [["background-color", "لون الخلفية"]]
+           : [["color", "لون النص"], ["background-color", "لون الخلفية"]]))
+    .forEach(function (spec) {
+
       var input = el("input");
       input.type = "color";
       input.className = "ed-color";
@@ -1362,8 +1371,9 @@
       body.appendChild(ctrlRow(spec[1], input, clear));
     });
 
-    // ---- المسافات
-    if (!isImg) {
+        // ---- المسافات
+    if (!isImg && !isMap) {
+
     [["letter-spacing", "تباعد الحروف", -3, 16, .5, "px"],
      ["line-height", "ارتفاع السطر", .8, 3.2, .05, ""]].forEach(function (spec) {
       var cur = parseFloat(styleOf(node, spec[0]));
@@ -1480,8 +1490,62 @@
       });
     }
 
+        // ---- الخريطة: الرابط والحجم
+    if (isMap) {
+      body.appendChild(el("p", "ed-hint",
+        "الخريطة محددة للتحرير؛ اسحبها أو غيّر الرابط والحجم من هنا. زوم Google متوقف داخل المحرر."));
+
+      var mapUrl = el("input", "ed-input");
+      mapUrl.type = "url";
+      mapUrl.value = mapFrame.getAttribute("src") || "";
+      mapUrl.placeholder = "رابط Google Maps أو رابط الخريطة";
+      var applyMapUrl = el("button", "ed-btn ed-btn--sm ed-btn--block", "تغيير رابط الخريطة");
+      applyMapUrl.type = "button";
+      applyMapUrl.addEventListener("click", function () {
+        var value = (mapUrl.value || "").trim();
+        if (!value) { toast("اكتب رابط الخريطة أولاً.", "error"); return; }
+        snapshot();
+        var mapSrc = value;
+        if (/google\.com\/maps|maps\.google/i.test(value) &&
+            !/\/maps\/embed|[?&]output=embed/i.test(value)) {
+          mapSrc = "https://www.google.com/maps?q=" + encodeURIComponent(value) + "&output=embed";
+        }
+        mapFrame.setAttribute("src", mapSrc);
+        mapUrl.value = mapSrc;
+        commit();
+        requestPreview();
+        toast("اتغير رابط الخريطة.", "ok");
+      });
+      body.appendChild(ctrlRow("رابط الخريطة", mapUrl));
+      body.appendChild(applyMapUrl);
+
+      [["width", "عرض الخريطة"], ["height", "ارتفاع الخريطة"]].forEach(function (spec) {
+        var raw = mapBox && mapBox.getAttribute("data-field-" + spec[0] + "-value");
+        var current = parseFloat(raw) || (spec[0] === "width" ? 335 : 335);
+        var input = el("input", "ed-input");
+        input.type = "range"; input.min = 120; input.max = 900; input.step = 1;
+        input.value = current;
+        var output = el("b", "ed-ctrl-out", current + "px");
+        var started = false;
+        input.addEventListener("input", function () {
+          if (!started) { snapshot(); started = true; }
+          var value = Math.max(120, Math.min(900, parseFloat(input.value) || current));
+          output.textContent = value + "px";
+          if (mapBox) {
+            mapBox.setAttribute("data-field-" + spec[0] + "-value", value);
+            mapBox.style.setProperty(spec[0], value + "px");
+          }
+          mapFrame.setAttribute(spec[0], String(value));
+          commit();
+        });
+        input.addEventListener("change", function () { started = false; requestPreview(); });
+        body.appendChild(ctrlRow(spec[1], input, output));
+      });
+    }
+
     // ---- الموضع الدقيق
     var pos = (block.layout && block.layout[state.selEl]) || { dx: 0, dy: 0 };
+
     var nudge = el("div", "ed-nudge");
     [["→", -1, 0], ["←", 1, 0], ["↑", 0, -1], ["↓", 0, 1]].forEach(function (d) {
       var btn = el("button", "ed-btn ed-btn--sm", d[0]);
@@ -2694,13 +2758,26 @@
 
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
-      node.addEventListener("click", function (e) {
+            node.addEventListener("click", function (e) {
         var slot = e.target.closest("[data-slot]");
         if (slot && slot.isContentEditable) return;
+        var movable = e.target.closest && e.target.closest(".lb-custom [data-move]");
+        if (movable && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          e.stopPropagation();
+          state.selEl = movable.getAttribute("data-move");
+          state.fromPreview = true;
+          selectBlock(node.getAttribute("data-block"));
+          state.fromPreview = false;
+          if (refs.inspector) refs.inspector.scrollTop = 0;
+          toast("تم تحديد العنصر — عدّل خصائصه من اللوحة.", "ok");
+          return;
+        }
         /* المستمع ده في مرحلة الالتقاط، يعني بيتنفّذ **قبل** عناصر
            القسم. من غير السطر ده كان بيوقف الضغطة قبل ما توصل لعنصر
            القالب المستورد، فاختيار العنصر كان مستحيل. */
-        if (e.target.closest && (e.target.closest(".lb-custom [data-move]") || e.target.closest("[data-section-text]"))) return;
+        if (movable || (e.target.closest && e.target.closest("[data-section-text]"))) return;
+
         e.preventDefault();
         e.stopPropagation();
         state.fromPreview = true;
