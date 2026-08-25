@@ -65,8 +65,10 @@
     device: "mobile",
     dirty: false,
     saving: false,
-    history: [],
-    future: []
+        history: [],
+    future: [],
+    layersOpen: false
+
   };
 
   var refs = {};
@@ -975,13 +977,28 @@
     title.appendChild(el("strong", null, block.label || spec.label));
     head.appendChild(title);
 
-    var favoriteBtn = el("button", "ed-btn ed-btn--sm", "☆ حفظ كمفضلة");
+        var favoriteBtn = el("button", "ed-btn ed-btn--sm", "☆ حفظ كمفضلة");
     favoriteBtn.type = "button";
     favoriteBtn.title = "حفظ هذا القسم بكل إعداداته في المكتبة";
     favoriteBtn.addEventListener("click", saveSelectedAsFavorite);
     head.appendChild(favoriteBtn);
 
+    if (block.type === "custom_html") {
+      var layersBtn = el("button", "ed-btn ed-btn--sm ed-layers-btn", "☷ الطبقات");
+      layersBtn.type = "button";
+      layersBtn.title = "اختيار أي عنصر داخل هذا القسم من قائمة الطبقات";
+      layersBtn.setAttribute("aria-expanded", state.layersOpen ? "true" : "false");
+      layersBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.layersOpen = !state.layersOpen;
+        renderInspector();
+      });
+      head.appendChild(layersBtn);
+    }
+
     var back = el("button", "ed-btn ed-btn--sm", "الأقسام ↩");
+
     back.type = "button";
     back.addEventListener("click", function () { switchTab("blocks"); });
     head.appendChild(back);
@@ -1027,6 +1044,7 @@
 
     // في القسم المستورد لوحة العنصر هي الأداة الأساسية — تيجي الأول
     if (codeLast) {
+      box.appendChild(buildLayersGroup(block));
       box.appendChild(buildElementGroup(block));
       box.appendChild(buildColorGroup(block));
     }
@@ -1227,7 +1245,98 @@
     renderInspector();
   }
 
+    function layerLabel(node, index) {
+    var tag = String(node.tagName || "").toUpperCase();
+    var name = node.getAttribute("data-lb-text") === "1"
+      ? "نص" : (EL_NAMES[tag] || tag.toLowerCase() || "عنصر");
+    var frame = tag === "IFRAME" ? node : node.querySelector && node.querySelector("iframe");
+    if (frame && /google\.com\/maps|maps\.googleapis\.com/i.test(frame.getAttribute("src") || "")) {
+      name = "خريطة Google";
+    } else if (tag === "IMG" || node.querySelector && node.querySelector("img")) {
+      name = "صورة";
+    } else if (tag === "VIDEO" || node.querySelector && node.querySelector("video")) {
+      name = "فيديو";
+    }
+    var text = String(node.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length > 42) text = text.slice(0, 42) + "…";
+    return (index + 1) + ". " + name + (text ? " — " + text : "");
+  }
+
+  function buildLayersGroup(block) {
+    var wrap = el("details", "ed-group ed-layers-group");
+    wrap.open = !!state.layersOpen;
+    var sum = el("summary");
+    sum.appendChild(el("span", null, "الطبقات / Layers"));
+    wrap.appendChild(sum);
+    var body = el("div", "ed-group-body ed-layers-list");
+    wrap.appendChild(body);
+
+    if (!state.layersOpen) return wrap;
+    var fdoc = frameDoc();
+    var section = fdoc && fdoc.querySelector('[data-block="' + block.id + '"]');
+    var root = section && section.querySelector(".lb-custom");
+    var nodes = root ? $$("[data-move]", root).filter(function (node) {
+      if (node.closest("[data-block]") !== section) return false;
+      // Tilda يضع data-move على الحاوية وعلى العنصر الداخلي معاً.
+      // نعرض العنصر المرئي الحقيقي فقط: نص، صورة، فيديو، iframe،
+      // أو حاوية شكل لا تحتوي واحداً من هذه العناصر.
+      var hasText = node.getAttribute("data-lb-text") === "1";
+      var hasChildVisual = !!node.querySelector("[data-lb-text], img, video, iframe");
+      return hasText || !hasChildVisual;
+    }) : [];
+    if (!nodes.length) {
+      body.appendChild(el("p", "ed-hint", "لم يتم العثور على عناصر قابلة للاختيار داخل القسم."));
+      return wrap;
+    }
+
+    nodes.forEach(function (node, index) {
+      var button = el("div", "ed-layer-item");
+      button.setAttribute("role", "button");
+      button.tabIndex = 0;
+      button.classList.toggle("is-active", node.getAttribute("data-move") === state.selEl);
+      button.appendChild(el("span", "ed-layer-index", String(index + 1)));
+      button.appendChild(el("span", "ed-layer-name", layerLabel(node, index)));
+      var remove = el("button", "ed-layer-remove", "×");
+      remove.type = "button";
+      remove.title = "حذف هذه الطبقة";
+      remove.setAttribute("aria-label", "حذف الطبقة");
+      remove.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.selEl = node.getAttribute("data-move");
+        if (window.confirm("هل تريد حذف هذه الطبقة؟")) deleteElement();
+      });
+      button.appendChild(remove);
+      button.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.selEl = node.getAttribute("data-move");
+        markSelectedEl();
+        renderInspector();
+      });
+      button.addEventListener("dblclick", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.selEl = node.getAttribute("data-move");
+        markSelectedEl();
+        switchTab("inspector");
+        renderInspector();
+      });
+      button.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          state.selEl = node.getAttribute("data-move");
+          markSelectedEl();
+          renderInspector();
+        }
+      });
+      body.appendChild(button);
+    });
+    return wrap;
+  }
+
   function buildElementGroup(block) {
+
     var node = selectedElNode();
     var wrap = el("details", "ed-group");
     var sum = el("summary");
@@ -1246,13 +1355,19 @@
         node.closest("[data-block]").querySelector(".lb-custom"));
       markDirty();
     };
+        var tag = node.tagName;
+    var imageNode = tag === "IMG" ? node : node.querySelector("img");
+    var videoNode = tag === "VIDEO" ? node : node.querySelector("video");
+    var textNode = node.getAttribute("data-lb-text") === "1"
+      ? node : node.querySelector("[data-lb-text]");
+    var styleNode = imageNode || videoNode || textNode || node;
     var setStyle = function (prop, value) {
-      if (value) node.style.setProperty(prop, value);
-      else node.style.removeProperty(prop);
+      if (value) styleNode.style.setProperty(prop, value);
+      else styleNode.style.removeProperty(prop);
       commit();
     };
 
-    var tag = node.tagName;
+
     /* الكلاسات اللي المحرر نفسه بيحطها مش من القالب — كانت بتطلع في
        اسم العنصر («صورة · lb-el-picked») وتوهم إنها كلاس التصميم. */
     var OWN = { "lb-el-picked": 1, "lb-el-typing": 1, "lb-dragging": 1, "lb-el-swap": 1 };
@@ -1264,13 +1379,32 @@
       (theirs.length ? " · " + theirs[0] : ""));
     body.appendChild(head);
 
+        if (textNode) {
+      var textEditor = el("textarea", "ed-input");
+      textEditor.rows = 4;
+      textEditor.value = String(textNode.innerHTML || textNode.textContent || "")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]*>/g, "");
+      textEditor.placeholder = "اكتب محتوى النص هنا";
+      var textStarted = false;
+      textEditor.addEventListener("input", function () {
+        if (!textStarted) { snapshot(); textStarted = true; }
+        textNode.textContent = textEditor.value;
+        commit();
+      });
+      textEditor.addEventListener("change", function () { textStarted = false; });
+      body.appendChild(ctrlRow("محتوى النص", textEditor));
+    }
+
     /* الصورة مش نص. الخط والحجم والسُمك والمحاذاة وتباعد الحروف
+
        وارتفاع السطر ولون النص مالهمش أي تأثير على ‎<img>‎ — عرضها
        كان بيخلي اللوحة تبان زي ما هي مهما حرّكت فيها، وده أسوأ من
        إنها ناقصة. بنعرض أدوات الصورة بدالها. */
-        var isImg = tag === "IMG";
-    var isVideo = tag === "VIDEO";
+            var isImg = !!imageNode;
+    var isVideo = !!videoNode;
     var mapFrame = tag === "IFRAME" ? node : node.querySelector("iframe");
+
     var isMap = !!mapFrame && (
       /google\.com\/maps|maps\.googleapis\.com/i.test(mapFrame.getAttribute("src") || "")
       || node.getAttribute("data-map") === "1"
@@ -1405,15 +1539,18 @@
 
       var setVideoSrc = function (url) {
         if (!url) return;
-        node.setAttribute("src", url);
-        node.setAttribute("preload", "auto");
-        node.removeAttribute("data-src");
+                videoNode.setAttribute("src", url);
+        videoNode.setAttribute("preload", "auto");
+        videoNode.removeAttribute("data-src");
+
         /* بعض القوالب تستخدم source داخلياً، ووجوده يكسب src الموجود على video. */
-        Array.prototype.forEach.call(node.querySelectorAll("source"), function (source) {
+                Array.prototype.forEach.call(videoNode.querySelectorAll("source"), function (source) {
+
           source.setAttribute("src", url);
           source.removeAttribute("srcset");
         });
-        if (typeof node.load === "function") node.load();
+                if (typeof videoNode.load === "function") videoNode.load();
+
         commit();
         requestPreview();
       };
@@ -1432,10 +1569,10 @@
     // ---- الصور: تبديل وقص
     if (isImg) {
       var setSrc = function (url) {
-        node.setAttribute("src", url);
+        imageNode.setAttribute("src", url);
         /* srcset بيكسب على src — لو سبناها الصورة القديمة تفضل ظاهرة
            والمستخدم يفتكر إن التبديل مااشتغلش. */
-        node.removeAttribute("srcset");
+        imageNode.removeAttribute("srcset");
         commit();
         requestPreview();
       };
@@ -1454,7 +1591,7 @@
       var crop = el("button", "ed-btn ed-btn--sm ed-btn--block", "قصّ الصورة");
       crop.type = "button";
       crop.addEventListener("click", function () {
-        var src = node.getAttribute("src") || "";
+        var src = imageNode.getAttribute("src") || "";
         var asset = null;
         for (var i = 0; i < ASSETS.length; i++) {
           if (ASSETS[i].url && src.indexOf(ASSETS[i].url) > -1) { asset = ASSETS[i]; break; }
@@ -1468,12 +1605,14 @@
       });
       body.appendChild(crop);
 
-      // ---- مقاس الصورة واستدارتها — دي اللي بتأثر فعلاً على ‎<img>‎
+            // ---- مقاس الصورة واستدارتها — دي اللي بتأثر فعلاً على ‎<img>‎
       [["width", "عرض الصورة", 10, 100, 1, "%"],
        ["border-radius", "استدارة الحواف", 0, 200, 2, "px"]].forEach(function (spec) {
-        var cur = parseFloat(styleOf(node, spec[0]));
+        var cur = parseFloat(styleOf(imageNode, spec[0]));
+
         if (isNaN(cur)) {
-          cur = spec[0] === "width" ? 100 : computedPx(node, "borderTopLeftRadius") || 0;
+                    cur = spec[0] === "width" ? 100 : computedPx(imageNode, "borderTopLeftRadius") || 0;
+
         }
         var r2 = el("input", "ed-input");
         r2.type = "range"; r2.min = spec[2]; r2.max = spec[3]; r2.step = spec[4];
@@ -2807,8 +2946,10 @@
             node.addEventListener("click", function (e) {
         var slot = e.target.closest("[data-slot]");
         if (slot && slot.isContentEditable) return;
-        var movable = e.target.closest && e.target.closest(".lb-custom [data-move]");
+                var movable = e.target.closest && e.target.closest(".lb-custom [data-move]");
+        if (movable) state.selEl = movable.getAttribute("data-move");
         if (movable && (e.ctrlKey || e.metaKey)) {
+
           e.preventDefault();
           e.stopPropagation();
           state.selEl = movable.getAttribute("data-move");
@@ -2900,7 +3041,18 @@
   var INLINE = { SPAN:1, EM:1, I:1, B:1, STRONG:1, SMALL:1, U:1, S:1,
                  MARK:1, SUP:1, SUB:1, BR:1, TIME:1, ABBR:1 };
 
+    function isTildaTextUnit(n) {
+    if (!n || !n.classList || !n.classList.contains("tn-atom")) return false;
+    if (!(n.textContent || "").trim()) return false;
+    if (n.querySelector("img, video, iframe, input, textarea, select")) return false;
+    for (var i = 0; i < n.children.length; i++) {
+      if (!INLINE[n.children[i].tagName]) return false;
+    }
+    return true;
+  }
+
   function isTextUnit(n) {
+
     if (!TEXTY[n.tagName]) return false;
     if (!(n.textContent || "").trim()) return false;
     for (var i = 0; i < n.children.length; i++) {
@@ -2976,9 +3128,23 @@
     if (!fdoc || fdoc.__lbDelegatedTextEditing) return;
     fdoc.__lbDelegatedTextEditing = true;
     fdoc.addEventListener("dblclick", function (e) {
-      var node = e.target && e.target.closest && e.target.closest("[data-lb-text]");
+            var node = e.target && e.target.closest && e.target.closest("[data-lb-text]");
+      if (!node) {
+        var atom = e.target && e.target.closest && e.target.closest(".lb-custom .tn-atom");
+        if (atom && (isTextUnit(atom) || isTildaTextUnit(atom))) node = atom;
+      }
       if (!node) return;
+      var section = node.closest('[data-block-type="custom_html"]');
+      if (!section) return;
+      var blockId = section.getAttribute("data-block");
+      var block = findBlock(blockId);
+      if (!block || !("html" in block.props)) return;
+      state.selEl = node.getAttribute("data-move") || state.selEl;
+      state.fromPreview = true;
+      if (state.selected !== blockId) selectBlock(blockId);
+      state.fromPreview = false;
       e.preventDefault();
+
       e.stopPropagation();
       beginCustomTextEdit(node);
       if (node.dataset.lbDelegatedEdit !== "1") {
@@ -3026,8 +3192,9 @@
          ٣) ترقيم وربط. */
       var all = movableIn(root);
       all.forEach(function (n) {
-        if (isTextUnit(n) && !(n.parentElement &&
+                if ((isTextUnit(n) || isTildaTextUnit(n)) && !(n.parentElement &&
             n.parentElement.closest("[data-lb-text]"))) {
+
           n.setAttribute("data-lb-text", "1");
         }
       });
@@ -3095,9 +3262,13 @@
           state.fromPreview = false;
           markSelectedEl();
         };
-        n.addEventListener("pointerdown", function () {
+                n.addEventListener("pointerdown", function (e) {
+          // لا تسمح لحاويات Tilda الأب أن تستبدل العنصر الأقرب تحت الماوس.
+          if (e.target !== n) return;
           state.selEl = n.getAttribute("data-move");
+          e.stopPropagation();
         });
+
         n.addEventListener("click", pick);
 
         bindSlotDrag(n, blockId, n.getAttribute("data-move"), writeBack);
