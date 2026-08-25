@@ -1439,7 +1439,8 @@
       return String(v || "").replace(/["']/g, "").replace(/\s+/g, " ")
              .trim().toLowerCase();
     };
-    var cur = fontKey(styleOf(node, "font-family"));
+        var cur = fontKey(styleOf(styleNode, "font-family"));
+
     for (var fi = 0; fi < fontSel.options.length; fi++) {
       if (fontKey(fontSel.options[fi].value) === cur) {
         fontSel.selectedIndex = fi;
@@ -1449,10 +1450,15 @@
     fontSel.addEventListener("change", function () {
       snapshot(); setStyle("font-family", fontSel.value);
     });
-    body.appendChild(ctrlRow("الخط", fontSel));
+        body.appendChild(ctrlRow("الخط", fontSel));
+    body.appendChild(buildInlineFontTools(fontSel, function (value) {
+      snapshot();
+      setStyle("font-family", value);
+    }));
 
     // ---- حجم الخط
-    var sizeVal = parseFloat(styleOf(node, "font-size")) || computedPx(node, "fontSize");
+    var sizeVal = parseFloat(styleOf(styleNode, "font-size")) || computedPx(styleNode, "fontSize");
+
     var size = el("input", "ed-input");
     size.type = "range"; size.min = 8; size.max = 120; size.step = 1;
     size.value = sizeVal;
@@ -1471,7 +1477,8 @@
      ["text-align", "المحاذاة", ALIGNS]].forEach(function (spec) {
       var sel = el("select", "ed-input");
       spec[2].forEach(function (o) { sel.appendChild(new Option(o[1], o[0])); });
-      sel.value = styleOf(node, spec[0]);
+            sel.value = styleOf(styleNode, spec[0]);
+
       sel.addEventListener("change", function () {
         snapshot(); setStyle(spec[0], sel.value);
       });
@@ -1489,7 +1496,8 @@
       var input = el("input");
       input.type = "color";
       input.className = "ed-color";
-      var cur = styleOf(node, spec[0]);
+            var cur = styleOf(styleNode, spec[0]);
+
       input.value = /^#[0-9a-fA-F]{6}$/.test(cur) ? cur : "#000000";
       var started = false;
       input.addEventListener("input", function () {
@@ -1510,11 +1518,13 @@
 
     [["letter-spacing", "تباعد الحروف", -3, 16, .5, "px"],
      ["line-height", "ارتفاع السطر", .8, 3.2, .05, ""]].forEach(function (spec) {
-      var cur = parseFloat(styleOf(node, spec[0]));
+            var cur = parseFloat(styleOf(styleNode, spec[0]));
+
       if (isNaN(cur)) {
         cur = spec[0] === "line-height"
-          ? Math.round((computedPx(node, "lineHeight") /
-              (computedPx(node, "fontSize") || 16)) * 100) / 100
+                    ? Math.round((computedPx(styleNode, "lineHeight") /
+              (computedPx(styleNode, "fontSize") || 16)) * 100) / 100
+
           : 0;
       }
       var r = el("input", "ed-input");
