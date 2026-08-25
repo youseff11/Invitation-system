@@ -906,3 +906,138 @@ tbody tr:hover { background: var(--surface-2); }
   color: var(--muted);
 }
 .plan-addons-list b { color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+
+/* ---------------------------------------------------------- Home additions */
+.hero-ornament {
+  width: clamp(108px, 11vw, 166px); height: auto; aspect-ratio: 180 / 62;
+  margin: 0 auto 18px; background: none; color: var(--accent);
+  -webkit-mask: none; mask: none;
+}
+.hero-ornament path {
+  fill: none; stroke: currentColor; stroke-width: 1.35;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.hero-heart {
+  width: 1.05em; height: 1.05em; background: none; color: var(--accent);
+  -webkit-mask: none; mask: none;
+}
+.hero-heart path { fill: currentColor; stroke: none; }
+
+.section--features { background: var(--bg); }
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px; max-width: 1050px; margin-inline: auto;
+}
+.feature-card {
+  min-height: 205px; padding: 28px 20px 24px; text-align: center;
+  border: 1px solid var(--line); border-radius: 20px;
+  background: var(--surface); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.feature-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.feature-icon {
+  width: 52px; height: 52px; display: grid; place-items: center;
+  margin-bottom: 14px; border-radius: 50%; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.feature-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.feature-card h3 { margin: 0 0 5px; color: var(--text); font-size: 21px; }
+.feature-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+.wrap--narrow { width: min(760px, 100% - 36px); }
+.section--faq { background: var(--surface-2); }
+.faq-list { display: grid; gap: 10px; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: 15px; background: var(--surface);
+  overflow: hidden; box-shadow: 0 12px 30px -28px rgba(23,19,15,.55);
+}
+.faq-item summary {
+  cursor: pointer; list-style: none; padding: 18px 22px;
+  color: var(--text); font-family: "Amiri", Georgia, serif; font-size: 20px;
+  font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; color: var(--accent); font-family: sans-serif; font-size: 24px; font-weight: 300; }
+.faq-item[open] summary::after { content: "−"; }
+.faq-answer { padding: 0 22px 19px; color: var(--muted); line-height: 1.9; font-size: 15px; }
+.home-cta { padding-block: 96px; background: var(--surface-2); }
+.home-cta-in { max-width: 720px; text-align: center; }
+.home-cta h2 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 48px); }
+.home-cta p:not(.eyebrow) { color: var(--muted); margin-bottom: 24px; }
+.foot { padding: 28px 0; border-top: 1px solid var(--line); background: var(--surface); }
+.foot-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.foot-inner > p { margin: 0; color: var(--muted); font-size: 13px; }
+.foot-brand { display: inline-flex; width: 42px; height: 42px; align-items: center; justify-content: center; }
+.foot-brand img { width: 100%; height: 100%; object-fit: contain; }
+.foot-socials { display: flex; align-items: center; gap: 9px; }
+.foot-socials a {
+  width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--muted); border: 1px solid var(--line); text-decoration: none;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.foot-socials a:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+.foot-socials svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.foot-socials a:nth-child(2) svg { fill: currentColor; stroke: none; }
+
+@media (max-width: 700px) {
+  .feature-grid { grid-template-columns: 1fr; gap: 13px; }
+  .feature-card { min-height: 176px; padding: 24px 18px; }
+  .feature-card h3 { font-size: 20px; }
+  .feature-card p { font-size: 13.5px; }
+  .faq-item summary { padding: 16px 17px; font-size: 18px; }
+  .faq-answer { padding: 0 17px 16px; font-size: 14px; }
+  .home-cta { padding-block: 70px; }
+  .foot-inner { flex-wrap: wrap; justify-content: center; text-align: center; }
+  .foot-brand { order: 0; }
+  .foot-inner > p { width: 100%; order: 2; }
+  .foot-socials { order: 1; }
+}
+
+
+/* المحتوى الثنائي اللغة لكروت المميزات */
+.feature-en { display: none; }
+html[lang="en"] .feature-ar { display: none; }
+html[lang="en"] .feature-en { display: inline; }
+
+/* أيقونات الفوتر: دوائر واضحة، متوازنة، وبألوان المنصات عند المرور */
+.foot-socials { gap: 11px; }
+.foot-socials a {
+  position: relative; width: 44px; height: 44px; overflow: hidden;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  box-shadow: 0 8px 18px -14px rgba(23, 19, 15, .75);
+}
+.foot-socials a::before {
+  content: ""; position: absolute; inset: 3px; border-radius: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  pointer-events: none;
+}
+.foot-socials a[aria-label="WhatsApp"] { color: #1daa61; }
+.foot-socials a[aria-label="Facebook"] { color: #1877f2; }
+.foot-socials a[aria-label="Instagram"] { color: #c13584; }
+.foot-socials a:hover { transform: translateY(-3px); box-shadow: 0 13px 22px -14px currentColor; }
+.foot-socials a[aria-label="WhatsApp"] svg { width: 20px; height: 20px; }
+.foot-socials a[aria-label="Facebook"] svg { width: 19px; height: 19px; }
+.foot-socials a[aria-label="Instagram"] svg { width: 20px; height: 20px; }
+
+.hero-ornament { object-fit: contain; }
+
+
+/* المميزات على الهاتف: كارتان في كل صف */
+@media (max-width: 700px) {
+  .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .feature-card {
+    min-height: 156px; padding: 18px 9px 16px; border-radius: 16px;
+  }
+  .feature-icon { width: 42px; height: 42px; margin-bottom: 9px; }
+  .feature-icon svg { width: 20px; height: 20px; }
+  .feature-card h3 { font-size: 16px; line-height: 1.35; margin-bottom: 4px; }
+  .feature-card p { font-size: 11.5px; line-height: 1.55; }
+}
+@media (max-width: 360px) {
+  .feature-grid { gap: 8px; }
+  .feature-card { min-height: 148px; padding-inline: 6px; }
+  .feature-card h3 { font-size: 14.5px; }
+  .feature-card p { font-size: 10.5px; }
+}

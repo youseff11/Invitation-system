@@ -1,5 +1,5 @@
 {% extends 'public/_base.html' %}
-{% load i18n %}
+{% load static i18n %}
 {% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
 {% block content %}
 
@@ -10,20 +10,20 @@
   </div>
   <div class="hero-copy">
     <div class="hero-copy-in">
-      <span class="hero-ornament" aria-hidden="true"></span>
+      <!-- <img class="hero-ornament" src="{% static 'images/hero-rose-ornament.png' %}" alt="" aria-hidden="true"> -->
       <h1>
         <span class="h1-top">{% translate "تصميم دعوات زفاف" %}</span>
         <span class="h1-main">{% translate "تعكس قصة حبك" %}</span>
       </h1>
       <div class="hero-rule" aria-hidden="true">
-        <i></i><span class="hero-heart"></span><i></i>
+        <i></i><svg class="hero-heart" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M12 20.2S4 15.4 4 9.2C4 6.7 5.8 5 8 5c1.6 0 3.1.9 4 2.2C12.9 5.9 14.4 5 16 5c2.2 0 4 1.7 4 4.2 0 6.2-8 11-8 11Z"/></svg><i></i>
       </div>
       <p class="hero-sub">{% translate "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى" %}</p>
       <div class="hero-actions">
         <a class="btn btn--outline" href="{% url 'template_gallery' %}">
-          <span class="hero-heart" aria-hidden="true"></span>
+          <svg class="hero-heart" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M12 20.2S4 15.4 4 9.2C4 6.7 5.8 5 8 5c1.6 0 3.1.9 4 2.2C12.9 5.9 14.4 5 16 5c2.2 0 4 1.7 4 4.2 0 6.2-8 11-8 11Z"/></svg>
           <span>{% translate "ابدأ تصميم دعوتك" %}</span>
-          <span class="hero-heart" aria-hidden="true"></span>
+          <svg class="hero-heart" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><path d="M12 20.2S4 15.4 4 9.2C4 6.7 5.8 5 8 5c1.6 0 3.1.9 4 2.2C12.9 5.9 14.4 5 16 5c2.2 0 4 1.7 4 4.2 0 6.2-8 11-8 11Z"/></svg>
         </a>
       </div>
     </div>
@@ -49,7 +49,7 @@
           <div class="tpl-actions">
             <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% translate "معاينة" %}</a>
             {% if SITE_CTA.orders_enabled %}
-            <a class="btn btn--gold btn--sm" href="#order">{% translate "اطلبه" %}</a>
+            <a class="btn btn--gold btn--sm" href="#contact">{% translate "اطلبه" %}</a>
             {% elif SITE_CTA.whatsapp_url %}
             <a class="btn btn--gold btn--sm" href="{{ SITE_CTA.whatsapp_url }}"
                target="_blank" rel="noopener">{% translate "اطلبه" %}</a>
@@ -64,20 +64,28 @@
   </div>
 </section>
 
-<section class="section section--alt" id="how">
+<section class="section section--features" id="features">
   <div class="wrap">
     <div class="section-head">
-      <p class="eyebrow">{% translate "كيف تعمل" %}</p>
-      <h2>{% translate "أربع خطوات فقط" %}</h2>
+      <p class="eyebrow"><span class="feature-ar">مميزاتك</span><span class="feature-en">Features</span></p>
+      <h2><span class="feature-ar">مميزات تجعل دعوتك فريدة</span><span class="feature-en">Features That Make Your Invitation Unique</span></h2>
+      <p><span class="feature-ar">كل التفاصيل التي يحتاجها ضيوفك في دعوة واحدة أنيقة وسهلة الاستخدام.</span><span class="feature-en">Everything your guests need in one elegant invitation.</span></p>
     </div>
-    <div class="grid grid--4 steps">
-      <div class="step"><h3>{% translate "اختر القالب" %}</h3><p class="muted">{% translate "تصفّح المعرض واختر ما يناسب مناسبتك." %}</p></div>
-      <div class="step"><h3>{% translate "أرسل بياناتك" %}</h3><p class="muted">{% translate "الأسماء، الموعد، المكان، وأي تفاصيل إضافية." %}</p></div>
-      <div class="step"><h3>{% translate "نصمّم دعوتك" %}</h3><p class="muted">{% translate "نضبط التفاصيل ونرسل لك معاينة قبل النشر." %}</p></div>
-      <div class="step"><h3>{% translate "استلم الرابط" %}</h3><p class="muted">{% translate "رابط خاص جاهز للإرسال لكل الضيوف." %}</p></div>
+    <div class="feature-grid">
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg></span><h3><span class="feature-ar">عداد تنازلي</span><span class="feature-en">Countdown Timer</span></h3><p><span class="feature-ar">لحظة بلحظة حتى موعد الزفاف</span><span class="feature-en">Every moment until your wedding day</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5 17 4.5-4 3 2.5 2-2 4.5 3.5"/></svg></span><h3><span class="feature-ar">معرض صور</span><span class="feature-en">Photo Gallery</span></h3><p><span class="feature-ar">شارك أجمل لحظاتكم مع ضيوفك</span><span class="feature-en">Share your most beautiful memories</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="m8 12 2.5 2.5L16.5 9"/></svg></span><h3><span class="feature-ar">تأكيد حضور RSVP</span><span class="feature-en">RSVP Confirmation</span></h3><p><span class="feature-ar">إدارة سهلة لقائمة الضيوف</span><span class="feature-en">Easy guest list management</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4 4.5 10.2c-.8.3-.8 1.4 0 1.7l5.1 1.9 1.9 5.1c.3.8 1.4.8 1.7 0L20 4Z"/><path d="m9.7 13.8 4.2-4.2"/></svg></span><h3><span class="feature-ar">مشاركة واتساب</span><span class="feature-en">WhatsApp Sharing</span></h3><p><span class="feature-ar">إرسال الدعوة بضغطة زر</span><span class="feature-en">Send your invitation in one tap</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span><h3><span class="feature-ar">موسيقى خلفية</span><span class="feature-en">Background Music</span></h3><p><span class="feature-ar">أضف طابعاً رومانسياً لدعوتك</span><span class="feature-en">Add a romantic touch to your invitation</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg></span><h3><span class="feature-ar">خريطة جوجل</span><span class="feature-en">Google Maps</span></h3><p><span class="feature-ar">سهولة الوصول لمكان الفرح</span><span class="feature-en">Make your venue easy to find</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2z"/></svg></span><h3><span class="feature-ar">رمز QR</span><span class="feature-en">Invitation QR Code</span></h3><p><span class="feature-ar">وصول سريع ومباشر للدعوة</span><span class="feature-en">Quick and direct access to your invitation</span></p></article>
+      <article class="feature-card"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></span><h3><span class="feature-ar">إضافة للتقويم</span><span class="feature-en">Add to Calendar</span></h3><p><span class="feature-ar">تذكير بموعد الزفاف للضيوف</span><span class="feature-en">Keep the wedding date on every calendar</span></p></article>
+      <article class="feature-card feature-card--qr"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4z"/><path d="M14 14h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2z"/></svg></span><h3><span class="feature-ar">QR دخول القاعة</span><span class="feature-en">Venue Entry QR</span></h3><p><span class="feature-ar">دخول منظم وأسرع للضيوف</span><span class="feature-en">Faster and more organized guest entry</span></p></article>
     </div>
   </div>
 </section>
+
+
 
 <section class="section" id="plans">
   <div class="wrap">
@@ -112,7 +120,7 @@
             {% endif %}
 
             {% if SITE_CTA.orders_enabled %}
-            <a class="btn btn--gold btn--block" href="#order">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+            <a class="btn btn--gold btn--block" href="#contact">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
             {% elif SITE_CTA.whatsapp_url %}
             <a class="btn btn--gold btn--block" href="{{ SITE_CTA.whatsapp_url }}"
                target="_blank" rel="noopener">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
@@ -131,7 +139,23 @@
   </div>
 </section>
 
-{% if not SITE_CTA.orders_enabled %}
+<section class="section section--alt" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "كيف تعمل" %}</p>
+      <h2>{% translate "أربع خطوات فقط" %}</h2>
+    </div>
+    <div class="grid grid--4 steps">
+      <div class="step"><span class="step-number">01</span><h3>{% translate "اختر القالب" %}</h3><p class="muted">{% translate "تصفّح المعرض واختر ما يناسب مناسبتك." %}</p></div>
+      <div class="step"><span class="step-number">02</span><h3>{% translate "أرسل بياناتك" %}</h3><p class="muted">{% translate "الأسماء، الموعد، المكان، وأي تفاصيل إضافية." %}</p></div>
+      <div class="step"><span class="step-number">03</span><h3>{% translate "نصمّم دعوتك" %}</h3><p class="muted">{% translate "نضبط التفاصيل ونرسل لك معاينة قبل النشر." %}</p></div>
+      <div class="step"><span class="step-number">04</span><h3>{% translate "استلم الرابط" %}</h3><p class="muted">{% translate "رابط خاص جاهز للإرسال لكل الضيوف." %}</p></div>
+    </div>
+  </div>
+</section>
+
+{% comment %} قسم الطلب القديم مستبدل بزر التواصل الموحد أسفل الصفحة {% endcomment %}
+{% if False and not SITE_CTA.orders_enabled %}
   {% if SITE_CTA.whatsapp_url %}
   <section class="section section--alt" id="order">
     <div class="wrap" style="max-width:640px;text-align:center">
@@ -198,7 +222,49 @@
 </section> -->
 {% endif %}
 
-<footer class="foot"><div class="wrap">{{ SITE_NAME }} — {{ SITE_TAGLINE }}</div></footer>
+{% if faqs %}
+<section class="section section--faq" id="faq">
+  <div class="wrap wrap--narrow">
+    <div class="section-head">
+      <p class="eyebrow">{% translate "مساعدة" %}</p>
+      <h2>{% translate "الأسئلة الشائعة" %}</h2>
+    </div>
+    <div class="faq-list">
+      {% for faq in faqs %}
+      <details class="faq-item"{% if forloop.first %} open{% endif %}>
+        <summary>{{ faq.display_question }}</summary>
+        <div class="faq-answer">{{ faq.display_answer|linebreaksbr }}</div>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section home-cta" id="contact">
+  <div class="wrap home-cta-in">
+    <p class="eyebrow">{% translate "خطوتك التالية" %}</p>
+    <h2>{% translate "هل أنت مستعد لتصميم قالبك الآن؟" %}</h2>
+    <p>{% translate "تواصل معي لنبدأ دعوة تليق بمناسبتك." %}</p>
+    {% if SITE_CTA.whatsapp_url %}
+    <a class="btn btn--gold" href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% translate "تواصل معي" %}</a>
+    {% elif SITE_EMAIL %}
+    <a class="btn btn--gold" href="mailto:{{ SITE_EMAIL }}">{% translate "تواصل معي" %}</a>
+    {% endif %}
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <a class="foot-brand" href="{% url 'home' %}" aria-label="{{ SITE_NAME }}"><img src="{% static 'images/logo-mark.png' %}" alt="{{ SITE_NAME }}"></a>
+    <p>{{ SITE_NAME }} — {{ SITE_TAGLINE }}</p>
+    <div class="foot-socials" aria-label="{% translate 'روابط التواصل' %}">
+      {% if site_config.whatsapp_url %}<a href="{{ site_config.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7.1L4 20l1.4-4A8 8 0 1 1 20 11.5Z"/><path d="M8.8 8.2c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.6l-.5.6c.7 1.2 1.5 1.9 2.7 2.5l.5-.6c.2-.2.4-.2.6-.1l1.4.7c.2.1.3.3.2.6-.2.8-.8 1.3-1.6 1.4-1.3.1-3.2-.9-4.5-2.1-1.3-1.2-2.3-3-2.2-4.2.1-.4.4-.7.7-.8Z"/></svg></a>{% endif %}
+      {% if site_config.facebook_enabled and site_config.facebook_url %}<a href="{{ site_config.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v5h4v-5h3l1-4h-4V9c0-.6.4-1 1-1Z"/></svg></a>{% endif %}
+      {% if site_config.instagram_enabled and site_config.instagram_url %}<a href="{{ site_config.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.5" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
+    </div>
+  </div>
+</footer>
 {% endblock %}
 
 {% block extra_js %}

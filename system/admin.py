@@ -3,7 +3,7 @@ from django.utils.html import format_html
 
 from .models import (
         Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
-    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template, FAQ,
 
 )
 
@@ -90,9 +90,17 @@ class PlanAddonAdmin(admin.ModelAdmin):
     filter_horizontal = ("plans",)
 
 
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ("question_ar", "is_active", "order")
+    list_editable = ("is_active", "order")
+    list_filter = ("is_active",)
+    search_fields = ("question_ar", "answer_ar", "question_en", "answer_en")
+
+
 @admin.register(SiteSetting)
 class SiteSettingAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "preview_cta_enabled", "whatsapp_number")
+    list_display = ("__str__", "preview_cta_enabled", "whatsapp_number", "instagram_url")
 
     def has_add_permission(self, request):
         # سجل واحد بس — الزرار «إضافة» بيلخبط

@@ -287,10 +287,13 @@ class SiteSettingForm(forms.ModelForm):
             "whatsapp_float_enabled", "whatsapp_cta_message",
             "preview_cta_enabled", "preview_cta_text", "whatsapp_message",
             "facebook_enabled", "facebook_url",
+            "instagram_enabled", "instagram_url",
         ]
         widgets = {
             "whatsapp_number": forms.TextInput(attrs={"placeholder": "+201559403203",
                                                       "dir": "ltr"}),
             "facebook_url": forms.URLInput(attrs={"placeholder": "https://facebook.com/…",
                                                   "dir": "ltr"}),
+            "instagram_url": forms.URLInput(attrs={"placeholder": "https://instagram.com/…",
+                                                    "dir": "ltr"}),
         }

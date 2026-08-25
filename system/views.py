@@ -45,7 +45,7 @@ from .forms import (
 )
 from .models import (
         Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
-    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template,
+    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template, FAQ,
 
 )
 from django.utils.safestring import mark_safe
@@ -259,9 +259,10 @@ def home(request):
             messages.success(request, "تم استلام طلبك. سنتواصل معك قريباً لتأكيد التفاصيل.")
             return redirect("home")
         messages.error(request, "يرجى مراجعة البيانات المدخلة.")
+    faqs = FAQ.objects.filter(is_active=True)
     return render(request, "public/home.html", {
         "templates": templates, "plans": plans, "form": form,
-        "addons": addons,
+        "addons": addons, "faqs": faqs, "site_config": cfg,
     })
 
 

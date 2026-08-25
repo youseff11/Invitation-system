@@ -214,6 +214,34 @@ class Template(TimeStampedModel):
 
 
 # --------------------------------------------------------------------------
+class FAQ(TimeStampedModel):
+    """سؤال وإجابة يظهران في صفحة Home ويمكن إدارتهما من لوحة Django."""
+
+    question_ar = models.CharField("السؤال بالعربية", max_length=240)
+    answer_ar = models.TextField("الإجابة بالعربية")
+    question_en = models.CharField("السؤال بالإنجليزية", max_length=240, blank=True)
+    answer_en = models.TextField("الإجابة بالإنجليزية", blank=True)
+    is_active = models.BooleanField("ظاهر", default=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "سؤال شائع"
+        verbose_name_plural = "الأسئلة الشائعة"
+
+    def __str__(self):
+        return self.question_ar
+
+    @property
+    def display_question(self):
+        return self.question_en if (get_language() or "").startswith("en") and self.question_en else self.question_ar
+
+    @property
+    def display_answer(self):
+        return self.answer_en if (get_language() or "").startswith("en") and self.answer_en else self.answer_ar
+
+
+# --------------------------------------------------------------------------
 def _asset_path(instance, filename: str) -> str:
     return f"assets/{timezone.now():%Y/%m}/{uuid.uuid4().hex[:12]}/{filename}"
 
@@ -782,6 +810,8 @@ class SiteSetting(models.Model):
     )
     facebook_enabled = models.BooleanField("إظهار فيسبوك", default=True)
     facebook_url = models.URLField("رابط صفحة فيسبوك", max_length=300, blank=True)
+    instagram_enabled = models.BooleanField("إظهار إنستجرام", default=True)
+    instagram_url = models.URLField("رابط إنستجرام", max_length=300, blank=True)
 
     # ---- استقبال الطلبات
     orders_enabled = models.BooleanField(
