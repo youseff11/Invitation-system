@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -56,6 +57,8 @@ from django.core.files.storage import default_storage
 
 from . import guestexport, guestimport, images, templateimport, video
 
+logger = logging.getLogger(__name__)
+
 MAX_ASSET_BYTES = 8 * 1024 * 1024
 # الفيديو ليه حد أعلى لوحده: صورة بتنضغط لـ٩٨ كيلو، لكن مقطع فرح متصوّر
 # بالموبايل ٢٠ ثانية بيطلع ٢٥-٣٥ ميجا قبل الضغط. الحد الأصلي ٨ ميجا كان
@@ -64,7 +67,12 @@ MAX_ASSET_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = video.MAX_UPLOAD_BYTES
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
 ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp4", "audio/ogg", "audio/wav"}
-ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime"}
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/webm", "video/quicktime", "video/x-m4v"}
+_VIDEO_EXTENSION_TYPES = {
+    ".mp4": "video/mp4", ".m4v": "video/mp4",
+    ".mov": "video/quicktime", ".webm": "video/webm",
+}
+_GENERIC_UPLOAD_TYPES = {"", "application/octet-stream", "binary/octet-stream"}
 
 # باقي رسايل المشروع بتستخدم الأرقام العربية، فالرقم المولَّد لازم يمشي
 # على نفس النسق — رسالة فيها «40» وسط كلام عربي بتبان غريبة.
@@ -1435,6 +1443,13 @@ def api_upload(request, pk):
         return JsonResponse({"ok": False, "error": "لم يصل أي ملف."}, status=400)
     guessed = mimetypes.guess_type(upload.name)[0] or ""
     content_type = (getattr(upload, "content_type", "") or guessed).lower()
+    # بعض المتصفحات/الاستضافات ترسل m4v أو الملف كـ octet-stream؛
+    # نستخدم امتداداً معروفاً فقط كـ fallback، ولا نقبل امتدادات عشوائية.
+    extension_type = _VIDEO_EXTENSION_TYPES.get(Path(upload.name).suffix.lower())
+    if content_type in _GENERIC_UPLOAD_TYPES and extension_type:
+        content_type = extension_type
+    elif content_type == "video/x-m4v":
+        content_type = "video/mp4"
 
     if content_type in ALLOWED_IMAGE_TYPES:
         kind = "image"
@@ -1515,12 +1530,19 @@ def api_upload(request, pk):
             except Exception:
                 thumb = None
 
-    asset = Asset.objects.create(
-        file=stored, thumb=thumb, source=source,
-        kind=kind, original_name=upload.name[:200],
-        width=width, height=height, size_bytes=getattr(stored, "size", upload.size),
-        invitation=invitation, uploaded_by=request.user,
-    )
+    try:
+        asset = Asset.objects.create(
+            file=stored, thumb=thumb, source=source,
+            kind=kind, original_name=upload.name[:200],
+            width=width, height=height, size_bytes=getattr(stored, "size", upload.size),
+            invitation=invitation, uploaded_by=request.user,
+        )
+    except Exception:
+        logger.exception("Asset upload save failed for invitation=%s", invitation.pk)
+        return JsonResponse({
+            "ok": False,
+            "error": "تعذّر حفظ الفيديو على السيرفر. راجع صلاحيات مجلد media وسجل أخطاء التطبيق.",
+        }, status=500)
     return JsonResponse({
         "ok": True,
         "asset": {"id": asset.pk, "url": asset.url, "thumb": asset.thumb_url,
