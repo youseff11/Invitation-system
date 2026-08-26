@@ -17,11 +17,6 @@
 
 <style data-loading-critical>
 html, body { margin: 0; min-height: 100%; }
-.lb-loading-screen { position: fixed !important; inset: 0 !important; left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 2147483647 !important; background: #f7f2ea !important; color: #b8914f !important; font-family: Arial, sans-serif !important; }
-.lb-loading-screen__card { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 12px !important; min-width: 210px !important; padding: 16px 22px !important; border: 1px solid rgba(184,145,79,.2) !important; border-radius: 14px !important; background: rgba(255,255,255,.9) !important; box-shadow: 0 18px 48px -28px rgba(44,38,32,.35) !important; }
-.lb-loading-screen__spinner { width: 20px !important; height: 20px !important; flex: 0 0 20px !important; border: 2px solid rgba(184,145,79,.2) !important; border-top-color: #b8914f !important; border-radius: 50% !important; animation: lb-loading-spin .75s linear infinite !important; }
-.lb-doc[data-ready="0"] .lb-intro, .lb-doc[data-ready="0"] .lb-stage, .lb-doc[data-ready="0"] .lb-cta, .lb-doc[data-ready="0"] .lb-music, .lb-doc[data-ready="0"] .lb-autoscroll { visibility: hidden !important; }
-.lb-doc[data-ready="1"] .lb-loading-screen { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
 /* تثبيت مركز شاشة الدعوة قبل وبعد تشغيل runtime القالب المستورد. */
 .lb-doc > .lb-stage { width: 100% !important; max-width: none !important; margin-inline: 0 !important; }
 .lb-doc > .lb-stage > #allrecords,
@@ -29,17 +24,6 @@ html, body { margin: 0; min-height: 100%; }
 .lb-doc > .lb-stage .t396__artboard { width: 100% !important; min-width: 0 !important; left: 0 !important; margin-inline: 0 !important; }
 .lb-doc > .lb-intro { min-height: 100svh !important; height: 100dvh !important; max-height: 100dvh !important; }
 </style>
-<script data-loading-failsafe>
-(function () {
-  var reveal = function () {
-    var root = document.querySelector("[data-invite-root]");
-    if (root) root.setAttribute("data-ready", "1");
-  };
-  window.setTimeout(reveal, 3000);
-  document.addEventListener("DOMContentLoaded", reveal, { once: true });
-})();
-</script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,14 +33,7 @@ html, body { margin: 0; min-height: 100%; }
 {% for font_url in render.font_preloads %}<link rel="preload" href="{{ font_url }}" as="font" crossorigin>{% endfor %}
 {% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
 </head>
-<body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="0">
-
-<div class="lb-loading-screen" data-lb-loading role="status" aria-live="polite">
-  <div class="lb-loading-screen__card">
-    <span class="lb-loading-screen__spinner" aria-hidden="true"></span>
-    <span class="lb-loading-screen__text">{% if render.lang == 'en' %}Preparing your invitation...{% else %}جاري تجهيز الدعوة...{% endif %}</span>
-  </div>
-</div>
+<body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="1">
 
 <div data-invite-language-content>
 
