@@ -22,6 +22,16 @@ html, body { margin: 0; min-height: 100%; }
 .lb-loading-screen__spinner { width: 20px !important; height: 20px !important; flex: 0 0 20px !important; border: 2px solid rgba(184,145,79,.2) !important; border-top-color: #b8914f !important; border-radius: 50% !important; animation: lb-loading-spin .75s linear infinite !important; }
 .lb-doc[data-ready="0"] .lb-intro, .lb-doc[data-ready="0"] .lb-stage, .lb-doc[data-ready="0"] .lb-cta, .lb-doc[data-ready="0"] .lb-music, .lb-doc[data-ready="0"] .lb-autoscroll { visibility: hidden !important; }
 </style>
+<script data-loading-failsafe>
+(function () {
+  var reveal = function () {
+    var root = document.querySelector("[data-invite-root]");
+    if (root) root.setAttribute("data-ready", "1");
+  };
+  window.setTimeout(reveal, 3000);
+  document.addEventListener("DOMContentLoaded", reveal, { once: true });
+})();
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 

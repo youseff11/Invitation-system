@@ -883,20 +883,27 @@
   }
 
   function boot() {
-    initCountdowns();
-    initAnimations();
-    initScrollLinks();
-    initShare();
-    initLightbox();
-    initVideo();
-    initImportedMedia();
-    initMusic();
-
-    initIntro();
-    initLanguageToggle();
-    initRsvp();
-    initAutoScroll();
+    // يجب ألا تمنع مشكلة في runtime أو API غير مدعوم على Safari ظهور الدعوة.
+    // شاشة التحميل لها مسار مستقل وتبدأ قبل باقي التهيئة.
     revealWhenReady();
+    var initializers = [
+      [initCountdowns, "countdown"],
+      [initAnimations, "animations"],
+      [initScrollLinks, "scroll-links"],
+      [initShare, "share"],
+      [initLightbox, "lightbox"],
+      [initVideo, "video"],
+      [initImportedMedia, "imported-media"],
+      [initMusic, "music"],
+      [initIntro, "intro"],
+      [initLanguageToggle, "language"],
+      [initRsvp, "rsvp"],
+      [initAutoScroll, "auto-scroll"]
+    ];
+    initializers.forEach(function (entry) {
+      try { entry[0](); }
+      catch (error) { console.warn("Invitation initializer failed: " + entry[1], error); }
+    });
   }
 
   if (doc.readyState === "loading") {
