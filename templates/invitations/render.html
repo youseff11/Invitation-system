@@ -22,6 +22,12 @@ html, body { margin: 0; min-height: 100%; }
 .lb-loading-screen__spinner { width: 20px !important; height: 20px !important; flex: 0 0 20px !important; border: 2px solid rgba(184,145,79,.2) !important; border-top-color: #b8914f !important; border-radius: 50% !important; animation: lb-loading-spin .75s linear infinite !important; }
 .lb-doc[data-ready="0"] .lb-intro, .lb-doc[data-ready="0"] .lb-stage, .lb-doc[data-ready="0"] .lb-cta, .lb-doc[data-ready="0"] .lb-music, .lb-doc[data-ready="0"] .lb-autoscroll { visibility: hidden !important; }
 .lb-doc[data-ready="1"] .lb-loading-screen { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+/* تثبيت مركز شاشة الدعوة قبل وبعد تشغيل runtime القالب المستورد. */
+.lb-doc > .lb-stage { width: 100% !important; max-width: none !important; margin-inline: 0 !important; }
+.lb-doc > .lb-stage > #allrecords,
+.lb-doc > .lb-stage > .t-records { width: 100% !important; min-width: 0 !important; max-width: none !important; margin-inline: 0 !important; }
+.lb-doc > .lb-stage .t396__artboard { width: 100% !important; min-width: 0 !important; left: 0 !important; margin-inline: 0 !important; }
+.lb-doc > .lb-intro { min-height: 100svh !important; height: 100dvh !important; max-height: 100dvh !important; }
 </style>
 <script data-loading-failsafe>
 (function () {
