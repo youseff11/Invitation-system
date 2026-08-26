@@ -870,6 +870,13 @@
       if (revealed) return;
       revealed = true;
       root.setAttribute("data-ready", "1");
+      var loader = doc.querySelector("[data-lb-loading]");
+      if (loader) {
+        loader.setAttribute("aria-hidden", "true");
+        loader.style.opacity = "0";
+        loader.style.visibility = "hidden";
+        loader.style.pointerEvents = "none";
+      }
     };
     // لا نعرض القالب قبل اكتمال الخطوط، حتى لا يظهر لحظياً بخطوط وأبعاد
     // مختلفة ثم يقفز إلى مكانه النهائي. المهلة تمنع بقاء الصفحة مخفية لو
