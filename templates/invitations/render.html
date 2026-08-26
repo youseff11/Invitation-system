@@ -23,6 +23,9 @@ html, body { margin: 0; min-height: 100%; }
 .lb-doc > .lb-stage > .t-records { width: 100% !important; min-width: 0 !important; max-width: none !important; margin-inline: 0 !important; }
 .lb-doc > .lb-stage .t396__artboard { width: 100% !important; min-width: 0 !important; left: 0 !important; margin-inline: 0 !important; }
 .lb-doc > .lb-intro { min-height: 100svh !important; height: 100dvh !important; max-height: 100dvh !important; }
+/* لا نعرض artboard المستورد قبل أن ينتهي Tilda من حساب scale والتمركز. */
+.lb-stage--runtime .t396__artboard { visibility: hidden !important; }
+.lb-stage--runtime .t396__artboard.rendered { visibility: visible !important; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 
@@ -57,7 +60,7 @@ html, body { margin: 0; min-height: 100%; }
 {# الافتتاحية في ملف لوحدها عشان المحرر يقدر يحدّثها لحظياً #}
 {% include 'invitations/_intro.html' %}
 
-<div{% if render.runtime_scripts and not editable or run_template_runtime %} id="allrecords"{% for attr, value in render.runtime_root_attrs.items %}{% if attr != 'id' and attr != 'class' %} {{ attr }}="{{ value }}"{% endif %}{% endfor %}{% endif %} class="lb-stage{% if render.runtime_scripts and not editable or run_template_runtime %} lb-stage--runtime t-records t-records_animated t-records_visible{% endif %}{% if render.theme.max_width >= 1100 %} lb-stage--full{% endif %}{% if render.theme.pattern and render.theme.pattern != 'none' %} lb-pattern lb-pattern--{{ render.theme.pattern }}{% endif %}">
+<div{% if render.runtime_scripts and not editable or run_template_runtime %} id="allrecords"{% for attr, value in render.runtime_root_attrs.items %}{% if attr != 'id' and attr != 'class' %} {{ attr }}="{{ value }}"{% endif %}{% endfor %}{% endif %} class="lb-stage{% if render.runtime_scripts and not editable or run_template_runtime %} lb-stage--runtime t-records t-records_animated{% endif %}{% if render.theme.max_width >= 1100 %} lb-stage--full{% endif %}{% if render.theme.pattern and render.theme.pattern != 'none' %} lb-pattern lb-pattern--{{ render.theme.pattern }}{% endif %}">
 
   {{ render.html }}
 
