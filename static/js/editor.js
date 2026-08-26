@@ -2260,9 +2260,6 @@
     try { return frame && frame.contentDocument; } catch (e) { return null; }
   }
 
-  function setLoading(on) {
-    if (refs.loading) refs.loading.classList.toggle("is-on", !!on);
-  }
 
   function captureEditorScroll() {
     return {
@@ -2291,7 +2288,7 @@
     var fdoc = frameDoc();
     if (!fdoc) return;
 
-    setLoading(true);
+    
     fetch(META.urls.preview, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
@@ -2300,12 +2297,12 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        setLoading(false);
+        
         if (!data || !data.ok) { toast("تعذّر تحديث المعاينة.", "error"); return; }
         applyPreview(data, editorScroll);
       })
       .catch(function () {
-        setLoading(false);
+        
         toast("تعذّر الاتصال بالخادم لتحديث المعاينة.", "error");
       });
   }, 280);
