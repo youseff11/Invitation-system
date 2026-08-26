@@ -3560,6 +3560,7 @@
   function openAssetPicker(cb, kind) {
     pickCallback = cb;
     pickKind = kind || "image";
+    selectedAssetIds.clear();
     var t = PICKER_TEXT[pickKind] || PICKER_TEXT.image;
     var title = $("[data-asset-title]"), hint = $("[data-asset-hint]");
     var input = $("[data-file-input]");
@@ -3613,13 +3614,14 @@
   function bulkDeleteSelectedAssets() {
     if (!META.urls.deleteAssets || !selectedAssetIds.size) return;
     var ids = Array.from(selectedAssetIds);
-    if (!window.confirm("هل تريد حذف " + ids.length + " صورة محددة؟")) return;
+    var selectedLabel = pickKind === "video" ? "فيديو" : "صورة";
+    if (!window.confirm("هل تريد حذف " + ids.length + " " + selectedLabel + " محددة؟")) return;
 
     fetch(META.urls.deleteAssets, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
-      body: JSON.stringify({ assets: ids })
+      body: JSON.stringify({ assets: ids, kind: pickKind })
     })
       .then(function (r) {
         return r.json().then(function (data) {
@@ -3629,17 +3631,17 @@
       .then(function (result) {
         var data = result.data || {};
         if (!data.ok) {
-          toast(data.error || "تعذّر حذف الصور المحددة.", "error");
+          toast(data.error || "تعذّر حذف الملفات المحددة.", "error");
           return;
         }
         var deleted = new Set((data.deleted || []).map(Number));
         ASSETS = ASSETS.filter(function (asset) { return !deleted.has(Number(asset.id)); });
         selectedAssetIds.clear();
         renderAssets();
-        toast("تم حذف الصور المحددة من المكتبة.", "ok");
+        toast("تم حذف الملفات المحددة من المكتبة.", "ok");
       })
-      .catch(function () {
-        toast("تعذّر الاتصال لحذف الصور.", "error");
+            .catch(function () {
+        toast("تعذّر الاتصال لحذف الملفات.", "error");
       });
   }
 
@@ -3676,13 +3678,13 @@
     var selectedCount = null;
     var selectAllBtn = null;
     var bulkDeleteBtn = null;
-    if (pickKind === "image") {
+    if (pickKind === "image" || pickKind === "video") {
       bulkBar = el("div", "ed-asset-bulk");
-      selectedCount = el("span", "ed-asset-bulk-count", "لم يتم تحديد صور");
+      selectedCount = el("span", "ed-asset-bulk-count", "لم يتم تحديد ملفات");
       bulkBar.appendChild(selectedCount);
       selectAllBtn = el("button", "ed-btn ed-btn--sm", "تحديد الكل");
       selectAllBtn.type = "button";
-      selectAllBtn.hidden = imageUsageFilter !== "unused";
+      selectAllBtn.hidden = pickKind === "image" && imageUsageFilter !== "unused";
       bulkBar.appendChild(selectAllBtn);
       bulkDeleteBtn = el("button", "ed-btn ed-btn--sm ed-btn--danger", "حذف المحدد");
       bulkDeleteBtn.type = "button";
@@ -3694,9 +3696,10 @@
     function refreshBulkBar() {
       if (!bulkBar) return;
       var count = selectedAssetIds.size;
-      selectedCount.textContent = count ? ("تم تحديد " + count + " صورة") : "لم يتم تحديد صور";
+      var selectedLabel = pickKind === "video" ? "فيديو" : "صورة";
+      selectedCount.textContent = count ? ("تم تحديد " + count + " " + selectedLabel) : "لم يتم تحديد ملفات";
       bulkDeleteBtn.disabled = !count;
-      if (selectAllBtn && imageUsageFilter === "unused") {
+      if (selectAllBtn && (pickKind === "video" || imageUsageFilter === "unused")) {
         var allSelected = images.length > 0 && images.every(function (a) {
           return selectedAssetIds.has(a.id);
         });
@@ -3730,12 +3733,51 @@
       var btn = el("button", "ed-asset");
       btn.type = "button";
       btn.title = a.name;
-      if (a.kind === "image") {
+      if (a.kind === "image" || (a.kind === "video" && a.thumb)) {
         btn.style.backgroundImage = 'url("' + (a.thumb || a.url) + '")';
+        if (a.kind === "video") btn.classList.add("ed-asset--video-thumb");
+        btn.appendChild(el("span", "ed-asset-name", a.name || ""));
+      } else if (a.kind === "video") {
+        // للفيديو القديم الذي لم يُنشأ له thumb: نحمّل أول فريم من المتصفح.
+        btn.classList.add("ed-asset--file", "ed-asset--video-preview");
+        var videoPreview = doc.createElement("video");
+        videoPreview.muted = true;
+        videoPreview.defaultMuted = true;
+        videoPreview.playsInline = true;
+        videoPreview.preload = "auto";
+        videoPreview.src = a.url;
+        videoPreview.setAttribute("aria-hidden", "true");
+        videoPreview.setAttribute("disablepictureinpicture", "true");
+        var captureVideoFrame = function () {
+          if (!videoPreview.videoWidth || !videoPreview.videoHeight) return;
+          try {
+            var maxEdge = 640;
+            var ratio = Math.min(1, maxEdge / Math.max(videoPreview.videoWidth, videoPreview.videoHeight));
+            var canvas = doc.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(videoPreview.videoWidth * ratio));
+            canvas.height = Math.max(1, Math.round(videoPreview.videoHeight * ratio));
+            canvas.getContext("2d").drawImage(videoPreview, 0, 0, canvas.width, canvas.height);
+            btn.style.backgroundImage = 'url("' + canvas.toDataURL("image/jpeg", .82) + '")';
+            btn.classList.remove("ed-asset--file", "ed-asset--video-preview");
+            btn.classList.add("ed-asset--video-thumb");
+            videoPreview.remove();
+          } catch (ignore) {
+            // لو المتصفح منع canvas بسبب صيغة الفيديو، نترك عنصر video ظاهراً كـfallback.
+          }
+        };
+        videoPreview.addEventListener("loadedmetadata", function () {
+          try { videoPreview.currentTime = 0.01; } catch (ignore) {}
+        });
+        videoPreview.addEventListener("loadeddata", captureVideoFrame);
+        videoPreview.addEventListener("canplay", captureVideoFrame);
+        videoPreview.addEventListener("error", function () {
+          btn.classList.add("ed-asset--video-unavailable");
+        });
+        btn.appendChild(videoPreview);
+        btn.appendChild(el("span", "ed-asset-name", a.name || ""));
       } else {
-        // الفيديو والصوت مالهمش صورة مصغّرة — نوري أيقونة والاسم
         btn.classList.add("ed-asset--file");
-        btn.appendChild(el("span", "ed-asset-ico", a.kind === "video" ? "▶" : "♪"));
+        btn.appendChild(el("span", "ed-asset-ico", "♪"));
         btn.appendChild(el("span", "ed-asset-name", a.name || ""));
       }
       btn.addEventListener("click", function () {
@@ -3746,8 +3788,8 @@
       var check = el("input", "ed-asset-check");
       check.type = "checkbox";
       check.checked = selectedAssetIds.has(a.id);
-      check.title = "تحديد الصورة للحذف الجماعي";
-      check.setAttribute("aria-label", "تحديد " + (a.name || "الصورة"));
+      check.title = "تحديد الملف للحذف الجماعي";
+      check.setAttribute("aria-label", "تحديد " + (a.name || (a.kind === "video" ? "الفيديو" : "الصورة")));
       check.addEventListener("click", function (e) {
         e.stopPropagation();
       });
@@ -3761,22 +3803,21 @@
       tile.appendChild(btn);
       tile.appendChild(check);
 
-      /* الحذف للصور فقط. زر الحذف منفصل عن زر الاختيار حتى لا تختار
-         الصورة بالخطأ أثناء محاولة حذفها. */
-      if (a.kind === "image" && META.urls.deleteAsset) {
+      /* زر الحذف منفصل عن زر الاختيار حتى لا تختار الملف بالخطأ. */
+      if ((a.kind === "image" || a.kind === "video") && META.urls.deleteAsset) {
         var del = el("button", "ed-asset-delete", "×");
         del.type = "button";
-        del.title = "حذف الصورة من المكتبة";
+        del.title = a.kind === "video" ? "حذف الفيديو من المكتبة" : "حذف الصورة من المكتبة";
         del.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
-          if (!window.confirm("هل تريد حذف هذه الصورة من المكتبة؟")) return;
+          if (!window.confirm(a.kind === "video" ? "هل تريد حذف هذا الفيديو من المكتبة؟" : "هل تريد حذف هذه الصورة من المكتبة؟")) return;
           del.disabled = true;
           fetch(META.urls.deleteAsset, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
             credentials: "same-origin",
-            body: JSON.stringify({ asset: a.id })
+            body: JSON.stringify({ asset: a.id, kind: a.kind })
           })
             .then(function (r) {
               return r.json().then(function (data) {
@@ -3787,12 +3828,12 @@
               del.disabled = false;
               var data = result.data || {};
               if (!data.ok) {
-                toast(data.error || "تعذّر حذف الصورة.", "error");
+                toast(data.error || "تعذّر حذف الملف.", "error");
                 return;
               }
               ASSETS = ASSETS.filter(function (item) { return item.id !== a.id; });
               renderAssets();
-              toast("تم حذف الصورة من المكتبة.", "ok");
+              toast("تم حذف الملف من المكتبة.", "ok");
             })
             .catch(function () {
               del.disabled = false;
@@ -3806,15 +3847,64 @@
     refreshBulkBar();
   }
 
+  function makeClientVideoThumbnail(file) {
+    if (!file || !/^video\//i.test(file.type || "")) return Promise.resolve(null);
+    return new Promise(function (resolve) {
+      var preview = doc.createElement("video");
+      var objectUrl = URL.createObjectURL(file);
+      var settled = false;
+      var timer = window.setTimeout(function () { finish(null); }, 8000);
+      function finish(blob) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        try { URL.revokeObjectURL(objectUrl); } catch (ignore) {}
+        resolve(blob || null);
+      }
+      function capture() {
+        if (!preview.videoWidth || !preview.videoHeight) return;
+        try {
+          var maxEdge = 640;
+          var ratio = Math.min(1, maxEdge / Math.max(preview.videoWidth, preview.videoHeight));
+          var canvas = doc.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(preview.videoWidth * ratio));
+          canvas.height = Math.max(1, Math.round(preview.videoHeight * ratio));
+          canvas.getContext("2d").drawImage(preview, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(function (blob) { finish(blob); }, "image/jpeg", .82);
+        } catch (ignore) {
+          finish(null);
+        }
+      }
+      preview.muted = true;
+      preview.defaultMuted = true;
+      preview.playsInline = true;
+      preview.preload = "auto";
+      preview.src = objectUrl;
+      preview.addEventListener("loadedmetadata", function () {
+        try { preview.currentTime = 0.01; } catch (ignore) {}
+      });
+      preview.addEventListener("loadeddata", capture, { once: true });
+      preview.addEventListener("canplay", capture, { once: true });
+      preview.addEventListener("error", function () { finish(null); }, { once: true });
+      preview.load();
+    });
+  }
+
   function uploadFiles(files) {
     Array.prototype.forEach.call(files, function (file) {
-      var fd = new FormData();
-      fd.append("file", file);
-      fetch(META.urls.upload, {
-        method: "POST",
-        headers: { "X-CSRFToken": csrf() },
-        credentials: "same-origin",
-        body: fd
+      makeClientVideoThumbnail(file).then(function (thumbBlob) {
+        var fd = new FormData();
+        fd.append("file", file);
+        if (thumbBlob) {
+          var thumbName = (file.name || "video").replace(/\.[^.]+$/, "") + "-thumb.jpg";
+          fd.append("thumb", thumbBlob, thumbName);
+        }
+        return fetch(META.urls.upload, {
+          method: "POST",
+          headers: { "X-CSRFToken": csrf() },
+          credentials: "same-origin",
+          body: fd
+        });
       })
         .then(function (r) { return r.json(); })
         .then(function (data) {

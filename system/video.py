@@ -195,6 +195,56 @@ def _faststart_upload(upload):
         return upload
 
 
+def make_thumbnail(upload, *, max_width: int = 640):
+    """استخراج أول فريم كصورة JPEG لاستخدامه في بطاقة مكتبة الفيديو.
+
+    لا نلمس ملف الفيديو نفسه ولا نعيد ترميزه؛ يتم إنشاء صورة صغيرة منفصلة.
+    لو لم يكن ffmpeg متاحاً أو تعذّر قراءة الفيديو، نرجع ``None`` ويظل
+    الفيديو صالحاً للرفع بدون تعطيل العملية.
+    """
+    if not available():
+        return None
+
+    src_path = thumb_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".video", delete=False) as src:
+            upload.seek(0)
+            for chunk in getattr(upload, "chunks", lambda: [upload.read()])():
+                src.write(chunk)
+            src_path = src.name
+
+        thumb_path = src_path + ".thumb.jpg"
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path,
+             "-frames:v", "1", "-vf", f"scale={max_width}:-2",
+             "-q:v", "4", thumb_path],
+            check=True, timeout=TIMEOUT, stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        with open(thumb_path, "rb") as fh:
+            data = fh.read()
+        if not data:
+            return None
+        stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
+        return InMemoryUploadedFile(
+            io.BytesIO(data), "ImageField", f"{stem}-thumb.jpg", "image/jpeg",
+            len(data), None,
+        )
+    except Exception:
+        return None
+    finally:
+        try:
+            upload.seek(0)
+        except Exception:
+            pass
+        for path in (src_path, thumb_path):
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+
+
 def prepare_for_stream(upload):
     """ينقل بيانات MP4 إلى البداية من غير إعادة ترميز أو فقد جودة.
 

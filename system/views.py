@@ -1459,6 +1459,20 @@ def api_upload(request, pk):
 
     width = height = 0
     stored, thumb, source = upload, None, None
+    # المتصفح يرسل أول فريم كصورة JPEG عندما لا يتوفر ffmpeg على السيرفر.
+    if kind == "video":
+        client_thumb = request.FILES.get("thumb")
+        if client_thumb and client_thumb.size <= 2 * 1024 * 1024:
+            thumb_type = (getattr(client_thumb, "content_type", "") or "").lower()
+            if thumb_type in {"image/jpeg", "image/png", "image/webp"}:
+                try:
+                    from PIL import Image
+                    with Image.open(client_thumb) as thumb_img:
+                        thumb_img.verify()
+                    client_thumb.seek(0)
+                    thumb = client_thumb
+                except Exception:
+                    thumb = None
 
     if kind == "image" and content_type != "image/svg+xml":
         try:
@@ -1492,6 +1506,14 @@ def api_upload(request, pk):
         except Exception:
             upload.seek(0)
             stored, seconds = upload, 0.0
+
+        # صورة أول فريم مستقلة للبطاقة — فشلها لا يمنع رفع الفيديو.
+        # نستخدم نسخة المتصفح أولاً؛ ونحاول ffmpeg فقط إذا لم تصل صورة.
+        if thumb is None:
+            try:
+                thumb = video.make_thumbnail(stored)
+            except Exception:
+                thumb = None
 
     asset = Asset.objects.create(
         file=stored, thumb=thumb, source=source,
@@ -1676,25 +1698,27 @@ def _delete_asset_files(asset):
                 pass
 
 
-def _delete_asset_for_editor(request, asset_id, *, invitation=None, template=None):
+def _delete_asset_for_editor(request, asset_id, *, invitation=None, template=None, kind="image"):
+    kind = kind if kind in {"image", "video"} else "image"
+    label = "الفيديو" if kind == "video" else "الصورة"
     try:
         asset_id = int(asset_id)
     except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "error": "الصورة غير صالحة."}, status=400)
-    asset = Asset.objects.filter(pk=asset_id, kind="image").first()
+        return JsonResponse({"ok": False, "error": f"{label} غير صالح."}, status=400)
+    asset = Asset.objects.filter(pk=asset_id, kind=kind).first()
     if asset is None:
-        return JsonResponse({"ok": False, "error": "الصورة غير موجودة."}, status=404)
+        return JsonResponse({"ok": False, "error": f"{label} غير موجود."}, status=404)
     if invitation is not None:
         if asset.invitation_id not in (None, invitation.pk):
-            return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة الدعوة دي."}, status=403)
+            return JsonResponse({"ok": False, "error": f"{label} مش من مكتبة الدعوة دي."}, status=403)
     if template is not None:
         if asset.invitation_id is not None or asset.template_id not in (None, template.pk):
-            return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة القالب ده."}, status=403)
+            return JsonResponse({"ok": False, "error": f"{label} مش من مكتبة القالب ده."}, status=403)
     if _asset_is_used(asset):
         return JsonResponse({
             "ok": False,
             "used": True,
-            "error": "مينفعش تمسح صورة مستخدمة داخل قالب أو دعوة.",
+            "error": f"مينفعش تمسح {label} مستخدم داخل قالب أو دعوة.",
         }, status=409)
     _delete_asset_files(asset)
     asset.delete()
@@ -1707,7 +1731,8 @@ def api_delete_asset(request, pk):
     _staff_required(request)
     invitation = get_object_or_404(Invitation, pk=pk)
     body = _json_body(request)
-    return _delete_asset_for_editor(request, body.get("asset"), invitation=invitation)
+    kind = body.get("kind") if body.get("kind") in {"image", "video"} else "image"
+    return _delete_asset_for_editor(request, body.get("asset"), invitation=invitation, kind=kind)
 
 
 @login_required
@@ -1716,25 +1741,29 @@ def template_api_delete_asset(request, pk):
     _staff_required(request)
     template = get_object_or_404(Template, pk=pk)
     body = _json_body(request)
-    return _delete_asset_for_editor(request, body.get("asset"), template=template)
+    kind = body.get("kind") if body.get("kind") in {"image", "video"} else "image"
+    return _delete_asset_for_editor(request, body.get("asset"), template=template, kind=kind)
 
 
-def _bulk_delete_assets_for_editor(asset_ids, *, invitation=None, template=None):
+def _bulk_delete_assets_for_editor(asset_ids, *, invitation=None, template=None, kind="image"):
+    kind = kind if kind in {"image", "video"} else "image"
+    label = "الفيديوهات" if kind == "video" else "الصور"
+    singular_label = "فيديو" if kind == "video" else "صورة"
     try:
         ids = {int(value) for value in (asset_ids or [])}
     except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "error": "اختيار الصور غير صالح."}, status=400)
+        return JsonResponse({"ok": False, "error": f"اختيار {label} غير صالح."}, status=400)
     if not ids or len(ids) > 300:
-        return JsonResponse({"ok": False, "error": "اختار صورة واحدة على الأقل."}, status=400)
+        return JsonResponse({"ok": False, "error": f"اختار {singular_label} واحدة على الأقل."}, status=400)
 
-    assets = list(Asset.objects.filter(pk__in=ids, kind="image"))
+    assets = list(Asset.objects.filter(pk__in=ids, kind=kind))
     if len(assets) != len(ids):
-        return JsonResponse({"ok": False, "error": "بعض الصور لم تعد موجودة."}, status=404)
+        return JsonResponse({"ok": False, "error": f"بعض {label} لم تعد موجودة."}, status=404)
     for asset in assets:
         if invitation is not None and asset.invitation_id not in (None, invitation.pk):
-            return JsonResponse({"ok": False, "error": "فيه صورة مش من مكتبة الدعوة دي."}, status=403)
+            return JsonResponse({"ok": False, "error": f"فيه أصل مش من مكتبة الدعوة دي."}, status=403)
         if template is not None and (asset.invitation_id is not None or asset.template_id not in (None, template.pk)):
-            return JsonResponse({"ok": False, "error": "فيه صورة مش من مكتبة القالب ده."}, status=403)
+            return JsonResponse({"ok": False, "error": f"فيه أصل مش من مكتبة القالب ده."}, status=403)
 
     usage = _asset_usage_map(assets)
     blocked = [asset.original_name or str(asset.pk) for asset in assets if usage.get(asset.pk)]
@@ -1743,7 +1772,7 @@ def _bulk_delete_assets_for_editor(asset_ids, *, invitation=None, template=None)
             "ok": False,
             "used": True,
             "blocked": blocked,
-            "error": "لم يتم حذف أي صورة؛ بعض الصور المحددة مستخدمة داخل قالب أو دعوة.",
+            "error": f"لم يتم حذف {label}; بعض الملفات المحددة مستخدمة داخل قالب أو دعوة.",
         }, status=409)
 
     with transaction.atomic():
@@ -1758,7 +1787,9 @@ def _bulk_delete_assets_for_editor(asset_ids, *, invitation=None, template=None)
 def api_delete_assets(request, pk):
     _staff_required(request)
     invitation = get_object_or_404(Invitation, pk=pk)
-    return _bulk_delete_assets_for_editor(_json_body(request).get("assets"), invitation=invitation)
+    body = _json_body(request)
+    kind = body.get("kind") if body.get("kind") in {"image", "video"} else "image"
+    return _bulk_delete_assets_for_editor(body.get("assets"), invitation=invitation, kind=kind)
 
 
 @login_required
@@ -1766,7 +1797,9 @@ def api_delete_assets(request, pk):
 def template_api_delete_assets(request, pk):
     _staff_required(request)
     template = get_object_or_404(Template, pk=pk)
-    return _bulk_delete_assets_for_editor(_json_body(request).get("assets"), template=template)
+    body = _json_body(request)
+    kind = body.get("kind") if body.get("kind") in {"image", "video"} else "image"
+    return _bulk_delete_assets_for_editor(body.get("assets"), template=template, kind=kind)
 
 
 @login_required
