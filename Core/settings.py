@@ -64,7 +64,14 @@ if not SECRET_KEY:
         "DJANGO_SECRET_KEY غير محدد. عيّن المتغير قبل التشغيل في وضع الإنتاج."
     )
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    "localhost,127.0.0.1,www.farha-invitations.com",
+)
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "http://localhost,http://127.0.0.1,https://www.farha-invitations.com",
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
