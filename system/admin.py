@@ -34,7 +34,39 @@ class TemplateAdmin(admin.ModelAdmin):
     list_display = ("name", "name_en", "category", "collection", "source", "is_active", "usage_count")
     list_filter = ("category", "source", "is_active")
     search_fields = ("name", "name_en", "slug")
-    readonly_fields = ("usage_count",)
+    readonly_fields = ("usage_count", "editor_link", "payload_note")
+    # حقول المستند والـruntime قد تحتوي ملايين الأحرف؛ تعديلها يتم من المحرر
+    # المخصص، وليس من textarea داخل Django Admin.
+    fields = (
+        "name", "name_en", "slug", "category", "collection",
+        "description", "description_en", "cover_image", "cover_url",
+        "source", "source_file", "is_active", "sort_order", "usage_count",
+        "editor_link", "payload_note",
+    )
+
+    def get_queryset(self, request):
+        # لا نسحب JSON الضخم إلى صفحة الإدارة أصلاً؛ هذا يقلل زمن فتح التعديل
+        # واستهلاك الذاكرة على الاستضافات محدودة الموارد.
+        return super().get_queryset(request).defer(
+            "document", "preview_render", "runtime_scripts",
+            "runtime_root_attrs", "required_features",
+        )
+
+    @admin.display(description="فتح المحرر المخصص")
+    def editor_link(self, obj):
+        return format_html(
+            '<a href="/dashboard/templates/{}/editor/" target="_blank">فتح محرر القالب</a>',
+            obj.pk,
+        )
+
+    @admin.display(description="بيانات القالب")
+    def payload_note(self, obj):
+        return format_html(
+            '<div style="max-width:720px;padding:10px 14px;background:#f5f1e8;'
+            'border-radius:8px;line-height:1.8">'
+            'المستند وملفات JavaScript الخاصة بالقالب محفوظة كما هي، وتم إخفاؤها من نموذج الإدارة لتجنب تحميل ملايين الأحرف. '
+            'استخدم «فتح محرر القالب» لتعديل الأقسام والمحتوى.</div>'
+        )
 
 
 @admin.register(Invitation)
