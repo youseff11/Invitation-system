@@ -1169,7 +1169,7 @@ def template_editor(request, pk):
                 "fontCreate": reverse("font_api_create"),
                 "favoriteCreate": reverse("favorite_api_create"),
                 "favoriteDeleteBase": "/dashboard/favorites/",
-                "upload": "",
+                "upload": reverse("template_api_upload", kwargs={"pk": template.pk}),
                 "saveTemplate": "",
                 "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
                 "deleteAsset": reverse("template_api_delete_asset", kwargs={"pk": template.pk}),
@@ -1431,13 +1431,8 @@ def api_save(request, pk):
     })
 
 
-@login_required
-@require_POST
-def api_upload(request, pk):
-    """رفع صورة أو فيديو أو ملف صوتي لاستخدامه في الدعوة."""
-    _staff_required(request)
-    invitation = get_object_or_404(Invitation, pk=pk)
-
+def _upload_asset_for_editor(request, *, invitation=None, template=None):
+    """يرفع أصلاً للمحرر مع ربطه بالدعوة أو القالب صاحب المكتبة."""
     upload = request.FILES.get("file")
     if not upload:
         return JsonResponse({"ok": False, "error": "لم يصل أي ملف."}, status=400)
@@ -1535,13 +1530,15 @@ def api_upload(request, pk):
             file=stored, thumb=thumb, source=source,
             kind=kind, original_name=upload.name[:200],
             width=width, height=height, size_bytes=getattr(stored, "size", upload.size),
-            invitation=invitation, uploaded_by=request.user,
+            invitation=invitation, template=template, uploaded_by=request.user,
         )
     except Exception:
-        logger.exception("Asset upload save failed for invitation=%s", invitation.pk)
+        owner_type = "invitation" if invitation is not None else "template"
+        owner_id = getattr(invitation or template, "pk", None)
+        logger.exception("Asset upload save failed for %s=%s", owner_type, owner_id)
         return JsonResponse({
             "ok": False,
-            "error": "تعذّر حفظ الفيديو على السيرفر. راجع صلاحيات مجلد media وسجل أخطاء التطبيق.",
+            "error": "تعذّر حفظ الملف على السيرفر. راجع صلاحيات مجلد media وسجل أخطاء التطبيق.",
         }, status=500)
     return JsonResponse({
         "ok": True,
@@ -1550,6 +1547,24 @@ def api_upload(request, pk):
                   "name": asset.original_name, "kind": asset.kind,
                   "width": width, "height": height, "seconds": seconds},
     })
+
+
+@login_required
+@require_POST
+def api_upload(request, pk):
+    """رفع أصل لمكتبة الدعوة."""
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+    return _upload_asset_for_editor(request, invitation=invitation)
+
+
+@login_required
+@require_POST
+def template_api_upload(request, pk):
+    """رفع أصل لمكتبة القالب."""
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    return _upload_asset_for_editor(request, template=template)
 
 
 @login_required

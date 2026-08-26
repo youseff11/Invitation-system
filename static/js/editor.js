@@ -3910,7 +3910,16 @@
         .then(function (r) {
           return r.text().then(function (raw) {
             var data = {};
+            var contentType = (r.headers.get("content-type") || "").toLowerCase();
             try { data = raw ? JSON.parse(raw) : {}; } catch (ignore) {}
+            if (!contentType.includes("application/json")) {
+              if (r.redirected || /login/i.test(r.url || "")) {
+                toast("انتهت جلسة الدخول. اعمل تسجيل دخول وافتح المحرر من جديد.", "error");
+              } else {
+                toast("السيرفر رجّع رد غير صالح أثناء رفع الفيديو. راجع Error log.", "error");
+              }
+              return null;
+            }
             if (!r.ok) {
               if (r.status === 413) {
                 toast("السيرفر رفض الفيديو لأن حجم طلب الرفع كبير. تأكد أن الفيديو أقل من 40 ميجابايت.", "error");

@@ -58,6 +58,8 @@ urlpatterns = [
          name="template_api_preview"),
     path("dashboard/templates/<int:pk>/api/save/", views.template_api_save,
          name="template_api_save"),
+    path("dashboard/templates/<int:pk>/api/upload/", views.template_api_upload,
+         name="template_api_upload"),
     path("dashboard/templates/<int:pk>/api/assets/", views.template_api_assets,
          name="template_api_assets"),
     path("dashboard/templates/<int:pk>/api/assets/delete/", views.template_api_delete_asset,
