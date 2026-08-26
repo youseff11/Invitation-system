@@ -1620,18 +1620,40 @@ def _asset_needles(asset):
 
 
 def _asset_usage_map(assets):
-    """Return usage flags by scanning saved template/invitation JSON once."""
+    """Return usage flags while scanning every saved document only once.
+
+    The old implementation tested every asset needle against every document,
+    which becomes extremely slow for imported templates with large bundles.
+    A single compiled regex preserves the same substring semantics but reduces
+    the work to one pass per document.
+    """
+    usage = {asset.pk: False for asset in assets}
+    if not usage:
+        return usage
+
+    needle_to_assets = {}
+    for asset in assets:
+        for needle in _asset_needles(asset):
+            needle_to_assets.setdefault(needle, set()).add(asset.pk)
+    if not needle_to_assets:
+        return usage
+
+    pattern = re.compile("|".join(
+        re.escape(needle)
+        for needle in sorted(needle_to_assets, key=len, reverse=True)
+    ))
     documents = list(Template.objects.values_list("document", flat=True))
     documents += list(Invitation.objects.values_list("document", flat=True))
-    text_documents = [json.dumps(d, ensure_ascii=False, default=str) for d in documents]
-    return {
-        asset.pk: any(
-            needle in text
-            for needle in _asset_needles(asset)
-            for text in text_documents
-        )
-        for asset in assets
-    }
+    remaining = set(usage)
+    for document in documents:
+        text = json.dumps(document, ensure_ascii=False, default=str)
+        for match in pattern.finditer(text):
+            for asset_id in needle_to_assets[match.group(0)]:
+                usage[asset_id] = True
+                remaining.discard(asset_id)
+        if not remaining:
+            break
+    return usage
 
 
 def _asset_is_used(asset):
