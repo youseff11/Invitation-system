@@ -259,7 +259,7 @@
     <a class="foot-brand" href="{% url 'home' %}" aria-label="{{ SITE_NAME }}"><img src="{% static 'images/logo.jpeg' %}" alt="{{ SITE_NAME }}"></a>
     <p>{{ SITE_NAME }} — {{ SITE_TAGLINE }}</p>
     <div class="foot-socials" aria-label="{% translate 'روابط التواصل' %}">
-      {% if site_config.whatsapp_url %}<a href="{{ site_config.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.8 7.1L4 20l1.4-4A8 8 0 1 1 20 11.5Z"/><path d="M8.8 8.2c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.6 1.4c.1.2 0 .4-.1.6l-.5.6c.7 1.2 1.5 1.9 2.7 2.5l.5-.6c.2-.2.4-.2.6-.1l1.4.7c.2.1.3.3.2.6-.2.8-.8 1.3-1.6 1.4-1.3.1-3.2-.9-4.5-2.1-1.3-1.2-2.3-3-2.2-4.2.1-.4.4-.7.7-.8Z"/></svg></a>{% endif %}
+      {% if site_config.whatsapp_url %}<a href="{{ site_config.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="wa-icon fa-brands fa-whatsapp" aria-hidden="true"></i></a>{% endif %}
       {% if site_config.facebook_enabled and site_config.facebook_url %}<a href="{{ site_config.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v5h4v-5h3l1-4h-4V9c0-.6.4-1 1-1Z"/></svg></a>{% endif %}
       {% if site_config.instagram_enabled and site_config.instagram_url %}<a href="{{ site_config.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.5" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
     </div>

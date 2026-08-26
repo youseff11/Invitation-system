@@ -868,6 +868,7 @@ tbody tr:hover { background: var(--surface-2); }
 /* الركن المقابل لاتجاه القراءة: في RTL شمال، وفي LTR يمين — عشان
    ما يغطّيش أزرار المحرر ولا التمرير لفوق. */
 .wa-float {
+  text-decoration: none !important;
   position: fixed;
   inset-block-end: 22px;
   inset-inline-start: 22px;
@@ -882,10 +883,20 @@ tbody tr:hover { background: var(--surface-2); }
 }
 .wa-float:hover { transform: translateY(-2px) scale(1.05); }
 .wa-float:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-.wa-float svg { width: 30px; height: 30px; }
+.wa-float .wa-icon {
+  text-decoration: none !important;
+  display: inline-grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  font-size: 30px;
+  line-height: 1;
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+}
 @media (max-width: 600px) {
   .wa-float { width: 48px; height: 48px; inset-block-end: 16px; inset-inline-start: 16px; }
-  .wa-float svg { width: 26px; height: 26px; }
+  .wa-float .wa-icon { font-size: 27px; }
 }
 
 /* إضافات الباقة — عرض سعر بس، مفيش اختيار ولا مجموع */
@@ -1004,6 +1015,7 @@ html[lang="en"] .feature-en { display: inline; }
 /* أيقونات الفوتر: دوائر واضحة، متوازنة، وبألوان المنصات عند المرور */
 .foot-socials { gap: 11px; }
 .foot-socials a {
+  text-decoration: none !important;
   position: relative; width: 44px; height: 44px; overflow: hidden;
   background: color-mix(in srgb, var(--surface-2) 78%, transparent);
   box-shadow: 0 8px 18px -14px rgba(23, 19, 15, .75);
@@ -1017,7 +1029,16 @@ html[lang="en"] .feature-en { display: inline; }
 .foot-socials a[aria-label="Facebook"] { color: #1877f2; }
 .foot-socials a[aria-label="Instagram"] { color: #c13584; }
 .foot-socials a:hover { transform: translateY(-3px); box-shadow: 0 13px 22px -14px currentColor; }
-.foot-socials a[aria-label="WhatsApp"] svg { width: 20px; height: 20px; }
+.foot-socials a[aria-label="WhatsApp"] .wa-icon {
+  text-decoration: none !important;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  font-size: 20px;
+  line-height: 1;
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+}
 .foot-socials a[aria-label="Facebook"] svg { width: 19px; height: 19px; }
 .foot-socials a[aria-label="Instagram"] svg { width: 20px; height: 20px; }
 
