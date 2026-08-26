@@ -3599,12 +3599,43 @@
         if (pickCallback) pickCallback(m.url);
         closeModal(refs.assetModal);
       });
-      // preload=none: ما ننزّلش كل الملفات لمجرد إن النافذة اتفتحت
       var media = doc.createElement(pickKind === "audio" ? "audio" : "video");
-      media.controls = true;
-      media.preload = "none";
       media.src = m.url;
-      if (m.poster) media.poster = m.poster;
+      if (pickKind === "audio") {
+        media.controls = true;
+        media.preload = "none";
+      } else {
+        // مكتبة الافتتاحيات تعرض صورة ثابتة من أول فريم بدلاً من مشغل أسود.
+        media.controls = false;
+        media.muted = true;
+        media.defaultMuted = true;
+        media.playsInline = true;
+        media.preload = "auto";
+        media.setAttribute("aria-hidden", "true");
+        media.setAttribute("disablepictureinpicture", "true");
+        if (m.poster) media.poster = m.poster;
+
+        var captureLibraryFrame = function () {
+          if (!media.videoWidth || !media.videoHeight) return;
+          try {
+            var maxEdge = 640;
+            var ratio = Math.min(1, maxEdge / Math.max(media.videoWidth, media.videoHeight));
+            var canvas = doc.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(media.videoWidth * ratio));
+            canvas.height = Math.max(1, Math.round(media.videoHeight * ratio));
+            canvas.getContext("2d").drawImage(media, 0, 0, canvas.width, canvas.height);
+            media.poster = canvas.toDataURL("image/jpeg", .82);
+            media.classList.add("ed-video-poster-ready");
+          } catch (ignore) {
+            // الفيديوهات الخارجية قد تمنع canvas؛ poster المحفوظ يظل مستخدماً إن وُجد.
+          }
+        };
+        media.addEventListener("loadedmetadata", function () {
+          try { media.currentTime = 0.01; } catch (ignore) {}
+        });
+        media.addEventListener("loadeddata", captureLibraryFrame, { once: true });
+        media.addEventListener("canplay", captureLibraryFrame, { once: true });
+      }
       row.appendChild(btn);
       row.appendChild(media);
       box.appendChild(row);

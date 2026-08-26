@@ -760,6 +760,12 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-track-pick:hover { border-color: var(--e-accent); color: var(--e-accent-ink); }
 /* مشغّل المتصفح بيبقى عريض افتراضياً وبيكسر الصف على الموبايل */
 .ed-track audio { flex: 0 1 210px; max-width: 100%; height: 32px; }
+/* فيديو المكتبة يظهر كصورة أول فريم، وليس كمشغل أسود بعناصر تحكم. */
+.ed-track video {
+  flex: 0 1 210px; width: 210px; max-width: 100%; height: 118px;
+  object-fit: cover; border-radius: 8px; background: #202020;
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------ زر طيّ المجموعات */
 .ed-panel-tools {
