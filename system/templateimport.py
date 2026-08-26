@@ -898,6 +898,11 @@ def _align_embedded_map_element(html: str) -> str:
         ):
             names.add(name)
     for name in names:
+        # لو المحرر حفظ قيمة على عنصر الخريطة، فهي أولوية المستخدم.
+        # إعادة نسخ أبعاد الإطار هنا كانت تجعل السلايدر يرجع للحجم الأصلي
+        # عند كل معاينة أو عند ترك الحقل.
+        if _tag_attr(map_tag, name):
+            continue
         value = _tag_attr(frame_tag, name)
         if value:
             map_tag = _set_tag_attr(map_tag, name, value)
