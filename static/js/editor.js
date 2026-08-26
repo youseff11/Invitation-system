@@ -129,9 +129,14 @@
     refs.saveState.className = "ed-save-state is-" + kind;
     refs.saveState.textContent = text;
   }
+  var scheduleAutoSave = debounce(function () {
+    if (state.dirty && !state.saving) save(true);
+  }, 900);
+
   function markDirty() {
     state.dirty = true;
     setSaveState("dirty", "تغييرات غير محفوظة");
+    scheduleAutoSave();
   }
 
   // ---------------------------------------------------------- التنبيهات
@@ -4141,8 +4146,8 @@
       });
   }
 
-  // الحفظ يدوي فقط: زر «حفظ» أو Ctrl+S.
-  // لا يوجد أي مؤقت يرسل طلب حفظ بعد تعديل الحقول.
+  // الحفظ يتم تلقائياً بعد توقف التعديل 900ms، ويمكن أيضاً تشغيله
+  // فوراً من زر «حفظ» أو Ctrl+S. الحفظ التلقائي صامت بلا Toast.
 
   // ==========================================================
   // حفظ كقالب
