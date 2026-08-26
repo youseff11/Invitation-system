@@ -129,14 +129,9 @@
     refs.saveState.className = "ed-save-state is-" + kind;
     refs.saveState.textContent = text;
   }
-  var scheduleAutoSave = debounce(function () {
-    if (state.dirty && !state.saving) save(true);
-  }, 900);
-
   function markDirty() {
     state.dirty = true;
     setSaveState("dirty", "تغييرات غير محفوظة");
-    scheduleAutoSave();
   }
 
   // ---------------------------------------------------------- التنبيهات
@@ -1703,7 +1698,9 @@
       body.appendChild(applyMapUrl);
 
       [["width", "عرض الخريطة"], ["height", "ارتفاع الخريطة"]].forEach(function (spec) {
-        var raw = mapBox && mapBox.getAttribute("data-field-" + spec[0] + "-value");
+                var raw = mapBox && (mapBox.getAttribute("data-lb-map-" + spec[0]) ||
+          mapBox.getAttribute("data-field-" + spec[0] + "-value"));
+
         var current = parseFloat(raw) || (spec[0] === "width" ? 335 : 335);
         var input = el("input", "ed-input");
         input.type = "range"; input.min = 120; input.max = 900; input.step = 1;
@@ -1714,11 +1711,23 @@
           if (!started) { snapshot(); started = true; }
           var value = Math.max(120, Math.min(900, parseFloat(input.value) || current));
           output.textContent = value + "px";
-          if (mapBox) {
-            mapBox.setAttribute("data-field-" + spec[0] + "-value", value);
-            mapBox.style.setProperty(spec[0], value + "px");
+                    if (mapBox) {
+            var baseAttr = "data-field-" + spec[0] + "-value";
+            var responsiveAttr = new RegExp("^data-field-" + spec[0] + "-res-[^-]+-value$", "i");
+            mapBox.setAttribute(baseAttr, value);
+            // علامة صريحة بأن هذا المقاس اختاره المستخدم؛ renderer يحافظ عليه.
+            mapBox.setAttribute("data-lb-map-" + spec[0], String(value));
+            Array.prototype.forEach.call(mapBox.attributes, function (attr) {
+              if (responsiveAttr.test(attr.name)) mapBox.setAttribute(attr.name, value);
+            });
+            mapBox.style.setProperty(spec[0], value + "px", "important");
           }
-          mapFrame.setAttribute(spec[0], String(value));
+          if (mapFrame !== mapBox) {
+            mapFrame.style.setProperty(spec[0], "100%", "important");
+          } else {
+            mapFrame.style.setProperty(spec[0], value + "px", "important");
+          }
+
           commit();
         });
         input.addEventListener("change", function () { started = false; requestPreview(); });
@@ -4146,8 +4155,8 @@
       });
   }
 
-  // الحفظ يتم تلقائياً بعد توقف التعديل 900ms، ويمكن أيضاً تشغيله
-  // فوراً من زر «حفظ» أو Ctrl+S. الحفظ التلقائي صامت بلا Toast.
+  // الحفظ يدوي فقط: زر «حفظ» أو Ctrl+S.
+  // تحديث المعاينة يظل تلقائياً عند تغيير الحقول أو الأصول.
 
   // ==========================================================
   // حفظ كقالب

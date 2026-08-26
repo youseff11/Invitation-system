@@ -906,6 +906,36 @@ def _align_embedded_map_element(html: str) -> str:
         value = _tag_attr(frame_tag, name)
         if value:
             map_tag = _set_tag_attr(map_tag, name, value)
+
+    # data-lb-map-* يضاف فقط عندما يغير المستخدم السلايدر. ننسخه على
+    # كل breakpoints ونثبته في style حتى تكون المعاينة العامة مطابقة
+    # للمحرر، ولا يعيد runtime الخاص بـTilda مقاساً قديماً.
+    for dimension in ("width", "height"):
+        user_value = _tag_attr(map_tag, "data-lb-map-" + dimension)
+        if not re.fullmatch(r"\d+(?:\.\d+)?", user_value or ""):
+            continue
+        map_tag = _set_tag_attr(map_tag, "data-field-" + dimension + "-value", user_value)
+        for suffix in ("320", "480", "640", "960"):
+            map_tag = _set_tag_attr(
+                map_tag,
+                "data-field-" + dimension + "-res-" + suffix + "-value",
+                user_value,
+            )
+        style = _tag_attr(map_tag, "style")
+        declaration = dimension + ":" + user_value + "px !important"
+        style_pattern = rf"(^|;)\s*{re.escape(dimension)}\s*:[^;]*"
+        if re.search(style_pattern, style, re.I):
+            style = re.sub(
+                style_pattern,
+                lambda match: match.group(1) + " " + declaration,
+                style,
+                count=1,
+                flags=re.I,
+            )
+        else:
+            style = (style.rstrip(";") + "; " if style.strip() else "") + declaration
+        map_tag = _set_tag_attr(map_tag, "style", style)
+
     start, end = html_match.span()
     return html[:start] + map_tag + html[end:]
 
