@@ -29,7 +29,50 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+.lb-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--accent);
+  opacity: 1;
+  transition: opacity .35s ease, visibility .35s ease;
+}
+.lb-loading-screen__card {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+  justify-content: center;
+  padding: 16px 22px;
+  border: 1px solid var(--accent-20);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+.lb-loading-screen__spinner {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid var(--accent-20);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: lb-loading-spin .75s linear infinite;
+}
+@keyframes lb-loading-spin { to { transform: rotate(360deg); } }
+.lb-doc[data-ready="1"] .lb-loading-screen {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .lb-doc[data-ready="0"] .lb-intro,
+
 .lb-doc[data-ready="0"] .lb-stage,
 .lb-doc[data-ready="0"] .lb-cta,
 .lb-doc[data-ready="0"] .lb-music,

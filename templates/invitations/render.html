@@ -25,7 +25,15 @@
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="0">
 
+<div class="lb-loading-screen" data-lb-loading role="status" aria-live="polite">
+  <div class="lb-loading-screen__card">
+    <span class="lb-loading-screen__spinner" aria-hidden="true"></span>
+    <span class="lb-loading-screen__text">{% if render.lang == 'en' %}Preparing your invitation...{% else %}جاري تجهيز الدعوة...{% endif %}</span>
+  </div>
+</div>
+
 <div data-invite-language-content>
+
 {% comment %}
   زرار اللغة — بيظهر بس لو المصمّم كتب نسخة إنجليزية فعلاً
   (‎render.has_en‎). دعوة من غير ترجمة مالهاش لازمة تعرض زرار بيرجّع
