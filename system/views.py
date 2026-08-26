@@ -375,8 +375,102 @@ def invitation_guest(request, slug, token):
     return _render_invitation_page(request, invitation, guest=guest)
 
 
+@require_GET
+def invitation_client_followup(request, slug, token):
+    """لوحة متابعة خاصة بصاحب الدعوة عبر رمز سري غير قابل للتخمين.
+
+    الصفحة للقراءة فقط، وتعرض الوحدة التي أضيفت فعلاً إلى مستند الدعوة:
+    الحضور، رموز QR، ورسائل التهنئة.
+    """
+    token = (token or "").strip()
+    if not (20 <= len(token) <= 64):
+        raise Http404("رابط المتابعة غير صالح.")
+    invitation = get_object_or_404(
+        Invitation.objects.select_related("customer", "template", "plan"),
+        slug=slug, client_token=token,
+    )
+
+    document = invitation.get_document()
+    visible_types = {
+        block.get("type") for block in document.get("blocks", [])
+        if block.get("visible", True)
+    }
+    allowed = invitation.allowed_features
+    has_rsvp = "rsvp" in visible_types and "rsvp" in allowed
+    has_qr = "qr" in visible_types and "qr" in allowed
+    has_guestbook = "wishes" in visible_types and "guestbook" in allowed
+
+    guests = list(invitation.guests.all()) if has_qr else []
+    rsvps = list(
+        invitation.rsvps.select_related("guest").order_by("-created_at")
+    ) if (has_rsvp or has_guestbook) else []
+
+    rsvp_rows = [{
+        "name": response.name,
+        "status": response.get_status_display(),
+        "status_code": response.status,
+        "companions": response.companions,
+        "message": response.message.strip(),
+        "created_at": response.created_at,
+    } for response in rsvps] if has_rsvp else []
+
+    message_rows = [{
+        "name": response.name,
+        "message": response.message.strip(),
+        "status": response.get_status_display(),
+        "created_at": response.created_at,
+    } for response in rsvps if response.message.strip()] if has_guestbook else []
+
+    qr_rows = []
+    if has_qr:
+        for guest in guests:
+            qr_rows.append({
+                "guest": guest,
+                "qr_url": request.build_absolute_uri(reverse(
+                    "guest_qr", kwargs={"slug": invitation.slug, "token": guest.token}
+                )),
+                "download_url": reverse(
+                    "guest_qr_png", kwargs={"slug": invitation.slug, "token": guest.token}
+                ),
+                "pass_url": reverse(
+                    "guest_pass", kwargs={"slug": invitation.slug, "token": guest.token}
+                ),
+            })
+
+    attending = sum(1 for response in rsvps if response.status == "attending")
+    declined = sum(1 for response in rsvps if response.status == "declined")
+    maybe = sum(1 for response in rsvps if response.status == "maybe")
+    companions = sum(int(response.companions or 0) for response in rsvps)
+    checked_in = sum(1 for guest in guests if guest.checked_in)
+
+    response = render(request, "public/client_followup.html", {
+        "invitation": invitation,
+        "followup_url": request.build_absolute_uri(invitation.get_client_followup_url()),
+        "has_rsvp": has_rsvp,
+        "has_qr": has_qr,
+        "has_guestbook": has_guestbook,
+        "rsvp_rows": rsvp_rows,
+        "message_rows": message_rows,
+        "qr_rows": qr_rows,
+        "stats": {
+            "rsvp_total": len(rsvps) if has_rsvp else 0,
+            "attending": attending if has_rsvp else 0,
+            "declined": declined if has_rsvp else 0,
+            "maybe": maybe if has_rsvp else 0,
+            "companions": companions if has_rsvp else 0,
+            "guests": len(guests) if has_qr else 0,
+            "checked_in": checked_in if has_qr else 0,
+            "messages": len(message_rows) if has_guestbook else 0,
+        },
+    })
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
 @require_POST
 def invitation_rsvp(request, slug):
+
     invitation = get_object_or_404(Invitation, slug=slug)
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -1179,6 +1273,7 @@ def invitation_editor(request, pk):
     return render(request, "editor/editor.html", {
 
         "invitation": invitation,
+        "client_followup_url": request.build_absolute_uri(invitation.get_client_followup_url()),
         "form": settings_form,
         "schema_json": blocks_engine.editor_schema(),
         "document_json": document,
@@ -1218,6 +1313,7 @@ def invitation_editor(request, pk):
             "planName": invitation.plan.name,
             "templateName": invitation.template.name,
             "publicUrl": request.build_absolute_uri(invitation.get_absolute_url()),
+            "clientFollowupUrl": request.build_absolute_uri(invitation.get_client_followup_url()),
             "urls": {
                 "preview": f"/dashboard/invitations/{invitation.pk}/api/preview/",
                 "save": f"/dashboard/invitations/{invitation.pk}/api/save/",
@@ -1235,6 +1331,7 @@ def invitation_editor(request, pk):
                 "frame": f"/dashboard/invitations/{invitation.pk}/preview-frame/",
                 "back": "/dashboard/invitations/",
                 "public": invitation.get_absolute_url(),
+                "clientFollowup": invitation.get_client_followup_url(),
             },
         },
     })

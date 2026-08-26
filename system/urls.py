@@ -83,6 +83,8 @@ urlpatterns = [
     # ------------------------------------------------------------ الدعوة
     path("i/<slug:slug>/", views.invitation_public, name="invitation_public"),
     path("i/<slug:slug>/rsvp/", views.invitation_rsvp, name="invitation_rsvp"),
+    path("i/<slug:slug>/client/<str:token>/", views.invitation_client_followup,
+         name="invitation_client_followup"),
     # الرابط الشخصي للضيف — الرمز هو بيانات الاعتماد
     path("i/<slug:slug>/g/<str:token>/", views.invitation_guest, name="invitation_guest"),
     path("i/<slug:slug>/qr.svg", views.invitation_qr, name="invitation_qr"),

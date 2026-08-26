@@ -132,7 +132,6 @@
   function markDirty() {
     state.dirty = true;
     setSaveState("dirty", "تغييرات غير محفوظة");
-    scheduleAutosave();
   }
 
   // ---------------------------------------------------------- التنبيهات
@@ -3946,9 +3945,8 @@
       });
   }
 
-  var scheduleAutosave = debounce(function () {
-    if (state.dirty && !state.saving) save(true);
-  }, 2600);
+  // الحفظ يدوي فقط: زر «حفظ» أو Ctrl+S.
+  // لا يوجد أي مؤقت يرسل طلب حفظ بعد تعديل الحقول.
 
   // ==========================================================
   // حفظ كقالب

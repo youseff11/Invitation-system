@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}متابعة الدعوة — {{ invitation.title }}{% endblock %}
+{% block description %}صفحة متابعة خاصة بصاحب الدعوة{% endblock %}
+{% block body_class %}client-followup-page{% endblock %}
+
+{% block content %}
+<main class="client-followup">
+  <header class="client-followup-head">
+    <div>
+      <p class="client-followup-kicker">{{ SITE_NAME }}</p>
+      <h1>رابط متابعة صاحب الدعوة</h1>
+      <p class="client-followup-subtitle">تابع بيانات دعوة <strong>{{ invitation.title }}</strong> من مكان واحد.</p>
+    </div>
+    <div class="client-followup-badge">{{ invitation.get_status_display }}</div>
+  </header>
+
+  <section class="client-followup-link-card" aria-labelledby="followup-link-title">
+    <div>
+      <p class="client-followup-label" id="followup-link-title">رابط العميل للمتابعة</p>
+      <p class="client-followup-help">ابعت الرابط للعميل لمتابعة البيانات المفعّلة في دعوته فقط.</p>
+    </div>
+    <div class="client-followup-link-row">
+      <input type="text" value="{{ followup_url }}" readonly aria-label="رابط متابعة العميل">
+      <button type="button" class="btn btn--gold" data-copy="{{ followup_url }}">نسخ الرابط</button>
+      <a class="btn btn--ghost" href="{{ followup_url }}" target="_blank" rel="noopener">فتح الصفحة</a>
+    </div>
+  </section>
+
+  <section class="client-followup-stats" aria-label="ملخص المتابعة">
+    {% if has_rsvp %}
+    <article class="client-followup-stat">
+      <span class="client-followup-stat-icon">✓</span>
+      <span class="client-followup-stat-label">كل الردود</span>
+      <strong>{{ stats.rsvp_total }}</strong>
+    </article>
+    <article class="client-followup-stat">
+      <span class="client-followup-stat-icon client-followup-stat-icon--ok">♥</span>
+      <span class="client-followup-stat-label">سيحضرون</span>
+      <strong>{{ stats.attending }}</strong>
+    </article>
+    {% endif %}
+    {% if has_qr %}
+    <article class="client-followup-stat">
+      <span class="client-followup-stat-icon">▣</span>
+      <span class="client-followup-stat-label">الضيوف والـQR</span>
+      <strong>{{ stats.guests }}</strong>
+    </article>
+    <article class="client-followup-stat">
+      <span class="client-followup-stat-icon client-followup-stat-icon--ok">↗</span>
+      <span class="client-followup-stat-label">تصاريح دخلت القاعة</span>
+      <strong>{{ stats.checked_in }}</strong>
+    </article>
+    {% endif %}
+    {% if has_guestbook %}
+    <article class="client-followup-stat">
+      <span class="client-followup-stat-icon">✉</span>
+      <span class="client-followup-stat-label">رسائل التهنئة</span>
+      <strong>{{ stats.messages }}</strong>
+    </article>
+    {% endif %}
+  </section>
+
+  {% if has_rsvp %}
+  <section class="client-followup-section" aria-labelledby="rsvp-title">
+    <div class="client-followup-section-head">
+      <div><p class="client-followup-kicker">RSVP</p><h2 id="rsvp-title">كل الردود</h2></div>
+      <span class="client-followup-count">{{ stats.rsvp_total }} رد</span>
+    </div>
+    <div class="client-followup-table-wrap">
+      <table class="client-followup-table">
+        <thead><tr><th>الاسم</th><th>الحالة</th><th>المرافقون</th><th>التعليق</th><th>التاريخ</th></tr></thead>
+        <tbody>
+          {% for row in rsvp_rows %}
+          <tr>
+            <td><strong>{{ row.name }}</strong></td>
+            <td><span class="client-followup-pill client-followup-pill--{{ row.status_code }}">{{ row.status }}</span></td>
+            <td>{{ row.companions }}</td>
+            <td class="client-followup-message">{% if row.message %}{{ row.message }}{% else %}—{% endif %}</td>
+            <td>{{ row.created_at|date:"Y/m/d — g:i a" }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="client-followup-empty">لسه مفيش ردود حضور.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if has_qr %}
+  <section class="client-followup-section" aria-labelledby="qr-title">
+    <div class="client-followup-section-head">
+      <div><p class="client-followup-kicker">QR</p><h2 id="qr-title">الضيوف وتصاريح الدخول</h2></div>
+      <span class="client-followup-count">{{ stats.guests }} ضيف</span>
+    </div>
+    <div class="client-followup-table-wrap">
+      <table class="client-followup-table">
+        <thead><tr><th>الاسم</th><th>كود التصريح</th><th>الدخول</th><th>الرمز</th><th></th></tr></thead>
+        <tbody>
+          {% for row in qr_rows %}
+          <tr>
+            <td><strong>{{ row.guest.name }}</strong></td>
+            <td><b class="client-followup-code">{{ row.guest.pass_code }}</b></td>
+            <td>{{ row.guest.entries_used }} / {{ row.guest.entries_allowed }}</td>
+            <td><img class="client-followup-qr" src="{{ row.qr_url }}" alt="QR {{ row.guest.name }}"></td>
+            <td class="client-followup-actions"><a class="btn btn--ghost btn--sm" href="{{ row.pass_url }}" target="_blank" rel="noopener">عرض</a><a class="btn btn--gold btn--sm" href="{{ row.download_url }}">تحميل</a></td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="client-followup-empty">لسه مفيش ضيوف أو تصاريح.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if has_guestbook %}
+  <section class="client-followup-section" aria-labelledby="messages-title">
+    <div class="client-followup-section-head">
+      <div><p class="client-followup-kicker">GUESTBOOK</p><h2 id="messages-title">رسائل التهنئة</h2></div>
+      <span class="client-followup-count">{{ stats.messages }} رسالة</span>
+    </div>
+    <div class="client-followup-messages">
+      {% for row in message_rows %}
+      <article class="client-followup-message-card"><div class="client-followup-message-card-head"><strong>{{ row.name }}</strong><time>{{ row.created_at|date:"Y/m/d — g:i a" }}</time></div><p>{{ row.message }}</p></article>
+      {% empty %}<p class="client-followup-empty">لسه مفيش رسائل تهنئة.</p>{% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if not has_rsvp and not has_qr and not has_guestbook %}
+  <section class="client-followup-empty-state"><span>◇</span><h2>لا توجد أدوات متابعة مفعّلة</h2><p>أضف RSVP أو QR أو رسائل التهنئة إلى الدعوة حتى تظهر هنا.</p></section>
+  {% endif %}
+</main>
+{% endblock %}

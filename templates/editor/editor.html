@@ -254,6 +254,15 @@
                 <label><span>الرابط العام</span></label>
                 <input class="ed-input" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ invitation.get_absolute_url }}">
               </div>
+              <div class="ed-field">
+                <label><span>رابط العميل للمتابعة</span></label>
+                <input class="ed-input" readonly value="{{ client_followup_url }}">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                  <button class="ed-btn ed-btn--sm" type="button" data-copy="{{ client_followup_url }}">نسخ الرابط</button>
+                  <a class="ed-btn ed-btn--sm" href="{{ client_followup_url }}" target="_blank" rel="noopener">فتح صفحة المتابعة</a>
+                </div>
+                <small>ابعت الرابط للعميل لمتابعة الحضور والـQR ورسائل التهنئة المضافة للدعوة.</small>
+              </div>
             </div>
           </details>
                 </section>{% endif %}
