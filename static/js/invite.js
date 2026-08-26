@@ -864,13 +864,31 @@
   }
 
   // ---------------------------------------------------------- الإقلاع
+  function revealWhenReady() {
+    var revealed = false;
+    var reveal = function () {
+      if (revealed) return;
+      revealed = true;
+      root.setAttribute("data-ready", "1");
+    };
+    // لا نعرض القالب قبل اكتمال الخطوط، حتى لا يظهر لحظياً بخطوط وأبعاد
+    // مختلفة ثم يقفز إلى مكانه النهائي. المهلة تمنع بقاء الصفحة مخفية لو
+    // تعذر تحميل خط خارجي.
+    if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === "function") {
+      doc.fonts.ready.then(reveal, reveal);
+    } else {
+      reveal();
+    }
+    window.setTimeout(reveal, 4500);
+  }
+
   function boot() {
     initCountdowns();
     initAnimations();
     initScrollLinks();
     initShare();
     initLightbox();
-        initVideo();
+    initVideo();
     initImportedMedia();
     initMusic();
 
@@ -878,7 +896,7 @@
     initLanguageToggle();
     initRsvp();
     initAutoScroll();
-    root.setAttribute("data-ready", "1");
+    revealWhenReady();
   }
 
   if (doc.readyState === "loading") {

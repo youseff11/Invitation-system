@@ -22,7 +22,7 @@
 {% if render.font_css %}<style data-font-faces>{{ render.font_css }}</style>{% endif %}
 {% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
 </head>
-<body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root>
+<body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="0">
 
 <div data-invite-language-content>
 {% comment %}

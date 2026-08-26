@@ -29,8 +29,17 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+.lb-doc[data-ready="0"] .lb-intro,
+.lb-doc[data-ready="0"] .lb-stage,
+.lb-doc[data-ready="0"] .lb-cta,
+.lb-doc[data-ready="0"] .lb-music,
+.lb-doc[data-ready="0"] .lb-autoscroll {
+  visibility: hidden !important;
+}
+
 .lb-doc {
   margin: 0;
+
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
