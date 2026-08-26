@@ -187,11 +187,11 @@ def video_text_style(item):
     """يبني متغيرات CSS آمنة لنص واحد فوق فيديو."""
     item = item if hasattr(item, "get") else {}
     try:
-        x = max(-45.0, min(45.0, float(item.get("x", 0) or 0)))
+        x = max(-1000.0, min(1000.0, float(item.get("x", 0) or 0)))
     except (TypeError, ValueError):
         x = 0.0
     try:
-        y = max(-45.0, min(45.0, float(item.get("y", 0) or 0)))
+        y = max(-1000.0, min(1000.0, float(item.get("y", 0) or 0)))
     except (TypeError, ValueError):
         y = 0.0
     color = str(item.get("color") or "#ffffff").strip()

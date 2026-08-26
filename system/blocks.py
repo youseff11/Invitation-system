@@ -242,8 +242,8 @@ SECTION_TEXT_OVERLAY_FIELD = field(
         field("text", "النص", "textarea", "اكتب النص هنا"),
         field("color", "لون النص", "color", "#ffffff"),
         field("font", "الخط", "font", "", options=FONT_CHOICES),
-        field("x", "الموضع أفقياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
-        field("y", "الموضع رأسياً", "range", 0, minimum=-45, maximum=45, step=1, unit="%"),
+        field("x", "الموضع أفقياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
+        field("y", "الموضع رأسياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
     ],
 )
 
@@ -257,8 +257,10 @@ BLOCK_REGISTRY: dict[str, dict] = {}
 # كل عنصر نص جوّه القسم ليه data-slot. المحرر بيسمح بإزاحته بالماوس،
 # والإزاحة بتتخزن بوحدة cqw = ١٪ من عرض مسرح الدعوة — يعني نسبة مش بكسل،
 # فبتفضل مظبوطة على أي مقاس شاشة من غير ما نخزّن موضع لكل جهاز.
-LAYOUT_MAX_X = 45.0    # cqw
-LAYOUT_MAX_Y = 40.0    # cqw
+# لا نضع حدّاً مرئياً عملياً لحركة عناصر القوالب المستوردة؛
+# القيم الكبيرة تمنع خروج أرقام غير منطقية مع إبقاء السحب حراً داخل المحرر.
+LAYOUT_MAX_X = 1000.0  # cqw
+LAYOUT_MAX_Y = 1000.0  # cqw
 _EL_SLOT = re.compile(r"^el-\d{1,4}$")
 _SLOT_RE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 

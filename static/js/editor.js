@@ -2432,8 +2432,8 @@
   // بإحداثيات مطلقة. يعني الموضع بيتقاس مع الشاشة تلقائياً، ومفيش حاجة
   // اسمها "ظبطه على الديسكتوب فطلع غلط على الموبايل".
 
-  var MAX_X = (SCHEMA.layout_max && SCHEMA.layout_max.x) || 45;
-  var MAX_Y = (SCHEMA.layout_max && SCHEMA.layout_max.y) || 40;
+  var MAX_X = (SCHEMA.layout_max && SCHEMA.layout_max.x) || 1000;
+  var MAX_Y = (SCHEMA.layout_max && SCHEMA.layout_max.y) || 1000;
   var SNAP = 1.2;          // cqw — قرب كده يلزق على الصفر
   var THRESHOLD = 4;       // px — أقل من كده تبقى ضغطة مش سحب
   var drag = null;
@@ -2907,8 +2907,9 @@
         }
         e.preventDefault();
         e.stopPropagation();
-        var x = Math.round(clamp(drag.startX + (dx / drag.width) * 100, -45, 45) * 100) / 100;
-        var y = Math.round(clamp(drag.startY + (dy / drag.height) * 100, -45, 45) * 100) / 100;
+        // الإحداثيات نسبية لمركز الشاشة؛ النطاق الواسع يمنع توقف النص عند حافة مصطنعة.
+        var x = Math.round(clamp(drag.startX + (dx / drag.width) * 100, -1000, 1000) * 100) / 100;
+        var y = Math.round(clamp(drag.startY + (dy / drag.height) * 100, -1000, 1000) * 100) / 100;
         var current = item();
         if (!current) return;
         current.x = x;
