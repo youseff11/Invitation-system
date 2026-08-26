@@ -15,7 +15,16 @@
 {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
 <meta name="twitter:card" content="summary_large_image">
 
+<style data-loading-critical>
+html, body { margin: 0; min-height: 100%; }
+.lb-loading-screen { position: fixed !important; inset: 0 !important; left: 0 !important; top: 0 !important; width: 100vw !important; height: 100vh !important; height: 100dvh !important; display: flex !important; align-items: center !important; justify-content: center !important; z-index: 2147483647 !important; background: #f7f2ea !important; color: #b8914f !important; font-family: Arial, sans-serif !important; }
+.lb-loading-screen__card { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 12px !important; min-width: 210px !important; padding: 16px 22px !important; border: 1px solid rgba(184,145,79,.2) !important; border-radius: 14px !important; background: rgba(255,255,255,.9) !important; box-shadow: 0 18px 48px -28px rgba(44,38,32,.35) !important; }
+.lb-loading-screen__spinner { width: 20px !important; height: 20px !important; flex: 0 0 20px !important; border: 2px solid rgba(184,145,79,.2) !important; border-top-color: #b8914f !important; border-radius: 50% !important; animation: lb-loading-spin .75s linear infinite !important; }
+.lb-doc[data-ready="0"] .lb-intro, .lb-doc[data-ready="0"] .lb-stage, .lb-doc[data-ready="0"] .lb-cta, .lb-doc[data-ready="0"] .lb-music, .lb-doc[data-ready="0"] .lb-autoscroll { visibility: hidden !important; }
+</style>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
+
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&family=Cormorant+Garamond:wght@300;400;500;600&family=Great+Vibes&family=Marcellus&family=Montserrat:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&family=Reem+Kufi:wght@400;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/invite.css' %}">
