@@ -146,7 +146,11 @@ class _Cleaner(HTMLParser):
             # text and images. Preserve only known layout namespaces.
             tilda_layout_attr = name.startswith((
                 "data-elem-", "data-field-", "data-artboard-", "data-animate-"
-            )) or name in {"data-record-type", "data-animationappear"}
+            )) or name in {
+                "data-record-type", "data-animationappear",
+                "data-lb-map-width", "data-lb-map-height",
+            }
+
             if name.startswith("on") or (name not in allowed and not tilda_layout_attr):
                 continue
 

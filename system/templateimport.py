@@ -897,11 +897,15 @@ def _align_embedded_map_element(html: str) -> str:
             r"data-field-(?:top|left|height|width)(?:-res-[^-]+)?-value$", name, re.I
         ):
             names.add(name)
+    user_width = _tag_attr(map_tag, "data-lb-map-width")
+    user_height = _tag_attr(map_tag, "data-lb-map-height")
+    # قبل أن يختار المستخدم مقاساً، الخريطة يجب أن تطابق الإطار الزخرفي
+    # في المحرر والمعاينة العامة. وجود data-lb-map-* يعني أن السلايدر
+    # حفظ اختياراً صريحاً، فلا نعيده إلى مقاس الإطار.
+    user_dimensions = bool(user_width or user_height)
     for name in names:
-        # لو المحرر حفظ قيمة على عنصر الخريطة، فهي أولوية المستخدم.
-        # إعادة نسخ أبعاد الإطار هنا كانت تجعل السلايدر يرجع للحجم الأصلي
-        # عند كل معاينة أو عند ترك الحقل.
-        if _tag_attr(map_tag, name):
+        is_dimension = bool(re.search(r"data-field-(?:width|height)(?:-res-[^-]+)?-value$", name, re.I))
+        if user_dimensions and is_dimension:
             continue
         value = _tag_attr(frame_tag, name)
         if value:

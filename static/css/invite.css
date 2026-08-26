@@ -1377,3 +1377,22 @@
   width: 100%;
   height: 100%;
 }
+/* نفس الأبعاد في المعاينة العامة والمحرر: خصائص width/height القديمة
+   على iframe كانت تتغلب على حجم wrapper المحفوظ فتُخرج الخريطة من الإطار. */
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) iframe,
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  box-sizing: border-box !important;
+}
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) > .tn-atom > [data-move],
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) > .tn-atom > [data-move] {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}

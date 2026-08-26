@@ -23,6 +23,14 @@ html, body { margin: 0; min-height: 100%; }
 .lb-doc > .lb-stage > .t-records { width: 100% !important; min-width: 0 !important; max-width: none !important; margin-inline: 0 !important; }
 .lb-doc > .lb-stage .t396__artboard { width: 100% !important; min-width: 0 !important; left: 0 !important; margin-inline: 0 !important; }
 .lb-doc > .lb-intro { min-height: 100svh !important; height: 100dvh !important; max-height: 100dvh !important; }
+/* قاعدة حرجة للخريطة قبل تحميل CSS/runtime القالب: الـwrapper هو المرجع
+   الوحيد للمقاس، وكل الطبقات الداخلية تتمدد داخله حتى لا يخرج iframe. */
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) .tn-atom,
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) .tn-atom,
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) .tn-atom > [data-move],
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) .tn-atom > [data-move] { width: 100% !important; height: 100% !important; min-width: 0 !important; min-height: 0 !important; box-sizing: border-box !important; }
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="google.com/maps"]) iframe,
+.lb-stage .tn-elem[data-elem-type="html"]:has(iframe[src*="maps.google"]) iframe { display: block !important; width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important; box-sizing: border-box !important; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 

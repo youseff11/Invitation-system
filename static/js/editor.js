@@ -1728,9 +1728,13 @@
             mapFrame.style.setProperty(spec[0], value + "px", "important");
           }
 
-          commit();
+                    commit();
+          // تحديث المعاينة أثناء السحب، بدون حفظ تلقائي.
+          // debounce الموجود في requestPreview يمنع إرسال طلب لكل بكسل.
+          requestPreview();
         });
         input.addEventListener("change", function () { started = false; requestPreview(); });
+
         body.appendChild(ctrlRow(spec[1], input, output));
       });
     }
@@ -2790,6 +2794,7 @@
         applySlotOffset(node, pos.dx, pos.dy);
         markDirty();
         renderInspector();
+        requestPreview();
       }
     });
   }
