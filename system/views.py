@@ -1426,7 +1426,7 @@ def api_save(request, pk):
 @login_required
 @require_POST
 def api_upload(request, pk):
-    """رفع صورة أو ملف صوتي لاستخدامه في الدعوة."""
+    """رفع صورة أو فيديو أو ملف صوتي لاستخدامه في الدعوة."""
     _staff_required(request)
     invitation = get_object_or_404(Invitation, pk=pk)
 
@@ -1444,7 +1444,7 @@ def api_upload(request, pk):
         kind = "video"
     else:
         return JsonResponse(
-            {"ok": False, "error": "نوع الملف غير مسموح. ارفع صورة أو ملف صوت."},
+            {"ok": False, "error": "نوع الملف غير مسموح. ارفع صورة أو فيديو أو ملف صوت."},
             status=400,
         )
 

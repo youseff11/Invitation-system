@@ -3907,8 +3907,23 @@
           body: fd
         });
       })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          return r.text().then(function (raw) {
+            var data = {};
+            try { data = raw ? JSON.parse(raw) : {}; } catch (ignore) {}
+            if (!r.ok) {
+              if (r.status === 413) {
+                toast("السيرفر رفض الفيديو لأن حجم طلب الرفع كبير. تأكد أن الفيديو أقل من 40 ميجابايت.", "error");
+              } else {
+                toast(data.error || ("تعذّر رفع الملف (" + r.status + ")."), "error");
+              }
+              return null;
+            }
+            return data;
+          });
+        })
         .then(function (data) {
+          if (!data) return;
           if (!data.ok) { toast(data.error || "فشل رفع الملف.", "error"); return; }
           ASSETS.unshift(data.asset);
           renderAssets();
@@ -3918,7 +3933,7 @@
             closeModal(refs.assetModal);
           }
         })
-        .catch(function () { toast("تعذّر رفع الملف.", "error"); });
+        .catch(function () { toast("تعذّر الاتصال بالسيرفر أثناء رفع الملف.", "error"); });
     });
   }
 

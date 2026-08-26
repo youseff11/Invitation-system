@@ -218,7 +218,9 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 60 * 60 * 12
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024      # 10MB
+# يجب أن يكون أكبر من حد الفيديو (40MB) مع Thumbnail حتى لا يرفض
+# Django الطلب قبل وصوله إلى api_upload.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024      # 50MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 4000                 # المحرر يرسل حقولاً كثيرة
 
