@@ -1211,6 +1211,7 @@ def template_api_preview(request, pk):
         "fontCss": result["font_css"],
         "pattern": result["theme"].get("pattern") or "none",
         "maxWidth": result["theme"].get("max_width"),
+        "runtimeCountdownDate": result.get("runtime_countdown_date") or "",
         "direction": result["theme"].get("direction") or "rtl",
         "music": {},
         "blockCount": result["block_count"],
@@ -1390,9 +1391,11 @@ def api_preview(request, pk):
         "fontCss": result["font_css"],
         "pattern": result["theme"].get("pattern") or "none",
 
-        "maxWidth": result["theme"].get("max_width"),
+                "maxWidth": result["theme"].get("max_width"),
+        "runtimeCountdownDate": result.get("runtime_countdown_date") or "",
         "direction": result["theme"].get("direction") or "rtl",
         "music": {
+
             "url": doc_settings.get("music_url") or "",
             "autoplay": bool(doc_settings.get("music_autoplay")),
             "loop": bool(doc_settings.get("music_loop")),

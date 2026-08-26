@@ -1183,6 +1183,13 @@ def build_document(main: str, files: dict[str, bytes]) -> tuple[dict, str, list[
         ".t-animate_wait{opacity:1 !important;visibility:visible !important;}"
     )
     stylesheet_resolved += ".preloader{display:none !important;}"
+    # بعض خطوط الدعوات المزخرفة لها ascenders/descenders أكبر من صندوق Tilda
+    # المحدد؛ القص كان يخفي أطراف حروف مثل Rose رغم أن الخط نفسه محفوظ وصحيح.
+    stylesheet_resolved += (
+        '.t396__elem[data-elem-type="text"],'
+        '.t396__elem[data-elem-type="text"] .tn-atom{'
+        'overflow:visible !important;}'
+    )
 
     # Tilda يضع كل المحتوى داخل allrecords، لذلك parser.parts يعتبره
     # بلوكاً واحداً ضخماً. نعيد فصل recNNN حتى لا يظهر أول فيديو فقط.

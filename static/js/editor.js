@@ -1062,9 +1062,14 @@
       /* custom_html عنده الآن إضافة نص/صورة من داخل العنصر المحدد.
          لذلك نخفي مجموعة text_overlays القديمة فقط من هذا النوع،
          ونترك مجموعة التنسيق العامة الخاصة بالقسم كما هي. */
+            var hasImportedCountdown = /countdowncontainer|time-block|number-wrap/i.test(
+        String((block.props || {}).html || "")
+      );
       var advancedProps = spec.props.filter(function (s) {
-        return s.key !== "text_overlays";
+        if (s.key === "text_overlays") return false;
+        return s.key !== "countdown_date" || hasImportedCountdown;
       });
+
       box.appendChild(buildGroups(
         advancedProps,
         function (s) { return block.props[s.key]; },
@@ -1409,6 +1414,31 @@
       || node.getAttribute("data-map") === "1"
     );
     var mapBox = isMap ? (node.closest(".tn-elem") || node) : null;
+    var countdownRoot = node.closest && node.closest("#countdownContainer, .countdown-container");
+    if (countdownRoot && block.type === "custom_html") {
+      body.appendChild(el("p", "ed-hint",
+        "ده عدّاد مستورد — تقدر تغيّر موعده، وتختار أي تسمية من الطبقات لتعديل نصها أو خطها."));
+      var dateInput = el("input", "ed-input");
+      dateInput.type = "datetime-local";
+      dateInput.value = String((block.props || {}).countdown_date || "");
+      dateInput.title = "اتركه فارغاً لاستخدام موعد القالب الأصلي";
+      dateInput.addEventListener("change", function () {
+        snapshot();
+        block.props.countdown_date = dateInput.value;
+        markDirty();
+        requestPreview();
+      });
+      var clearDate = el("button", "ed-btn ed-btn--sm", "استخدم موعد القالب");
+      clearDate.type = "button";
+      clearDate.addEventListener("click", function () {
+        snapshot();
+        block.props.countdown_date = "";
+        dateInput.value = "";
+        markDirty();
+        requestPreview();
+      });
+      body.appendChild(ctrlRow("موعد العدّاد", dateInput, clearDate));
+    }
     if (isImg) {
 
       body.appendChild(el("p", "ed-hint",
@@ -2318,16 +2348,30 @@
     style.textContent = css;
   }
 
-  function restartTemplateRuntime(fdoc) {
+  var COUNTDOWN_RUNTIME_DATE_RE = /\b(?:var|let|const)\s+eventDate\s*=\s*new\s+Date\([^)]*\)/;
+
+  function restartTemplateRuntime(fdoc, countdownDate) {
     if (!fdoc) return Promise.resolve();
     var current = Array.prototype.slice.call(fdoc.querySelectorAll("script[data-lb-template-runtime]"));
-    if (!current.length) return Promise.resolve();
-    var descriptors = current.map(function (script) {
-      return {
-        src: script.getAttribute("src") || "",
-        type: script.getAttribute("type") || "",
-        code: script.textContent || ""
-      };
+    if (!current.length && !fdoc.__lbRuntimeOriginal) return Promise.resolve();
+    if (!fdoc.__lbRuntimeOriginal) {
+      fdoc.__lbRuntimeOriginal = current.map(function (script) {
+        return {
+          src: script.getAttribute("src") || "",
+          type: script.getAttribute("type") || "",
+          code: script.textContent || ""
+        };
+      });
+    }
+    var descriptors = fdoc.__lbRuntimeOriginal.map(function (item) {
+      var copy = { src: item.src, type: item.type, code: item.code };
+      if (!copy.src && countdownDate) {
+        copy.code = copy.code.replace(
+          COUNTDOWN_RUNTIME_DATE_RE,
+          "var eventDate=new Date(" + JSON.stringify(String(countdownDate)) + ")"
+        );
+      }
+      return copy;
     });
     current.forEach(function (script) { script.remove(); });
 
@@ -2395,7 +2439,8 @@
 
     applyIntro(fdoc, data.intro);
 
-    var runtimeReady = restartTemplateRuntime(fdoc);
+        var runtimeReady = restartTemplateRuntime(fdoc, data.runtimeCountdownDate || "");
+
     runtimeReady.then(function () {
       bindPreviewInteractions();
       if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
@@ -3061,9 +3106,10 @@
     return true;
   }
 
-  function isTextUnit(n) {
+    function isTextUnit(n) {
 
     if (!TEXTY[n.tagName]) return false;
+
     if (!(n.textContent || "").trim()) return false;
     for (var i = 0; i < n.children.length; i++) {
       if (!INLINE[n.children[i].tagName]) return false;
@@ -3073,8 +3119,15 @@
     return true;
   }
 
+    function isCountdownLabel(n) {
+    if (!n || !n.classList || !n.classList.contains("label")) return false;
+    if (!n.closest || !n.closest("#countdownContainer, .countdown-container")) return false;
+    return !(n.textContent || "").trim() || !n.querySelector("img,video,iframe,input,textarea,select");
+  }
+
   /** العناصر اللي نسمح بسحبها — أي حاجة ليها حجم حقيقي. */
   function movableIn(root) {
+
     return Array.prototype.filter.call(root.querySelectorAll("*"), function (n) {
       if (n.tagName === "BR" || n.tagName === "HR") return false;
       var r = n.getBoundingClientRect();
@@ -3202,7 +3255,7 @@
          ٣) ترقيم وربط. */
       var all = movableIn(root);
       all.forEach(function (n) {
-                if ((isTextUnit(n) || isTildaTextUnit(n)) && !(n.parentElement &&
+        if ((isTextUnit(n) || isTildaTextUnit(n) || isCountdownLabel(n)) && !(n.parentElement &&
             n.parentElement.closest("[data-lb-text]"))) {
 
           n.setAttribute("data-lb-text", "1");

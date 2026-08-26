@@ -483,6 +483,41 @@ def _unwrap_runtime_allrecords(value: str) -> str:
     return re.sub(r"</div>\s*</div>\s*$", "</div>", value, count=1, flags=re.S)
 
 
+_COUNTDOWN_DATE_RE = re.compile(
+    r"\b(?:var|let|const)\s+eventDate\s*=\s*new\s+Date\("
+    r"\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})"
+    r"(?:\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2}))?)?)?\s*\)"
+)
+
+
+def _countdown_date_from_document(doc: dict) -> str:
+    """يرجع أول موعد Countdown مخصص اختاره المستخدم داخل بلوك مستورد."""
+    for block in (doc or {}).get("blocks") or []:
+        if block.get("type") != "custom_html":
+            continue
+        value = str((block.get("props") or {}).get("countdown_date") or "").strip()
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", value):
+            return value
+    return ""
+
+
+def _runtime_with_countdown_date(runtime_scripts, countdown_date: str):
+    """يستبدل eventDate داخل runtime المستورد من غير تعديل النسخة الأصلية."""
+    if not countdown_date:
+        return runtime_scripts or []
+    result = []
+    for item in runtime_scripts or []:
+        if not isinstance(item, dict) or not item.get("code"):
+            result.append(item)
+            continue
+        code = str(item.get("code") or "")
+        code = _COUNTDOWN_DATE_RE.sub(
+            f'var eventDate=new Date("{countdown_date}")', code, count=1
+        )
+        result.append({**item, "code": code})
+    return result
+
+
 def render_document(
 
     document: dict,
@@ -499,8 +534,12 @@ def render_document(
 
     """يعرض المستند ويعيد ``{"html", "css_vars", "theme", "settings"}``."""
     doc = blocks_engine.normalize_document(document)
+    runtime_scripts = _runtime_with_countdown_date(
+        runtime_scripts, _countdown_date_from_document(doc)
+    )
 
     # النسخة الإنجليزية نصوص مكتوبة بالإيد ومخزّنة جوّه المستند — مفيش
+
     # ترجمة آلية ولا استدعاء لأي خدمة برّه. أي مفتاح مش مترجم بيفضل
     # عربي: نص ناقص أحسن من فراغ في وش الضيف.
     has_en = blocks_engine.has_translation(doc, "en")
@@ -619,6 +658,7 @@ def render_document(
         "lang": lang,
         "has_en": has_en,
         "runtime_scripts": runtime_scripts or [],
+        "runtime_countdown_date": _countdown_date_from_document(doc),
         "runtime_root_attrs": runtime_attrs,
         "runtime_is_spa": runtime_is_spa,
     }

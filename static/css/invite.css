@@ -1078,6 +1078,11 @@
 /* الستايل المستورد بيتحصر بمعرّف القسم، وممكن يبقى فيه عناصر بعرض
    أكبر من الحاوية — نمنعها تعمل تمرير أفقي للصفحة كلها */
 [data-block-type="custom_html"] { overflow-x: hidden; }
+/* بعض الخطوط المزخرفة تتجاوز صندوق Tilda بضع بكسلات؛ لا نقصّ أطراف الحروف. */
+.lb-custom .t396__elem[data-elem-type="text"],
+.lb-custom .t396__elem[data-elem-type="text"] .tn-atom {
+  overflow: visible !important;
+}
 
 /* ------------------------------------------------ زر صوت فيديو الافتتاحية */
 .lb-intro-sound {
