@@ -1197,10 +1197,22 @@
   inline-size: 88px; block-size: 88px; padding: 0;
   display: grid; place-items: center;
   border: 1px solid rgba(255, 255, 255, .5); border-radius: 50%;
-  background: rgba(20, 18, 16, .5); color: #fff;
+  background: var(--intro-play-bg, rgba(20, 18, 16, .5));
+  color: var(--intro-item-color, #fff);
   backdrop-filter: blur(4px); cursor: pointer;
   transition: none;
 }
+.lb-intro-play--no-effects,
+.lb-intro-play--no-effects:hover,
+.lb-intro-play--no-effects:focus,
+.lb-intro-play--no-effects:active {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
 .lb-intro-play svg { inline-size: 34px; block-size: 34px; margin-inline-start: 5px; }
 
 /* لو المستخدم كتب نص على الزر بيتحوّل من دايرة لكبسولة.

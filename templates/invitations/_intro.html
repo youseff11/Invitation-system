@@ -30,7 +30,7 @@
     عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
   {% endcomment %}
   <button type="button" data-intro-play data-intro-item="play"
-          class="lb-intro-play lb-intro-play--label"
+          class="lb-intro-play lb-intro-play--label{% if not render.settings.intro_play_effects %} lb-intro-play--no-effects{% endif %}"
           aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}"
           style="{{ render.intro_item_styles.play }}">
     <span class="lb-intro-play-text">{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}</span>

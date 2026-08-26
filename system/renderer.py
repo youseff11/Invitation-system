@@ -203,11 +203,17 @@ def intro_item_css(settings: dict, item: str) -> str:
         "guest_name": "intro_guest_name_color",
         "text": "intro_text_color",
         "button": "intro_button_color",
-        "play": "intro_button_color",
     }
     color = str(settings.get(color_keys.get(item, "")) or "").strip()
+    if item == "play":
+        # توافق مع الدعوات القديمة التي كانت تستخدم intro_button_color للزرين.
+        color = str(settings.get("intro_play_color") or color).strip()
     if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
         pairs.append(f"--intro-item-color:{color}")
+    if item == "play":
+        background = str(settings.get("intro_play_bg_color") or "").strip()
+        if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", background):
+            pairs.append(f"--intro-play-bg:{background}")
     return mark_safe(";".join(pairs))
 
 
