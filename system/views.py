@@ -234,6 +234,7 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         "music_config": music,
                 "scroll_config": _scroll_config(doc_settings, editable=editable),
         "run_template_runtime": bool(editable and getattr(invitation.template, "runtime_scripts", [])),
+        "defer_template_runtime": bool(not editable and result.get("runtime_scripts")),
         "guest": guest,
 
         "site_name": settings.SITE_NAME,
@@ -322,8 +323,10 @@ def template_demo(request, slug):
     return render(request, "invitations/render.html", {
         "render": result,
         "invitation": None,
-        "editable": False,
+                "editable": False,
+        "defer_template_runtime": bool(result.get("runtime_scripts")),
         "noindex": True,
+
         "page_title": f"معاينة قالب {template.name}",
         "page_description": template.description,
         "share_image": "",

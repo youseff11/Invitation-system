@@ -874,12 +874,12 @@
     // لا نعرض القالب قبل اكتمال الخطوط، حتى لا يظهر لحظياً بخطوط وأبعاد
     // مختلفة ثم يقفز إلى مكانه النهائي. المهلة تمنع بقاء الصفحة مخفية لو
     // تعذر تحميل خط خارجي.
-    if (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === "function") {
-      doc.fonts.ready.then(reveal, reveal);
-    } else {
-      reveal();
-    }
-    window.setTimeout(reveal, 4500);
+    var fontReady = (doc.fonts && doc.fonts.ready && typeof doc.fonts.ready.then === "function")
+      ? doc.fonts.ready : Promise.resolve();
+    // الـruntime تحسينات تفاعلية غير حرجة؛ لا ننتظره حتى لا يتأخر أول ظهور.
+    // يتم تحميله بالتوازي من loader، بينما الصفحة تظهر بمجرد جاهزية الخطوط.
+    fontReady.then(reveal, reveal);
+    window.setTimeout(reveal, 3000);
   }
 
   function boot() {

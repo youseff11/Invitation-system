@@ -472,6 +472,26 @@ def _custom_font_css() -> str:
     return mark_safe("".join(rules))
 
 
+_FONT_URL_RE = re.compile(r"url\(\s*['\"]?([^'\")]+)['\"]?\s*\)", re.I)
+_FONT_SUFFIX_RE = re.compile(r"\.(?:woff2?|ttf|otf)(?:[?#]|$)", re.I)
+
+
+def _font_preload_urls(css: str) -> list[str]:
+    """يرجع روابط الخطوط فقط، مرتبة ومزالة التكرارات، لاستخدام preload."""
+    urls = []
+    seen = set()
+    for raw in _FONT_URL_RE.findall(css or ""):
+        url = str(raw).strip()
+        if not url or url.startswith("data:") or not _FONT_SUFFIX_RE.search(url):
+            continue
+        if not (url.startswith("/") or url.startswith("https://") or url.startswith("http://")):
+            continue
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
+
+
 def _unwrap_runtime_allrecords(value: str) -> str:
     """يصلح النسخ المستوردة قبل إصلاح allrecords بدون لمس القوالب العادية."""
     if 'id="allrecords"' not in (value or '').lower():
@@ -578,6 +598,7 @@ def render_document(
         countdown_iso = (timezone.localtime(ev) if timezone.is_aware(ev) else ev).isoformat()
 
     chunks: list[str] = []
+
     for block in doc["blocks"]:
         spec = blocks_engine.BLOCK_REGISTRY.get(block["type"])
         if not spec:
@@ -638,10 +659,14 @@ def render_document(
         if re.search(r'''<(?:div|main)\b[^>]*\bid=["'](?:root|app|__next|__nuxt|___gatsby)["']''', imported_html, re.I):
             runtime_is_spa = True
 
+    html_output = "".join(chunks)
+    font_css = _custom_font_css()
+    font_preloads = _font_preload_urls(font_css + html_output)
     return {
-        "html": mark_safe("".join(chunks)),
+        "html": mark_safe(html_output),
         "css_vars": theme_css_vars(theme),
-        "font_css": _custom_font_css(),
+        "font_css": font_css,
+        "font_preloads": font_preloads,
         "intro_css": intro_css(doc_settings),
 
         "intro_item_styles": {
@@ -665,7 +690,8 @@ def render_document(
 
 
 _PREVIEW_KEYS = (
-    "html", "css_vars", "font_css", "intro_css", "intro_item_styles", "layout_css",
+        "html", "css_vars", "font_css", "font_preloads", "intro_css",       "intro_item_styles", "layout_css",
+
     "runtime_scripts", "runtime_root_attrs", "runtime_is_spa",
 
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
@@ -697,6 +723,11 @@ def _preview_payload(result: dict) -> dict:
     ]
 
     payload["font_css"] = str(payload.get("font_css") or "")
+    payload["font_preloads"] = [
+        str(url) for url in (payload.get("font_preloads") or [])
+        if str(url).startswith(("/", "http://", "https://"))
+    ]
+
     payload["intro_css"] = str(payload.get("intro_css") or "")
 
     payload["layout_css"] = str(payload.get("layout_css") or "")
@@ -711,6 +742,10 @@ def _restore_preview(payload: dict) -> dict:
     for key in ("html", "css_vars", "font_css", "intro_css", "layout_css"):
         result[key] = mark_safe(str(result.get(key) or ""))
 
+    result["font_preloads"] = [
+        str(url) for url in (result.get("font_preloads") or [])
+        if str(url).startswith(("/", "http://", "https://"))
+    ]
     result["intro_item_styles"] = {
         str(k): mark_safe(str(v))
         for k, v in (result.get("intro_item_styles") or {}).items()
