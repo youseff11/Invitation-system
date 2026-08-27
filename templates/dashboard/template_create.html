@@ -1,0 +1,71 @@
+{% extends 'dashboard/_base.html' %}
+{% block title %}إنشاء قالب — {{ SITE_NAME }}{% endblock %}
+{% block dash %}
+<div class="dash-head">
+  <h1>إنشاء قالب جديد</h1>
+  <a class="btn btn--ghost" href="{% url 'dashboard_templates' %}">رجوع للقوالب</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:860px">
+  {% csrf_token %}
+  <h3 style="margin-top:0">ابنِ قالبك من الصفر</h3>
+  <p class="muted">
+    بعد الإنشاء هتدخل مباشرة على المحرر. أضف الأقسام الموجودة، ورتبها بالسحب،
+    وعدّل الألوان والخطوط والصور والافتتاحية، ثم اضغط <strong>حفظ</strong>.
+  </p>
+
+  {% if form.errors %}
+    <div class="alert alert--error" style="margin-bottom:18px">
+      <strong>راجع البيانات قبل الإنشاء:</strong>
+      {% for field in form %}
+        {% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="form form--2">
+    <div class="field">
+      <label for="id_name">اسم القالب</label>
+      {{ form.name }}
+      {% for error in form.name.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="id_category">التصنيف</label>
+      {{ form.category }}
+      {% for error in form.category.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="id_collection">المجموعة</label>
+      {{ form.collection }}
+      {% for error in form.collection.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="id_slug">الرابط المختصر (اختياري)</label>
+      {{ form.slug }}
+      <small class="muted">سيتم إنشاؤه تلقائياً لو تركته فارغاً.</small>
+      {% for error in form.slug.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field span-2">
+      <label for="id_description">وصف القالب (اختياري)</label>
+      {{ form.description }}
+      {% for error in form.description.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="id_cover_image">صورة الغلاف (اختياري)</label>
+      {{ form.cover_image }}
+      {% for error in form.cover_image.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+    <div class="field">
+      <label for="id_cover_url">رابط صورة الغلاف (اختياري)</label>
+      {{ form.cover_url }}
+      {% for error in form.cover_url.errors %}<small class="error">{{ error }}</small>{% endfor %}
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;margin-top:24px">
+    <button class="btn btn--gold" type="submit">إنشاء وفتح المحرر</button>
+    <a class="btn btn--ghost" href="{% url 'dashboard_templates' %}">إلغاء</a>
+  </div>
+</form>
+{% endblock %}

@@ -239,7 +239,41 @@ class EditorApiTests(BaseAppTest):
         self.assertContains(r, "editor-document")
         self.assertContains(r, "editor-fonts")
 
+    def test_blank_template_page_loads(self):
+        r = self.client.get("/dashboard/templates/new/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "إنشاء قالب جديد")
+        self.assertContains(r, "إنشاء وفتح المحرر")
+
+    def test_blank_template_creation_opens_editor(self):
+        r = self.client.post("/dashboard/templates/new/", {
+            "name": "قالب من الأقسام",
+            "category": "wedding",
+            "collection": "Premium",
+            "description": "قالب مبني يدوياً",
+            "slug": "ص",
+        })
+        self.assertEqual(r.status_code, 302)
+        created = Template.objects.get(name="قالب من الأقسام")
+        self.assertRedirects(r, f"/dashboard/templates/{created.pk}/editor/")
+        self.assertEqual(created.source, "editor")
+        self.assertEqual(created.created_by, self.staff)
+        self.assertEqual(created.document["blocks"], [])
+        self.assertIn("intro_play_mode", created.document["settings"])
+
+    def test_blank_template_requires_a_name(self):
+        before = Template.objects.count()
+        r = self.client.post("/dashboard/templates/new/", {
+            "name": "",
+            "category": "wedding",
+            "collection": "Premium",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "هذا الحقل مطلوب")
+        self.assertEqual(Template.objects.count(), before)
+
     def test_preview_api_returns_html(self):
+
         r = self.client.post(
             f"/dashboard/invitations/{self.inv.pk}/api/preview/",
             data=json.dumps({"document": self.inv.document}),

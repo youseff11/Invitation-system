@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 
 from django import forms
+from django.utils.text import slugify
 
 from . import blocks as blocks_engine
+
 from . import video
 from .models import (
         CustomFont, Customer, Guest, Invitation, IntroVideo, MusicTrack, Order,
@@ -119,7 +121,14 @@ class GuestForm(forms.ModelForm):
 
 
 class TemplateForm(forms.ModelForm):
+    # مسار Django من نوع slug يقبل الحروف اللاتينية فقط، بينما أسماء
+    # القوالب عندنا غالباً عربية. نخلي الحقل نصياً ونحوّله إلى slug صالح
+    # تلقائياً؛ ولو كانت القيمة عربية بالكامل نرجعها فارغة ليولّد Template.save()
+    # رابطاً افتراضياً بدلاً من رفض نموذج الإنشاء بصمت.
+    slug = forms.CharField(label="الرابط المختصر", required=False, max_length=140)
+
     class Meta:
+
         model = Template
         fields = ["name", "slug", "category", "collection", "description",
                   "cover_image", "cover_url", "is_active", "sort_order"]
@@ -128,6 +137,14 @@ class TemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["slug"].required = False
+        # صفحة إنشاء القالب لا تعرض إعدادات الإدارة؛ نضع قيمها الافتراضية
+        # في الـview بدلاً من رفض POST ناقص بسبب حقول غير ظاهرة للمستخدم.
+        self.fields["is_active"].required = False
+        self.fields["sort_order"].required = False
+
+    def clean_slug(self):
+        value = (self.cleaned_data.get("slug") or "").strip()
+        return slugify(value, allow_unicode=False)[:140]
 
 
 

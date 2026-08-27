@@ -41,7 +41,7 @@ from . import blocks as blocks_engine
 from . import qrcodes
 from .forms import (
         CustomFontForm, GuestForm, IntroVideoForm, InvitationSettingsForm,
-    MusicTrackForm, OrderForm, PlanAddonForm, SiteSettingForm,
+    MusicTrackForm, OrderForm, PlanAddonForm, SiteSettingForm, TemplateForm,
 
 )
 from .models import (
@@ -716,7 +716,41 @@ def invitation_create(request):
 
 
 @login_required
+def template_create(request):
+    """ينشئ قالباً فارغاً ويحوّل فريق العمل مباشرة إلى المحرر."""
+    _staff_required(request)
+    form = TemplateForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        template = form.save(commit=False)
+        template.document = blocks_engine.empty_document()
+        template.preview_render = {}
+        template.source = "editor"
+        template.created_by = request.user
+        template.is_active = True
+        template.sort_order = 0
+        template.runtime_scripts = []
+        template.runtime_root_attrs = {}
+        template.required_features = []
+        # Template.save() يولّد slug فريداً تلقائياً لو تركه المستخدم فارغاً.
+        template.save()
+        messages.success(
+            request,
+            f"اتعمل القالب «{template.name}». ضيف الأقسام من المحرر واضغط حفظ.",
+        )
+        return redirect("template_editor", pk=template.pk)
+
+    if request.method == "POST" and form.errors:
+        messages.error(request, "راجع البيانات الظاهرة تحت الحقول ثم جرّب مرة أخرى.")
+
+    return render(request, "dashboard/template_create.html", {
+        "nav": "templates",
+        "form": form,
+    })
+
+
+@login_required
 def dashboard_templates(request):
+
     _staff_required(request)
 
     if request.method == "POST" and request.POST.get("action") == "delete":

@@ -3,15 +3,21 @@
 {% block dash %}
 <div class="dash-head">
   <h1>مكتبة القوالب</h1>
-  <a class="btn btn--gold" href="{% url 'invitation_create' %}">＋ دعوة جديدة</a>
+    <div style="display:flex;gap:10px;align-items:center">
+    <a class="btn btn--gold" href="{% url 'template_create' %}">＋ إنشاء قالب</a>
+    <a class="btn btn--ghost" href="{% url 'invitation_create' %}">＋ دعوة جديدة</a>
+  </div>
+
 </div>
 
 <div class="card" style="margin-bottom:22px">
   <h3 style="margin-top:0">كيف تضيف قالباً جديداً بدون كود</h3>
   <p class="muted" style="margin:0">
     افتح أي دعوة في <strong>المحرر</strong>، صمّمها كما تريد — الأقسام والألوان والخطوط والصور —
-    ثم اضغط <strong>«احفظ كقالب»</strong> في الشريط العلوي. سيظهر القالب هنا فوراً
+        ثم اضغط <strong>«احفظ كقالب»</strong> في الشريط العلوي. أو اضغط <strong>«إنشاء قالب»</strong>
+    من أعلى الصفحة لتبدأ قالباً فارغاً من الأقسام الموجودة في المحرر. سيظهر القالب هنا فوراً
     ويصبح متاحاً لكل دعوة جديدة. البيانات الشخصية لا تُنقل مع القالب.
+
   </p>
 </div>
 

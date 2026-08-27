@@ -20,6 +20,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
     path("dashboard/orders/", views.dashboard_orders, name="dashboard_orders"),
         path("dashboard/templates/", views.dashboard_templates, name="dashboard_templates"),
+    path("dashboard/templates/new/", views.template_create, name="template_create"),
     path("dashboard/templates/<int:pk>/editor/", views.template_editor,
          name="template_editor"),
     path("dashboard/templates/<int:pk>/preview-frame/", views.template_editor_frame,
