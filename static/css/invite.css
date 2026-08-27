@@ -164,9 +164,11 @@
   background-color: var(--block-bg, transparent);
   color: var(--block-text, inherit);
   margin-bottom: var(--section-gap);
-  overflow: hidden;
+    overflow: hidden;
+  min-height: var(--block-section-height, 0px);
 }
 .lb--has-bg::before {
+
   content: "";
   position: absolute;
   inset: 0;
@@ -184,6 +186,32 @@
   z-index: -1;
 }
 .lb--bg-fixed::before { background-attachment: fixed; }
+/* CSS القالب المستورد قد يضع background على .lb-custom أو عناصره،
+   لذلك نعيد لون القسم المختار إلى الغلاف الداخلي بأولوية واضحة. */
+.lb--custom-bg,
+.lb--custom-bg > .lb-inner,
+.lb--custom-bg .lb-custom {
+  background-color: var(--block-bg) !important;
+}
+.lb--custom-bg .lb-custom,
+.lb--custom-bg .lb-custom > :first-child,
+.lb--custom-bg .lb-custom > main,
+.lb--custom-bg .lb-custom > main > :where(section, div, article),
+.lb--custom-bg .lb-custom > section,
+.lb--custom-bg .lb-custom > article {
+  background-image: none !important;
+  background-color: var(--block-bg) !important;
+}
+/* القسم المستورد قد يحتوي نصوصاً absolute أسفل ارتفاعه المحفوظ؛ لا نقصّها
+   من مستوى .lb نفسه، وإطار التحرير يظل أداة بصرية فقط. */
+.lb--custom_html {
+  overflow: visible !important;
+}
+/* النصوص داخل القالب المستورد قد تكون داخل section أصلي عليه overflow:hidden؛
+   نتركها تخرج داخل حدود القسم الجديد بدلاً من اختفائها عند نقلها. */
+.lb--custom_html .lb-custom :where(main, section, article) {
+  overflow: visible !important;
+}
 
 .lb-inner {
   position: relative;
@@ -1147,7 +1175,25 @@
 .lb-custom { width: 100%; }
 /* الستايل المستورد بيتحصر بمعرّف القسم، وممكن يبقى فيه عناصر بعرض
    أكبر من الحاوية — نمنعها تعمل تمرير أفقي للصفحة كلها */
-[data-block-type="custom_html"] { overflow-x: hidden; }
+[data-block-type="custom_html"] {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+.lb--custom_html .lb-inner,
+.lb--custom_html .lb-custom {
+  overflow: visible !important;
+}
+/* بعض القوالب المستوردة تضع ارتفاعاً ثابتاً على الغلاف الداخلي؛ عند تغيير
+   ارتفاع القسم يصبح النص المنقول أسفله مقصوصاً. نربط الغلاف والجذر الأول
+   بالارتفاع المحفوظ ونترك الارتفاع التلقائي للمحتوى. */
+.lb--has-section-height > .lb-inner,
+.lb--has-section-height .lb-custom,
+.lb--has-section-height .lb-custom > :first-child {
+  min-height: var(--block-section-height) !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
 /* بعض الخطوط المزخرفة تتجاوز صندوق Tilda بضع بكسلات؛ لا نقصّ أطراف الحروف. */
 .lb-custom .t396__elem[data-elem-type="text"],
 .lb-custom .t396__elem[data-elem-type="text"] .tn-atom {
@@ -1351,7 +1397,57 @@
   cursor: grab;
 }
 
+/* حدود القسم ومقبض تغيير الحجم — تظهر فقط عندما يطلبها المصمم من المحرر. */
+.lb-doc--editing .lb-section-bounds {
+  position: absolute;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  border: 2px dashed color-mix(in srgb, var(--accent) 82%, #fff 18%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 14%, transparent);
+  box-sizing: border-box;
+}
+.lb-doc--editing .lb-section-bounds__label {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+  font: 600 11px/1.4 system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.lb-doc--editing .lb-section-resize-handle {
+  position: absolute;
+  inset-block-end: 7px;
+  inset-inline-start: 50%;
+  width: 76px;
+  height: 14px;
+  transform: translateX(-50%);
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 1px 5px rgb(0 0 0 / 28%);
+  cursor: ns-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+.lb-doc--editing .lb-section-resize-handle::after {
+  content: "↕";
+  position: absolute;
+  inset: -4px 0 0;
+  color: #fff;
+  font: 700 14px/1 system-ui, sans-serif;
+  text-align: center;
+}
+.lb-doc--editing .lb-section-resize-handle.is-dragging {
+  background: color-mix(in srgb, var(--accent) 72%, #000 28%);
+}
+
 /* تنبيه الباقة داخل المحرر لا يحجب اختيار أو سحب القسم تحته. */
+
 .lb-doc--editing .lb-gate {
   pointer-events: none;
 }

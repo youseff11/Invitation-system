@@ -126,6 +126,18 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-btn--icon { padding: 8px; width: 34px; }
 .ed-btn--sm { padding: 5px 10px; font-size: 12px; }
 .ed-btn--danger:hover { border-color: var(--e-danger); color: var(--e-danger); }
+.ed-section-bounds-tools {
+  margin: 10px 0 14px;
+  padding: 8px;
+  border: 1px dashed var(--e-line);
+  border-radius: 10px;
+  background: var(--e-panel-2);
+}
+.ed-section-bounds-tools .ed-hint {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.5;
+}
 .ed-btn--block { width: 100%; }
 
 .ed-seg { display: flex; background: var(--e-panel-2); border: 1px solid var(--e-line); border-radius: 8px; padding: 2px; }
@@ -929,11 +941,18 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-layer-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .ed-layer-item { position: relative; padding-inline-end: 38px; }
+/* كان شفاف بلون باهت، فمكانش بيبان إلا مع الهوفر — والمستخدم مالوش
+   دليل إن الطبقة تتمسح أصلاً. بقى ليه إطار وخلفية خفيفة عشان يقرا
+   كزرار من أول نظرة، وبيوضح أكتر لما تقرّب من الصف. */
 .ed-layer-remove {
   position: absolute; inset-inline-end: 7px; top: 50%; transform: translateY(-50%);
   width: 25px; height: 25px; padding: 0;
-  border: 1px solid transparent; border-radius: 7px;
-  background: transparent; color: var(--e-muted);
-  cursor: pointer; font-size: 18px; line-height: 1;
+  border: 1px solid var(--e-line); border-radius: 7px;
+  background: var(--e-panel); color: var(--e-text);
+  cursor: pointer; font-size: 17px; line-height: 1;
+  display: grid; place-items: center; opacity: .72;
+  transition: opacity .15s, color .15s, border-color .15s;
 }
+.ed-layer-item:hover .ed-layer-remove,
+.ed-layer-item.is-active .ed-layer-remove { opacity: 1; }
 .ed-layer-remove:hover { border-color: var(--e-danger); color: var(--e-danger); background: color-mix(in srgb, var(--e-danger) 10%, transparent); }

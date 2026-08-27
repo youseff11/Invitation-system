@@ -354,6 +354,77 @@ def zero_block_css(block_id: str, html: str) -> str:
     return "".join(out)
 
 
+# مقاسات المحرر: موبايل 390، تابلت 768، ديسكتوب لحد 1280. الحدود دي
+# مختارة عشان كل مقاس يقع في نطاق واحد بالظبط من غير تداخل.
+_SECTION_HEIGHT_MEDIA = (
+    ("section_height_mobile", "@media (max-width:480px)"),
+    ("section_height_tablet", "@media (min-width:481px) and (max-width:960px)"),
+    ("section_height_desktop", "@media (min-width:961px)"),
+)
+
+
+def section_surface_css(block_id: str, style: dict) -> str:
+    """يتجاوز ارتفاع الـartboard المستورد لما المستخدم يسحب حدود القسم.
+
+    ليه بالمُعرّف: Tilda بيكتب الارتفاع بقاعدة مربوطة بـ‎#recXXX‎، يعني
+    خصوصية (1,0,1). أي قاعدة ساكنة في ملف الستايل بتخسر قدامها، فلازم
+    القاعدة تتولّد بمُعرّف القسم.
+
+    وليه التلات عناصر مع بعض: Tilda بيحط نفس الارتفاع على
+    ``__artboard`` (الصندوق) و``__filter`` (الطبقة) و``__carrier``
+    (اللي الخلفية مدهونة عليه). لو غيّرنا الصندوق بس، الخلفية بتفضل
+    على حدودها القديمة والنص اللي اتسحب لبرّه بيقع على فراغ.
+
+    الدالة بتحل كمان حاجتين مقاسين من تصدير Tilda حقيقي:
+
+    * ``\.t396__artboard{...overflow:hidden}`` هي القاعدة الأساسية، وبعض
+      الأقسام بس بتضيف ``overflow:visible``. يعني أي عنصر بيتسحب تحت
+      حدود الـartboard بيتقص. لما المستخدم يكبّر القسم بإيده بنفتح
+      الـoverflow عشان اللي تحت يبان.
+    * الخلفية متكتوبة ``#recXXX .t396__artboard{background-color:...}`` —
+      عنصر **جوّه** الـ‎<section>‎، فوق خلفية القسم نفسها. عشان كده تغيير
+      الخلفية من «التنسيق» كان بيغيّر الشرائط فوق وتحت بس. لما المستخدم
+      يختار خلفية للقسم بنشيل لون خلفية Tilda عشان بتاعته تبان.
+      بنلمس ``background-color`` بس — أي صورة خلفية في التصميم بتفضل.
+    """
+    if not _SAFE_ID_RE.match(block_id or ""):
+        return ""
+    # المُعرّف مكرر مرتين عن قصد: ‎#x#x‎ بيطابق نفس العنصر بالظبط، بس
+    # خصوصيته (2,1,0) بدل (1,1,0) — أعلى من قاعدة Tilda. من غير كده
+    # الاتنين متساويين والترتيب هو اللي بيحسم، وستايل القسم ممكن
+    # يتطبع جوّه الجسم (custom_html.html سطر 5) يعني بعد قاعدتنا فيكسب.
+    targets = ",".join(
+        f"#{block_id}#{block_id} .t396__{name}"
+        for name in ("artboard", "filter", "carrier")
+    )
+    out: list[str] = []
+    for key, query in _SECTION_HEIGHT_MEDIA:
+        try:
+            value = int(float((style or {}).get(key) or 0))
+        except (TypeError, ValueError):
+            value = 0
+        if value <= 0:
+            # القيمة القديمة (رقم واحد لكل المقاسات) كقيمة احتياطية
+            try:
+                value = int(float((style or {}).get("section_height") or 0))
+            except (TypeError, ValueError):
+                value = 0
+        if value <= 0:
+            continue
+        # ‎overflow:visible‎ مع الارتفاع: من غيرها العنصر اللي اتسحب
+        # تحت الحد بيتقص وإنت شايف مساحة فاضية تحته.
+        out.append(
+            f"{query}{{{targets}{{height:{value}px!important}}"
+            f"#{block_id}#{block_id} .t396__artboard"
+            f"{{overflow:visible!important}}}}"
+        )
+
+    if (style or {}).get("bg_color") or (style or {}).get("bg_image"):
+        out.append(f"{targets}{{background-color:transparent!important}}")
+
+    return "".join(out)
+
+
 def document_zero_css(blocks: list[dict]) -> str:
     """CSS المواضع لكل بلوكات المستند المستوردة من Tilda.
 

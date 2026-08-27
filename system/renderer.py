@@ -285,6 +285,12 @@ def block_style_css(style: dict, theme: dict) -> str:
     css.append(f"--block-pt:{_fluid_px(style.get('padding_top'), 80, ref)}")
     css.append(f"--block-pb:{_fluid_px(style.get('padding_bottom'), 80, ref)}")
     css.append(f"--block-radius:{_px(style.get('radius'), '0px')}")
+    try:
+        section_height = float(style.get("section_height") or 0)
+    except (TypeError, ValueError):
+        section_height = 0
+    if section_height > 0:
+        css.append(f"--block-section-height:{max(120, min(2400, section_height)):g}px")
     align = style.get("align") or "center"
     css.append(f"--block-align:{align}")
     css.append(
@@ -306,6 +312,10 @@ def block_classes(block: dict, theme: dict) -> str:
     ]
     if style.get("bg_image"):
         parts.append("lb--has-bg")
+    if block.get("type") == "custom_html" and style.get("bg_color"):
+        parts.append("lb--custom-bg")
+    if block.get("type") == "custom_html" and style.get("section_height"):
+        parts.append("lb--has-section-height")
     if style.get("bg_fixed"):
         parts.append("lb--bg-fixed")
     if theme.get("animations_enabled", True) and (style.get("animation") or "none") != "none":
@@ -742,6 +752,10 @@ def render_document(
         if isinstance(resolved_props.get("html"), str):
             zero_css_parts.append(tildacss.zero_block_css(
                 str(block.get("id") or ""), resolved_props["html"]))
+            # تجاوز ارتفاع الـartboard لما المستخدم يسحب حدود القسم.
+            # لازم يتولّد بمُعرّف القسم عشان يغلب قاعدة Tilda الأصلية.
+            zero_css_parts.append(tildacss.section_surface_css(
+                str(block.get("id") or ""), block.get("style") or {}))
         ctx = {
             "block": block,
             "props": resolved_props,

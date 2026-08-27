@@ -18,7 +18,8 @@ from system.models import (
 from system.forms import OrderForm, PlanAddonForm
 from decimal import Decimal
 from urllib.parse import quote
-from system.renderer import layout_css, render_document
+from system.renderer import block_style_css, layout_css, render_document
+
 from system.sanitize import clean_html
 from system import cssscope, customtext, guestimport, images, templateimport, video
 from system.templatetags import invite as invite_tags
@@ -512,7 +513,30 @@ class LayoutTests(BaseAppTest):
     def test_layout_css_empty_when_nothing_moved(self):
         self.assertEqual(layout_css([{"id": "hero-1", "layout": {}}]), "")
 
+    def test_section_height_is_sanitized_and_emitted(self):
+        doc = B.normalize_document({"blocks": [{
+            "type": "hero", "id": "hero-1", "style": {"section_height": 640}
+        }]})
+        style = doc["blocks"][0]["style"]
+        self.assertEqual(style["section_height"], 640)
+        css = block_style_css(style, B.default_theme())
+        self.assertIn("--block-section-height:640px", css)
+
+
+
+    def test_imported_section_height_and_background_are_rendered(self):
+        doc = B.normalize_document({"blocks": [{
+            "type": "custom_html", "id": "imp-1",
+            "props": {"html": "<div class='countdown-grid'>محتوى</div>"},
+            "style": {"section_height": 640, "bg_color": "#123456"},
+        }]})
+        rendered = render_document(doc, editable=False)
+        html = str(rendered["html"])
+        self.assertIn("lb--custom-bg", html)
+        self.assertIn("--block-section-height:640px", html)
+
     def test_layout_renders_on_public_invitation(self):
+
         doc = self.inv.document
         doc["blocks"][0]["layout"] = {"name_one": {"dx": 7.5, "dy": 2.5}}
         self.inv.document = B.normalize_document(doc)

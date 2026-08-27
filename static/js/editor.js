@@ -67,7 +67,8 @@
     saving: false,
         history: [],
     future: [],
-    layersOpen: false
+    layersOpen: false,
+    sectionBoundsBlock: null
 
   };
 
@@ -1039,6 +1040,10 @@
   }
 
   function selectBlock(id) {
+    if (state.sectionBoundsBlock && state.sectionBoundsBlock !== id) {
+      state.sectionBoundsBlock = null;
+      clearSectionBounds();
+    }
     state.selected = id;
     renderBlockList();
     renderInspector();
@@ -1075,6 +1080,197 @@
         group.open = open[key];
       }
     });
+  }
+
+  /* لازم تطابق ‎_SECTION_HEIGHT_MEDIA‎ في ‎tildacss.py‎ بالظبط، وإلا اللي
+     تشوفه في المحرر يختلف عن اللي يتولّد على السيرفر. */
+  var SECTION_HEIGHT_MEDIA = {
+    mobile: { key: "section_height_mobile", query: "@media (max-width:480px)" },
+    tablet: { key: "section_height_tablet",
+              query: "@media (min-width:481px) and (max-width:960px)" },
+    desktop: { key: "section_height_desktop", query: "@media (min-width:961px)" }
+  };
+
+  function sectionHeightSpec() {
+    return SECTION_HEIGHT_MEDIA[state.device] || SECTION_HEIGHT_MEDIA.mobile;
+  }
+
+  /* ستايل الإطار بيتحقن جوّه إطار المعاينة مش في صفحة المحرر — الاتنين
+     مستندين مختلفين، و‎editor.css‎ مش بيوصل لجوّه. */
+  var BOUNDS_STYLE = [
+    ".lb-has-section-bounds{position:relative}",
+    ".lb-section-bounds{position:absolute;inset:0;z-index:40;",
+    "border:2px dashed rgba(197,160,90,.95);border-radius:6px;",
+    "pointer-events:none}",
+    ".lb-section-bounds__label{position:absolute;top:6px;left:6px;",
+    "background:rgba(20,16,12,.86);color:#f5e9d2;padding:2px 8px;",
+    "border-radius:999px;white-space:nowrap;direction:rtl;",
+    "font:500 11px/1.7 system-ui,-apple-system,'Segoe UI',sans-serif}",
+    ".lb-section-resize-handle{position:absolute;bottom:-11px;left:50%;",
+    "transform:translateX(-50%);width:66px;height:22px;border-radius:999px;",
+    "border:1px solid rgba(197,160,90,.95);background:#fff;color:#8a6a2f;",
+    "cursor:ns-resize;pointer-events:auto;padding:0;",
+    "box-shadow:0 2px 8px rgba(0,0,0,.18)}",
+    ".lb-section-resize-handle::before{content:'';display:block;margin:auto;",
+    "width:24px;height:2px;background:currentColor;border-radius:2px;",
+    "box-shadow:0 5px 0 currentColor}",
+    ".lb-section-resize-handle.is-dragging{background:#c5a05a;color:#fff}"
+  ].join("");
+
+  function ensureBoundsStyle(fdoc) {
+    if (fdoc.querySelector("style[data-lb-bounds-style]")) return;
+    var style = fdoc.createElement("style");
+    style.setAttribute("data-lb-bounds-style", "1");
+    style.textContent = BOUNDS_STYLE;
+    (fdoc.head || fdoc.documentElement).appendChild(style);
+  }
+
+  /* السحب لازم يبان لحظياً. القاعدة اللي السيرفر بيولّدها موجودة بس
+     بالقيمة المحفوظة، فبنكتب قاعدة مؤقتة بنفس الشكل بالظبط — نفس
+     المُعرّف المكرر (خصوصية أعلى من Tilda) ونفس التلات عناصر. */
+  function liveSectionHeight(fdoc, blockId, value) {
+    var style = fdoc.querySelector("style[data-lb-section-height]");
+    if (!style) {
+      style = fdoc.createElement("style");
+      style.setAttribute("data-lb-section-height", "1");
+      (fdoc.head || fdoc.documentElement).appendChild(style);
+    }
+    if (!value || value <= 0) { style.textContent = ""; return; }
+    var scope = "#" + blockId + "#" + blockId + " ";
+    var targets = [".t396__artboard", ".t396__filter", ".t396__carrier"]
+      .map(function (name) { return scope + name; }).join(",");
+    /* ‎!important‎ زي القاعدة اللي السيرفر بيولّدها بالظبط. من غيرها
+       القاعدة المستوردة ‎#imp-4 #recXXX .t396__artboard{height:...}‎ —
+       معرّفين + كلاس، نفس الخصوصية — بتكسب بالترتيب لأنها متطبوعة
+       بعدنا، فالسحب يغيّر الرقم واللافتة والشاشة ماتتحركش. */
+    style.textContent = sectionHeightSpec().query + "{" + targets +
+      "{height:" + value + "px!important}" +
+      "#" + blockId + "#" + blockId +
+      " .t396__artboard{overflow:visible!important}}";
+  }
+
+  function clearSectionBounds() {
+    var fdoc = frameDoc();
+    if (!fdoc) return;
+    if (typeof fdoc.__lbSectionBoundsCleanup === "function") {
+      fdoc.__lbSectionBoundsCleanup();
+      fdoc.__lbSectionBoundsCleanup = null;
+    }
+    fdoc.querySelectorAll("[data-lb-section-bounds]").forEach(function (node) {
+      node.remove();
+    });
+    fdoc.querySelectorAll(".lb-has-section-bounds").forEach(function (node) {
+      node.classList.remove("lb-has-section-bounds");
+    });
+    var live = fdoc.querySelector("style[data-lb-section-height]");
+    if (live) live.remove();
+  }
+
+  function applySectionBounds() {
+    clearSectionBounds();
+    if (!state.sectionBoundsBlock) return;
+    var fdoc = frameDoc();
+    var block = findBlock(state.sectionBoundsBlock);
+    if (!fdoc || !block) return;
+    var target = fdoc.querySelector('[data-block="' + block.id + '"]');
+    if (!target) return;
+
+    ensureBoundsStyle(fdoc);
+    target.classList.add("lb-has-section-bounds");
+    /* الارتفاع الحقيقي بتاع القسم المستورد على الـartboard مش على
+       الـ‎<section>‎، فبنقيس ونكتب عليه هو. */
+    var artboard = target.querySelector(".t396__artboard") || target;
+
+    var overlay = fdoc.createElement("div");
+    overlay.className = "lb-section-bounds";
+    overlay.setAttribute("data-lb-section-bounds", "1");
+    overlay.setAttribute("aria-hidden", "true");
+
+    var label = fdoc.createElement("span");
+    label.className = "lb-section-bounds__label";
+    label.textContent = "حدود القسم";
+    overlay.appendChild(label);
+
+    var handle = fdoc.createElement("button");
+    handle.type = "button";
+    handle.className = "lb-section-resize-handle";
+    handle.setAttribute("aria-label", "تغيير ارتفاع القسم");
+    handle.title = "اسحب لتكبير أو تصغير القسم";
+    overlay.appendChild(handle);
+    target.appendChild(overlay);
+
+    var startY = 0;
+    var startHeight = 0;
+    var resizing = false;
+
+    var docBody = fdoc.body;
+    var spec = sectionHeightSpec();
+    var deviceName = { mobile: "موبايل", tablet: "تابلت",
+                       desktop: "ديسكتوب" }[state.device] || state.device;
+    var setHeight = function (value) {
+      var next = Math.round(Math.max(120, Math.min(2400, value)) / 10) * 10;
+      block.style = block.style || {};
+      /* قيمة لكل مقاس: القالب المستورد بيحدد ارتفاع مختلف لكل مقاس،
+         ورقم واحد كان هيظبط مقاس ويكسر التانيين. */
+      block.style[spec.key] = next;
+      liveSectionHeight(fdoc, block.id, next);
+      label.textContent = "حدود القسم · " + deviceName + " · " + next + "px";
+    };
+    var stop = function (event) {
+      if (!resizing) return;
+      resizing = false;
+      if (event && handle.releasePointerCapture && handle.hasPointerCapture &&
+          handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+      handle.classList.remove("is-dragging");
+      if (docBody) docBody.style.userSelect = "";
+      markDirty();
+      requestPreview();
+    };
+    /* الرقم المعروض من أول لحظة: القيمة المحفوظة للمقاس ده، أو المقاس
+       الحقيقي لو لسه محدش سحب. من غير كده الإطار بيفتح بكلمة مجرّدة
+       والمستخدم مايعرفش هو واقف فين. */
+    (function () {
+      var stored = Number((block.style || {})[spec.key] || 0);
+      if (!stored) stored = Math.round(artboard.getBoundingClientRect().height);
+      if (stored > 0) {
+        label.textContent = "حدود القسم · " + deviceName + " · " + stored + "px";
+      }
+    })();
+
+    handle.addEventListener("pointerdown", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      resizing = true;
+      startY = event.clientY;
+      startHeight = artboard.getBoundingClientRect().height;
+      snapshot();
+      handle.classList.add("is-dragging");
+      if (docBody) docBody.style.userSelect = "none";
+      if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
+    });
+    handle.addEventListener("pointermove", function (event) {
+      if (!resizing) return;
+      event.preventDefault();
+      setHeight(startHeight + event.clientY - startY);
+    });
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+    handle.addEventListener("click", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    fdoc.__lbSectionBoundsCleanup = function () {
+      resizing = false;
+      if (docBody) docBody.style.userSelect = "";
+    };
+  }
+
+  function toggleSectionBounds(blockId) {
+    state.sectionBoundsBlock = state.sectionBoundsBlock === blockId ? null : blockId;
+    applySectionBounds();
+    renderInspector();
   }
 
   function renderInspector() {
@@ -1143,6 +1339,18 @@
     nameInput.addEventListener("change", renderBlockList);
     nameField.appendChild(nameInput);
     box.appendChild(nameField);
+
+    var boundsTools = el("div", "ed-section-bounds-tools");
+    var boundsBtn = el(
+      "button",
+      "ed-btn ed-btn--sm ed-btn--block",
+      state.sectionBoundsBlock === block.id ? "إخفاء حدود القسم" : "إظهار حدود القسم"
+    );
+    boundsBtn.type = "button";
+    boundsBtn.addEventListener("click", function () { toggleSectionBounds(block.id); });
+    boundsTools.appendChild(boundsBtn);
+    boundsTools.appendChild(el("small", "ed-hint", "أظهر الإطار ثم اسحب المقبض السفلي لتكبير القسم أو تصغيره."));
+    box.appendChild(boundsTools);
 
     if (spec.description) box.appendChild(el("p", "ed-hint", spec.description));
     if (!hasFeature(spec.feature)) {
@@ -3267,6 +3475,7 @@
     if (!fdoc) return;
     bindIntroDrag(fdoc);
     bindSectionTextDrag(fdoc);
+    applySectionBounds();
 
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
@@ -4573,6 +4782,9 @@
           b.classList.toggle("is-active", b === btn);
         });
         if (refs.device) refs.device.dataset.device = state.device;
+        /* الارتفاع محفوظ لكل مقاس على حدة، فالإطار لازم يعيد يبني
+           نفسه على مفتاح المقاس الجديد بدل ما يفضل على القديم. */
+        if (state.sectionBoundsBlock) applySectionBounds();
       });
     });
 

@@ -209,6 +209,23 @@ def style_fields() -> list[dict]:
               minimum=0, maximum=2000, step=100, unit="ms"),
         field("custom_class", "كلاس CSS إضافي", "text", "", group=g,
               help_text="للاستخدام المتقدم فقط"),
+        # قيم داخلية يغيّرها مقبض حدود القسم في المحرر فقط.
+        # واحدة لكل مقاس شاشة لأن قوالب Tilda بتكتب ارتفاع مختلف لكل
+        # مقاس؛ رقم واحد كان هيظبط مقاس ويكسر التانيين.
+        # صفر = سيب ارتفاع القالب الأصلي زي ما هو.
+        field("section_height_mobile", "ارتفاع القسم (موبايل)", "range", 0,
+              group=g, minimum=0, maximum=2400, step=10, unit="px",
+              editor_hidden=True),
+        field("section_height_tablet", "ارتفاع القسم (تابلت)", "range", 0,
+              group=g, minimum=0, maximum=2400, step=10, unit="px",
+              editor_hidden=True),
+        field("section_height_desktop", "ارتفاع القسم (ديسكتوب)", "range", 0,
+              group=g, minimum=0, maximum=2400, step=10, unit="px",
+              editor_hidden=True),
+        # الحقل القديم — كان بيتكتب ومحدش بيقراه. سايبينه عشان القيم
+        # المحفوظة ما تضيعش، والمولّد بيستعمله كقيمة احتياطية.
+        field("section_height", "ارتفاع القسم", "range", 0, group=g,
+              minimum=0, maximum=2400, step=10, unit="px", editor_hidden=True),
     ]
 
 

@@ -3,7 +3,7 @@
 <div class="lb-inner">
   {# ستايل مشترك بين أقسام مستوردة بيتطبع مرة واحدة في الرأس (‎renderer.shared_block_css‎) — ‎css_shared‎ معناها اتطبع خلاص. #}
   {% if props.css and not css_shared %}<style>{{ props.css|safe_css:block.id }}</style>{% endif %}
-  <div class="lb-custom"{% if props.countdown_date %} data-lb-imported-countdown-date="{{ props.countdown_date }}"{% endif %}>{{ props.html|safe_html:0 }}</div>
+  <div class="lb-custom"{% if style.bg_color %} style="background-color: {{ style.bg_color }} !important;"{% endif %}{% if props.countdown_date %} data-lb-imported-countdown-date="{{ props.countdown_date }}"{% endif %}>{{ props.html|safe_html:0 }}</div>
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">تنبيه: هذا القسم خارج الباقة لكنه مفعّل في الدعوة</div>{% endif %}
