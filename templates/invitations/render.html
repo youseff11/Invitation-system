@@ -48,10 +48,10 @@ html, body { margin: 0; min-height: 100%; }
 {% if render.font_css %}<style data-font-faces>{{ render.font_css }}</style>{% endif %}
 {% for font_url in render.font_preloads %}<link rel="preload" href="{{ font_url }}" as="font" crossorigin>{% endfor %}
 {% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
-{# ستايل الأقسام المستوردة: نسخة واحدة بدل نسخة مكررة مع كل قسم. #}
+<!-- {# ستايل الأقسام المستوردة: نسخة واحدة بدل نسخة مكررة مع كل قسم. #} -->
 {% if render.shared_css %}<style data-imported-css>{{ render.shared_css }}</style>{% endif %}
-{# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة
-   من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #}
+<!-- {# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة -->
+   <!-- من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #} -->
 {% if render.zero_css %}<style data-zero-block-css>{{ render.zero_css }}</style>{% endif %}
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="1">

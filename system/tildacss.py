@@ -307,8 +307,13 @@ def _media_query(screens: list[int], index: int) -> str:
     return "@media " + " and ".join(parts) if parts else ""
 
 
+@lru_cache(maxsize=64)
 def zero_block_css(block_id: str, html: str) -> str:
-    """CSS مواضع كل عناصر Tilda داخل بلوك واحد."""
+    """CSS مواضع كل عناصر Tilda داخل بلوك واحد.
+
+    متخزّنة في الذاكرة حسب (معرّف القسم، الـHTML) لأن تحليل قسم كامل
+    مكلّف والنص مابيتغيّرش بين الطلبات.
+    """
     if not html or "t396__artboard" not in html:
         return ""
     if not _SAFE_ID_RE.match(block_id or ""):
@@ -349,16 +354,11 @@ def zero_block_css(block_id: str, html: str) -> str:
     return "".join(out)
 
 
-@lru_cache(maxsize=256)
-def _cached(block_id: str, html: str) -> str:
-    return zero_block_css(block_id, html)
-
-
 def document_zero_css(blocks: list[dict]) -> str:
     """CSS المواضع لكل بلوكات المستند المستوردة من Tilda.
 
-    النتيجة متخزّنة في الذاكرة حسب (معرّف البلوك، الـHTML) لأن تحليل
-    قالب كامل ممكن يوصل لميجابايتات، والنص مابيتغيّرش بين الطلبات.
+    ملاحظة: العارض بينادي ``zero_block_css`` مباشرة على الـHTML **بعد**
+    ما يتعالج (محاذاة الخريطة مثلاً)، فالدالة دي للاستعمال العام بس.
     """
     parts = []
     for block in blocks or []:
@@ -367,5 +367,5 @@ def document_zero_css(blocks: list[dict]) -> str:
         html = str((block.get("props") or {}).get("html") or "")
         if "t396__artboard" not in html:
             continue
-        parts.append(_cached(str(block.get("id") or ""), html))
+        parts.append(zero_block_css(str(block.get("id") or ""), html))
     return "".join(parts)

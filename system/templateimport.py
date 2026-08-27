@@ -848,6 +848,60 @@ def _set_tag_attr(tag: str, name: str, value: str) -> str:
     return tag[:-1] + f' {name}="{value}"' + tag[-1:]
 
 
+# مقاسات Tilda الفرعية؛ الأكبر (1200) قيمته مخزّنة من غير لاحقة.
+_TILDA_SCREENS = (320, 480, 640, 960)
+
+
+def _field_at(tag: str, field: str, res: int | None) -> str:
+    """قيمة حقل Tilda عند مقاس معيّن، بنفس تسلسل ``t396_elem__getFieldValue``.
+
+    المقاس اللي مالوش قيمة بياخد قيمة أقرب مقاس **أكبر** منه، وآخر
+    واحد قيمته هي الأساسية من غير لاحقة.
+    """
+    if res is None:
+        names = [f"data-field-{field}-value"]
+    else:
+        names = [f"data-field-{field}-res-{res}-value"]
+        names += [f"data-field-{field}-res-{s}-value"
+                  for s in _TILDA_SCREENS if s > res]
+        names.append(f"data-field-{field}-value")
+    for name in names:
+        value = _tag_attr(tag, name)
+        if value:
+            return value
+    return ""
+
+
+def _field_name(field: str, res: int | None) -> str:
+    return (f"data-field-{field}-value" if res is None
+            else f"data-field-{field}-res-{res}-value")
+
+
+def _center_map_in_frame(map_tag: str, frame_tag: str) -> str:
+    """يوسّط الخريطة جوّه الإطار الزخرفي عند كل مقاس.
+
+    من غير ده الخريطة بتتلزق في الركن الشمال الأعلى للإطار: الكود كان
+    بينسخ ‎left/top‎ بتوع الإطار زي ما هي، فأول ما المستخدم يصغّر
+    الخريطة (٢٧٥ جوّه إطار ٣٤١) بيفضل ٦٦ بكسل فاضيين على جنب واحد.
+    الصح إن الفرق يتقسم على الجهتين.
+    """
+    for res in (*_TILDA_SCREENS, None):
+        try:
+            frame_left = float(_field_at(frame_tag, "left", res))
+            frame_top = float(_field_at(frame_tag, "top", res))
+            frame_w = float(_field_at(frame_tag, "width", res))
+            frame_h = float(_field_at(frame_tag, "height", res))
+            map_w = float(_field_at(map_tag, "width", res))
+            map_h = float(_field_at(map_tag, "height", res))
+        except (TypeError, ValueError):
+            continue
+        left = frame_left + (frame_w - map_w) / 2
+        top = frame_top + (frame_h - map_h) / 2
+        map_tag = _set_tag_attr(map_tag, _field_name("left", res), f"{left:g}")
+        map_tag = _set_tag_attr(map_tag, _field_name("top", res), f"{top:g}")
+    return map_tag
+
+
 def _align_embedded_map_element(html: str) -> str:
     """يضع عنصر خريطة Tilda فوق الإطار الزخرفي بدلاً من إحداثيات window العامة."""
     low = (html or "").lower()
@@ -939,6 +993,9 @@ def _align_embedded_map_element(html: str) -> str:
         else:
             style = (style.rstrip(";") + "; " if style.strip() else "") + declaration
         map_tag = _set_tag_attr(map_tag, "style", style)
+
+    # المقاسات اتثبّتت؛ دلوقتي بس نقدر نحسب التوسيط جوّه الإطار.
+    map_tag = _center_map_in_frame(map_tag, frame_tag)
 
     start, end = html_match.span()
     return html[:start] + map_tag + html[end:]

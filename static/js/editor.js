@@ -132,6 +132,45 @@
   function markDirty() {
     state.dirty = true;
     setSaveState("dirty", "تغييرات غير محفوظة");
+    scheduleAutosave();
+  }
+
+  // ------------------------------------------------------- الحفظ التلقائي
+  /* المستند بيتبعت كامل في كل حفظة، والقوالب المستوردة تقيلة — فالحفظ
+     بيستنى سكوت كامل بدل ما يترمي مع كل حرف أو مع كل بكسل في السلايدر.
+     السحب بيأجّله كمان: مافيش فايدة نحفظ نص حركة.
+     ‎save()‎ نفسها بترجّع فوراً لو في حفظة شغالة، فمفيش طلبين مع بعض. */
+  var AUTOSAVE_IDLE = 2500;      // ملّي ثانية سكوت قبل الحفظ
+  var AUTOSAVE_RETRY = 1200;     // إعادة محاولة لو لسه بنسحب أو بنحفظ
+  var autosaveTimer = null;
+  var autosaveOff = false;
+
+  function scheduleAutosave() {
+    if (autosaveOff || !META || !META.urls || !META.urls.save) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(runAutosave, AUTOSAVE_IDLE);
+  }
+
+  function runAutosave() {
+    autosaveTimer = null;
+    if (autosaveOff || !state.dirty) return;
+    // لسه بيسحب أو بيكتب أو في حفظة شغالة — نأجّل بدل ما نقاطعه
+    if (drag || state.saving || isTypingNow()) {
+      autosaveTimer = setTimeout(runAutosave, AUTOSAVE_RETRY);
+      return;
+    }
+    save(true).then(function (ok) {
+      // فشل الاتصال بيوقف التكرار: ‎save‎ عرضت الخطأ خلاص، ومحاولة كل
+      // ثانيتين هتفضل ترمي رسائل. زر «حفظ» اليدوي فاضل شغال.
+      if (!ok) autosaveOff = true;
+    });
+  }
+
+  function isTypingNow() {
+    var fdoc = frameDoc();
+    var active = fdoc && fdoc.activeElement;
+    return !!(active && active.getAttribute &&
+              active.getAttribute("contenteditable") === "true");
   }
 
   // ---------------------------------------------------------- التنبيهات
@@ -1754,12 +1793,13 @@
     [["→", -1, 0], ["←", 1, 0], ["↑", 0, -1], ["↓", 0, 1]].forEach(function (d) {
       var btn = el("button", "ed-btn ed-btn--sm", d[0]);
       btn.type = "button";
-      btn.title = "تحريك ربع خطوة";
+      var step = slotIsPx(state.selEl) ? 1 : 0.25;
+      btn.title = slotIsPx(state.selEl) ? "تحريك بكسل واحد" : "تحريك ربع خطوة";
       btn.addEventListener("click", function () {
         snapshot();
         var p2 = layoutOf(block, state.selEl);
-        p2.dx = Math.round(((p2.dx || 0) + d[1] * 0.25) * 100) / 100;
-        p2.dy = Math.round(((p2.dy || 0) + d[2] * 0.25) * 100) / 100;
+        p2.dx = Math.round(((p2.dx || 0) + d[1] * step) * 100) / 100;
+        p2.dy = Math.round(((p2.dy || 0) + d[2] * step) * 100) / 100;
         applySlotOffset(node, p2.dx, p2.dy);
         markDirty();
         renderInspector();
@@ -1776,8 +1816,10 @@
       renderInspector();
     });
     nudge.appendChild(reset);
+    var posUnit = slotIsPx(state.selEl) ? "px" : "٪";
     body.appendChild(ctrlRow(
-      "الموضع (" + (pos.dx || 0) + "٪ / " + (pos.dy || 0) + "٪)", nudge));
+      "الموضع (" + (pos.dx || 0) + posUnit + " / " + (pos.dy || 0) + posUnit + ")",
+      nudge));
 
     // ---- إضافة جوّه العنصر
     var isText = node.getAttribute("data-lb-text") === "1";
@@ -2489,6 +2531,18 @@
     var stage = fdoc.querySelector(".lb-stage");
     if (!stage) return;
 
+    /* إعادة بناء الـclass تحت كانت بتشيل ‎lb-stage--runtime‎ وأخواتها.
+       بدونها المسرح بيرجع لعرض كارت الدعوة (‎max-width‎) بدل عرض الشاشة
+       الكامل، فحسابات شبكة Tilda بتتغيّر وكل العناصر بتتزحزح — يعني
+       أول تحديث معاينة بعد أي تعديل كان بيخلّي المحرر يوري حاجة غير
+       اللي هتطلع في المعاينة العامة. */
+    var keptStageClasses = Array.prototype.filter.call(
+      stage.classList,
+      function (name) {
+        return name === "lb-stage--runtime" || name.indexOf("t-records") === 0;
+      }
+    ).join(" ");
+
     /* إعادة بناء الـHTML كانت بترجع iframe لأول الصفحة بعد إضافة نص/صورة.
        نحفظ موضع المستند والـstage ونرجّعهم بعد التحديث، عشان المستخدم
        يفضل ثابت في نفس المكان اللي كان واقف فيه. */
@@ -2511,6 +2565,7 @@
       fdoc.documentElement.setAttribute("dir", data.direction || "rtl");
 
       stage.className = "lb-stage" +
+        (keptStageClasses ? " " + keptStageClasses : "") +
         (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
         (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
     }
@@ -2563,6 +2618,20 @@
   var MAX_X = (SCHEMA.layout_max && SCHEMA.layout_max.x) || 1000;
   var MAX_Y = (SCHEMA.layout_max && SCHEMA.layout_max.y) || 1000;
   var SNAP = 1.2;          // cqw — قرب كده يلزق على الصفر
+  var SNAP_PX = 4;         // px — نفس الفكرة لعناصر القوالب المستوردة
+
+  /* عناصر القوالب المستوردة (خانة ‎el-N‎) عايشة جوّه شبكة Tilda الثابتة
+     بالبكسل، فإزاحتها لازم تتقاس بالبكسل. الإزاحة النسبية (cqw) بتتحسب
+     من عرض المسرح، والمسرح في المحرر إطار جهاز ضيّق وفي المعاينة عرض
+     الشاشة كله — فنفس الرقم كان بيطلع إزاحة مختلفة في الاتنين. الأقسام
+     العادية بتفضل نسبية زي ما هي عشان تتقاس مع الشاشة. */
+  var EL_SLOT_RE = /^el-\d{1,4}$/;
+
+  function slotUnit(slot) {
+    return EL_SLOT_RE.test(slot || "") ? "px" : "cqw";
+  }
+
+  function slotIsPx(slot) { return slotUnit(slot) === "px"; }
   var THRESHOLD = 4;       // px — أقل من كده تبقى ضغطة مش سحب
   var drag = null;
 
@@ -2573,8 +2642,9 @@
   }
 
   function applySlotOffset(node, dx, dy) {
-    node.style.setProperty("--dx", dx + "cqw");
-    node.style.setProperty("--dy", dy + "cqw");
+    var unit = slotUnit(node && node.getAttribute && node.getAttribute("data-move"));
+    node.style.setProperty("--dx", dx + unit);
+    node.style.setProperty("--dy", dy + unit);
   }
 
   function pruneLayout(block) {
@@ -2592,7 +2662,7 @@
     fdoc.querySelectorAll(".lb-guide, .lb-drag-badge").forEach(function (n) { n.remove(); });
   }
 
-  function showGuides(fdoc, node, snapX, snapY, dx, dy) {
+  function showGuides(fdoc, node, snapX, snapY, dx, dy, unit) {
     clearGuides();
     var r = node.getBoundingClientRect();
     if (snapX) {
@@ -2609,7 +2679,8 @@
     }
     var badge = fdoc.createElement("div");
     badge.className = "lb-drag-badge";
-    badge.textContent = dx.toFixed(1) + "% , " + dy.toFixed(1) + "%";
+    var suffix = unit === "px" ? "px" : "%";
+    badge.textContent = dx.toFixed(1) + suffix + " , " + dy.toFixed(1) + suffix;
     badge.style.left = Math.round(r.left + r.width / 2) + "px";
     badge.style.top = Math.max(6, Math.round(r.top - 30)) + "px";
     badge.style.transform = "translateX(-50%)";
@@ -2701,7 +2772,8 @@
         node: node, block: block, slot: slot, fdoc: fdoc,
         x0: e.clientX, y0: e.clientY,
         dx0: pos.dx || 0, dy0: pos.dy || 0,
-        unit: stageWidth(fdoc) / 100,
+        px: slotIsPx(slot),
+        unit: slotIsPx(slot) ? 1 : stageWidth(fdoc) / 100,
         moved: false, pointerId: e.pointerId
       };
       try { node.setPointerCapture(e.pointerId); } catch (err) {}
@@ -2726,7 +2798,8 @@
       var dx = drag.dx0 + (mx / drag.unit) * fine;
       var dy = drag.dy0 + (my / drag.unit) * fine;
 
-      var snapX = Math.abs(dx) < SNAP, snapY = Math.abs(dy) < SNAP;
+      var snap = drag.px ? SNAP_PX : SNAP;
+      var snapX = Math.abs(dx) < snap, snapY = Math.abs(dy) < snap;
       if (snapX) dx = 0;
       if (snapY) dy = 0;
       dx = Math.max(-MAX_X, Math.min(MAX_X, dx));
@@ -2735,7 +2808,8 @@
       drag.dx = Math.round(dx * 100) / 100;
       drag.dy = Math.round(dy * 100) / 100;
       applySlotOffset(node, drag.dx, drag.dy);
-      showGuides(drag.fdoc, node, snapX, snapY, drag.dx, drag.dy);
+      showGuides(drag.fdoc, node, snapX, snapY, drag.dx, drag.dy,
+                 drag.px ? "px" : "cqw");
       markSwapTarget(drag, e.clientX, e.clientY);
     });
 
@@ -2849,12 +2923,15 @@
       }
 
       // الأسهم: ربع خطوة، ومع Shift خطوة كاملة
+      // (وللعناصر المستوردة: بكسل، ومع Shift أربع بكسل)
       var ARROWS = { ArrowRight: [-1, 0], ArrowLeft: [1, 0],
                      ArrowUp: [0, -1], ArrowDown: [0, 1] };
       var dir = ARROWS[e.key];
       if (dir) {
         e.preventDefault();
-        var step = e.shiftKey ? 1 : 0.25;
+        var step = slotIsPx(state.selEl)
+          ? (e.shiftKey ? 4 : 1)
+          : (e.shiftKey ? 1 : 0.25);
         snapshot();
         var pos = layoutOf(block, state.selEl);
         pos.dx = Math.round(((pos.dx || 0) + dir[0] * step) * 100) / 100;
@@ -4254,8 +4331,8 @@
       });
   }
 
-  // الحفظ يدوي فقط: زر «حفظ» أو Ctrl+S.
-  // تحديث المعاينة يظل تلقائياً عند تغيير الحقول أو الأصول.
+  // الحفظ تلقائي بعد سكوت قصير (شوف scheduleAutosave فوق)، وزر «حفظ»
+  // وCtrl+S فاضلين للحفظ الفوري. تحديث المعاينة تلقائي زي ما هو.
 
   // ==========================================================
   // حفظ كقالب

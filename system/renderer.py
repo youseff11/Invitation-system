@@ -427,6 +427,8 @@ def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# نفس نمط ‎blocks._EL_SLOT‎ — خانة عنصر جوّه قالب مستورد
+_EL_SLOT = re.compile(r"^el-\d{1,4}$")
 
 
 def layout_css(blocks: list[dict]) -> str:
@@ -448,8 +450,14 @@ def layout_css(blocks: list[dict]) -> str:
             dx, dy = pos.get("dx") or 0, pos.get("dy") or 0
             if not dx and not dy:
                 continue
+            # عناصر القوالب المستوردة (‎el-N‎) عايشة جوّه شبكة Tilda
+            # الثابتة بالبكسل. لو إزاحتها اتقاست بنسبة من عرض المسرح،
+            # نفس الرقم بيطلع إزاحة مختلفة في المحرر (إطار جهاز ضيّق)
+            # وفي المعاينة (عرض الشاشة كله) — وده بالظبط سبب «شكل في
+            # المحرر وشكل تاني في المعاينة». البكسل بيتطابق في الاتنين.
+            unit = "px" if _EL_SLOT.match(slot) else "cqw"
             rules.append(
-                f'#{bid} [data-move="{slot}"]{{--dx:{dx}cqw;--dy:{dy}cqw}}'
+                f'#{bid} [data-move="{slot}"]{{--dx:{dx}{unit};--dy:{dy}{unit}}}'
             )
     # آمن بحكم البناء: المعرّفات متحققة بـ_SAFE_ID والأرقام float،
     # فمفيش أي مدخل من المستخدم بيوصل للناتج كنص حر.
@@ -654,6 +662,10 @@ def render_document(
         shared_css, shared_css_ids = "", set()
     else:
         shared_css, shared_css_ids = shared_block_css(doc["blocks"])
+    # مواضع Tilda بتتحسب من الـHTML **بعد** المعالجة (محاذاة الخريطة
+    # بتغيّر left/top)، وإلا أول رسمة تحط الخريطة في مكان والـruntime
+    # ينقلها بعدها.
+    zero_css_parts: list[str] = []
 
     for block in doc["blocks"]:
         spec = blocks_engine.BLOCK_REGISTRY.get(block["type"])
@@ -679,6 +691,9 @@ def render_document(
             # أصلح النسخ القديمة التي حُفظت قبل محاذاة iframe الخريطة.
             from .templateimport import _align_embedded_map_element
             resolved_props["html"] = _align_embedded_map_element(resolved_props["html"])
+        if isinstance(resolved_props.get("html"), str):
+            zero_css_parts.append(tildacss.zero_block_css(
+                str(block.get("id") or ""), resolved_props["html"]))
         ctx = {
             "block": block,
             "props": resolved_props,
@@ -736,7 +751,7 @@ def render_document(
         "shared_css": mark_safe(shared_css),
         # مواضع عناصر Tilda Zero محسوبة على السيرفر — من غيرها الصفحة
         # بتفضل مكسورة لحد ما runtime القالب يخلص تحميل.
-        "zero_css": mark_safe(tildacss.document_zero_css(doc["blocks"])),
+        "zero_css": mark_safe("".join(zero_css_parts)),
         "theme": theme,
         "settings": doc_settings,
         "data": data,
@@ -764,7 +779,7 @@ _PREVIEW_KEYS = (
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-27-tilda-zero-css-shared-v2"
+_PREVIEW_RENDER_REVISION = "2026-08-27-map-center-px-offsets-v3"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

@@ -7,7 +7,8 @@
 from django.test import SimpleTestCase
 
 from system import tildacss
-from system.renderer import shared_block_css
+from system.renderer import layout_css, shared_block_css
+from system import templateimport
 
 
 # artboard حقيقي من قالب Blossom & Oud — تلات عناصر بأنواع مختلفة.
@@ -227,3 +228,84 @@ class SharedBlockCssTests(SimpleTestCase):
         css, ids = shared_block_css(blocks)
         self.assertNotIn("color:blue", css)
         self.assertEqual(ids, {"imp-1", "imp-2"})
+
+
+class MapFrameAlignmentTests(SimpleTestCase):
+    """توسيط خريطة Google جوّه الإطار الزخرفي بتاعها."""
+
+    FRAME = (
+        '<div class="t396__elem tn-elem" data-elem-type="image" '
+        'data-field-left-value="430" data-field-top-value="2" '
+        'data-field-width-value="341" data-field-height-value="341" '
+        'data-field-left-res-320-value="-10" '
+        'data-field-left-res-480-value="70">'
+    )
+    MAP = (
+        '<div class="t396__elem tn-elem" data-elem-type="html" '
+        'data-lb-map-width="275" data-lb-map-height="278" '
+        'data-field-left-value="430" data-field-top-value="2" '
+        'data-field-width-value="275" data-field-height-value="278" '
+        'data-field-width-res-320-value="275" '
+        'data-field-height-res-320-value="278" '
+        'data-field-left-res-320-value="-10">'
+    )
+
+    def test_map_is_centred_not_pinned_to_the_corner(self):
+        """الخريطة أصغر من الإطار، فالفرق لازم يتقسم على الجهتين.
+
+        قبل كده الكود كان بينسخ ‎left/top‎ بتوع الإطار زي ما هي، فالخريطة
+        كانت بتتلزق في الركن وتسيب ٦٦ بكسل فاضيين على جنب واحد.
+        """
+        out = templateimport._center_map_in_frame(self.MAP, self.FRAME)
+        # (341 - 275) / 2 = 33   و  (341 - 278) / 2 = 31.5
+        self.assertEqual(templateimport._tag_attr(out, "data-field-left-value"), "463")
+        self.assertEqual(templateimport._tag_attr(out, "data-field-top-value"), "33.5")
+
+    def test_centring_applies_to_every_breakpoint(self):
+        out = templateimport._center_map_in_frame(self.MAP, self.FRAME)
+        # -10 + 33 = 23
+        self.assertEqual(
+            templateimport._tag_attr(out, "data-field-left-res-320-value"), "23")
+
+    def test_same_size_map_keeps_the_frame_position(self):
+        """خريطة بمقاس الإطار مالهاش إزاحة — التوسيط مايحركهاش."""
+        same = self.MAP.replace(
+            'data-field-width-value="275"', 'data-field-width-value="341"'
+        ).replace('data-field-height-value="278"', 'data-field-height-value="341"')
+        out = templateimport._center_map_in_frame(same, self.FRAME)
+        self.assertEqual(templateimport._tag_attr(out, "data-field-left-value"), "430")
+        self.assertEqual(templateimport._tag_attr(out, "data-field-top-value"), "2")
+
+    def test_field_lookup_falls_back_to_a_larger_screen(self):
+        tag = ('<div data-field-left-value="430" '
+               'data-field-left-res-960-value="310">')
+        self.assertEqual(templateimport._field_at(tag, "left", 640), "310")
+        self.assertEqual(templateimport._field_at(tag, "left", None), "430")
+
+
+class LayoutOffsetUnitTests(SimpleTestCase):
+    """وحدة إزاحة العناصر: بكسل للمستورد، نسبة للأقسام العادية."""
+
+    def test_imported_element_offset_is_in_pixels(self):
+        """‎cqw‎ بتتحسب من عرض المسرح، والمسرح في المحرر إطار جهاز وفي
+
+        المعاينة عرض الشاشة — فنفس الرقم كان بيطلع إزاحة مختلفة في
+        الاتنين. عناصر Tilda مواضعها بالبكسل أصلاً.
+        """
+        css = layout_css([
+            {"id": "imp-5", "layout": {"el-9": {"dx": 4.71, "dy": 3.64}}},
+        ])
+        self.assertIn('--dx:4.71px;--dy:3.64px', css)
+        self.assertNotIn("cqw", css)
+
+    def test_regular_slot_stays_relative(self):
+        css = layout_css([
+            {"id": "blk-2", "layout": {"title": {"dx": 4.71, "dy": 3.64}}},
+        ])
+        self.assertIn('--dx:4.71cqw;--dy:3.64cqw', css)
+
+    def test_unsafe_ids_are_dropped(self):
+        css = layout_css([
+            {"id": 'x" onload="', "layout": {"el-1": {"dx": 5, "dy": 0}}},
+        ])
+        self.assertEqual(css, "")
