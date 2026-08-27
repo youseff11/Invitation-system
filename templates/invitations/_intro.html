@@ -33,13 +33,21 @@
     بيبقى النص نفسه بدل الوصف العام،
     عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
   {% endcomment %}
+    {% if render.settings.intro_play_mode == 'button' %}
   <button type="button" data-intro-play data-intro-item="play"
-          class="lb-intro-play{% if render.settings.intro_play_label %} lb-intro-play--label{% endif %}{% if render.settings.intro_play_mode == 'button' %} lb-intro-play--no-effects{% endif %}"
+          class="lb-intro-play lb-intro-play--plain"
+          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}"
+          style="{{ render.intro_item_styles.play }}">{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}</button>
+  {% else %}
+  <button type="button" data-intro-play data-intro-item="play"
+          class="lb-intro-play{% if render.settings.intro_play_label %} lb-intro-play--label{% endif %}"
           aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}"
           style="{{ render.intro_item_styles.play }}">
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2Z"/></svg>
     {% if render.settings.intro_play_label %}<span class="lb-intro-play-text">{{ render.settings.intro_play_label }}</span>{% endif %}
   </button>
+  {% endif %}
+
   {% else %}
   <video class="lb-intro-video" data-intro-video
          data-intro-audio="{{ render.settings.intro_video_audio }}"

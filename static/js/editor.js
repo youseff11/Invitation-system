@@ -2396,20 +2396,17 @@
      الافتتاحية أخت لـ.lb-stage مش جواه، فتبديل الـstage لوحده كان
      بيسيبها زي ما هي — يعني تغيّر نص الافتتاحية أو صورتها وماتشوفش
      أي فرق غير لما تقفل المحرر وتفتحه تاني. */
-  function applyIntroOptionLocally(key, value) {
+    function applyIntroOptionLocally(key, value) {
+    // الوضعان اليدويان لم يعودا مجرد class: وضع button يعرض نصاً فقط،
+    // بينما button_effects يعرض markup مختلفاً بأيقونة وتأثيرات. لذلك نطلب
+    // HTML الافتتاحية الجديد فوراً حتى يعمل التبديل في الاتجاهين من أول مرة.
+    if (key === "intro_play_mode") return false;
+
     var fdoc = frameDoc();
     if (!fdoc) return false;
     var play = fdoc.querySelector("[data-intro-play]");
     if (!play) return false;
-        if (key === "intro_play_mode") {
-      // الانتقال بين الزرين اليدويين لا يحتاج إعادة بناء iframe؛ أما
-      // التشغيل التلقائي فيحتاج HTML جديداً لأنه يلغي زر التشغيل تماماً.
-      if (value === "button" || value === "button_effects") {
-        play.classList.toggle("lb-intro-play--no-effects", value === "button");
-        return true;
-      }
-      return false;
-    }
+
     if (key === "intro_play_color") {
 
       play.style.setProperty("--intro-item-color", String(value || ""));

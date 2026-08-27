@@ -1197,10 +1197,15 @@
   backdrop-filter: blur(4px); cursor: pointer;
   transition: none;
 }
+.lb-intro-play--plain,
+.lb-intro-play--plain:hover,
+.lb-intro-play--plain:focus,
+.lb-intro-play--plain:active,
 .lb-intro-play--no-effects,
 .lb-intro-play--no-effects:hover,
 .lb-intro-play--no-effects:focus,
 .lb-intro-play--no-effects:active {
+
   animation: none !important;
   transition: none !important;
   /* لا نلغي transform الأساسي؛ فهو يحمل إزاحة السحب المحفوظة.
@@ -1208,6 +1213,17 @@
   transform: translate(var(--intro-item-x, 0vw), var(--intro-item-y, 0vh)) !important;
   box-shadow: none !important;
   filter: none !important;
+}
+.lb-intro-play--plain {
+  inline-size: fit-content; block-size: fit-content;
+  max-inline-size: min(88vw, 520px); padding: 5px 9px;
+  border: 0; border-radius: 0; background: transparent;
+  box-shadow: none; backdrop-filter: none; appearance: none;
+  display: inline-block; color: var(--intro-item-color, #fff);
+  text-align: center; white-space: normal; cursor: pointer;
+}
+.lb-intro-play--plain:focus-visible {
+  outline: 1px dashed currentColor; outline-offset: 4px;
 }
 
 .lb-intro-play svg { inline-size: 34px; block-size: 34px; margin-inline-start: 5px; }

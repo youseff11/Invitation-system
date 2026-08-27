@@ -2259,11 +2259,14 @@ class IntroPlayButtonTests(BaseAppTest):
         self.inv.save(update_fields=["document"])
         return self.client.get(self.inv.get_absolute_url()).content.decode()
 
-    def test_button_mode_shows_a_play_button_without_effects(self):
-        body = self._render(intro_play_mode="button")
+    def test_button_mode_shows_plain_text_without_effects(self):
+        body = self._render(intro_play_mode="button", intro_play_label="افتح الدعوة")
         self.assertIn("data-intro-play", body)
         self.assertIn("data-intro-manual", body)
-        self.assertIn("lb-intro-play--no-effects", body)
+        self.assertIn("lb-intro-play--plain", body)
+        tag = body[body.index("data-intro-play"):body.index("</button>", body.index("data-intro-play"))]
+        self.assertIn("افتح الدعوة", tag)
+        self.assertNotIn("<svg", tag)
 
     def test_button_mode_does_not_autoplay(self):
         body = self._render(intro_play_mode="button")
