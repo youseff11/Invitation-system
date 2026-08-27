@@ -3378,8 +3378,23 @@
     return true;
   }
 
+    function isImportedCountdownPart(n) {
+    var root = n && n.closest ? n.closest(".lb-custom") : null;
+    if (!root) return false;
+    var current = n;
+    while (current && current !== root) {
+      var marker = ((current.id || "") + " " + (current.className || ""));
+      if (/(countdown|time-block|number-wrap|section-countdown|\bcd-(?:num|days?|hours?|mins?|minutes?|secs?|seconds?)\b)/i.test(marker)) {
+        return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
+  }
+
     function isTextUnit(n) {
 
+    if (isImportedCountdownPart(n)) return false;
     if (!TEXTY[n.tagName]) return false;
 
     if (!(n.textContent || "").trim()) return false;
@@ -3393,8 +3408,8 @@
 
     function isCountdownLabel(n) {
     if (!n || !n.classList || !n.classList.contains("label")) return false;
-    if (!n.closest || !n.closest("#countdownContainer, .countdown-container")) return false;
-    return !(n.textContent || "").trim() || !n.querySelector("img,video,iframe,input,textarea,select");
+    return isImportedCountdownPart(n) &&
+      (!(n.textContent || "").trim() || !n.querySelector("img,video,iframe,input,textarea,select"));
   }
 
   /** العناصر اللي نسمح بسحبها — أي حاجة ليها حجم حقيقي. */
@@ -3449,6 +3464,29 @@
     }
   }
 
+  function openImportedCountdownSettings(blockId) {
+    state.selEl = null;
+    state.fromPreview = true;
+    if (state.selected !== blockId) selectBlock(blockId);
+    else renderInspector();
+    state.fromPreview = false;
+    var box = refs.inspector;
+    if (!box) return;
+    var group = Array.prototype.find.call(box.querySelectorAll("details.ed-group"), function (item) {
+      var summary = item.querySelector("summary");
+      return /إعدادات العداد|countdown/i.test(summary ? summary.textContent : "");
+    });
+    if (group) {
+      group.open = true;
+      var input = group.querySelector('[data-field-key="countdown_date"]');
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ block: "nearest" });
+      }
+    }
+    toast("اختَر تاريخ ووقت العدّاد من إعدادات العداد.", "ok");
+  }
+
   function delegatedCustomTextWriteBack(node) {
     var section = node && node.closest('[data-block-type="custom_html"]');
     if (!section) return;
@@ -3463,6 +3501,16 @@
     if (!fdoc || fdoc.__lbDelegatedTextEditing) return;
     fdoc.__lbDelegatedTextEditing = true;
     fdoc.addEventListener("dblclick", function (e) {
+      var countdownPart = e.target && e.target.closest && e.target.closest(".lb-custom [data-move]");
+      if (countdownPart && isImportedCountdownPart(countdownPart)) {
+        var countdownSection = countdownPart.closest('[data-block-type="custom_html"]');
+        if (countdownSection) {
+          openImportedCountdownSettings(countdownSection.getAttribute("data-block"));
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
             var node = e.target && e.target.closest && e.target.closest("[data-lb-text]");
       if (!node) {
         var atom = e.target && e.target.closest && e.target.closest(".lb-custom .tn-atom");
@@ -3591,6 +3639,10 @@
         var pick = function (e) {
           if (e) e.stopPropagation();
           state.selEl = n.getAttribute("data-move");
+          if (isImportedCountdownPart(n)) {
+            openImportedCountdownSettings(blockId);
+            return;
+          }
           state.fromPreview = true;
           if (state.selected !== blockId) selectBlock(blockId);
           else renderInspector();
