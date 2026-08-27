@@ -829,7 +829,8 @@
 /* ---------------------------------------------------------- الموسيقى */
 .lb-music {
   position: fixed;
-  inset-block-end: 18px;
+  inset-block-end: calc(18px + env(safe-area-inset-bottom, 0px));
+
   inset-inline-end: 18px;
   z-index: 60;
   width: 48px;
@@ -865,25 +866,28 @@
   background: color-mix(in srgb, var(--surface) 97%, transparent);
   backdrop-filter: blur(10px);
   border-block-start: 1px solid var(--border);
-  padding-block: 10px;
-  padding-block-end: calc(10px + env(safe-area-inset-bottom, 0px));
-  padding-inline: 16px;
+    padding-block: 5px;
+  padding-block-end: calc(5px + env(safe-area-inset-bottom, 0px));
+  padding-inline: 12px;
+
 }
 .lb-cta-inner {
   max-width: var(--max-width);
   margin-inline: auto;
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
+    gap: 8px; flex-wrap: nowrap;
 }
 .lb-cta-text {
-  margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5;
+  margin: 0; font-size: 12px; color: var(--muted); line-height: 1.25;
+
   /* الاسم ماينفعش يمدّ الشريط لبره الشاشة */
   min-width: 0; overflow-wrap: anywhere;
 }
 .lb-cta-name { color: var(--text); font-family: var(--font-heading); }
 .lb-cta-links { display: flex; gap: 9px; flex-shrink: 0; }
 .lb-cta-btn {
-  width: 42px; height: 42px;
+  width: 36px; height: 36px;
+
   display: grid; place-items: center;
   border-radius: 50%; color: #fff;
   text-decoration: none;
@@ -895,9 +899,16 @@
 .lb-cta-btn--fb { background: #1877f2; }
 /* الشريط بيغطّي آخر الصفحة — بنزوّد مسافة تحت عشان التوقيع ما يختفيش */
 .lb-doc:has(.lb-cta) .lb-stage { padding-block-end: 74px; }
-/* زر الموسيقى والتمرير فوق الشريط مش تحته */
+/* أزرار التحكم فوق الشريط بمسافة آمنة، مع احترام شريط إيماءات الهاتف */
 .lb-doc:has(.lb-cta) .lb-music,
-.lb-doc:has(.lb-cta) .lb-autoscroll { inset-block-end: 78px; }
+.lb-doc:has(.lb-cta) .lb-autoscroll {
+  inset-block-end: calc(66px + env(safe-area-inset-bottom, 0px));
+}
+/* رفع زر افتتاحية الفيديو فوق الشريط إذا كان ظاهراً في نفس الشاشة */
+.lb-doc:has(.lb-cta) .lb-intro-play {
+  translate: 0 calc(-1 * (66px + env(safe-area-inset-bottom, 0px)));
+}
+
 @media print { .lb-cta { display: none !important; } }
 
 /* ------------------------------------------- زر التمرير التلقائي */
