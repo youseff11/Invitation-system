@@ -56,7 +56,86 @@
     setInterval(tick, 1000);
   }
 
+    // عدادات القوالب المستوردة: تعمل حتى لو كان سكربت القالب الأصلي خارجياً
+  // أو لا يطابق بنية [data-countdown] الخاصة بالمنصة.
+  function initImportedCountdowns() {
+    var roots = $$(".lb-custom[data-lb-imported-countdown-date]");
+    if (window.__lbImportedCountdownTimer) {
+      window.clearInterval(window.__lbImportedCountdownTimer);
+      window.__lbImportedCountdownTimer = null;
+    }
+    (window.__lbImportedCountdownObservers || []).forEach(function (observer) {
+      if (observer && observer.disconnect) observer.disconnect();
+    });
+    window.__lbImportedCountdownObservers = [];
+    if (!roots.length) return;
+
+    function findSlot(root, key) {
+      var aliases = {
+        days: ["days", "day"],
+        hours: ["hours", "hour"],
+        minutes: ["minutes", "minute", "mins", "min"],
+        seconds: ["seconds", "second", "secs", "sec"]
+      }[key] || [key];
+      for (var i = 0; i < aliases.length; i++) {
+        var name = aliases[i];
+        var selectors = [
+          ".cd-" + name, "#cd-" + name,
+          '[data-cd="' + name + '"]',
+          '[id$="-' + name + '"]',
+          '[class~="' + name + '"]'
+        ];
+        for (var j = 0; j < selectors.length; j++) {
+          var found = root.querySelector(selectors[j]);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function numberNode(slot) {
+      if (!slot) return null;
+      if (slot.classList.contains("cd-num")) return slot;
+      return slot.querySelector(".cd-num, .cd-number, .number, [data-cd-number]") || slot;
+    }
+
+    function tick() {
+      var now = Date.now();
+      roots.forEach(function (root) {
+        var target = new Date(root.getAttribute("data-lb-imported-countdown-date") || "").getTime();
+        if (isNaN(target)) return;
+        var diff = Math.max(0, target - now);
+        var total = Math.floor(diff / 1000);
+        var parts = {
+          days: Math.floor(total / 86400),
+          hours: Math.floor((total % 86400) / 3600),
+          minutes: Math.floor((total % 3600) / 60),
+          seconds: total % 60
+        };
+        Object.keys(parts).forEach(function (key) {
+          var node = numberNode(findSlot(root, key));
+          if (node) {
+            var next = pad(parts[key]);
+            if (node.textContent !== next) node.textContent = next;
+          }
+        });
+        root.classList.toggle("is-done", diff <= 0);
+      });
+    }
+
+    tick();
+    window.__lbImportedCountdownTimer = window.setInterval(tick, 1000);
+    if (window.MutationObserver) {
+      roots.forEach(function (root) {
+        var observer = new MutationObserver(function () { tick(); });
+        observer.observe(root, { subtree: true, childList: true, characterData: true });
+        window.__lbImportedCountdownObservers.push(observer);
+      });
+    }
+  }
+
   // ---------------------------------------------------------- الحركات
+
   function initAnimations() {
     var nodes = $$(".lb-anim");
     if (!nodes.length) return;
@@ -894,6 +973,7 @@
     revealWhenReady();
     var initializers = [
       [initCountdowns, "countdown"],
+      [initImportedCountdowns, "imported-countdown"],
       [initAnimations, "animations"],
       [initScrollLinks, "scroll-links"],
       [initShare, "share"],
@@ -920,8 +1000,10 @@
 
   // إعادة التهيئة بعد تحديث المعاينة داخل المحرر
   window.__lbRefresh = function () {
-    initCountdowns();
+        initCountdowns();
+    initImportedCountdowns();
         initVideo();
+
     initImportedMedia();
     initMusic();
     // المحرر بيستبدل عقدة .lb-intro لما تعدّل إعداداتها — العقدة

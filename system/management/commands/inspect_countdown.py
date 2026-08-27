@@ -72,7 +72,13 @@ class Command(BaseCommand):
 
             # ٢) هل المحرر الحالي هيلاقيه؟
             current_ui = re.search(
-                r"countdowncontainer|time-block|number-wrap", html, re.I)
+                r"countdowncontainer|countdown[-_ ]?(?:grid|wrapper|container|heading|sub)|"
+                r"section-countdown|time-block|number-wrap|"
+                r"(?:^|[\s\"'_-])cd-(?:days?|hours?|mins?|minutes?|secs?|seconds?)"
+                r"(?:$|[\s\"'_-])",
+                html,
+                re.I,
+            )
             self.stdout.write(
                 ("المحرر الحالي بيلاقيه: نعم" if current_ui else
                  self.style.ERROR("المحرر الحالي بيلاقيه: لأ ← الخانة "

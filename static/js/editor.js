@@ -1184,7 +1184,7 @@
       /* custom_html عنده الآن إضافة نص/صورة من داخل العنصر المحدد.
          لذلك نخفي مجموعة text_overlays القديمة فقط من هذا النوع،
          ونترك مجموعة التنسيق العامة الخاصة بالقسم كما هي. */
-            var hasImportedCountdown = /countdowncontainer|time-block|number-wrap/i.test(
+            var hasImportedCountdown = /countdowncontainer|countdown[-_ ]?(?:grid|wrapper|container|heading|sub)|section-countdown|time-block|number-wrap|(?:^|[\s"'_-])cd-(?:days?|hours?|mins?|minutes?|secs?|seconds?)(?:$|[\s"'_-])/i.test(
         String((block.props || {}).html || "")
       );
       var advancedProps = spec.props.filter(function (s) {

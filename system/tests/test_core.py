@@ -1579,7 +1579,7 @@ class EmptyImportTests(TestCase):
         self.assertGreaterEqual(len(document["blocks"]), 1)
         self.assertEqual(len(scripts), 1)
         self.assertTrue(scripts[0]["src"].startswith("/media/"))
-        self.assertEqual(root_attrs, {})
+        self.assertEqual(root_attrs, {"data-lb-spa": "true"})
 
     def test_nothing_is_saved_when_the_page_is_empty(self):
         before = Template.objects.count()
