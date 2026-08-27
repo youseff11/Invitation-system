@@ -33,6 +33,7 @@
 import io
 import json
 import os
+import re
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.management.base import BaseCommand
@@ -90,6 +91,26 @@ def _shrink_image(data: bytes, name: str):
     return best, width, height
 
 
+_MEDIA_URL_RE = re.compile(r'/media/[^\s"\'\\)]+')
+
+
+def _referenced_urls() -> set[str]:
+    """كل روابط الميديا اللي فيه مستند بيشاور عليها فعلاً.
+
+    الأصول اللي محدش بيستعملها (بقايا استيرادات قديمة أو نسخ مكررة)
+    مالهاش أي أثر على وزن الدعوة، وضغطها بياكل من ثواني المعالج على
+    الفاضي — خصوصاً على استضافة بتحسبها.
+    """
+    urls: set[str] = set()
+    for model in (Template, Invitation):
+        for row in model.objects.only("document").iterator():
+            document = row.document
+            if isinstance(document, dict):
+                urls.update(_MEDIA_URL_RE.findall(
+                    json.dumps(document, ensure_ascii=False)))
+    return urls
+
+
 def _rewrite_urls(mapping: dict[str, str]) -> int:
     """يبدّل الروابط القديمة بالجديدة جوّه كل المستندات المخزّنة."""
     touched = 0
@@ -126,6 +147,11 @@ class Command(BaseCommand):
                             help="اشتغل على العدد ده من الملفات وقف.")
         parser.add_argument("--kind", choices=["image", "video"], default="",
                             help="نوع واحد بس.")
+        parser.add_argument("--all", action="store_true",
+                            help="اشتغل على الأصول غير المستخدمة كمان.")
+        parser.add_argument("--prune-missing", action="store_true",
+                            help="امسح صفوف الأصول اللي ملفاتها مش موجودة "
+                                 "على القرص ومحدش بيستعملها.")
 
     def handle(self, *args, **options):
         apply_changes = options["apply"]
@@ -137,9 +163,14 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(
                 "ffmpeg مش موجود — الفيديوهات هتتخطّى."))
 
+        used = _referenced_urls()
+        self.stdout.write(f"روابط مستعملة في المستندات: {len(used)}")
+
         before_total = after_total = 0
-        done = 0
+        done = skipped_unused = missing = 0
+        missing_ids: list[int] = []
         url_map: dict[str, str] = {}
+        seen_sizes: dict[tuple, int] = {}
 
         queryset = Asset.objects.filter(kind__in=kinds).order_by("-size_bytes")
         for asset in queryset.iterator():
@@ -151,11 +182,20 @@ class Command(BaseCommand):
             ext = os.path.splitext(name)[1].lower()
             if ext in SKIP_EXT:
                 continue
+            if not options["all"] and asset.url not in used:
+                skipped_unused += 1
+                continue
 
             try:
                 asset.file.open("rb")
                 data = asset.file.read()
                 asset.file.close()
+            except FileNotFoundError:
+                # صف في قاعدة البيانات وملفه مش على القرص — بقايا
+                # استيراد قديم. بنعدّه ونكمّل بدل ما نغرق الشاشة.
+                missing += 1
+                missing_ids.append(asset.pk)
+                continue
             except Exception as exc:
                 self.stdout.write(self.style.ERROR(
                     f"تعذّرت قراءة {name}: {type(exc).__name__}"))
@@ -236,6 +276,23 @@ class Command(BaseCommand):
 
             if asset.url and old_url and asset.url != old_url:
                 url_map[old_url] = asset.url
+
+        if skipped_unused:
+            self.stdout.write(self.style.WARNING(
+                f"اتخطّينا {skipped_unused} أصل محدش بيستعمله "
+                "(ضيف ‎--all‎ لو عايزهم)."))
+        if missing:
+            prune_now = options["prune_missing"] and apply_changes
+            if prune_now:
+                note = " — اتمسحوا."
+            elif options["prune_missing"]:
+                note = " — هيتمسحوا مع ‎--apply‎."
+            else:
+                note = " (ضيف ‎--prune-missing --apply‎ لمسحهم)."
+            self.stdout.write(self.style.WARNING(
+                f"{missing} صف ملفه مش موجود على القرص" + note))
+            if prune_now:
+                Asset.objects.filter(pk__in=missing_ids).delete()
 
         if not done:
             self.stdout.write(self.style.SUCCESS(
