@@ -331,8 +331,14 @@ def template_demo(request, slug):
         "page_description": template.description,
         "share_image": "",
         "canonical_url": "",
-        "music_config": {},
+        "music_config": {
+            "url": result["settings"].get("music_url") or "",
+            "autoplay": bool(result["settings"].get("music_autoplay")),
+            "loop": bool(result["settings"].get("music_loop")),
+            "player": result["settings"].get("music_player") or "floating",
+        },
         "scroll_config": _scroll_config(result["settings"]),
+
         "cta": _preview_cta(template),
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
