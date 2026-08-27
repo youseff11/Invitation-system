@@ -91,7 +91,20 @@ def _shrink_image(data: bytes, name: str):
     return best, width, height
 
 
-_MEDIA_URL_RE = re.compile(r'/media/[^\s"\'\\)]+')
+_MEDIA_URL_RE = re.compile(r'/media/[^\s"\'\\)<>]+')
+# الـHTML المخزّن بيقفل الرابط بـ&quot; مش بعلامة تنصيص عادية، والـregex
+# بيبلعها. لازم نشيلها وإلا الرابط يبان مكسور وهو سليم.
+_URL_TAIL_RE = re.compile(r'(?:&(?:quot|apos|amp|lt|gt|#\d+);|[),.;])+$')
+
+
+def _media_urls(raw: str) -> set[str]:
+    """كل روابط الميديا في نص JSON، منضّفة من ذيول الـHTML."""
+    found = set()
+    for url in _MEDIA_URL_RE.findall(raw):
+        cleaned = _URL_TAIL_RE.sub("", url)
+        if cleaned.startswith("/media/") and len(cleaned) > 7:
+            found.add(cleaned)
+    return found
 
 
 def _referenced_urls() -> set[str]:
@@ -106,7 +119,7 @@ def _referenced_urls() -> set[str]:
         for row in model.objects.only("document").iterator():
             document = row.document
             if isinstance(document, dict):
-                urls.update(_MEDIA_URL_RE.findall(
+                urls.update(_media_urls(
                     json.dumps(document, ensure_ascii=False)))
     return urls
 

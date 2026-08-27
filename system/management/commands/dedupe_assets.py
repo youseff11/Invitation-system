@@ -41,7 +41,22 @@ from django.db import transaction
 
 from system.models import Asset, Invitation, Template
 
-_MEDIA_URL_RE = re.compile(r'/media/[^\s"\'\\)]+')
+_MEDIA_URL_RE = re.compile(r'/media/[^\s"\'\\)<>]+')
+# الـHTML المخزّن بيقفل الرابط بـ&quot; مش بعلامة تنصيص عادية، والـregex
+# بيبلعها. لازم نشيلها وإلا الرابط يبان مكسور وهو سليم.
+_URL_TAIL_RE = re.compile(r'(?:&(?:quot|apos|amp|lt|gt|#\d+);|[),.;])+$')
+
+
+def _media_urls(raw: str) -> set[str]:
+    """كل روابط الميديا في نص JSON، منضّفة من ذيول الـHTML."""
+    found = set()
+    for url in _MEDIA_URL_RE.findall(raw):
+        cleaned = _URL_TAIL_RE.sub("", url)
+        if cleaned.startswith("/media/") and len(cleaned) > 7:
+            found.add(cleaned)
+    return found
+
+
 _CHUNK = 1024 * 1024
 
 
@@ -58,7 +73,7 @@ def _url_usage() -> dict[str, int]:
             if not isinstance(document, dict):
                 continue
             raw = json.dumps(document, ensure_ascii=False)
-            for url in set(_MEDIA_URL_RE.findall(raw)):
+            for url in _media_urls(raw):
                 usage[url] += 1
     return usage
 
