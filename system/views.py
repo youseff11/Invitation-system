@@ -786,8 +786,18 @@ def dashboard_templates(request):
             )
         except templateimport.ImportError_ as exc:
             messages.error(request, str(exc))
-        except Exception:
-            messages.error(request, "تعذّر قراءة الملف. جرّب أرشيف ZIP فيه index.html.")
+        except Exception as exc:
+            # الرسالة العامة كانت بتبلع الاستثناء الحقيقي، فأي عطل في
+            # القرص أو الصلاحيات أو قاعدة البيانات كان بيتقرا على إنه
+            # «ملف مش مقروء» — ومحدش يعرف يدوّر فين. دلوقتي بيتسجّل في
+            # سجل السيرفر كامل، وبيتعرض ملخّصه للستاف عشان يوصفه.
+            logger.exception("فشل استيراد قالب: %s", getattr(
+                request.FILES.get("template_file"), "name", "?"))
+            messages.error(
+                request,
+                "تعذّر قراءة الملف. جرّب أرشيف ZIP فيه index.html. "
+                f"(السبب الفني: {type(exc).__name__}: {exc})"[:400],
+            )
         else:
             chars = templateimport.document_text_length(tpl.document)
             tracks = getattr(tpl, "imported_tracks", 0)
