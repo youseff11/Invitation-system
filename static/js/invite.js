@@ -440,9 +440,14 @@
           // روابط الفيديو الخارجية قد تمنع canvas بسبب CORS — لا نعطل التشغيل.
         }
       };
-      video.addEventListener("loadeddata", captureFirstFrame, { once: true });
+            video.addEventListener("loadeddata", captureFirstFrame, { once: true });
       video.addEventListener("canplay", captureFirstFrame, { once: true });
+      video.addEventListener("loadedmetadata", function () {
+        try { video.currentTime = 0.01; } catch (ignore) {}
+      }, { once: true });
       if (video.readyState >= 2) captureFirstFrame();
+      try { video.load(); } catch (ignore) {}
+
     }
     if (video) {
       /* وضعين للبداية:

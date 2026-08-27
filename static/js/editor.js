@@ -482,20 +482,28 @@
         urlInput.type = "text";
         urlInput.placeholder = isImage ? "أو الصق رابط صورة" : "أو الصق رابط الملف";
         urlInput.value = value == null ? "" : value;
-        urlInput.addEventListener("input", function () {
+                urlInput.addEventListener("input", function () {
           paint(urlInput.value);
+          if (mediaKind === "video" && spec.key === "intro_video") {
+            state.doc.settings.intro_poster = "";
+          }
           setValue(urlInput.value);
         });
+
         var pickBtn = el("button", "ed-btn ed-btn--sm",
           isImage ? "اختر أو ارفع صورة" : (mediaKind === "video" ? "اختر أو ارفع فيديو" : "اختر أو ارفع ملف"));
         pickBtn.type = "button";
-        function open() {
-          openAssetPicker(function (url) {
+                function open() {
+          openAssetPicker(function (url, meta) {
             urlInput.value = url;
             paint(url);
+            if (mediaKind === "video" && spec.key === "intro_video") {
+              state.doc.settings.intro_poster = (meta && (meta.poster || meta.thumb)) || "";
+            }
             setValue(url);
           }, mediaKind);
         }
+
         pickBtn.addEventListener("click", open);
         thumb.addEventListener("click", open);
         thumb.addEventListener("keydown", function (e) {
@@ -2263,7 +2271,15 @@
     host.appendChild(buildGroups(
       SCHEMA.settings_fields,
       function (s) { return state.doc.settings[s.key]; },
-      function (s, v) { state.doc.settings[s.key] = v; markDirty(); requestPreview(); }
+            function (s, v) {
+        state.doc.settings[s.key] = v;
+        markDirty();
+        // إعدادات الافتتاحية لا تحتاج تفريغ stage أو إعادة تشغيل runtime.
+        // نطلب من applyPreview تبديل intro فقط حتى لا تظهر شاشة بيضاء.
+        if (String(s.key || "").indexOf("intro_") === 0) state.previewIntroOnly = true;
+        requestPreview();
+      }
+
     ));
     syncCollapseTool();
   }
@@ -2303,12 +2319,14 @@
   var requestPreview = debounce(function () {
     if (!previewReady) return;
     var editorScroll = captureEditorScroll();
-    var fdoc = frameDoc();
+        var fdoc = frameDoc();
     if (!fdoc) return;
+    var previewIntroOnly = !!state.previewIntroOnly;
+    state.previewIntroOnly = false;
 
-    
     fetch(META.urls.preview, {
-      method: "POST",
+
+            method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
       body: JSON.stringify({ document: state.doc, lang: state.previewLang || "ar" })
@@ -2317,7 +2335,8 @@
       .then(function (data) {
         
         if (!data || !data.ok) { toast("تعذّر تحديث المعاينة.", "error"); return; }
-        applyPreview(data, editorScroll);
+        applyPreview(data, editorScroll, previewIntroOnly);
+
       })
       .catch(function () {
         
@@ -2420,9 +2439,10 @@
     return chain;
   }
 
-  function applyPreview(data, editorScroll) {
+    function applyPreview(data, editorScroll, introOnly) {
 
     drag = null;
+
     clearGuides();
     var fdoc = frameDoc();
     if (!fdoc) return;
@@ -2440,21 +2460,28 @@
       stageY: stage.scrollTop || 0
     };
 
-    var footer = stage.querySelector(".lb-footer");
-    stage.innerHTML = data.html;
-    if (footer) stage.appendChild(footer);
+    if (!introOnly) {
+      // لا نفرّغ stage إلا في تحديث المستند الكامل؛ تغيير إعدادات intro
+      // يستبدل عقدة الافتتاحية فقط حتى لا تظهر شاشة بيضاء.
+      var footer = stage.querySelector(".lb-footer");
+      if (typeof data.html === "string" && data.html.trim()) stage.innerHTML = data.html;
+      if (footer && !stage.contains(footer)) stage.appendChild(footer);
 
-    if (fdoc.body) fdoc.body.setAttribute("style", data.cssVars || "");
+      if (fdoc.body) fdoc.body.setAttribute("style", data.cssVars || "");
+      fdoc.documentElement.setAttribute("dir", data.direction || "rtl");
+
+      stage.className = "lb-stage" +
+        (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
+        (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
+    }
+
+    // الخط قد يتغير من إعدادات الافتتاحية، لذلك نطبقه في الحالتين.
     applyFontCss(fdoc, data.fontCss || "");
-    fdoc.documentElement.setAttribute("dir", data.direction || "rtl");
-
-    stage.className = "lb-stage" +
-      (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
-      (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
-
     applyIntro(fdoc, data.intro);
 
-        var runtimeReady = restartTemplateRuntime(fdoc, data.runtimeCountdownDate || "");
+    var runtimeReady = introOnly
+      ? Promise.resolve()
+      : restartTemplateRuntime(fdoc, data.runtimeCountdownDate || "");
 
     runtimeReady.then(function () {
       bindPreviewInteractions();
@@ -3662,13 +3689,38 @@
       var row = el("div", "ed-track");
       var btn = el("button", "ed-track-pick", m.name +
         (m.seconds ? " · " + Math.round(m.seconds) + "ث" : ""));
-      btn.type = "button";
+            btn.type = "button";
       btn.title = m.note || m.name;
-      btn.addEventListener("click", function () {
-        if (pickCallback) pickCallback(m.url);
-        closeModal(refs.assetModal);
-      });
       var media = doc.createElement(pickKind === "audio" ? "audio" : "video");
+      var captureLibraryFrame = null;
+      var pickLibraryItem = function () {
+        var libraryPoster = m.poster || media.poster || "";
+        if (pickKind === "video" && !libraryPoster && captureLibraryFrame) {
+          try { captureLibraryFrame(); libraryPoster = media.poster || ""; } catch (ignore) {}
+        }
+        if (pickCallback) pickCallback(m.url, { poster: libraryPoster, thumb: libraryPoster });
+        closeModal(refs.assetModal);
+      };
+      btn.addEventListener("click", function () {
+        if (pickKind !== "video" || m.poster || media.poster || (media.videoWidth && media.videoHeight)) {
+          pickLibraryItem();
+          return;
+        }
+        // امنح الفيديو لحظة لقراءة أول فريم قبل حفظه كغلاف.
+        btn.disabled = true;
+        var settled = false;
+        var finish = function () {
+          if (settled) return;
+          settled = true;
+          try { captureLibraryFrame && captureLibraryFrame(); } catch (ignore) {}
+          pickLibraryItem();
+        };
+        media.addEventListener("loadeddata", finish, { once: true });
+        media.addEventListener("canplay", finish, { once: true });
+        window.setTimeout(finish, 1800);
+        try { media.load(); } catch (ignore) { finish(); }
+      });
+
       media.src = m.url;
       if (pickKind === "audio") {
         media.controls = true;
@@ -3684,7 +3736,7 @@
         media.setAttribute("disablepictureinpicture", "true");
         if (m.poster) media.poster = m.poster;
 
-        var captureLibraryFrame = function () {
+        captureLibraryFrame = function () {
           if (!media.videoWidth || !media.videoHeight) return;
           try {
             var maxEdge = 640;
@@ -3882,7 +3934,8 @@
         btn.appendChild(el("span", "ed-asset-name", a.name || ""));
       }
       btn.addEventListener("click", function () {
-        if (pickCallback) pickCallback(a.url);
+                if (pickCallback) pickCallback(a.url, a);
+
         closeModal(refs.assetModal);
       });
       var tile = el("div", "ed-asset-wrap");
@@ -4038,7 +4091,7 @@
           renderAssets();
           toast("تم رفع «" + data.asset.name + "».", "ok");
           if (pickCallback) {
-            pickCallback(data.asset.url);
+            pickCallback(data.asset.url, data.asset);
             closeModal(refs.assetModal);
           }
         })

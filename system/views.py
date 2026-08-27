@@ -926,14 +926,22 @@ def dashboard_intros(request):
             clip = form.save(commit=False)
             upload = form.cleaned_data.get("file")
             if upload:
+
                 # نفس ضغط فيديو الافتتاحية بتاع الرفع من المحرر
                 try:
                     stored, secs = video.compress(upload)
                     clip.file = stored
                     clip.seconds = secs or 0
+                    # Poster ثابت للموبايل؛ لو ffmpeg غير متاح يظل
+                    # fallback المتصفح يعمل عند اختيار الفيديو من المكتبة.
+                    if not clip.poster:
+                        generated_poster = video.make_thumbnail(stored)
+                        if generated_poster:
+                            clip.poster = generated_poster
                 except Exception:
                     pass
             clip.save()
+
             messages.success(request, f"اتضاف «{clip.name}» للمكتبة.")
             return redirect("dashboard_intros")
         messages.error(request, "راجع البيانات — فيه حقل ناقص.")
