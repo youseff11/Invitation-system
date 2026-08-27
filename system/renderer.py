@@ -23,6 +23,7 @@ from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 from . import blocks as blocks_engine
+from . import tildacss
 
 # --------------------------------------------------------------------------
 AR_MONTHS = [
@@ -680,6 +681,9 @@ def render_document(
             for item in ("note", "guest_name", "text", "button", "play")
         },
         "layout_css": layout_css(doc["blocks"]),
+        # مواضع عناصر Tilda Zero محسوبة على السيرفر — من غيرها الصفحة
+        # بتفضل مكسورة لحد ما runtime القالب يخلص تحميل.
+        "zero_css": mark_safe(tildacss.document_zero_css(doc["blocks"])),
         "theme": theme,
         "settings": doc_settings,
         "data": data,
@@ -698,6 +702,8 @@ def render_document(
 _PREVIEW_KEYS = (
         "html", "css_vars", "font_css", "font_preloads", "intro_css",       "intro_item_styles", "layout_css",
 
+    "zero_css",
+
     "runtime_scripts", "runtime_root_attrs", "runtime_is_spa",
 
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
@@ -705,7 +711,7 @@ _PREVIEW_KEYS = (
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-25-intro-play-drag-v1"
+_PREVIEW_RENDER_REVISION = "2026-08-27-tilda-zero-css-v1"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
@@ -737,6 +743,7 @@ def _preview_payload(result: dict) -> dict:
     payload["intro_css"] = str(payload.get("intro_css") or "")
 
     payload["layout_css"] = str(payload.get("layout_css") or "")
+    payload["zero_css"] = str(payload.get("zero_css") or "")
     payload["intro_item_styles"] = {
         str(k): str(v) for k, v in (payload.get("intro_item_styles") or {}).items()
     }
@@ -745,7 +752,8 @@ def _preview_payload(result: dict) -> dict:
 
 def _restore_preview(payload: dict) -> dict:
     result = dict(payload or {})
-    for key in ("html", "css_vars", "font_css", "intro_css", "layout_css"):
+    for key in ("html", "css_vars", "font_css", "intro_css", "layout_css",
+                "zero_css"):
         result[key] = mark_safe(str(result.get(key) or ""))
 
     result["font_preloads"] = [
