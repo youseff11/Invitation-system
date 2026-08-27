@@ -790,24 +790,53 @@ SETTINGS_FIELDS = [
           help_text="سطر صغير فوق نص الافتتاحية — أسماء العروسين أو أي "
                "كلمة. سيبها فاضية = مايظهرش أي حاجة. الافتتاحية مابقتش "
                "بتاخد الأسماء من تبويب البيانات لوحدها."),
-    field("intro_note_color", "لون النوت", "color", "", group="الافتتاحية",
+        field("intro_note_color", "لون النوت", "color", "", group="الافتتاحية",
+          editor_hidden=True,
           help_text="سيبه فاضي عشان يستخدم لون الافتتاحية العام."),
+    field("intro_note_font", "خط النوت", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True),
+    field("intro_note_size", "حجم النوت", "range", 0, group="الافتتاحية",
+          minimum=0, maximum=96, step=1, unit="px", editor_hidden=True),
     field("intro_text", "نص الافتتاحية", "text", "اضغط لفتح الدعوة", group="الافتتاحية"),
     field("intro_text_color", "لون نص الافتتاحية", "color", "", group="الافتتاحية",
+          editor_hidden=True,
           help_text="لون الجملة الرئيسية فقط. سيبه فاضي عشان يستخدم اللون العام."),
+    field("intro_text_font", "خط نص الافتتاحية", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True),
+    field("intro_text_size", "حجم نص الافتتاحية", "range", 0, group="الافتتاحية",
+          minimum=0, maximum=96, step=1, unit="px", editor_hidden=True),
     field("intro_guest_name_color", "لون اسم الضيف", "color", "", group="الافتتاحية",
+          editor_hidden=True,
           help_text="لون اسم الضيف فقط. سيبه فاضي عشان يستخدم اللون العام."),
+    field("intro_guest_font", "خط اسم الضيف", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True),
+    field("intro_guest_size", "حجم اسم الضيف", "range", 0, group="الافتتاحية",
+          minimum=0, maximum=96, step=1, unit="px", editor_hidden=True),
+
     field("intro_button", "نص الزر", "text", "التالي ←", group="الافتتاحية",
           help_text="سيبها فاضية = مفيش زر خالص. الضيف ساعتها بيدخل لما "
                "الفيديو يخلص، أو بلمسة في أي مكان على الشاشة. مع افتتاحية "
                "صورة من غير فيديو الأحسن تسيب الزر عشان يبقى واضح إن فيه "
                "حاجة تتضغط."),
-    field("intro_button_color", "لون نص زر الافتتاحية", "color", "", group="الافتتاحية",
+        field("intro_button_color", "لون نص زر الافتتاحية", "color", "", group="الافتتاحية",
+          editor_hidden=True,
           help_text="لون كتابة زر الدخول العام. سيبه فاضي عشان يستخدم لون الافتتاحية العام."),
-    field("intro_play_color", "لون نص زر تشغيل الفيديو", "color", "", group="الافتتاحية",
+    field("intro_button_font", "خط زر الدخول", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True),
+    field("intro_button_size", "حجم زر الدخول", "range", 0, group="الافتتاحية",
+          minimum=0, maximum=96, step=1, unit="px", editor_hidden=True),
+
+        field("intro_play_color", "لون نص زر تشغيل الفيديو", "color", "", group="الافتتاحية",
+          editor_hidden=True,
           help_text="لون النص/الأيقونة في زر بدء الفيديو. سيبه فاضي لاستخدام لون زر الافتتاحية القديم."),
+    field("intro_play_font", "خط نص تشغيل الفيديو", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True),
+    field("intro_play_size", "حجم نص تشغيل الفيديو", "range", 0, group="الافتتاحية",
+          minimum=0, maximum=96, step=1, unit="px", editor_hidden=True),
+
     field("intro_play_bg_color", "لون خلفية زر تشغيل الفيديو", "color", "", group="الافتتاحية",
-          help_text="لون خلفية زر بدء الفيديو. سيبه فاضي لاستخدام الخلفية الافتراضية."),
+          editor_hidden=True,
+          help_text="قيمة توافقية للزر القديم."),
 
         field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
           media_kind="video",
@@ -847,9 +876,10 @@ SETTINGS_FIELDS = [
     field("intro_text_y", "موضع نص الافتتاحية القديم رأسياً", "range", 0,
           group="الافتتاحية", minimum=-35, maximum=35, step=1, unit="vh",
           translate=False, editor_hidden=True),
-    field("intro_font", "خط نص الافتتاحية", "font", "", group="الافتتاحية",
-          options=FONT_CHOICES,
-          help_text="سيبه فاضي عشان يستخدم خط الدعوة الأساسي."),
+        field("intro_font", "الخط الافتراضي للخطوط القديمة", "font", "", group="الافتتاحية",
+          options=FONT_CHOICES, editor_hidden=True,
+          help_text="قيمة توافقية للدعوات القديمة؛ استخدم ترس النص لتغيير الخط."),
+
     field("intro_item_positions", "مواضع عناصر الافتتاحية", "text", "", group="الافتتاحية",
           translate=False, editor_hidden=True),
 
@@ -926,6 +956,11 @@ def empty_document() -> dict:
         "settings": default_settings(),
         "blocks": [],
     }
+
+
+# تمثيل بايثون لـdict بمفتاح واحد — أثر باج قديم في ترس الخط، اتسرّب
+# لخانات النص واتخزّن. مافيش نص حقيقي بيبقى بالشكل ده.
+_PY_REPR_RE = re.compile(r"\{'[A-Za-z_][A-Za-z0-9_]*':\s*'[^']*'\}")
 
 
 def _coerce(value: Any, spec: dict) -> Any:
@@ -1031,6 +1066,15 @@ def _coerce(value: Any, spec: dict) -> Any:
 
     # text / textarea / date / datetime / icon / gradient
     if value is None:
+        return default
+    if isinstance(value, (dict, list, bool)):
+        # قيمة مركّبة في خانة نص معناها باج في المحرر. ‎str()‎ كانت
+        # بتخزّن تمثيل بايثون للـdict — ‎{'key': 'intro_play_font'}‎ —
+        # ويتعرض للضيف على إنه نص الزر.
+        return default
+    if isinstance(value, str) and _PY_REPR_RE.fullmatch(value.strip()):
+        # نص اتخزّن قبل الإصلاح ده وفضل متخرّب في قاعدة البيانات.
+        # محدش بيكتب ده بإيده، فتنضيفه أأمن من عرضه للضيف.
         return default
     return str(value)[:5000]
 

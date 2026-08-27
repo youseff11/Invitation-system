@@ -210,42 +210,29 @@
     return (data && data.error) || "تعذّر إضافة الخط.";
   }
 
-  function createFontFromField(select, setValue, controls, source) {
-    var name = (controls.name.value || "").trim();
-    var family = (controls.family.value || "").trim();
-    if (!name || !family) {
-      toast("اكتب اسم الخط واسم العائلة بالإنجليزية أولاً.", "error");
-      return;
-    }
+  function uploadedFontFamily(filename) {
+    var stem = String(filename || "").replace(/\.[^.]+$/, "");
+    stem = stem.replace(/[^A-Za-z0-9 _-]+/g, " ").replace(/\s+/g, " ").trim();
+    if (!/^[A-Za-z]/.test(stem)) stem = "UploadedFont";
+    return stem.slice(0, 118) || "UploadedFont";
+  }
+
+  function uploadFontFile(select, setValue, file) {
+    if (!file) return;
+    var stem = String(file.name || "").replace(/\.[^.]+$/, "").trim();
     var fd = new FormData();
-    fd.append("name", name);
-    fd.append("family", family);
-    fd.append("weight", controls.weight.value || "400");
-    fd.append("style", controls.style.value || "normal");
+    fd.append("name", (stem || "خط مرفوع").slice(0, 120));
+    fd.append("family", uploadedFontFamily(file.name));
+    fd.append("weight", "400");
+    fd.append("style", "normal");
     fd.append("is_active", "on");
-    if (source === "file") {
-      if (!controls.file.files || !controls.file.files[0]) {
-        toast("اختر ملف الخط أولاً.", "error");
-        return;
-      }
-      fd.append("file", controls.file.files[0]);
-    } else {
-      var url = (controls.url.value || "").trim();
-      if (!url) {
-        toast("اكتب رابط ملف الخط أولاً.", "error");
-        return;
-      }
-      fd.append("external_url", url);
-    }
-    var button = source === "file" ? controls.upload : controls.addUrl;
-    button.disabled = true;
+    fd.append("file", file);
     fetch(META.urls.fontCreate, {
       method: "POST",
       headers: { "X-CSRFToken": csrf() },
       credentials: "same-origin",
       body: fd
     }).then(function (r) { return r.json(); }).then(function (data) {
-      button.disabled = false;
       if (!data || !data.ok || !data.font) {
         toast(fontUploadError(data), "error");
         return;
@@ -254,55 +241,126 @@
       addFontOption(select, data.font);
       select.value = data.font.value;
       setValue(select.value);
-      controls.file.value = "";
-      controls.url.value = "";
-      toast("اتضاف الخط واتطبق على النص.", "ok");
-    }).catch(function () {
-      button.disabled = false;
-      toast("تعذّر الاتصال لإضافة الخط.", "error");
-    });
+      toast("اتضاف الخط للمكتبة واتطبق على النص.", "ok");
+    }).catch(function () { toast("تعذّر الاتصال لإضافة الخط.", "error"); });
   }
 
   function buildInlineFontTools(select, setValue) {
-    var tools = el("div", "ed-font-tools");
-    var name = el("input", "ed-input");
-    name.type = "text";
-    name.placeholder = "اسم الخط الظاهر";
-    var family = el("input", "ed-input");
-    family.type = "text";
-    family.placeholder = "اسم العائلة بالإنجليزية مثل MyFont";
-    var weight = doc.createElement("select");
-    weight.className = "ed-input";
-    [["400", "الوزن 400"], ["500", "الوزن 500"], ["600", "الوزن 600"], ["700", "الوزن 700"]].forEach(function (pair) {
-      var option = el("option", null, pair[1]);
-      option.value = pair[0];
-      weight.appendChild(option);
-    });
-    var style = doc.createElement("select");
-    style.className = "ed-input";
-    [["normal", "عادي"], ["italic", "مائل"]].forEach(function (pair) {
-      var option = el("option", null, pair[1]);
-      option.value = pair[0];
-      style.appendChild(option);
-    });
+    var tools = el("div", "ed-font-tools ed-font-tools--compact");
+    var separator = el("option", null, "──────── إضافة خط ────────");
+    separator.value = "";
+    separator.disabled = true;
+    select.appendChild(separator);
+
+    var importOption = el("option", null, "استيراد خط من المكتبة");
+    importOption.value = "__font_library__";
+    select.appendChild(importOption);
+    var uploadOption = el("option", null, "رفع خط من الملفات");
+    uploadOption.value = "__font_upload__";
+    select.appendChild(uploadOption);
+
+    var library = doc.createElement("select");
+    library.className = "ed-input";
+    library.hidden = true;
+    var libraryPlaceholder = el("option", null, "اختار خطاً من المكتبة");
+    libraryPlaceholder.value = "";
+    library.appendChild(libraryPlaceholder);
+    if (FONTS.length) {
+      FONTS.forEach(function (font) {
+        if (!font || !font.value) return;
+        var option = el("option", null, font.label || font.name || font.family);
+        option.value = font.value;
+        option.style.fontFamily = font.value;
+        library.appendChild(option);
+      });
+    } else {
+      var empty = el("option", null, "لا توجد خطوط مرفوعة بعد");
+      empty.disabled = true;
+      library.appendChild(empty);
+    }
+
     var file = doc.createElement("input");
     file.type = "file";
     file.accept = ".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2";
-    var upload = el("button", "ed-btn ed-btn--sm", "رفع ملف الخط");
-    upload.type = "button";
-    var url = el("input", "ed-input");
-    url.type = "url";
-    url.placeholder = "أو ضع رابطاً مباشراً لملف الخط";
-    var addUrl = el("button", "ed-btn ed-btn--sm", "إضافة الرابط");
-    addUrl.type = "button";
-    var controls = { name: name, family: family, weight: weight, style: style, file: file, upload: upload, url: url, addUrl: addUrl };
-    upload.addEventListener("click", function () { createFontFromField(select, setValue, controls, "file"); });
-    addUrl.addEventListener("click", function () { createFontFromField(select, setValue, controls, "url"); });
-    [name, family, weight, style, file, upload, url, addUrl].forEach(function (item) { tools.appendChild(item); });
+    file.hidden = true;
+    select.__fontRealValue = select.value || "";
+
+    select.addEventListener("change", function () {
+      var choice = select.value;
+      if (choice === "__font_library__") {
+        select.value = select.__fontRealValue || "";
+        library.hidden = false;
+        library.focus();
+      } else if (choice === "__font_upload__") {
+        select.value = select.__fontRealValue || "";
+        file.click();
+      } else {
+        select.__fontRealValue = choice;
+      }
+    });
+    library.addEventListener("change", function () {
+      if (!library.value) return;
+      select.value = library.value;
+      select.__fontRealValue = library.value;
+      setValue(select.value);
+      library.hidden = true;
+      toast("اتطبق الخط من المكتبة.", "ok");
+    });
+    file.addEventListener("change", function () {
+      uploadFontFile(select, setValue, file.files && file.files[0]);
+      file.value = "";
+    });
+    tools.appendChild(library);
+    tools.appendChild(file);
     return tools;
   }
 
-  function buildField(spec, getValue, setValue) {
+  var INTRO_TEXT_FONT_FIELDS = {
+    intro_note: { font: "intro_note_font", color: "intro_note_color", size: "intro_note_size" },
+    intro_text: { font: "intro_text_font", color: "intro_text_color", size: "intro_text_size" },
+    intro_button: { font: "intro_button_font", color: "intro_button_color", size: "intro_button_size" },
+    intro_play_label: { font: "intro_play_font", color: "intro_play_color", size: "intro_play_size" }
+  };
+
+  function schemaSetting(key) {
+    var fields = (SCHEMA && SCHEMA.settings_fields) || [];
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i] && fields[i].key === key) return fields[i];
+    }
+    return null;
+  }
+
+  /* ‎setBySpec‎ بيكتب في مفتاح الحقل اللي تديهوله، مش في مفتاح الحقل
+     الأب. من غيره كنا بنستعمل الدالة المربوطة بالحقل الأب، فقيمة الخط
+     أو اللون كانت بتتكتب مكان **نص الزر** نفسه. */
+  function buildIntroFontGear(spec, setBySpec) {
+    var map = INTRO_TEXT_FONT_FIELDS[spec.key];
+    if (!map || typeof setBySpec !== "function") return null;
+    var gear = el("button", "ed-font-gear", "⚙");
+    gear.type = "button";
+    gear.title = "إعدادات الخط";
+    gear.setAttribute("aria-label", "إعدادات الخط");
+    var panel = el("div", "ed-inline-font-panel");
+    panel.hidden = true;
+    [map.font, map.color, map.size].forEach(function (key) {
+      var child = schemaSetting(key);
+      if (!child) return;
+      panel.appendChild(buildField(
+        child,
+        function () { return state.doc.settings[key]; },
+        function (v) { setBySpec(child, v); }
+      ));
+    });
+    gear.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      panel.hidden = !panel.hidden;
+      gear.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+    });
+    return { gear: gear, panel: panel };
+  }
+
+  function buildField(spec, getValue, setValue, setBySpec) {
 
     var wrap = el("div", "ed-field");
     // الميزة خارج الباقة = تحذير فقط؛ الحقل يظل قابلاً للتعديل والحفظ.
@@ -333,12 +391,22 @@
             : spec.type === "url" ? "url" : "text";
         input.value = value == null ? "" : value;
         if (spec.placeholder) input.placeholder = spec.placeholder;
-        input.addEventListener("input", function () { setValue(input.value); });
+                input.addEventListener("input", function () { setValue(input.value); });
         wrap.appendChild(label);
-        wrap.appendChild(input);
+        var textRow = el("div", "ed-text-control-row");
+        textRow.appendChild(input);
+        var textGear = buildIntroFontGear(spec, setBySpec);
+        if (textGear) {
+          textRow.appendChild(textGear.gear);
+          wrap.appendChild(textRow);
+          wrap.appendChild(textGear.panel);
+        } else {
+          wrap.appendChild(input);
+        }
         break;
 
       case "textarea":
+
       case "html":
         input = el("textarea");
         input.rows = spec.type === "html" ? 5 : 3;
@@ -455,13 +523,19 @@
           if (spec.type === "font") op.style.fontFamily = o.value;
           input.appendChild(op);
         });
-        input.value = value == null ? "" : value;
-        input.addEventListener("change", function () { setValue(input.value); });
+                input.value = value == null ? "" : value;
+        input.addEventListener("change", function () {
+          if (input.value === "__font_library__" || input.value === "__font_upload__") return;
+          setValue(input.value);
+        });
         wrap.appendChild(label);
+
         wrap.appendChild(input);
-        wrap.appendChild(el("small", "ed-hint", "لا ترى الخط؟ أضفه من ملف أو رابط مباشر:"));
+        // إضافة الخط تتم من نفس القائمة؛ تفاصيل الاسم والوزن والنمط لم تعد
+        // تظهر في المحرر، بينما الرفع يرسل قيماً افتراضية آمنة للخلفية.
         wrap.appendChild(buildInlineFontTools(input, setValue));
         break;
+
       }
 
       // ---------------------------------------------------- محاذاة
@@ -738,7 +812,8 @@
         body.appendChild(buildField(
           spec,
           function () { return getValue(spec); },
-          function (v) { setValue(spec, v); }
+          function (v) { setValue(spec, v); },
+          setValue
         ));
       });
       details.appendChild(body);

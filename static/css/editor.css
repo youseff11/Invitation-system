@@ -882,8 +882,27 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
   .ed-favorite-row .ed-btn { flex: 1 1 45%; }
 }
 
-/* الخط المرفوع داخل حقل font */
-.ed-font-tools { display: grid; gap: 6px; margin-top: 7px; padding: 8px; border: 1px dashed var(--e-line); border-radius: 9px; }
+.ed-text-control-row { display: flex; align-items: flex-start; gap: 6px; }
+.ed-text-control-row > .ed-input { flex: 1; min-width: 0; }
+.ed-font-gear {
+  flex: 0 0 34px; inline-size: 34px; block-size: 34px; padding: 0;
+  border: 1px solid var(--e-line); border-radius: 8px;
+  background: var(--e-panel-2); color: var(--e-accent-ink);
+  cursor: pointer; font-size: 17px; line-height: 1;
+}
+.ed-font-gear:hover, .ed-font-gear[aria-expanded="true"] {
+  border-color: var(--e-accent); background: var(--e-line-soft);
+}
+.ed-inline-font-panel {
+  display: grid; gap: 6px; margin-top: 7px; padding: 8px;
+  border: 1px dashed var(--e-line); border-radius: 9px;
+  background: color-mix(in srgb, var(--e-panel-2) 72%, transparent);
+}
+.ed-inline-font-panel[hidden] { display: none !important; }
+.ed-inline-font-panel .ed-field { margin: 0; }
+
+/* أدوات font الإضافية مخفية بصرياً حتى يختار المستخدم إجراءً من نفس القائمة */
+.ed-font-tools { display: grid; gap: 6px; margin-top: 6px; padding: 0; border: 0; }
 .ed-font-tools input[type="file"] { width: 100%; font-size: 11px; }
 .ed-font-tools .ed-btn { width: 100%; }
 

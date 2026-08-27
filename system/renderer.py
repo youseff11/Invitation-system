@@ -167,15 +167,28 @@ def _intro_number(value, minimum: float, maximum: float, fallback: float = 0) ->
     return max(minimum, min(maximum, number))
 
 
+_INTRO_FONT_RE = re.compile(
+    r"'[A-Za-z][A-Za-z0-9 _-]{0,119}'(?:,\s*(?:sans-serif|serif|cursive))?"
+)
+
+
+def _safe_intro_font(value: object) -> str:
+    """يقبل الخطوط الأساسية أو قيمة CSS الآمنة القادمة من مكتبة الخطوط."""
+    text = str(value or "").strip()
+    allowed_fonts = {item["value"] for item in blocks_engine.FONT_CHOICES}
+    if text in allowed_fonts or _INTRO_FONT_RE.fullmatch(text):
+        return text
+    return ""
+
+
 def intro_css(settings: dict) -> str:
     """يبني متغيرات CSS العامة الخاصة بالافتتاحية من إعدادات آمنة."""
     pairs = {
         "--intro-bg": _css_url(settings.get("intro_image")),
     }
 
-    font = settings.get("intro_font") or ""
-    allowed_fonts = {item["value"] for item in blocks_engine.FONT_CHOICES}
-    if font in allowed_fonts:
+    font = _safe_intro_font(settings.get("intro_font"))
+    if font:
         pairs["--intro-font"] = font
 
     return mark_safe(";".join(f"{key}:{value}" for key, value in pairs.items()))
@@ -212,6 +225,28 @@ def intro_item_css(settings: dict, item: str) -> str:
         color = str(settings.get("intro_play_color") or color).strip()
     if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
         pairs.append(f"--intro-item-color:{color}")
+    font_keys = {
+        "note": "intro_note_font",
+        "guest_name": "intro_guest_font",
+        "text": "intro_text_font",
+        "button": "intro_button_font",
+        "play": "intro_play_font",
+    }
+    font = _safe_intro_font(settings.get(font_keys.get(item, "")) or settings.get("intro_font"))
+    if font:
+        pairs.append(f"--intro-item-font:{font}")
+
+    size_keys = {
+        "note": "intro_note_size",
+        "guest_name": "intro_guest_size",
+        "text": "intro_text_size",
+        "button": "intro_button_size",
+        "play": "intro_play_size",
+    }
+    size = _intro_number(settings.get(size_keys.get(item, "")), 0, 96, 0)
+    if size > 0:
+        pairs.append(f"--intro-item-size:{size:g}px")
+
     if item == "play":
         background = str(settings.get("intro_play_bg_color") or "").strip()
         if re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", background):

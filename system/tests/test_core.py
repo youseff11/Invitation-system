@@ -2268,7 +2268,30 @@ class IntroPlayButtonTests(BaseAppTest):
         self.assertIn("افتح الدعوة", tag)
         self.assertNotIn("<svg", tag)
 
+    def test_intro_text_gear_settings_reach_preview(self):
+        body = self._render(
+            intro_text="النص التجريبي",
+            intro_text_font="'Montserrat', sans-serif",
+            intro_text_color="#f0c36a",
+            intro_text_size=34,
+        )
+        text_start = body.index('class="lb-body"')
+        text_tag = body[text_start:body.index(">", text_start)]
+        self.assertIn("--intro-item-font:'Montserrat', sans-serif", text_tag)
+        self.assertIn("--intro-item-color:#f0c36a", text_tag)
+        self.assertIn("--intro-item-size:34px", text_tag)
+
+    def test_old_intro_font_controls_are_hidden_from_editor_schema(self):
+        fields = {f["key"]: f for f in B.editor_schema()["settings_fields"]}
+        for key in (
+            "intro_font", "intro_note_color", "intro_text_color",
+            "intro_guest_name_color", "intro_button_color",
+            "intro_play_color", "intro_play_bg_color",
+        ):
+            self.assertTrue(fields[key].get("editor_hidden"), key)
+
     def test_button_mode_does_not_autoplay(self):
+
         body = self._render(intro_play_mode="button")
         tag = body[body.index("<video"):body.index("</video>")]
         self.assertNotIn("autoplay", tag)

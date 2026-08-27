@@ -968,8 +968,11 @@
 }
 [data-intro-item] {
   color: var(--intro-item-color, inherit);
+  font-family: var(--intro-item-font, inherit);
+  font-size: var(--intro-item-size, inherit);
   transform: translate(var(--intro-item-x, 0vw), var(--intro-item-y, 0vh));
 }
+
 .lb-doc--editing .lb-intro[data-intro-editable] [data-intro-item] {
   cursor: grab;
   outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
