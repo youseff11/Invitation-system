@@ -334,11 +334,13 @@
     try { cfg = JSON.parse(cfgNode.textContent); } catch (err) { return; }
     if (!cfg || !cfg.url || cfg.player === "hidden") return;
 
-    var audio = new Audio(cfg.url);
+        var audio = new Audio(cfg.url);
     audio.loop = cfg.loop !== false;
     audio.preload = "none";
+    var autoplayOnce = null;
 
     var btn = doc.createElement("button");
+
     btn.type = "button";
     btn.className = "lb-music" + (cfg.player === "bar" ? " lb-music--bar" : "");
     btn.setAttribute("aria-label", "تشغيل الموسيقى");
@@ -357,20 +359,30 @@
       btn.setAttribute("aria-label", "تشغيل الموسيقى");
     }
 
+        // زر الموسيقى مستقل عن التمرير: لا نسمح للنقرة أن تصعد إلى
+    // window/document حيث توجد مستمعات إيقاف/تشغيل التمرير.
+    ["pointerdown", "touchstart", "click"].forEach(function (eventName) {
+      btn.addEventListener(eventName, function (event) {
+        event.stopPropagation();
+      });
+    });
     btn.addEventListener("click", function () {
       if (audio.paused) play(); else pause();
     });
 
     if (cfg.autoplay) {
+
       play();
       // بعض المتصفحات تسمح بالتشغيل بعد أول تفاعل من المستخدم
-      var once = function () {
+            autoplayOnce = function () {
         if (audio.paused) play();
-        doc.removeEventListener("click", once);
-        doc.removeEventListener("touchstart", once);
+        doc.removeEventListener("click", autoplayOnce);
+        doc.removeEventListener("touchstart", autoplayOnce);
+        autoplayOnce = null;
       };
-      doc.addEventListener("click", once, { once: true });
-      doc.addEventListener("touchstart", once, { once: true });
+      doc.addEventListener("click", autoplayOnce, { once: true });
+      doc.addEventListener("touchstart", autoplayOnce, { once: true });
+
     }
     window.__lbMusic = {
       play: play,
@@ -379,6 +391,11 @@
       button: btn,
       destroy: function () {
         audio.pause();
+        if (autoplayOnce) {
+          doc.removeEventListener("click", autoplayOnce);
+          doc.removeEventListener("touchstart", autoplayOnce);
+          autoplayOnce = null;
+        }
         btn.remove();
         window.__lbMusic = null;
       }
