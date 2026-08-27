@@ -1223,7 +1223,9 @@
 .lb-intro-play--no-effects:active {
   animation: none !important;
   transition: none !important;
-  transform: none !important;
+  /* لا نلغي transform الأساسي؛ فهو يحمل إزاحة السحب المحفوظة.
+     إلغاء التأثير هنا يجب ألا يمنع تحريك الزر. */
+  transform: translate(var(--intro-item-x, 0vw), var(--intro-item-y, 0vh)) !important;
   box-shadow: none !important;
   filter: none !important;
 }
