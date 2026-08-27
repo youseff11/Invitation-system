@@ -2276,7 +2276,12 @@
         markDirty();
         // إعدادات الافتتاحية لا تحتاج تفريغ stage أو إعادة تشغيل runtime.
         // نطلب من applyPreview تبديل intro فقط حتى لا تظهر شاشة بيضاء.
-        if (String(s.key || "").indexOf("intro_") === 0) state.previewIntroOnly = true;
+        if (String(s.key || "").indexOf("intro_") === 0) {
+          // تأثيرات وألوان زر التشغيل تتغير داخل iframe فوراً ولا تحتاج
+          // إعادة بناء الافتتاحية أو طلب HTML جديد من السيرفر.
+          if (applyIntroOptionLocally(s.key, v)) return;
+          state.previewIntroOnly = true;
+        }
         requestPreview();
       }
 
@@ -2349,11 +2354,34 @@
      الافتتاحية أخت لـ.lb-stage مش جواه، فتبديل الـstage لوحده كان
      بيسيبها زي ما هي — يعني تغيّر نص الافتتاحية أو صورتها وماتشوفش
      أي فرق غير لما تقفل المحرر وتفتحه تاني. */
+  function applyIntroOptionLocally(key, value) {
+    var fdoc = frameDoc();
+    if (!fdoc) return false;
+    var play = fdoc.querySelector("[data-intro-play]");
+    if (!play) return false;
+    if (key === "intro_play_effects") {
+      play.classList.toggle("lb-intro-play--no-effects", !value);
+      return true;
+    }
+    if (key === "intro_play_color") {
+      play.style.setProperty("--intro-item-color", String(value || ""));
+      return true;
+    }
+    if (key === "intro_play_bg_color") {
+      play.style.setProperty("--intro-play-bg", String(value || ""));
+      return true;
+    }
+    return false;
+  }
+
   function applyIntro(fdoc, html) {
     if (html === undefined) return;          // نسخة سيرفر قديمة — ما نلمسش حاجة
     var current = fdoc.querySelector(".lb-intro");
-    // الافتتاحية اتقفلت من الإعدادات
-    if (!html) { if (current) current.remove(); return; }
+    // لا نحذف الافتتاحية عند رد معاينة ناقص؛ الحذف يحصل فقط إذا أُغلقت فعلاً.
+    if (!html) {
+      if (current && state.doc && state.doc.settings && state.doc.settings.intro_enabled === false) current.remove();
+      return;
+    }
 
     // لو الضيف/المحرر كان قافلها (is-open)، نفضل قافلينها بعد التحديث
     // عشان ما ترجعش تغطّي المعاينة مع كل حرف بتكتبه
@@ -2368,7 +2396,19 @@
     else fdoc.body.insertBefore(fresh, fdoc.body.firstChild);
   }
 
+    function applyMusic(fdoc, cfg) {
+    if (!fdoc) return;
+    var node = fdoc.getElementById("invite-music");
+    if (!node) return;
+    node.textContent = JSON.stringify(cfg || {});
+    var win = fdoc.defaultView;
+    if (win && typeof win.__lbRefreshMusic === "function") {
+      try { win.__lbRefreshMusic(); } catch (ignore) {}
+    }
+  }
+
   function applyFontCss(fdoc, css) {
+
     var style = fdoc.querySelector("style[data-font-faces]");
     if (!css) {
       if (style) style.remove();
@@ -2478,6 +2518,7 @@
     // الخط قد يتغير من إعدادات الافتتاحية، لذلك نطبقه في الحالتين.
     applyFontCss(fdoc, data.fontCss || "");
     applyIntro(fdoc, data.intro);
+    applyMusic(fdoc, data.music || {});
 
     var runtimeReady = introOnly
       ? Promise.resolve()

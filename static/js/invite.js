@@ -323,8 +323,12 @@
   }
 
   // ---------------------------------------------------------- الموسيقى
-  function initMusic() {
+    function initMusic() {
+    if (window.__lbMusic && typeof window.__lbMusic.destroy === "function") {
+      window.__lbMusic.destroy();
+    }
     var cfgNode = doc.getElementById("invite-music");
+
     if (!cfgNode) return;
     var cfg;
     try { cfg = JSON.parse(cfgNode.textContent); } catch (err) { return; }
@@ -368,8 +372,20 @@
       doc.addEventListener("click", once, { once: true });
       doc.addEventListener("touchstart", once, { once: true });
     }
-    window.__lbMusic = { play: play, pause: pause, audio: audio };
+    window.__lbMusic = {
+      play: play,
+      pause: pause,
+      audio: audio,
+      button: btn,
+      destroy: function () {
+        audio.pause();
+        btn.remove();
+        window.__lbMusic = null;
+      }
+    };
   }
+
+  window.__lbRefreshMusic = initMusic;
 
   // ---------------------------------------------------------- الشاشة الافتتاحية
   function initIntro() {
@@ -929,6 +945,7 @@
     initCountdowns();
         initVideo();
     initImportedMedia();
+    initMusic();
     // المحرر بيستبدل عقدة .lb-intro لما تعدّل إعداداتها — العقدة
 
     // الجديدة مالهاش مستمعين، فبنربطها تاني

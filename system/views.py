@@ -1121,7 +1121,12 @@ def _template_editor_frame(request, template, document, *, editable=True):
         "page_description": template.description,
         "share_image": template.cover_src,
         "canonical_url": "",
-        "music_config": {},
+        "music_config": {
+            "url": result["settings"].get("music_url") or "",
+            "autoplay": bool(result["settings"].get("music_autoplay")),
+            "loop": bool(result["settings"].get("music_loop")),
+            "player": result["settings"].get("music_player") or "floating",
+        },
         "scroll_config": _scroll_config(result["settings"], editable=editable),
         "run_template_runtime": bool(editable and getattr(template, "runtime_scripts", [])),
         "cta": None,
@@ -1224,7 +1229,12 @@ def template_api_preview(request, pk):
         "maxWidth": result["theme"].get("max_width"),
         "runtimeCountdownDate": result.get("runtime_countdown_date") or "",
         "direction": result["theme"].get("direction") or "rtl",
-        "music": {},
+        "music": {
+            "url": result["settings"].get("music_url") or "",
+            "autoplay": bool(result["settings"].get("music_autoplay")),
+            "loop": bool(result["settings"].get("music_loop")),
+            "player": result["settings"].get("music_player") or "floating",
+        },
         "blockCount": result["block_count"],
     })
 
