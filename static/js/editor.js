@@ -2542,7 +2542,10 @@
     style.textContent = css;
   }
 
-  var COUNTDOWN_RUNTIME_DATE_RE = /\b(?:var|let|const)\s+eventDate\s*=\s*new\s+Date\([^)]*\)/;
+  /* نفس منطق ‎_COUNTDOWN_DATE_RE‎ في ‎renderer.py‎: أي اسم متغيّر، بشرط
+     إن التاريخ مكتوب بالإيد. ‎new Date()‎ الفاضية مابتتلمسش. */
+  var COUNTDOWN_RUNTIME_DATE_RE =
+    /\b(var|let|const)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*new\s+Date\(\s*(?:\d{4}\s*,[^)]*|["'][^"']{4,}["']\s*|\d{9,}\s*)\)/;
 
   function restartTemplateRuntime(fdoc, countdownDate) {
     if (!fdoc) return Promise.resolve();
@@ -2559,15 +2562,45 @@
     }
     var descriptors = fdoc.__lbRuntimeOriginal.map(function (item) {
       var copy = { src: item.src, type: item.type, code: item.code };
-      if (!copy.src && countdownDate) {
+      if (!copy.src && countdownDate && COUNTDOWN_RUNTIME_DATE_RE.test(copy.code)) {
         copy.code = copy.code.replace(
           COUNTDOWN_RUNTIME_DATE_RE,
-          "var eventDate=new Date(" + JSON.stringify(String(countdownDate)) + ")"
+          function (whole, keyword, name) {
+            return keyword + " " + name + "=new Date(" +
+                   JSON.stringify(String(countdownDate)) + ")";
+          }
         );
+        /* سكربت العدّاد بيعلن ‎const‎ في النطاق العام. المعاينة بتتحدّث
+           كذا مرة في نفس الصفحة، والإعلان التاني بيرمي
+           «Identifier already declared» — يعني الموعد الجديد ما بيوصلش
+           أبداً والعدّاد يفضل على التاريخ القديم. اللف في دالة بيدّي كل
+           تشغيلة نطاقها الخاص. آمن هنا لأن السكربت مقفول على نفسه:
+           بيقرا عناصره بالـid ومابيصدّرش حاجة لغيره. */
+        copy.code = "(function(){\n" + copy.code + "\n})();";
       }
       return copy;
     });
     current.forEach(function (script) { script.remove(); });
+
+    /* المؤقتات اللي التشغيلة القديمة عملتها لازم تقف قبل الجديدة.
+       من غير كده كل تحديث معاينة بيسيب ‎setInterval‎ شغال ورا، وعدّاد
+       بالموعد القديم بيفضل يكتب فوق العدّاد الجديد. */
+    var frameWin = fdoc.defaultView;
+    if (frameWin) {
+      (frameWin.__lbRuntimeTimers || []).forEach(function (id) {
+        try { frameWin.clearInterval(id); } catch (e) {}
+      });
+      frameWin.__lbRuntimeTimers = [];
+      if (!frameWin.__lbTimersTracked) {
+        frameWin.__lbTimersTracked = true;
+        var nativeSetInterval = frameWin.setInterval;
+        frameWin.setInterval = function () {
+          var id = nativeSetInterval.apply(this, arguments);
+          if (frameWin.__lbRuntimeTimers) frameWin.__lbRuntimeTimers.push(id);
+          return id;
+        };
+      }
+    }
 
     var chain = Promise.resolve();
     descriptors.forEach(function (item) {

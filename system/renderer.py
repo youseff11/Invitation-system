@@ -594,10 +594,22 @@ def _unwrap_runtime_allrecords(value: str) -> str:
     return re.sub(r"</div>\s*</div>\s*$", "</div>", value, count=1, flags=re.S)
 
 
+# موعد العدّاد جوّه سكربت القالب المستورد.
+#
+# النسخة القديمة كانت بتطلب إن اسم المتغيّر يكون ‎eventDate‎ بالحرف. كل
+# قالب بيسمّي المتغيّر على مزاجه (‎eventLocal‎، ‎targetDate‎…)، فأي قالب
+# مش مستخدم الاسم ده كان بيتجاهل الموعد اللي المستخدم يختاره تماماً —
+# تغيّر التاريخ في المحرر ومايحصلش حاجة، والعدّاد يفضل على تاريخ المصمّم.
+#
+# دلوقتي بنمسك أي اسم، بشرط إن الوسيط يكون تاريخ **مكتوب بالإيد**:
+# سنة من أربع خانات، أو نص بين علامتين، أو ميلي ثانية. ‎new Date()‎
+# الفاضية (اللحظة الحالية) مابتتلمسش — وهي موجودة في كل عدّاد — وكذلك
+# أي تاريخ محسوب زي ‎new Date(now.getTime() + 1000)‎.
+# الاسم والكلمة المفتاحية بيتحفظوا زي ما هما لأن باقي السكربت بينده
+# على نفس الاسم.
 _COUNTDOWN_DATE_RE = re.compile(
-    r"\b(?:var|let|const)\s+eventDate\s*=\s*new\s+Date\("
-    r"\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})"
-    r"(?:\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2}))?)?)?\s*\)"
+    r"\b(var|let|const)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*new\s+Date\(\s*"
+    r"(?:\d{4}\s*,[^)]*|['\"][^'\"]{4,}['\"]\s*|\d{9,}\s*)\)"
 )
 
 
@@ -623,7 +635,8 @@ def _runtime_with_countdown_date(runtime_scripts, countdown_date: str):
             continue
         code = str(item.get("code") or "")
         code = _COUNTDOWN_DATE_RE.sub(
-            f'var eventDate=new Date("{countdown_date}")', code, count=1
+            lambda m: f'{m.group(1)} {m.group(2)}=new Date("{countdown_date}")',
+            code, count=1,
         )
         result.append({**item, "code": code})
     return result
