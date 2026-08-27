@@ -2206,29 +2206,53 @@ class IntroPlayButtonTests(BaseAppTest):
         self.inv.save(update_fields=["document"])
         return self.client.get(self.inv.get_absolute_url()).content.decode()
 
-    def test_button_mode_shows_a_play_button(self):
-        body = self._render(intro_video_start="button")
+    def test_button_mode_shows_a_play_button_without_effects(self):
+        body = self._render(intro_play_mode="button")
         self.assertIn("data-intro-play", body)
         self.assertIn("data-intro-manual", body)
+        self.assertIn("lb-intro-play--no-effects", body)
 
     def test_button_mode_does_not_autoplay(self):
-        body = self._render(intro_video_start="button")
+        body = self._render(intro_play_mode="button")
         tag = body[body.index("<video"):body.index("</video>")]
         self.assertNotIn("autoplay", tag)
         # ومش صامت إجبارياً — الضغطة هي اللي بتديه إذن الصوت
         self.assertNotIn(" muted", tag)
 
+    def test_button_effects_mode_shows_a_play_button_with_effects(self):
+        body = self._render(intro_play_mode="button_effects")
+        self.assertIn("data-intro-play", body)
+        self.assertIn("data-intro-manual", body)
+        self.assertNotIn("lb-intro-play--no-effects", body)
+
     def test_auto_mode_is_still_muted_autoplay(self):
-        tag_src = self._render(intro_video_start="auto")
+        tag_src = self._render(intro_play_mode="autoplay")
         tag = tag_src[tag_src.index("<video"):tag_src.index("</video>")]
         self.assertIn("autoplay", tag)
         self.assertIn("muted", tag)
         self.assertNotIn("data-intro-play", tag_src)
 
-    def test_default_is_auto(self):
+    def test_schema_exposes_only_the_three_start_modes(self):
         field = next(f for f in B.editor_schema()["settings_fields"]
-                     if f["key"] == "intro_video_start")
-        self.assertEqual(field["default"], "auto")
+                     if f["key"] == "intro_play_mode")
+        self.assertEqual(field["default"], "autoplay")
+        self.assertEqual(
+            [option["value"] for option in field["options"]],
+            ["autoplay", "button", "button_effects"],
+        )
+        self.assertNotIn(
+            "intro_play_effects",
+            {f["key"] for f in B.editor_schema()["settings_fields"]},
+        )
+
+    def test_legacy_effects_flag_maps_to_plain_button(self):
+        doc = B.normalize_document({"settings": {"intro_play_effects": False}})
+        self.assertEqual(doc["settings"]["intro_play_mode"], "button")
+        self.assertFalse(doc["settings"]["intro_play_effects"])
+
+    def test_legacy_autoplay_flag_maps_to_autoplay(self):
+        doc = B.normalize_document({"settings": {"intro_autoplay": True}})
+        self.assertEqual(doc["settings"]["intro_play_mode"], "autoplay")
 
 
 # ==========================================================================

@@ -18,19 +18,21 @@
     muted إجباري: كل المتصفحات بتمنع التشغيل التلقائي بصوت. زر الصوت
     تحت بيشيله بعد أول لمسة من الضيف — دي الطريقة الوحيدة المسموحة.
   {% endcomment %}
-  {% if render.settings.intro_video_start == 'button' %}
+  {% if render.settings.intro_play_mode == 'button' or render.settings.intro_play_mode == 'button_effects' %}
+
   <video class="lb-intro-video" data-intro-video data-intro-manual
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
-  {% comment %}
-    الزر كبسولة نصية واضحة بدون علامة تشغيل مثلثة، والـaria-label
+      {% comment %}
+      الزر كبسولة نصية واضحة بدون علامة تشغيل مثلثة، والـaria-label
+
     بيبقى النص نفسه بدل الوصف العام،
     عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
   {% endcomment %}
   <button type="button" data-intro-play data-intro-item="play"
-          class="lb-intro-play lb-intro-play--label{% if not render.settings.intro_play_effects %} lb-intro-play--no-effects{% endif %}"
+          class="lb-intro-play lb-intro-play--label{% if render.settings.intro_play_mode == 'button' %} lb-intro-play--no-effects{% endif %}"
           aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}"
           style="{{ render.intro_item_styles.play }}">
     <span class="lb-intro-play-text">{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}</span>

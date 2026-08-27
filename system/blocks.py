@@ -802,28 +802,29 @@ SETTINGS_FIELDS = [
                "الفيديو يخلص، أو بلمسة في أي مكان على الشاشة. مع افتتاحية "
                "صورة من غير فيديو الأحسن تسيب الزر عشان يبقى واضح إن فيه "
                "حاجة تتضغط."),
-        field("intro_button_color", "لون نص زر الافتتاحية", "color", "", group="الافتتاحية",
+    field("intro_button_color", "لون نص زر الافتتاحية", "color", "", group="الافتتاحية",
           help_text="لون كتابة زر الدخول العام. سيبه فاضي عشان يستخدم لون الافتتاحية العام."),
     field("intro_play_color", "لون نص زر تشغيل الفيديو", "color", "", group="الافتتاحية",
           help_text="لون النص/الأيقونة في زر بدء الفيديو. سيبه فاضي لاستخدام لون زر الافتتاحية القديم."),
     field("intro_play_bg_color", "لون خلفية زر تشغيل الفيديو", "color", "", group="الافتتاحية",
           help_text="لون خلفية زر بدء الفيديو. سيبه فاضي لاستخدام الخلفية الافتراضية."),
-    field("intro_play_effects", "تأثيرات زر تشغيل الفيديو", "toggle", True, group="الافتتاحية",
-          help_text="أوقفه لإلغاء النبضة والتأثيرات البصرية للزر."),
 
     field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
+
           media_kind="video",
           help_text="فيديو قصير (٣-٧ ثواني). بيبدأ صامت إجبارياً — كل "
                "المتصفحات بتمنع الصوت التلقائي. حط صورة غلاف عشان تظهر "
                "فوراً قبل ما يحمّل."),
     field("intro_poster", "صورة غلاف الفيديو", "image", "", group="الافتتاحية"),
-    field("intro_video_start", "بداية الفيديو", "select", "auto",
+    field("intro_play_mode", "بداية الفيديو", "select", "autoplay",
           group="الافتتاحية", options=[
-              opt("auto", "يبدأ لوحده (صامت)"),
-              opt("button", "يبدأ لما الضيف يدوس زر"),
+              opt("autoplay", "يبدأ لوحده (تشغيل تلقائي)"),
+              opt("button", "يبدأ بزر بدون تأثيرات"),
+              opt("button_effects", "يبدأ بزر بتأثيرات"),
           ],
-          help_text="زر التشغيل ليه ميزة: لمسة الضيف بتسمح بالصوت من "
-               "أول ثانية — التشغيل التلقائي لازم يبدأ صامت."),
+          help_text="اختار طريقة بداية فيديو الافتتاحية: التشغيل التلقائي يبدأ "
+               "صامتاً، أو زر عادي، أو زر مع النبضة والتأثيرات البصرية."),
+
     field("intro_play_label", "نص على زر التشغيل", "text", "", group="الافتتاحية",
           placeholder="مثال: اضغط لتشغيل الفيديو",
           help_text="سيبها فاضية = الزر يفضل دايرة بعلامة تشغيل بس. لو "
@@ -1031,7 +1032,40 @@ def _coerce(value: Any, spec: dict) -> Any:
     return str(value)[:5000]
 
 
+INTRO_PLAY_MODES = {"autoplay", "button", "button_effects"}
+
+
+def _legacy_intro_play_mode(settings: dict) -> str:
+    """يحوّل إعدادات بداية الفيديو القديمة للوضع الجديد بدون فقدها."""
+    explicit = settings.get("intro_play_mode")
+    if explicit in INTRO_PLAY_MODES:
+        return explicit
+
+    # لا توجد مفاتيح قديمة؟ هذا مستند جديد، فنلتزم بالقيمة الافتراضية
+    # المعلنة في schema: تشغيل تلقائي.
+    legacy_keys = {"intro_video_start", "intro_autoplay", "intro_play_effects"}
+    if not any(key in settings for key in legacy_keys):
+        return "autoplay"
+
+    # intro_video_start هو الاسم القديم الظاهر في لوحة الإعدادات.
+    old_start = settings.get("intro_video_start")
+    if old_start in {"auto", "autoplay"}:
+        return "autoplay"
+
+    # بعض المستندات الأقدم خزّنت العلم باسم intro_autoplay فقط.
+    if settings.get("intro_autoplay") is True:
+        return "autoplay"
+
+    # الوضع القديم ذي الزر يتحول إلى زر مؤثر افتراضياً، أو زر عادي إذا
+    # كان المستخدم قد أغلق تأثيرات الزر قبل تحديث schema.
+    effects = settings.get("intro_play_effects")
+    if isinstance(effects, str):
+        effects = effects.strip().lower() in {"1", "true", "yes", "on"}
+    return "button" if effects is False else "button_effects"
+
+
 def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) -> dict:
+
     """ينظّف مستنداً قادماً من المستخدم ويعيده بشكل آمن ومكتمل.
 
     كل قيمة غير معروفة تُستبدل بالافتراضي، وكل بلوك غير مسجّل يُحذف.
@@ -1046,9 +1080,36 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
 
     # ---- settings
     set_raw = doc.get("settings") if isinstance(doc.get("settings"), dict) else {}
-    out["settings"] = {s["key"]: _coerce(set_raw.get(s["key"]), s) for s in SETTINGS_FIELDS}
+    settings_for_schema = dict(set_raw)
+    settings_for_schema["intro_play_mode"] = _legacy_intro_play_mode(set_raw)
+    out["settings"] = {
+        s["key"]: _coerce(settings_for_schema.get(s["key"]), s)
+        for s in SETTINGS_FIELDS
+    }
+
+    # نحتفظ بالمفاتيح القديمة داخل المستند للتوافق مع أي نسخة قديمة من
+    # التطبيق أو أدوات التصدير، لكن لا نعرضها في schema ولا نستخدمها إذا
+    # كان intro_play_mode موجوداً.
+    for legacy_key in ("intro_video_start", "intro_autoplay", "intro_play_effects"):
+        if legacy_key not in set_raw:
+            continue
+        value = set_raw.get(legacy_key)
+        if legacy_key == "intro_video_start":
+            if isinstance(value, str) and value in {"auto", "autoplay", "button"}:
+                out["settings"][legacy_key] = value
+        elif legacy_key == "intro_autoplay":
+            if isinstance(value, bool):
+                out["settings"][legacy_key] = value
+            elif isinstance(value, str):
+                out["settings"][legacy_key] = value.strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            if isinstance(value, bool):
+                out["settings"][legacy_key] = value
+            elif isinstance(value, str):
+                out["settings"][legacy_key] = value.strip().lower() in {"1", "true", "yes", "on"}
 
     # ---- blocks
+
     blocks_raw = doc.get("blocks") if isinstance(doc.get("blocks"), list) else []
     seen_ids: set[str] = set()
     seen_singletons: set[str] = set()

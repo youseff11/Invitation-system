@@ -2401,11 +2401,17 @@
     if (!fdoc) return false;
     var play = fdoc.querySelector("[data-intro-play]");
     if (!play) return false;
-    if (key === "intro_play_effects") {
-      play.classList.toggle("lb-intro-play--no-effects", !value);
-      return true;
+        if (key === "intro_play_mode") {
+      // الانتقال بين الزرين اليدويين لا يحتاج إعادة بناء iframe؛ أما
+      // التشغيل التلقائي فيحتاج HTML جديداً لأنه يلغي زر التشغيل تماماً.
+      if (value === "button" || value === "button_effects") {
+        play.classList.toggle("lb-intro-play--no-effects", value === "button");
+        return true;
+      }
+      return false;
     }
     if (key === "intro_play_color") {
+
       play.style.setProperty("--intro-item-color", String(value || ""));
       return true;
     }
