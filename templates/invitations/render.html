@@ -37,11 +37,21 @@ html, body { margin: 0; min-height: 100%; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&family=Cairo:wght@300;400;600;700&family=Cormorant+Garamond:wght@300;400;500;600&family=Great+Vibes&family=Marcellus&family=Montserrat:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600&family=Reem+Kufi:wght@400;600&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/invite.css' %}">
+{% comment %}
+  سكربتات القالب المستورد بتتنفّذ بالترتيب واحد ورا التاني، ومن غير
+  السطور دي كل ملف كان بيستنى اللي قبله **يخلص تحميل** كمان — قياس على
+  قالب حقيقي: ١٣ ملف بدأوا عند ٢.٦ ثانية وخلصوا عند ٨.٧. الـpreload
+  بيخلّيهم ينزلوا كلهم بالتوازي من أول ما الرأس يتقري، والمحمِّل بعد كده
+  بينفّذهم بالترتيب من الكاش على طول.
+{% endcomment %}
+{% if render.runtime_scripts and not editable or run_template_runtime %}{% for script in render.runtime_scripts %}{% if script.src %}<link rel="preload" href="{{ script.src }}" as="script">{% endif %}{% endfor %}{% endif %}
 {% if render.font_css %}<style data-font-faces>{{ render.font_css }}</style>{% endif %}
 {% for font_url in render.font_preloads %}<link rel="preload" href="{{ font_url }}" as="font" crossorigin>{% endfor %}
 {% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
-<!-- {# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة -->
-   <!-- من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #} -->
+{# ستايل الأقسام المستوردة: نسخة واحدة بدل نسخة مكررة مع كل قسم. #}
+{% if render.shared_css %}<style data-imported-css>{{ render.shared_css }}</style>{% endif %}
+{# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة
+   من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #}
 {% if render.zero_css %}<style data-zero-block-css>{{ render.zero_css }}</style>{% endif %}
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="1">

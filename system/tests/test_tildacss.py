@@ -1,4 +1,4 @@
-"""اختبارات مولّد CSS مواضع Tilda Zero.
+"""اختبارات مواضع Tilda Zero وتجميع ستايل الأقسام المستوردة.
 
 القيم المتوقّعة هنا مش تخمين: اتقريت من صفحة معاينة شغّالة بعد ما
 ``t396_init`` خلّص، فالاختبار بيقارن الناتج بالمرجع الحقيقي.
@@ -7,6 +7,7 @@
 from django.test import SimpleTestCase
 
 from system import tildacss
+from system.renderer import shared_block_css
 
 
 # artboard حقيقي من قالب Blossom & Oud — تلات عناصر بأنواع مختلفة.
@@ -171,3 +172,58 @@ class ZeroBlockCssTests(SimpleTestCase):
         css = tildacss.zero_block_css("imp-5", grouped)
         self.assertNotIn("tn-elem__24434337531771277026942000001", css)
         self.assertIn("tn-elem__24434337531771277551711000001", css)
+
+
+class SharedBlockCssTests(SimpleTestCase):
+    """تجميع الستايل المكرر بين الأقسام المستوردة في نسخة واحدة."""
+
+    CSS = "body{margin:0}.t-title{color:red}"
+
+    def test_repeated_stylesheet_is_emitted_once(self):
+        blocks = [
+            {"id": "imp-1", "props": {"css": self.CSS}},
+            {"id": "imp-2", "props": {"css": self.CSS}},
+            {"id": "imp-3", "props": {"css": self.CSS}},
+        ]
+        css, ids = shared_block_css(blocks)
+        self.assertEqual(ids, {"imp-1", "imp-2", "imp-3"})
+        self.assertEqual(css.count("color:red"), 1)
+
+    def test_scope_keeps_id_level_specificity(self):
+        """‎:is()‎ بتاخد أولوية أقوى وسيط جوّاها.
+
+        لو حصرنا بكلاس بدل مُعرِّف، قواعد كانت بتكسب قبل كده هتخسر
+        فجأة قدام قواعد ‎invite.css‎ اللي أولويتها أعلى.
+        """
+        blocks = [
+            {"id": "imp-1", "props": {"css": self.CSS}},
+            {"id": "imp-2", "props": {"css": self.CSS}},
+        ]
+        css, _ = shared_block_css(blocks)
+        self.assertIn(":is(#imp-1,#imp-2)", css)
+        # body اتحوّلت لنطاق القسم نفسه، مش سيليكتور جوّاه
+        self.assertIn(":is(#imp-1,#imp-2){margin:0}", css)
+
+    def test_single_block_keeps_its_own_style(self):
+        css, ids = shared_block_css([{"id": "imp-1", "props": {"css": self.CSS}}])
+        self.assertEqual(css, "")
+        self.assertEqual(ids, set())
+
+    def test_unsafe_block_id_never_reaches_the_selector(self):
+        blocks = [
+            {"id": 'imp-1" onload="x', "props": {"css": self.CSS}},
+            {"id": "imp-2", "props": {"css": self.CSS}},
+        ]
+        css, ids = shared_block_css(blocks)
+        self.assertEqual(css, "")
+        self.assertEqual(ids, set())
+
+    def test_different_stylesheets_are_not_merged(self):
+        blocks = [
+            {"id": "imp-1", "props": {"css": self.CSS}},
+            {"id": "imp-2", "props": {"css": self.CSS}},
+            {"id": "imp-3", "props": {"css": ".other{color:blue}"}},
+        ]
+        css, ids = shared_block_css(blocks)
+        self.assertNotIn("color:blue", css)
+        self.assertEqual(ids, {"imp-1", "imp-2"})

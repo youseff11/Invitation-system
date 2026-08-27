@@ -23,6 +23,7 @@ from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 from . import blocks as blocks_engine
+from . import cssscope
 from . import tildacss
 
 # --------------------------------------------------------------------------
@@ -455,6 +456,46 @@ def layout_css(blocks: list[dict]) -> str:
     return mark_safe("".join(rules))
 
 
+def shared_block_css(blocks: list[dict]) -> tuple[str, set[str]]:
+    """يجمّع الستايل المكرر بين الأقسام المستوردة في نسخة واحدة.
+
+    الاستيراد بيحفظ الستايل شيت كامل مع **كل** قسم (شوف
+    ``templateimport.build_document``) عشان الحصر وقت العرض يقرر لوحده.
+    ده معناه إن قالب من ١٤ قسم بيطبع نفس الـ٢١٠ كيلوبايت أربعتاشر مرة —
+    قياس على قالب حقيقي: ٢.٩٦ ميجا من إجمالي ٣.٠٦ ميجا للصفحة، يعني
+    ٩٦٪ من الصفحة ستايل مكرر، والمتصفح بيحلّله كله.
+
+    الحل: القواعد بتتحصر مرة واحدة بنطاق ``:is(#imp-1,#imp-2,…)`` اللي
+    بيغطّي كل الأقسام اللي بتشترك في نفس الستايل. مهم إن النطاق يفضل
+    مُعرِّفات: ``:is()`` بتاخد أولوية أقوى وسيط جوّاها، فأولوية القاعدة
+    بتفضل زي ``#imp-3`` بالظبط ومفيش قاعدة كانت بتكسب بتخسر فجأة.
+
+    بيرجّع ``(css, ids)`` — الـ``ids`` هي الأقسام اللي خلاص ستايلها
+    اتطبع، فقالب القسم بيبطّل يطبعه تاني.
+    """
+    groups: dict[str, list[str]] = {}
+    for block in blocks or []:
+        css = str((block.get("props") or {}).get("css") or "")
+        bid = str(block.get("id") or "")
+        if not css or not _SAFE_ID.match(bid):
+            continue
+        groups.setdefault(css, []).append(bid)
+
+    parts: list[str] = []
+    shared: set[str] = set()
+    for css, ids in groups.items():
+        # قسم لوحده مالوش تكرار — يفضل ستايله جوّاه زي ما هو
+        if len(ids) < 2:
+            continue
+        scope = ":is(" + ",".join("#" + bid for bid in ids) + ")"
+        scoped = cssscope.scope_css(css, scope)
+        if not scoped:
+            continue
+        parts.append(scoped)
+        shared.update(ids)
+    return "".join(parts), shared
+
+
 def _custom_font_css() -> str:
     """يبني @font-face للخطوط النشطة المرفوعة أو المرتبطة بروابط مباشرة."""
     from .models import CustomFont
@@ -606,6 +647,14 @@ def render_document(
 
     chunks: list[str] = []
 
+    # داخل المحرر بنسيب ستايل كل قسم جوّاه: ‎api_preview‎ بيرجّع الـHTML
+    # بس ويبدّل المسرح من غير الـ‎<head>‎، فستايل مشترك في الرأس كان
+    # هيضيع أول تعديل.
+    if editable:
+        shared_css, shared_css_ids = "", set()
+    else:
+        shared_css, shared_css_ids = shared_block_css(doc["blocks"])
+
     for block in doc["blocks"]:
         spec = blocks_engine.BLOCK_REGISTRY.get(block["type"])
         if not spec:
@@ -647,6 +696,8 @@ def render_document(
             "classes": block_classes(block, theme),
             "allowed_features": allowed_features or set(),
             "request": request,
+            # ستايل القسم اتطبع مرة واحدة في الرأس — مايتكررش هنا
+            "css_shared": str(block.get("id") or "") in shared_css_ids,
         }
         ctx["guest"] = guest
         ctx.update(_block_extras(block, ctx, invitation, editable, guest))
@@ -681,6 +732,8 @@ def render_document(
             for item in ("note", "guest_name", "text", "button", "play")
         },
         "layout_css": layout_css(doc["blocks"]),
+        # ستايل الأقسام المستوردة، نسخة واحدة بدل نسخة لكل قسم
+        "shared_css": mark_safe(shared_css),
         # مواضع عناصر Tilda Zero محسوبة على السيرفر — من غيرها الصفحة
         # بتفضل مكسورة لحد ما runtime القالب يخلص تحميل.
         "zero_css": mark_safe(tildacss.document_zero_css(doc["blocks"])),
@@ -702,7 +755,7 @@ def render_document(
 _PREVIEW_KEYS = (
         "html", "css_vars", "font_css", "font_preloads", "intro_css",       "intro_item_styles", "layout_css",
 
-    "zero_css",
+    "shared_css", "zero_css",
 
     "runtime_scripts", "runtime_root_attrs", "runtime_is_spa",
 
@@ -711,7 +764,7 @@ _PREVIEW_KEYS = (
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-27-tilda-zero-css-v1"
+_PREVIEW_RENDER_REVISION = "2026-08-27-tilda-zero-css-shared-v2"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
@@ -743,6 +796,7 @@ def _preview_payload(result: dict) -> dict:
     payload["intro_css"] = str(payload.get("intro_css") or "")
 
     payload["layout_css"] = str(payload.get("layout_css") or "")
+    payload["shared_css"] = str(payload.get("shared_css") or "")
     payload["zero_css"] = str(payload.get("zero_css") or "")
     payload["intro_item_styles"] = {
         str(k): str(v) for k, v in (payload.get("intro_item_styles") or {}).items()
@@ -753,7 +807,7 @@ def _preview_payload(result: dict) -> dict:
 def _restore_preview(payload: dict) -> dict:
     result = dict(payload or {})
     for key in ("html", "css_vars", "font_css", "intro_css", "layout_css",
-                "zero_css"):
+                "shared_css", "zero_css"):
         result[key] = mark_safe(str(result.get(key) or ""))
 
     result["font_preloads"] = [
