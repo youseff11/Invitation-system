@@ -11,6 +11,7 @@ import json
 import os
 import re
 from collections import defaultdict
+from urllib.parse import unquote
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -65,9 +66,15 @@ class Command(BaseCommand):
         for url in refs:
             relative = url[len(media_url):] if url.startswith(media_url) \
                 else url.lstrip("/")
-            path = os.path.join(media_root, relative.replace("/", os.sep))
-            if not os.path.exists(path):
-                broken.append(url)
+            # الرابط المخزّن مرمّز بالنسبة (%C3%A0)، والملف على القرص
+            # باسمه الأصلي (à). لازم نجرّب الشكلين وإلا ملف موجود
+            # يبان مكسور.
+            forms = {relative, unquote(relative)}
+            if any(os.path.exists(
+                    os.path.join(media_root, form.replace("/", os.sep)))
+                    for form in forms):
+                continue
+            broken.append(url)
 
         self.stdout.write(
             f"روابط ميديا في المستندات: {len(refs)}\n"

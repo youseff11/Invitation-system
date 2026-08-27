@@ -16,10 +16,87 @@
   } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
     apply("dark");
   }
+
+  /* الصور اللي بتتبدّل مع الثيم (اللوجو وصورة الهيرو) متحطوطة كـbackground-image.
+     ساعة التبديل المتصفح بيشيل القديمة فوراً ويستنى الجديدة تنزل من الشبكة —
+     قياس على الموقع المباشر: 466ms للوجو و471ms للهيرو، والمكان بيفضل فاضي
+     طول المدة دي. الحل إننا نسخّن نسخة الثيم التاني في الكاش وقت الفراغ،
+     فالضغطة تلاقيها جاهزة والتبديل يبقى فوري.
+
+     بنقرا الروابط من الـCSS نفسه بدل ما نكتبها هنا، فلو اتغيّر اسم أو مسار
+     صورة الكود ده مايبقاش محتاج تعديل. */
+  var warmed = {};
+  /* الروابط جوّه ‎custom property‎ زي ‎--hero-img‎ بترجع من ‎getComputedStyle‎
+     زي ما هي مكتوبة (‎../images/x.webp‎) — نسبةً لملف الـCSS مش للصفحة.
+     لازم نحلّها على مسار الاستايل شيت وإلا نسخّن رابط 404. */
+  function styleBase() {
+    var sheets = doc.styleSheets;
+    for (var i = 0; i < sheets.length; i++) {
+      var href = sheets[i].href;
+      if (href && href.indexOf("site.css") !== -1) return href;
+    }
+    return location.href;
+  }
+  function absolute(url) {
+    try { return new URL(url, styleBase()).href; } catch (e) { return ""; }
+  }
+  function themeImageUrls(theme) {
+    var urls = [];
+    var picks = [
+      [doc.querySelector(".brand"), "background-image"],
+      [doc.querySelector(".brand--stacked"), "background-image"],
+      [doc.querySelector(".hero-art"), "--hero-img"]
+    ];
+    picks.forEach(function (pair) {
+      var el = pair[0];
+      if (!el) return;
+      var raw = pair[1] === "--hero-img"
+        ? getComputedStyle(el).getPropertyValue("--hero-img")
+        : getComputedStyle(el).backgroundImage;
+      var m = /url\(\s*["']?(.*?)["']?\s*\)/.exec(raw || "");
+      if (!m || !m[1]) return;
+      var swapped = theme === "dark"
+        ? m[1].replace(/-light(\.[a-z0-9]+)(\?|$)/i, "-dark$1$2")
+        : m[1].replace(/-dark(\.[a-z0-9]+)(\?|$)/i, "-light$1$2");
+      if (swapped === m[1]) return;
+      var full = absolute(swapped);
+      if (full) urls.push(full);
+    });
+    return urls;
+  }
+  function warmTheme(theme) {
+    themeImageUrls(theme).forEach(function (url) {
+      if (warmed[url]) return;
+      warmed[url] = true;
+      var img = new Image();
+      img.decoding = "async";
+      img.src = url;
+    });
+  }
+  function warmOther() {
+    var current = doc.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    warmTheme(current === "dark" ? "light" : "dark");
+  }
+  /* بعد ما الصفحة تخلص تحميل عشان مانزاحمش موارد أول رسم */
+  function scheduleWarm() {
+    if (window.requestIdleCallback) window.requestIdleCallback(warmOther, { timeout: 3000 });
+    else setTimeout(warmOther, 1200);
+  }
+  if (doc.readyState === "complete") scheduleWarm();
+  else window.addEventListener("load", scheduleWarm, { once: true });
+
+  /* لو المستخدم قرّب من الزرار قبل ما الفراغ ييجي، نسخّن على طول */
+  doc.addEventListener("pointerenter", function (e) {
+    var t = e.target;
+    if (t && t.closest && t.closest("[data-theme-toggle]")) warmOther();
+  }, true);
+
   doc.addEventListener("click", function (e) {
     if (!e.target.closest("[data-theme-toggle]")) return;
     var now = doc.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
     apply(now);
+    /* دلوقتي «التاني» بقى العكس — سخّنه للضغطة الجاية */
+    warmOther();
   });
 
   /* ------------------------------------------------ إجراءات القوالب */
