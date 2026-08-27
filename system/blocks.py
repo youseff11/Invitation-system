@@ -809,13 +809,19 @@ SETTINGS_FIELDS = [
     field("intro_play_bg_color", "لون خلفية زر تشغيل الفيديو", "color", "", group="الافتتاحية",
           help_text="لون خلفية زر بدء الفيديو. سيبه فاضي لاستخدام الخلفية الافتراضية."),
 
-    field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
-
+        field("intro_video", "فيديو الافتتاحية", "media", "", group="الافتتاحية",
           media_kind="video",
-          help_text="فيديو قصير (٣-٧ ثواني). بيبدأ صامت إجبارياً — كل "
-               "المتصفحات بتمنع الصوت التلقائي. حط صورة غلاف عشان تظهر "
-               "فوراً قبل ما يحمّل."),
+          help_text="فيديو قصير (٣-٧ ثواني). اختار بعده يبدأ بصوت أو بدون صوت. "
+               "التشغيل التلقائي قد يفرض الكتم حسب المتصفح."),
+    field("intro_video_audio", "صوت فيديو الافتتاحية", "select", "silent",
+          group="الافتتاحية", options=[
+              opt("silent", "بدون صوت"),
+              opt("sound", "بصوت"),
+          ],
+          help_text="اختار هل يبدأ الفيديو بصوت أو بدون صوت. للحصول على صوت "
+               "مضمون من أول لحظة، استخدم أحد أوضاع البداية بالزر."),
     field("intro_poster", "صورة غلاف الفيديو", "image", "", group="الافتتاحية"),
+
     field("intro_play_mode", "بداية الفيديو", "select", "autoplay",
           group="الافتتاحية", options=[
               opt("autoplay", "يبدأ لوحده (تشغيل تلقائي)"),
@@ -829,10 +835,7 @@ SETTINGS_FIELDS = [
           placeholder="مثال: اضغط لتشغيل الفيديو",
           help_text="سيبها فاضية = الزر يفضل دايرة بعلامة تشغيل بس. لو "
                "كتبت كلام الزر بيتحوّل لكبسولة والكلام جنب العلامة."),
-    field("intro_video_sound", "زر صوت على الفيديو", "toggle", True,
-          group="الافتتاحية",
-          help_text="لو الفيديو فيه صوت، الزر ده بيخلي الضيف يشغّله بلمسة. "
-               "من غيره الفيديو بيفضل صامت — مفيش طريقة تانية مسموحة."),
+
     field("intro_video_seconds", "يقفل تلقائياً بعد (ثانية)", "range", 0,
           minimum=0, maximum=15, step=1, group="الافتتاحية",
           help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),
@@ -1033,6 +1036,21 @@ def _coerce(value: Any, spec: dict) -> Any:
 
 
 INTRO_PLAY_MODES = {"autoplay", "button", "button_effects"}
+INTRO_VIDEO_AUDIO_MODES = {"silent", "sound"}
+
+
+def _legacy_intro_video_audio(settings: dict) -> str:
+    """يحوّل إعداد زر الصوت القديم إلى اختيار صوت ثابت للفيديو."""
+    explicit = settings.get("intro_video_audio")
+    if explicit in INTRO_VIDEO_AUDIO_MODES:
+        return explicit
+
+    old_sound = settings.get("intro_video_sound")
+    if isinstance(old_sound, str):
+        old_sound = old_sound.strip().lower() in {"1", "true", "yes", "on"}
+    if isinstance(old_sound, bool):
+        return "sound" if old_sound else "silent"
+    return "silent"
 
 
 def _legacy_intro_play_mode(settings: dict) -> str:
@@ -1082,6 +1100,7 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
     set_raw = doc.get("settings") if isinstance(doc.get("settings"), dict) else {}
     settings_for_schema = dict(set_raw)
     settings_for_schema["intro_play_mode"] = _legacy_intro_play_mode(set_raw)
+    settings_for_schema["intro_video_audio"] = _legacy_intro_video_audio(set_raw)
     out["settings"] = {
         s["key"]: _coerce(settings_for_schema.get(s["key"]), s)
         for s in SETTINGS_FIELDS
@@ -1090,7 +1109,7 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
     # نحتفظ بالمفاتيح القديمة داخل المستند للتوافق مع أي نسخة قديمة من
     # التطبيق أو أدوات التصدير، لكن لا نعرضها في schema ولا نستخدمها إذا
     # كان intro_play_mode موجوداً.
-    for legacy_key in ("intro_video_start", "intro_autoplay", "intro_play_effects"):
+    for legacy_key in ("intro_video_start", "intro_autoplay", "intro_play_effects", "intro_video_sound"):
         if legacy_key not in set_raw:
             continue
         value = set_raw.get(legacy_key)

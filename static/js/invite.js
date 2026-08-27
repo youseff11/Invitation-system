@@ -483,20 +483,19 @@
 
     }
     if (video) {
-      /* وضعين للبداية:
-
-         تلقائي — لازم يبدأ **صامت**، ده شرط المتصفح مش اختيار.
-         بزر    — لمسة الضيف بتديك إذن التشغيل بصوت من أول ثانية،
-                  وده أحسن تجربة لما الفيديو ليه صوت مقصود. */
+      /* الصوت اختيار من إعدادات الافتتاحية. التشغيل التلقائي قد يرفضه
+         المتصفح لو كان بصوت، وساعتها fallback للكتم يحافظ على التشغيل. */
       var manual = video.hasAttribute("data-intro-manual");
+      var wantsSound = video.getAttribute("data-intro-audio") === "sound";
 
       if (manual && playBtn) {
         intro.classList.add("is-awaiting-play");
         playBtn.addEventListener("click", function (e) {
           e.stopPropagation();          // ما نفتحش الدعوة بالغلط
           intro.classList.remove("is-awaiting-play");
-          video.muted = false;          // مسموح — الضغطة دي إذن صريح
+          video.muted = !wantsSound;
           var play = video.play();
+
           if (play && play.catch) {
             play.catch(function () {
               // بعض الأجهزة بترفض الصوت برضو — نجرّب صامت
@@ -509,14 +508,13 @@
               }
             });
           }
-          var sound = $("[data-intro-sound]", intro);
-          if (sound) { sound.classList.add("is-on"); sound.setAttribute("aria-pressed", "true"); }
-          if (window.__lbMusic) window.__lbMusic.pause();
+
           startAuto();                  // العدّاد يبدأ من دلوقتي
         });
       } else {
-        video.muted = true;
+        video.muted = !wantsSound;
         var tryPlay = video.play();
+
         if (tryPlay && tryPlay.catch) {
           // iOS في وضع توفير الطاقة بيرفض التشغيل — الغلاف بيفضل ظاهر
           tryPlay.catch(function () { intro.classList.add("is-video-blocked"); });
@@ -526,32 +524,7 @@
         if (!intro.getAttribute("data-intro-auto")) open();
       });
 
-      /* زر الصوت: الطريقة الوحيدة المسموحة لتشغيل صوت الفيديو.
-         المتصفح بيسمح بإلغاء الكتم **بس** لو جاي من لمسة المستخدم
-         نفسه، فمفيش نسخة أوتوماتيكية من ده مهما عملنا.
-         بنخفي الزر لو الفيديو أصلاً مالوش مسار صوت — زرار بيوعد بحاجة
-         مش موجودة أسوأ من مفيش زرار. */
-      var sound = $("[data-intro-sound]", intro);
-      if (sound) {
-        var hideIfSilent = function () {
-          if (hasAudio(video) === false) sound.hidden = true;
-        };
-        video.addEventListener("loadeddata", hideIfSilent);
-        if (video.readyState >= 2) hideIfSilent();
-
-        sound.addEventListener("click", function (e) {
-          e.stopPropagation();               // ما نفتحش الدعوة بالغلط
-          video.muted = !video.muted;
-          if (!video.muted) { try { video.play(); } catch (err) {} }
-          sound.setAttribute("aria-pressed", String(!video.muted));
-          sound.setAttribute("aria-label",
-            video.muted ? "تشغيل صوت الفيديو" : "كتم صوت الفيديو");
-          sound.classList.toggle("is-on", !video.muted);
-          // لو الفيديو والموسيقى شغّالين مع بعض هيتزنقوا في ودن الضيف
-          if (!video.muted && window.__lbMusic) window.__lbMusic.pause();
-        });
       }
-    }
 
     var btn = $("[data-intro-open]", intro);
     if (btn) btn.addEventListener("click", open);
@@ -563,8 +536,7 @@
 
        ولمسة «أي مكان» مش مسموحة وإحنا لسه مستنيين زر التشغيل — الضيف
        ساعتها ما شافش الافتتاحية أصلاً، والضغطة المفروض تروح لزر
-       التشغيل مش تتخطّى كل حاجة. زر التشغيل وزر الصوت بيوقّفوا
-       الضغطة بنفسهم فمش هيوصلوا هنا. */
+       التشغيل مش تتخطّى كل حاجة. زر التشغيل بيوقف الضغطة بنفسه فمش هيوصلوا هنا. */
     intro.addEventListener("click", function (e) {
       if (intro.classList.contains("is-awaiting-play")) return;
       if (btn) { if (e.target === intro) open(); return; }
@@ -573,17 +545,6 @@
     if (!btn) intro.style.cursor = "pointer";
   }
 
-  /** هل الفيديو فيه مسار صوت؟ ``null`` يعني المتصفح مش بيقول. */
-  function hasAudio(v) {
-    if (typeof v.mozHasAudio === "boolean") return v.mozHasAudio;
-    if (v.audioTracks && typeof v.audioTracks.length === "number") {
-      return v.audioTracks.length > 0;
-    }
-    if (typeof v.webkitAudioDecodedByteCount === "number") {
-      return v.webkitAudioDecodedByteCount > 0;
-    }
-    return null;                              // مش عارفين — نسيب الزر ظاهر
-  }
 
   // ---------------------------------------------------------- نموذج RSVP
   function initRsvp() {

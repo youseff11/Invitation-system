@@ -868,12 +868,31 @@ class IntroTests(BaseAppTest):
         self.assertIn("muted", body)
         self.assertIn("playsinline", body)
 
+    def test_intro_video_can_start_with_sound(self):
+        self._enable(intro_video="/media/x.mp4", intro_video_audio="sound",
+                     intro_play_mode="button")
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        tag = body[body.index("<video"):body.index("</video>")]
+        self.assertIn('data-intro-audio="sound"', tag)
+        self.assertNotIn(" muted", tag)
+        self.assertNotIn("data-intro-sound", body)
+
+    def test_intro_video_can_start_silent(self):
+        self._enable(intro_video="/media/x.mp4", intro_video_audio="silent",
+                     intro_play_mode="button")
+        body = self.client.get(self.inv.get_absolute_url()).content.decode()
+        tag = body[body.index("<video"):body.index("</video>")]
+        self.assertIn('data-intro-audio="silent"', tag)
+        self.assertIn("muted", tag)
+        self.assertNotIn("data-intro-sound", body)
+
     def test_no_intro_markup_when_disabled(self):
+
         doc = self.inv.document
         doc["settings"]["intro_enabled"] = False
         self.inv.document = B.normalize_document(doc)
         self.inv.save(update_fields=["document"])
-        self.assertNotIn("lb-intro",
+        self.assertNotIn('class="lb-intro',
                          self.client.get(self.inv.get_absolute_url()).content.decode())
 
 
@@ -2216,8 +2235,8 @@ class IntroPlayButtonTests(BaseAppTest):
         body = self._render(intro_play_mode="button")
         tag = body[body.index("<video"):body.index("</video>")]
         self.assertNotIn("autoplay", tag)
-        # ومش صامت إجبارياً — الضغطة هي اللي بتديه إذن الصوت
-        self.assertNotIn(" muted", tag)
+        # الوضع الافتراضي للصوت صامت، ويمكن تغييره من حقل الصوت.
+        self.assertIn("muted", tag)
 
     def test_button_effects_mode_shows_a_play_button_with_effects(self):
         body = self._render(intro_play_mode="button_effects")
@@ -2472,7 +2491,8 @@ class IntroPlayLabelTests(BaseAppTest):
         doc = self.inv.document
         doc["settings"]["intro_enabled"] = True
         doc["settings"]["intro_video"] = "/media/x.mp4"
-        doc["settings"]["intro_video_start"] = "button"
+        doc["settings"]["intro_play_mode"] = "button"
+
         if label is not None:
             doc["settings"]["intro_play_label"] = label
         self.inv.document = B.normalize_document(doc)
@@ -2511,7 +2531,8 @@ class IntroPlayLabelTests(BaseAppTest):
     def test_label_is_ignored_in_auto_mode(self):
         doc = self.inv.document
         doc["settings"].update({"intro_enabled": True, "intro_video": "/media/x.mp4",
-                                "intro_video_start": "auto",
+                                                                "intro_play_mode": "autoplay",
+
                                 "intro_play_label": "ابدأ"})
         self.inv.document = B.normalize_document(doc)
         self.inv.save(update_fields=["document"])

@@ -15,14 +15,16 @@
 
   {% if render.settings.intro_video %}
   {% comment %}
-    muted إجباري: كل المتصفحات بتمنع التشغيل التلقائي بصوت. زر الصوت
-    تحت بيشيله بعد أول لمسة من الضيف — دي الطريقة الوحيدة المسموحة.
+    اختيار الصوت بيتحدد من إعدادات فيديو الافتتاحية. التشغيل التلقائي قد
+    يُكتم إجبارياً حسب سياسة المتصفح حتى لو اختار المصمم «بصوت».
   {% endcomment %}
   {% if render.settings.intro_play_mode == 'button' or render.settings.intro_play_mode == 'button_effects' %}
 
   <video class="lb-intro-video" data-intro-video data-intro-manual
+         data-intro-audio="{{ render.settings.intro_video_audio }}"
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
+         {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %}
          playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
       {% comment %}
@@ -32,32 +34,21 @@
     عشان قارئ الشاشة ما يقولش حاجتين مختلفتين عن نفس الزر.
   {% endcomment %}
   <button type="button" data-intro-play data-intro-item="play"
-          class="lb-intro-play lb-intro-play--label{% if render.settings.intro_play_mode == 'button' %} lb-intro-play--no-effects{% endif %}"
-          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}"
+          class="lb-intro-play{% if render.settings.intro_play_label %} lb-intro-play--label{% endif %}{% if render.settings.intro_play_mode == 'button' %} lb-intro-play--no-effects{% endif %}"
+          aria-label="{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}تشغيل الفيديو{% endif %}"
           style="{{ render.intro_item_styles.play }}">
-    <span class="lb-intro-play-text">{% if render.settings.intro_play_label %}{{ render.settings.intro_play_label }}{% else %}اضغط للفتح{% endif %}</span>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2Z"/></svg>
+    {% if render.settings.intro_play_label %}<span class="lb-intro-play-text">{{ render.settings.intro_play_label }}</span>{% endif %}
   </button>
   {% else %}
   <video class="lb-intro-video" data-intro-video
+         data-intro-audio="{{ render.settings.intro_video_audio }}"
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
-         autoplay muted playsinline preload="auto"></video>
+         autoplay {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %} playsinline preload="auto"></video>
   <div class="lb-intro-veil"></div>
   {% endif %}
-  {% if render.settings.intro_video_sound %}
-  <button type="button" class="lb-intro-sound" data-intro-sound
-          aria-pressed="false" aria-label="تشغيل صوت الفيديو" title="تشغيل الصوت">
-    <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6M21 9l-5 6"/>
-    </svg>
-    <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>
-      <path d="M18.5 5.5a9 9 0 0 1 0 13"/>
-    </svg>
-  </button>
-  {% endif %}
+
   {% endif %}
 
   <div class="lb-intro-inner"{% if editable %} data-intro-move="1"{% endif %}>

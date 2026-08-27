@@ -1151,27 +1151,7 @@
   overflow: visible !important;
 }
 
-/* ------------------------------------------------ زر صوت فيديو الافتتاحية */
-.lb-intro-sound {
-  position: absolute; z-index: 3;
-  inset-block-start: 16px; inset-inline-end: 16px;
-  width: 42px; height: 42px; padding: 0;
-  display: grid; place-items: center;
-  border: 1px solid rgba(255, 255, 255, .38); border-radius: 50%;
-  background: rgba(20, 18, 16, .46); color: #fff;
-  backdrop-filter: blur(6px); cursor: pointer;
-  transition: background .18s ease, transform .18s ease;
-}
-.lb-intro-sound:hover { background: rgba(20, 18, 16, .68); transform: scale(1.06); }
-.lb-intro-sound svg { width: 21px; height: 21px; }
-/* الأيقونة بتتبدّل حسب الحالة — واحدة ظاهرة والتانية مخفية */
-.lb-intro-sound .i-on { display: none; }
-.lb-intro-sound.is-on .i-off { display: none; }
-.lb-intro-sound.is-on .i-on { display: block; }
-.lb-intro-sound[hidden] { display: none; }
-@media (max-width: 480px) {
-  .lb-intro-sound { width: 38px; height: 38px; inset-block-start: 12px; inset-inline-end: 12px; }
-}
+
 
 /* -------------------------------- تلميحات التحرير داخل الأقسام المستوردة */
 .lb-doc--editing .lb-custom [data-lb-text]:hover {
