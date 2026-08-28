@@ -73,9 +73,31 @@
       img.src = url;
     });
   }
+  /* صورة الهيرو ليها نسخة لكل لغة (‎home-arabic-*‎ / ‎home-english-*‎).
+     تبديل اللغة بيعمل POST وبيرجّع الصفحة من جديد، فالصورة الجديدة
+     بتنزل من الشبكة وقتها. تسخينها وقت الفراغ بيخلي الوش جاهز أول
+     ما الصفحة ترجع بدل ما يفضل فاضي وهي بتنزل. */
+  function warmOtherLanguage() {
+    var art = doc.querySelector(".hero-art");
+    if (!art) return;
+    var raw = getComputedStyle(art).getPropertyValue("--hero-img");
+    var m = /url\(\s*["']?(.*?)["']?\s*\)/.exec(raw || "");
+    if (!m || !m[1]) return;
+    var swapped = m[1].indexOf("-arabic-") !== -1
+      ? m[1].replace("-arabic-", "-english-")
+      : m[1].replace("-english-", "-arabic-");
+    if (swapped === m[1]) return;
+    var url = absolute(swapped);
+    if (!url || warmed[url]) return;
+    warmed[url] = true;
+    var img = new Image();
+    img.decoding = "async";
+    img.src = url;
+  }
   function warmOther() {
     var current = doc.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
     warmTheme(current === "dark" ? "light" : "dark");
+    warmOtherLanguage();
   }
   /* بعد ما الصفحة تخلص تحميل عشان مانزاحمش موارد أول رسم */
   function scheduleWarm() {

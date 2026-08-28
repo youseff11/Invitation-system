@@ -245,8 +245,17 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
 # ==========================================================================
 # الموقع العام
 # ==========================================================================
+# الحقول التقيلة اللي صفحات العرض مابتلمسهاش: مستند القالب ممكن يوصل
+# ٣ ميجا، والمعاينة المخزّنة والسكربتات كمان. Django بيحمّل كل الحقول
+# افتراضياً، فصفحة بتعرض الاسم والغلاف بس كانت بتقرا وتفكّ عشرات
+# الميجات من JSON. قياس على الموقع المباشر: الرئيسية ٤٤٥١ms و«القوالب»
+# ٣٠٩٠ms، بينما صفحة مابتلمسش القوالب خالص ١٧٦ms — والناتج ١٢–٢٦ كيلوبايت.
+_TEMPLATE_HEAVY_FIELDS = ("document", "preview_render", "runtime_scripts")
+
+
 def home(request):
-    templates = Template.objects.filter(is_active=True)[:12]
+    templates = (Template.objects.filter(is_active=True)
+                 .defer(*_TEMPLATE_HEAVY_FIELDS)[:12])
     plans = list(Plan.objects.filter(is_active=True))
     addons = list(PlanAddon.objects.filter(is_active=True).prefetch_related("plans"))
     cfg = SiteSetting.load()
@@ -277,7 +286,7 @@ def home(request):
 
 @require_GET
 def template_gallery(request):
-    qs = Template.objects.filter(is_active=True)
+    qs = Template.objects.filter(is_active=True).defer(*_TEMPLATE_HEAVY_FIELDS)
     category = request.GET.get("category", "")
     if category:
         qs = qs.filter(category=category)
