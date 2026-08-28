@@ -470,8 +470,21 @@ class ViewCounterTests(BaseAppTest):
 
 
 
+
+
+# ==========================================================================
+class AssetCacheBustTests(BaseAppTest):
+    def test_invitation_html_has_content_versioned_assets_and_no_store(self):
+        response = self.client.get(f"/i/{self.inv.slug}/")
+        body = response.content.decode("utf-8")
+        self.assertRegex(body, r"css/invite\.css\?v=[0-9a-f]{16}")
+        self.assertRegex(body, r"js/invite\.js\?v=[0-9a-f]{16}")
+        self.assertIn("no-store", response.get("Cache-Control", ""))
+
+
 # ==========================================================================
 class LayoutTests(BaseAppTest):
+
     """مواضع النصوص (السحب بالماوس) — تنظيف المدخلات وتوليد الـCSS."""
 
     def _layout(self, raw):

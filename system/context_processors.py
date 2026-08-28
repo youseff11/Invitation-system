@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from django.conf import settings
@@ -9,23 +10,33 @@ _ASSET_V = None
 def _asset_version():
     """بصمة بتتغيّر مع أي تعديل في ملفات static.
 
-    من غيرها المتصفح بيفضل ماسك نسخة قديمة من site.css / site.js بعد أي تحديث،
-    فتلاقي التصميم اتغيّر والسلوك لأ (أو العكس). في DEBUG بتتحسب كل طلب عشان
-    التعديل يبان فوراً، وفي الإنتاج بتتحسب مرة واحدة.
+    من غيرها المتصفح بيفضل ماسك نسخة قديمة من ملفات CSS وJavaScript بعد أي تحديث،
+    فتلاقي التصميم اتغيّر والسلوك لأ (أو العكس). البصمة هنا مبنية على محتوى
+    الملفات نفسها، لذلك لا تعتمد على توقيت Git أو توقيت نسخ static إلى staticfiles.
+    في DEBUG بتتحسب كل طلب عشان التعديل يبان فوراً، وفي الإنتاج بتتحسب مرة واحدة.
+
     """
     global _ASSET_V
     if _ASSET_V and not settings.DEBUG:
         return _ASSET_V
-    newest = 0
+    digest = hashlib.sha256()
+    found = False
     for root in getattr(settings, "STATICFILES_DIRS", []):
         for base, _dirs, files in os.walk(root):
-            for name in files:
-                if name.endswith((".css", ".js")):
-                    try:
-                        newest = max(newest, int(os.path.getmtime(os.path.join(base, name))))
-                    except OSError:
-                        pass
-    _ASSET_V = str(newest or 1)
+            for name in sorted(files):
+                if not name.endswith((".css", ".js")):
+                    continue
+                path = os.path.join(base, name)
+                try:
+                    digest.update(os.path.relpath(path, root).encode("utf-8", "surrogateescape"))
+                    with open(path, "rb") as asset:
+                        for chunk in iter(lambda: asset.read(1024 * 1024), b""):
+                            digest.update(chunk)
+                    found = True
+                except (OSError, UnicodeError):
+                    pass
+    _ASSET_V = digest.hexdigest()[:16] if found else "1"
+
     return _ASSET_V
 
 

@@ -348,6 +348,7 @@ def template_demo(request, slug):
 # ==========================================================================
 # الدعوة العامة
 # ==========================================================================
+@never_cache
 def invitation_public(request, slug):
     invitation = get_object_or_404(
         Invitation.objects.select_related("template", "plan", "customer"), slug=slug
@@ -370,6 +371,7 @@ def invitation_public(request, slug):
     return _render_invitation_page(request, invitation)
 
 
+@never_cache
 def invitation_guest(request, slug, token):
     """الرابط الشخصي للضيف: /i/<slug>/g/<token>/
 
@@ -1187,6 +1189,7 @@ def _template_editor_frame(request, template, document, *, editable=True):
 
 @login_required
 @ensure_csrf_cookie
+@never_cache
 def template_editor(request, pk):
     """محرر القالب نفسه — متاح لفريق العمل فقط."""
     _staff_required(request)
@@ -1250,6 +1253,7 @@ def template_editor(request, pk):
 
 
 @login_required
+@never_cache
 def template_editor_frame(request, pk):
     _staff_required(request)
     template = get_object_or_404(Template, pk=pk)
