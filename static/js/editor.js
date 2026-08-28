@@ -1125,28 +1125,46 @@
     (fdoc.head || fdoc.documentElement).appendChild(style);
   }
 
-  /* السحب لازم يبان لحظياً. القاعدة اللي السيرفر بيولّدها موجودة بس
-     بالقيمة المحفوظة، فبنكتب قاعدة مؤقتة بنفس الشكل بالظبط — نفس
-     المُعرّف المكرر (خصوصية أعلى من Tilda) ونفس التلات عناصر. */
-  function liveSectionHeight(fdoc, blockId, value) {
+  /* ارتفاعات الأقسام لازم تتكتب من جديد بعد **كل** تحديث معاينة، مش
+     وقت السحب بس.
+
+     السبب: ‎applyPreview‎ بتستبدل ‎stage.innerHTML‎ وبتطبّق الخط
+     والافتتاحية والموسيقى، لكنها **مابتجدّدش ‎zero_css‎** — الستايل
+     اللي في رأس الإطار فاضل زي ما هو من أول تحميل الصفحة، بالارتفاع
+     القديم. فكانت النتيجة إن السحب يشتغل، وبعد ثواني (لما المعاينة
+     ترجع من السيرفر) القسم يرجع لحجمه الأصلي.
+
+     عشان كده القاعدة دي مستقلة تماماً عن إطار الحدود: بتتكتب لكل
+     الأقسام اللي ليها ارتفاع محفوظ، ومابتتشالش لما تقفل الإطار. */
+  function syncSectionHeights(fdoc) {
+    if (!fdoc) return;
     var style = fdoc.querySelector("style[data-lb-section-height]");
     if (!style) {
       style = fdoc.createElement("style");
       style.setAttribute("data-lb-section-height", "1");
       (fdoc.head || fdoc.documentElement).appendChild(style);
     }
-    if (!value || value <= 0) { style.textContent = ""; return; }
-    var scope = "#" + blockId + "#" + blockId + " ";
-    var targets = [".t396__artboard", ".t396__filter", ".t396__carrier"]
-      .map(function (name) { return scope + name; }).join(",");
-    /* ‎!important‎ زي القاعدة اللي السيرفر بيولّدها بالظبط. من غيرها
-       القاعدة المستوردة ‎#imp-4 #recXXX .t396__artboard{height:...}‎ —
-       معرّفين + كلاس، نفس الخصوصية — بتكسب بالترتيب لأنها متطبوعة
-       بعدنا، فالسحب يغيّر الرقم واللافتة والشاشة ماتتحركش. */
-    style.textContent = sectionHeightSpec().query + "{" + targets +
-      "{height:" + value + "px!important}" +
-      "#" + blockId + "#" + blockId +
-      " .t396__artboard{overflow:visible!important}}";
+    var out = [];
+    ((state.doc && state.doc.blocks) || []).forEach(function (block) {
+      if (!block || block.type !== "custom_html" || !block.id) return;
+      var st = block.style || {};
+      var scope = "#" + block.id + "#" + block.id + " ";
+      var targets = [".t396__artboard", ".t396__filter", ".t396__carrier"]
+        .map(function (name) { return scope + name; }).join(",");
+      Object.keys(SECTION_HEIGHT_MEDIA).forEach(function (device) {
+        var spec = SECTION_HEIGHT_MEDIA[device];
+        var value = Number(st[spec.key] || st.section_height || 0);
+        if (!(value > 0)) return;
+        /* ‎!important‎ زي القاعدة اللي السيرفر بيولّدها بالظبط. من غيرها
+           القاعدة المستوردة ‎#imp-4 #recXXX .t396__artboard{height:...}‎
+           — معرّفين + كلاس، نفس الخصوصية — بتكسب بالترتيب لأنها
+           متطبوعة بعدنا. */
+        out.push(spec.query + "{" + targets + "{height:" + value +
+                 "px!important}" + scope +
+                 ".t396__artboard{overflow:visible!important}}");
+      });
+    });
+    style.textContent = out.join("");
   }
 
   function clearSectionBounds() {
@@ -1162,8 +1180,8 @@
     fdoc.querySelectorAll(".lb-has-section-bounds").forEach(function (node) {
       node.classList.remove("lb-has-section-bounds");
     });
-    var live = fdoc.querySelector("style[data-lb-section-height]");
-    if (live) live.remove();
+    /* ستايل الارتفاعات مابيتشالش هنا عن قصد: هو مش جزء من إطار
+       الحدود، وقفل الإطار مالوش علاقة بارتفاع القسم. */
   }
 
   function applySectionBounds() {
@@ -1213,7 +1231,7 @@
       /* قيمة لكل مقاس: القالب المستورد بيحدد ارتفاع مختلف لكل مقاس،
          ورقم واحد كان هيظبط مقاس ويكسر التانيين. */
       block.style[spec.key] = next;
-      liveSectionHeight(fdoc, block.id, next);
+      syncSectionHeights(fdoc);
       label.textContent = "حدود القسم · " + deviceName + " · " + next + "px";
     };
     var stop = function (event) {
@@ -3475,6 +3493,7 @@
     if (!fdoc) return;
     bindIntroDrag(fdoc);
     bindSectionTextDrag(fdoc);
+    syncSectionHeights(fdoc);
     applySectionBounds();
 
     // اختيار القسم بالضغط عليه
