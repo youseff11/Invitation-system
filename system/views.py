@@ -536,13 +536,19 @@ def invitation_rsvp(request, slug):
     if status not in {"attending", "declined", "maybe"}:
         status = "attending"
 
-    # حدود المرافقين تؤخذ من بلوك RSVP نفسه لا من المدخلات
+    # حدود المرافقين وإعدادات الحقول تؤخذ من بلوك RSVP نفسه لا من المدخلات
     doc = invitation.get_document()
-    max_companions = 0
+    rsvp_props: dict = {}
     for block in doc["blocks"]:
         if block["type"] == "rsvp":
-            max_companions = int(block["props"].get("max_companions") or 0)
+            rsvp_props = block.get("props") or {}
             break
+    max_companions = int(rsvp_props.get("max_companions") or 0)
+    # الهاتف متقفل من المحرر: رقم جاي في طلب متلاعب فيه ما يتسجّلش.
+    # المقارنة بـ‎is False‎ مقصودة — المفتاح الناقص في مستند قديم
+    # معناه «الحقل ظاهر» مش «مقفول».
+    if rsvp_props.get("ask_phone") is False:
+        phone = ""
     try:
         companions = max(0, min(max_companions, int(request.POST.get("companions") or 0)))
     except (TypeError, ValueError):
@@ -591,11 +597,7 @@ def invitation_rsvp(request, slug):
             status=status, companions=companions, message=message_text, ip_hash=ip_hash,
         )
 
-    success = "شكراً لكم — تم تسجيل ردكم."
-    for block in doc["blocks"]:
-        if block["type"] == "rsvp":
-            success = block["props"].get("success_message") or success
-            break
+    success = rsvp_props.get("success_message") or "شكراً لكم — تم تسجيل ردكم."
 
     # ---- تصريح الدخول
     # اللي أكّد حضوره لازم يطلع بتصريح ومعاه QR. لو مالوش سجل ضيف

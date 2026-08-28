@@ -772,7 +772,12 @@
 .lb-form { display: flex; flex-direction: column; gap: 14px; text-align: start; }
 .lb-field { display: flex; flex-direction: column; gap: 6px; }
 .lb-field > span { font-size: 0.82em; color: var(--muted); letter-spacing: 0.06em; }
-.lb-field input, .lb-field textarea, .lb-field select {
+/* الاستثناء مقصود: خيارات الحضور عايشة جوّه ‎.lb-field‎، فالقاعدة دي
+   كانت بتمسك أزرار الراديو كمان وتدّيها ‎width:100%‎ وحشو وحدود وخلفية.
+   الزرار كان عرضه ٢٦٧px بدل ١٣px، فيزقّ نص الخيار برّه الكبسولة —
+   وبيبان أوضح على الآيفون لأن الشاشة أضيق. */
+.lb-field input:not([type="radio"]):not([type="checkbox"]),
+.lb-field textarea, .lb-field select {
   font: inherit;
   padding: 11px 14px;
   border: 1px solid var(--border);
@@ -780,8 +785,13 @@
   background: var(--bg);
   color: var(--text);
   width: 100%;
+  /* سفاري على الآيفون بيرسم حقوله بنفسه — ظل داخلي واستدارة مختلفة
+     وحدود مالهاش علاقة بالقالب. الصفر ده بيسلّم الرسم للستايل بتاعنا. */
+  -webkit-appearance: none;
+  appearance: none;
 }
-.lb-field input:focus, .lb-field textarea:focus {
+.lb-field input:not([type="radio"]):not([type="checkbox"]):focus,
+.lb-field textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-20);
@@ -793,6 +803,7 @@
   align-items: center;
   justify-content: flex-start;
   white-space: nowrap;
+  max-width: 100%;
   gap: 7px;
   padding: 9px 16px;
   border: 1px solid var(--border);
@@ -801,13 +812,33 @@
   font-size: 0.88em;
   transition: all .16s ease;
 }
-.lb-choices input { accent-color: var(--accent); margin: 0; }
+.lb-choices input {
+  accent-color: var(--accent);
+  margin: 0;
+  flex: 0 0 auto;      /* ما يتمططش مع بقية الصف */
+  width: auto;
+}
 .lb-choices label:has(input:checked) {
   border-color: var(--accent);
   background: var(--accent-10);
   color: var(--accent);
 }
-.lb-hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+/* فخ السبام: **ما ينفعش** يتخبّى بـ‎left:-9999px‎. الصفحة ‎dir="rtl"‎،
+   وفي RTL أي محتوى على شمال نقطة البداية بيوسّع مساحة التمرير —
+   ‎scrollWidth‎ كان بيطلع ١٠٣٧٤px والشاشة ٣٧٥px، فالمتصفح بيصغّر
+   الصفحة كلها عشان تسع العرض ده. ده اللي بيخلي القالب «يبوظ» أول ما
+   تضيف قسم تأكيد الحضور، وبيبان على أندرويد كصفحة مضغوطة على جنب.
+   القص بدل الإزاحة بيخفي الحقل من غير ما ياخد أي مساحة. */
+.lb-hp {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
 .lb-form-msg {
   margin: 0;
   padding: 12px 14px;
@@ -1078,7 +1109,16 @@
   .lb-cd-unit { min-width: 66px; padding: 12px 8px; }
   /* على الشاشات الضيقة تصبح خيارات الحضور صفوفاً كاملة بدل أن يلتف نصها */
   .lb-choices { flex-direction: column; align-items: stretch; }
-  .lb-choices label { justify-content: center; }
+  /* بقى صف كامل، فالسطر الواحد مش لازم — وخيار طويل مع ‎nowrap‎ كان
+     بيخرج نصّه برّه الكبسولة بدل ما يلتف. */
+  .lb-choices label { justify-content: center; white-space: normal; }
+  /* الحقول بتاخد خط القالب (‎font: inherit‎)، والقوالب اللي مقياس
+     خطها صغير بتنزّل الحقل تحت 16px — وسفاري على الآيفون ساعتها
+     بيزوّم على الصفحة أول ما تدوس على الحقل ويسيبها مزوّمة، فالدعوة
+     بتبان مكسورة. القاع 16px بيمنع الزووم من غير ما يكبّر الخط في
+     القوالب اللي أصلاً فوق كده. */
+  .lb-field input:not([type="radio"]):not([type="checkbox"]),
+  .lb-field textarea, .lb-field select { font-size: max(16px, 1em); }
 }
 
 /* ---------------------------------------------------------- الطباعة */

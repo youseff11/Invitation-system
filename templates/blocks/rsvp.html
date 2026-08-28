@@ -17,11 +17,13 @@
       {% if csrf_token %}<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">{% endif %}
       {% if guest %}<input type="hidden" name="guest_token" value="{{ guest.token }}">{% endif %}
       <input type="text" name="website" class="lb-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-      <label class="lb-field"><span>{{ props.name_label }}</span>
+      <label class="lb-field">{% if props.name_label %}<span>{{ props.name_label }}</span>{% endif %}
         <input type="text" name="name" required maxlength="120" autocomplete="name" value="{{ guest.name|default:'' }}"></label>
-      <label class="lb-field"><span>{{ props.phone_label }}</span>
-        <input type="tel" name="phone" maxlength="40" autocomplete="tel"{% if props.phone_required %} required{% endif %} value="{{ guest.phone|default:'' }}"></label>
-      <div class="lb-field"><span>حالة الحضور</span>
+      <!-- {# الهاتف بيتقفل من المحرر (مفتاح «السؤال عن الهاتف»). والعنوان -->
+         <!-- بيتلف بشرط عشان القالب اللي سايبه فاضي ما يطلعش سطر فاضي. #} -->
+      {% if props.ask_phone %}<label class="lb-field">{% if props.phone_label %}<span>{{ props.phone_label }}</span>{% endif %}
+        <input type="tel" name="phone" maxlength="40" autocomplete="tel"{% if props.phone_required %} required{% endif %} value="{{ guest.phone|default:'' }}"></label>{% endif %}
+      <div class="lb-field">{% if props.status_label %}<span>{{ props.status_label }}</span>{% endif %}
         <div class="lb-choices">
           <label><input type="radio" name="status" value="attending"{% if not guest_answered or guest_answered.status == 'attending' %} checked{% endif %}><span>{{ props.attending_label }}</span></label>
           <label><input type="radio" name="status" value="declined"{% if guest_answered.status == 'declined' %} checked{% endif %}><span>{{ props.declined_label }}</span></label>
@@ -34,7 +36,7 @@
                value="{{ guest_answered.companions|default:0 }}" inputmode="numeric"></label>{% endif %}
       {% else %}<label class="lb-field"><span>{{ props.companions_label }}</span>
         <input type="number" name="companions" min="0" max="{{ props.max_companions }}" value="0" inputmode="numeric"></label>{% endif %}{% endif %}
-      {% if props.ask_message %}<label class="lb-field"><span>{{ props.message_label }}</span>
+      {% if props.ask_message %}<label class="lb-field">{% if props.message_label %}<span>{{ props.message_label }}</span>{% endif %}
         <textarea name="message" rows="3" maxlength="600">{{ guest_answered.message|default:'' }}</textarea></label>{% endif %}
       <button type="submit" class="lb-btn lb-btn--solid lb-btn--block">{{ props.submit_label }}</button>
       <p class="lb-form-msg" data-rsvp-msg hidden>{{ props.success_message }}</p>

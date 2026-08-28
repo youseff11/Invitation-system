@@ -612,6 +612,10 @@ register(
         field("eyebrow", "نص فوق العنوان", "text", "تأكيد الحضور"),
         field("intro", "نص تمهيدي", "textarea", "نرجو تأكيد الحضور قبل الموعد بأسبوع."),
         field("name_label", "عنوان حقل الاسم", "text", "الاسم"),
+        # الافتراضي «مفعّل» عشان الدعوات المحفوظة من قبل الحقل ده
+        # يفضل الهاتف ظاهر فيها: التطبيع بيمشي على المخطط مش على
+        # المخزّن، والمفتاح الناقص بياخد الافتراضي.
+        field("ask_phone", "السؤال عن الهاتف", "toggle", True),
         field("phone_label", "عنوان حقل الهاتف", "text", "رقم الهاتف"),
         field("phone_required", "الهاتف مطلوب", "toggle", False),
         field("ask_companions", "السؤال عن المرافقين", "toggle", True, feature="companions"),
@@ -619,6 +623,9 @@ register(
         field("max_companions", "أقصى عدد مرافقين", "number", 5, minimum=0, maximum=20),
         field("ask_message", "السؤال عن رسالة", "toggle", True),
         field("message_label", "عنوان حقل الرسالة", "text", "كلمة للعروسين"),
+        # كان مكتوب ثابت في القالب، فالقوالب الإنجليزية كانت بتطلع
+        # بعنوان عربي وسط عناوين إنجليزية. الافتراضي نفس النص القديم.
+        field("status_label", "عنوان خيارات الحضور", "text", "حالة الحضور"),
         field("attending_label", "خيار الحضور", "text", "سأحضر بكل سرور"),
         field("declined_label", "خيار الاعتذار", "text", "أعتذر عن الحضور"),
         field("maybe_label", "خيار غير متأكد", "text", "غير متأكد بعد"),
