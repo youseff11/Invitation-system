@@ -4166,6 +4166,13 @@
       }
     };
     var btn = $("[data-crop-apply]");
+    /* مسار فاضي = المحرر مفتوح في وضع مالوش نقطة قص. من غير الشرط ده
+       ‎fetch("")‎ بيروح لعنوان الصفحة نفسها ويرجّع HTML، والمستخدم
+       بيشوف «تعذّر الاتصال بالخادم» وهو مفيش أي مشكلة اتصال. */
+    if (!META.urls || !META.urls.crop) {
+      toast("قص الصور مش متاح في المحرر ده.", "error");
+      return;
+    }
     btn.disabled = true;
     btn.textContent = "جارٍ القص…";
 
@@ -4175,7 +4182,16 @@
       credentials: "same-origin",
       body: JSON.stringify(payload)
     })
-      .then(function (res) { return res.json(); })
+      .then(function (res) {
+        /* رد مش JSON — صفحة خطأ، تحويل لصفحة الدخول، أو مسار غلط —
+           كان بيقع في ‎catch‎ ويطلع رسالة انقطاع اتصال بتودّي في
+           اتجاه غلط تماماً. نفصل الحالتين. */
+        return res.json().catch(function () {
+          var err = new Error("رد غير متوقع من الخادم (" + res.status + ").");
+          err.lbShow = true;
+          throw err;
+        });
+      })
       .then(function (d) {
         btn.disabled = false;
         btn.textContent = "اقصّ";
@@ -4185,10 +4201,10 @@
         closeModal($("[data-crop-modal]"));
         toast("اتقصّت الصورة.", "ok");
       })
-      .catch(function () {
+      .catch(function (err) {
         btn.disabled = false;
         btn.textContent = "اقصّ";
-        toast("تعذّر الاتصال بالخادم.", "error");
+        toast(err && err.lbShow ? err.message : "تعذّر الاتصال بالخادم.", "error");
       });
   }
 

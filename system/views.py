@@ -1252,7 +1252,7 @@ def template_editor(request, pk):
                 "assets": reverse("template_api_assets", kwargs={"pk": template.pk}),
                 "deleteAsset": reverse("template_api_delete_asset", kwargs={"pk": template.pk}),
                 "deleteAssets": reverse("template_api_delete_assets", kwargs={"pk": template.pk}),
-                "crop": "",
+                "crop": reverse("template_api_crop", kwargs={"pk": template.pk}),
                 "frame": reverse("template_editor_frame", kwargs={"pk": template.pk}),
                 "back": reverse("dashboard_templates"),
                 "public": reverse("template_demo", kwargs={"slug": template.slug}),
@@ -1654,17 +1654,12 @@ def template_api_upload(request, pk):
     return _upload_asset_for_editor(request, template=template)
 
 
-@login_required
-@require_POST
-def api_crop(request, pk):
-    """يقص صورة من الأصل ويحفظ الناتج كأصل جديد.
+def _crop_asset_for_editor(request, *, invitation=None, template=None):
+    """يقص صورة من الأصل ويحفظ الناتج كأصل جديد في مكتبة الدعوة أو القالب.
 
     القص بيتم من النسخة الأصلية مش المعروضة، فمفيش فقد جودة متراكم لو
     قصيت أكتر من مرة. والأصل بيفضل محفوظ فتقدر ترجع تقص من جديد.
     """
-    _staff_required(request)
-    invitation = get_object_or_404(Invitation, pk=pk)
-
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except (ValueError, UnicodeDecodeError):
@@ -1677,8 +1672,14 @@ def api_crop(request, pk):
     asset = Asset.objects.filter(pk=payload.get("asset"), kind="image").first()
     if asset is None:
         return JsonResponse({"ok": False, "error": "الصورة غير موجودة."}, status=404)
-    if asset.invitation_id not in (None, invitation.pk):
-        return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة الدعوة دي."},
+    # مكتبة القالب هي الأصول غير المربوطة بدعوة — نفس اللي بيعرضه
+    # ‎template_api_assets‎ بالظبط.
+    if invitation is not None:
+        if asset.invitation_id not in (None, invitation.pk):
+            return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة الدعوة دي."},
+                                status=403)
+    elif asset.invitation_id is not None:
+        return JsonResponse({"ok": False, "error": "الصورة مش من مكتبة القوالب."},
                             status=403)
 
     source = asset.source if asset.source else asset.file
@@ -1711,7 +1712,7 @@ def api_crop(request, pk):
         source=asset.source or asset.file,     # الأصل نفسه عشان إعادة القص
         kind="image", original_name=asset.original_name,
         width=width, height=height, size_bytes=size,
-        invitation=invitation, uploaded_by=request.user,
+        invitation=invitation, template=template, uploaded_by=request.user,
     )
     return JsonResponse({"ok": True, "asset": {
         "id": new.pk, "url": new.url, "thumb": new.thumb_url,
@@ -1719,6 +1720,24 @@ def api_crop(request, pk):
         "name": new.original_name, "kind": "image",
         "width": width, "height": height,
     }})
+
+
+@login_required
+@require_POST
+def api_crop(request, pk):
+    """قص صورة من مكتبة دعوة."""
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+    return _crop_asset_for_editor(request, invitation=invitation)
+
+
+@login_required
+@require_POST
+def template_api_crop(request, pk):
+    """قص صورة من مكتبة القوالب — نفس زر «قصّ الصورة» في محرر القالب."""
+    _staff_required(request)
+    template = get_object_or_404(Template, pk=pk)
+    return _crop_asset_for_editor(request, template=template)
 
 
 @login_required

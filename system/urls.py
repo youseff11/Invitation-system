@@ -67,6 +67,8 @@ urlpatterns = [
          name="template_api_delete_asset"),
     path("dashboard/templates/<int:pk>/api/assets/bulk-delete/", views.template_api_delete_assets,
          name="template_api_delete_assets"),
+    path("dashboard/templates/<int:pk>/api/crop/", views.template_api_crop,
+         name="template_api_crop"),
 
     # ------------------------------------------------------------ واجهة المحرر
 
