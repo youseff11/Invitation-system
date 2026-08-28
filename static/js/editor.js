@@ -1146,11 +1146,30 @@
     }
     var out = [];
     ((state.doc && state.doc.blocks) || []).forEach(function (block) {
-      if (!block || block.type !== "custom_html" || !block.id) return;
+      /* كل الأنواع مش المستورد بس. المقبض معروض في كل قسم، فلو القاعدة
+         دي اتكتبت لـ‎custom_html‎ لوحده يبقى السحب في أي قسم عادي
+         بيشتغل وقت السحب بس (‎style‎ inline) وبيرجع لحجمه أول ما
+         المعاينة تترد من السيرفر. */
+      if (!block || !block.id) return;
       var st = block.style || {};
-      var scope = "#" + block.id + "#" + block.id + " ";
-      var targets = [".t396__artboard", ".t396__filter", ".t396__carrier"]
-        .map(function (name) { return scope + name; }).join(",");
+      var scope = "#" + block.id;
+      /* القسم العادي عنده ‎#id‎ و‎> .lb-inner‎ بس؛ الباقي بيخص القوالب
+         المستوردة ومابيطابقش حاجة جوّه القسم العادي. */
+      var targets = [
+        scope,
+        scope + " > .lb-inner",
+        scope + " > .lb-inner > .lb-custom",
+        scope + " .lb-custom .t396__artboard",
+        scope + " .lb-custom .t396__filter",
+        scope + " .lb-custom .t396__carrier",
+      ].join(",");
+      var overflowTargets = [
+        scope,
+        scope + " > .lb-inner",
+        scope + " .lb-custom",
+        scope + " .lb-custom .t396__artboard",
+      ].join(",");
+
       Object.keys(SECTION_HEIGHT_MEDIA).forEach(function (device) {
         var spec = SECTION_HEIGHT_MEDIA[device];
         var value = Number(st[spec.key] || st.section_height || 0);
@@ -1158,10 +1177,14 @@
         /* ‎!important‎ زي القاعدة اللي السيرفر بيولّدها بالظبط. من غيرها
            القاعدة المستوردة ‎#imp-4 #recXXX .t396__artboard{height:...}‎
            — معرّفين + كلاس، نفس الخصوصية — بتكسب بالترتيب لأنها
-           متطبوعة بعدنا. */
+           متطبوعة بعدنا.
+           و‎min-height‎ مكتوبة معاها لأن ‎.lb‎ عندها
+           ‎min-height:var(--block-section-height)‎ من الحقل القديم —
+           من غير ما نكتب فوقها التصغير تحت القيمة القديمة مابيحصلش. */
         out.push(spec.query + "{" + targets + "{height:" + value +
-                 "px!important}" + scope +
-                 ".t396__artboard{overflow:visible!important}}");
+                 "px!important;min-height:" + value + "px!important}" +
+                 overflowTargets + "{overflow:visible!important}}");
+
       });
     });
     style.textContent = out.join("");
@@ -1231,8 +1254,27 @@
       /* قيمة لكل مقاس: القالب المستورد بيحدد ارتفاع مختلف لكل مقاس،
          ورقم واحد كان هيظبط مقاس ويكسر التانيين. */
       block.style[spec.key] = next;
+      /* لا نعتمد على style tag وحده أثناء السحب؛ بعض القوالب
+         المستوردة تضع style inline أو قاعدة أقوى على الجذر الداخلي.
+         طبّق الارتفاع فوراً على كل طبقات القسم الفعلية، ثم اكتب
+         قاعدة الميديا للحفظ والمعاينة التالية. */
+      [
+        target,
+        target.querySelector(".lb-inner"),
+        target.querySelector(".lb-custom"),
+        target.querySelector(".lb-custom .t396__artboard"),
+        target.querySelector(".lb-custom .t396__filter"),
+        target.querySelector(".lb-custom .t396__carrier"),
+      ].forEach(function (node) {
+        if (!node || !node.style) return;
+        node.style.setProperty("height", next + "px", "important");
+        /* ‎.lb‎ عندها ‎min-height‎ من الحقل القديم؛ من غير ما نكتب
+           عليها القسم مابيصغّرش تحتها وإنت بتسحب. */
+        node.style.setProperty("min-height", next + "px", "important");
+      });
       syncSectionHeights(fdoc);
       label.textContent = "حدود القسم · " + deviceName + " · " + next + "px";
+
     };
     var stop = function (event) {
       if (!resizing) return;

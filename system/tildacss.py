@@ -363,8 +363,12 @@ _SECTION_HEIGHT_MEDIA = (
 )
 
 
-def section_surface_css(block_id: str, style: dict) -> str:
-    """يتجاوز ارتفاع الـartboard المستورد لما المستخدم يسحب حدود القسم.
+def section_surface_css(block_id: str, style: dict, imported: bool = True) -> str:
+    """يتجاوز ارتفاع القسم لما المستخدم يسحب حدود القسم.
+
+    بتتنادى لكل الأقسام مش المستوردة بس — مقبض السحب معروض في كل قسم.
+    ``imported=False`` بيوقف تصفير خلفية Tilda، لأن القسم العادي بيرسم
+    خلفيته على العنصر نفسه.
 
     ليه بالمُعرّف: Tilda بيكتب الارتفاع بقاعدة مربوطة بـ‎#recXXX‎، يعني
     خصوصية (1,0,1). أي قاعدة ساكنة في ملف الستايل بتخسر قدامها، فلازم
@@ -389,14 +393,24 @@ def section_surface_css(block_id: str, style: dict) -> str:
     """
     if not _SAFE_ID_RE.match(block_id or ""):
         return ""
-    # المُعرّف مكرر مرتين عن قصد: ‎#x#x‎ بيطابق نفس العنصر بالظبط، بس
-    # خصوصيته (2,1,0) بدل (1,1,0) — أعلى من قاعدة Tilda. من غير كده
-    # الاتنين متساويين والترتيب هو اللي بيحسم، وستايل القسم ممكن
-    # يتطبع جوّه الجسم (custom_html.html سطر 5) يعني بعد قاعدتنا فيكسب.
-    targets = ",".join(
-        f"#{block_id}#{block_id} .t396__{name}"
-        for name in ("artboard", "filter", "carrier")
-    )
+    # نستخدم معرّف القسم مع غلاف ‎.lb-custom‎ الحقيقي لرفع
+    # الخصوصية. ‎#id#id‎ لا يطابق أي عنصر فعلياً لأنه يطلب
+    # معرّفاً واحداً مكرراً على نفس العنصر.
+    targets = ",".join([
+        f"#{block_id}",
+        f"#{block_id} > .lb-inner",
+        f"#{block_id} > .lb-inner > .lb-custom",
+        *[
+            f"#{block_id} .lb-custom .t396__{name}"
+            for name in ("artboard", "filter", "carrier")
+        ],
+    ])
+    overflow_targets = ",".join([
+        f"#{block_id}",
+        f"#{block_id} > .lb-inner",
+        f"#{block_id} > .lb-inner > .lb-custom",
+        f"#{block_id} .lb-custom .t396__artboard",
+    ])
     out: list[str] = []
     for key, query in _SECTION_HEIGHT_MEDIA:
         try:
@@ -413,13 +427,19 @@ def section_surface_css(block_id: str, style: dict) -> str:
             continue
         # ‎overflow:visible‎ مع الارتفاع: من غيرها العنصر اللي اتسحب
         # تحت الحد بيتقص وإنت شايف مساحة فاضية تحته.
+        # ‎min-height‎ مكتوبة مع الارتفاع لأن ‎.lb‎ عندها
+        # ‎min-height:var(--block-section-height)‎ من الحقل القديم، ومن
+        # غير ما نكتب فوقها القسم مابيصغّرش تحت القيمة القديمة.
         out.append(
-            f"{query}{{{targets}{{height:{value}px!important}}"
-            f"#{block_id}#{block_id} .t396__artboard"
-            f"{{overflow:visible!important}}}}"
+            f"{query}{{{targets}"
+            f"{{height:{value}px!important;min-height:{value}px!important}}"
+            f"{overflow_targets}{{overflow:visible!important}}}}"
         )
 
-    if (style or {}).get("bg_color") or (style or {}).get("bg_image"):
+    # خلفية Tilda بتتشال للأقسام المستوردة بس. القسم العادي بيرسم
+    # خلفيته على ‎#{block_id}‎ نفسه، فتصفيرها هنا كان هيمسح لون
+    # الخلفية اللي المستخدم اختاره.
+    if imported and ((style or {}).get("bg_color") or (style or {}).get("bg_image")):
         out.append(f"{targets}{{background-color:transparent!important}}")
 
     return "".join(out)

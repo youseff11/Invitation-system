@@ -1917,7 +1917,7 @@ class ImportedEditingTests(TestCase):
             "layout": {"el-3": {"dx": 4, "dy": -2}},
         }]})
         css = layout_css(doc["blocks"])
-        self.assertIn('#imp-1 [data-move="el-3"]{--dx:4cqw;--dy:-2cqw}', css)
+        self.assertIn('#imp-1 [data-move="el-3"]{--dx:4px;--dy:-2px}', css)
 
     def test_bogus_slot_names_are_still_refused(self):
         doc = B.normalize_document({"blocks": [{

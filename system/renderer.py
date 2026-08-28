@@ -749,13 +749,17 @@ def render_document(
             # أصلح النسخ القديمة التي حُفظت قبل محاذاة iframe الخريطة.
             from .templateimport import _align_embedded_map_element
             resolved_props["html"] = _align_embedded_map_element(resolved_props["html"])
-        if isinstance(resolved_props.get("html"), str):
+        imported_html = isinstance(resolved_props.get("html"), str)
+        if imported_html:
             zero_css_parts.append(tildacss.zero_block_css(
                 str(block.get("id") or ""), resolved_props["html"]))
-            # تجاوز ارتفاع الـartboard لما المستخدم يسحب حدود القسم.
-            # لازم يتولّد بمُعرّف القسم عشان يغلب قاعدة Tilda الأصلية.
-            zero_css_parts.append(tildacss.section_surface_css(
-                str(block.get("id") or ""), block.get("style") or {}))
+        # تجاوز ارتفاع القسم لما المستخدم يسحب حدود القسم — لكل الأقسام،
+        # مش المستوردة بس، لأن المقبض معروض في كل قسم. لازم يتولّد
+        # بمُعرّف القسم عشان يغلب قاعدة Tilda الأصلية في المستورد
+        # وقاعدة ‎.lb‎ في القسم العادي.
+        zero_css_parts.append(tildacss.section_surface_css(
+            str(block.get("id") or ""), block.get("style") or {},
+            imported=imported_html))
         ctx = {
             "block": block,
             "props": resolved_props,
