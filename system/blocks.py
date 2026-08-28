@@ -259,6 +259,9 @@ SECTION_TEXT_OVERLAY_FIELD = field(
         field("text", "النص", "textarea", "اكتب النص هنا"),
         field("color", "لون النص", "color", "#ffffff"),
         field("font", "الخط", "font", "", options=FONT_CHOICES),
+        field("width", "عرض النص", "range", 0, minimum=0, maximum=90, step=1, unit="%",
+              help_text="بيحدّد فين السطر بيقطع. صفر = تلقائي. تقدر "
+                        "تسحبه من المقبضين على جنبي النص في المعاينة."),
         field("x", "الموضع أفقياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
         field("y", "الموضع رأسياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
     ],

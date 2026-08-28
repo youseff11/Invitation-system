@@ -3527,6 +3527,74 @@
         selectBlock(blockId);
         state.fromPreview = false;
       }, true);
+
+      /* مقبضان على جنبي النص لتحديد عرضه — يعني فين السطر يقطع.
+         الصندوق متمركز على نقطته بـ‎translate(-50%)‎، فسحب جنب واحد
+         بيوسّع الجنبين، وعشان كده الفرق بيتضرب في ٢.
+         الاتجاه بيتحسب من موضع المقبض الفعلي مش من اسمه، عشان يفضل
+         مظبوط في RTL وLTR. */
+      ["start", "end"].forEach(function (side) {
+        var grip = fdoc.createElement("span");
+        grip.className = "lb-section-text__grip lb-section-text__grip--" + side;
+        grip.setAttribute("aria-hidden", "true");
+        node.appendChild(grip);
+
+        var resize = null;
+        grip.addEventListener("pointerdown", function (e) {
+          if (e.button !== 0) return;
+          var current = item();
+          if (!current) return;
+          e.preventDefault();
+          e.stopPropagation();
+          var nodeRect = node.getBoundingClientRect();
+          var gripRect = grip.getBoundingClientRect();
+          resize = {
+            pointerX: e.clientX,
+            startWidth: nodeRect.width,
+            holderWidth: Math.max(1, holder.getBoundingClientRect().width),
+            dir: (gripRect.left + gripRect.width / 2) <
+                 (nodeRect.left + nodeRect.width / 2) ? -1 : 1,
+            pointerId: e.pointerId,
+            moved: false
+          };
+          try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+
+        grip.addEventListener("pointermove", function (e) {
+          if (!resize) return;
+          var dx = e.clientX - resize.pointerX;
+          if (!resize.moved) {
+            if (Math.abs(dx) < 3) return;
+            resize.moved = true;
+            snapshot();
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          var current = item();
+          if (!current) return;
+          var next = resize.startWidth + 2 * dx * resize.dir;
+          var percent = (next / resize.holderWidth) * 100;
+          /* ٩٠٪ هو نفس ‎max-width‎ في ‎invite.css‎ — لو عدّيناه القيمة
+             المحفوظة هتقول رقم والشاشة تعرض رقم تاني. */
+          percent = Math.round(clamp(percent, 8, 90) * 10) / 10;
+          current.width = percent;
+          node.style.setProperty("--section-text-w", percent + "%");
+        });
+
+        function endResize(e) {
+          if (!resize) return;
+          var didResize = resize.moved;
+          try { grip.releasePointerCapture(resize.pointerId); } catch (err) {}
+          resize = null;
+          if (!didResize) return;
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          suppressClick = true;
+          markDirty();
+        }
+        grip.addEventListener("pointerup", endResize);
+        grip.addEventListener("pointercancel", endResize);
+        grip.addEventListener("click", function (e) { e.stopPropagation(); });
+      });
     });
   }
 

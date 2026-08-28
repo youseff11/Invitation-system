@@ -676,6 +676,14 @@
   left: calc(50% + var(--video-text-x, 0%));
   top: calc(50% + var(--video-text-y, 0%));
   transform: translate(-50%, -50%);
+  /* العرض لازم يكون مستقل عن الموضع. الصندوق ‎absolute‎ بـ‎left‎
+     و‎right:auto‎، فلو سيبنا ‎width:auto‎ المتصفح بيحسب العرض من
+     المسافة بين ‎left‎ وحافة القسم — يعني كل ما تسحب النص يمين
+     العرض بيقلّ والكلام بيعيد التفافه قدامك. قياس حي على قسم عرضه
+     374px: العرض نزل من 299px عند ‎x:-30%‎ لـ75px عند ‎x:+30%‎.
+     ‎max-content‎ بيقطع العلاقة دي، و‎--section-text-w‎ بتخلي
+     المستخدم يحدّد بنفسه فين السطر يقطع. */
+  width: var(--section-text-w, max-content);
   max-width: 90%;
   color: var(--video-text-color, #fff);
   font-family: var(--video-text-font, inherit);
@@ -698,6 +706,25 @@
   cursor: grabbing;
   outline-style: solid;
 }
+/* مقبضا عرض النص: بيحددوا فين السطر يقطع. في المحرر بس. */
+.lb-section-text__grip { display: none; }
+.lb-doc--editing .lb-section-text__grip {
+  display: block;
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 34px;
+  margin-top: -17px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--accent) 85%, #000 15%);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, .28);
+  cursor: ew-resize;
+  pointer-events: auto;
+  z-index: 6;
+}
+.lb-doc--editing .lb-section-text__grip--start { inset-inline-start: -7px; }
+.lb-doc--editing .lb-section-text__grip--end { inset-inline-end: -7px; }
 .lb-video-wrap--16x9, .lb-video--16x9 { --ar: 16 / 9; }
 .lb-video-wrap--4x3, .lb-video--4x3  { --ar: 4 / 3; }
 .lb-video-wrap--1x1, .lb-video--1x1  { --ar: 1; }

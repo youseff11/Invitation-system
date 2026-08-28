@@ -200,10 +200,20 @@ def video_text_style(item):
     font = str(item.get("font") or "inherit").strip()
     if len(font) > 120 or not re.fullmatch(r"[A-Za-z0-9_\s,'-]+", font):
         font = "inherit"
-    return mark_safe(
+    # عرض صندوق النص كنسبة من القسم. صفر = تلقائي.
+    # من غير عرض ثابت، العرض بيتحسب من المسافة بين ‎left‎ وحافة القسم،
+    # يعني بيتغيّر كل ما النص يتحرك يمين أو شمال والكلام بيعيد التفاف.
+    try:
+        width = max(0.0, min(90.0, float(item.get("width", 0) or 0)))
+    except (TypeError, ValueError):
+        width = 0.0
+    style = (
         f"--video-text-x:{x:g}%;--video-text-y:{y:g}%;"
         f"--video-text-color:{color};--video-text-font:{font}"
     )
+    if width > 0:
+        style += f";--section-text-w:{width:g}%"
+    return mark_safe(style)
 
 
 @register.filter
