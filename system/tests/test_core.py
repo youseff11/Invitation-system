@@ -4157,3 +4157,64 @@ class TextStyleGearTests(TestCase):
         render = (Path(settings.BASE_DIR) / "templates/invitations/render.html"
                   ).read_text("utf-8")
         self.assertIn("<style data-lb-layout-css>", render)
+
+
+# ==========================================================================
+class OverlayTextGearTests(TestCase):
+    """نص «فوق القسم» نص زي أي نص — لازم يبقى له ترس هو كمان.
+
+    ده حقل ‎list‎، وعناصر القايمة ليها مسار تاني في ‎editor.js‎ ماكانش
+    بيمرّر للترس حاجة، فحقول التنسيق كانت بتتفرد تحت النص.
+    """
+
+    def _sub(self, key):
+        return next(f for f in B.SECTION_TEXT_OVERLAY_FIELD["fields"]
+                    if f["key"] == key)
+
+    def test_the_style_fields_belong_to_the_text(self):
+        for key, role in (("font", "font"), ("color", "color"), ("size", "size")):
+            with self.subTest(key=key):
+                spec = self._sub(key)
+                self.assertEqual(spec["style_of"], "text")
+                self.assertEqual(spec["style_role"], role)
+                self.assertTrue(spec["editor_hidden"])
+
+    def test_position_fields_stay_out_in_the_open(self):
+        """العرض والموضع مش تنسيق — ليهم مقابض في المعاينة."""
+        for key in ("width", "x", "y"):
+            with self.subTest(key=key):
+                self.assertIsNone(self._sub(key).get("style_of"))
+                self.assertFalse(self._sub(key).get("editor_hidden"))
+
+    def test_the_saved_keys_did_not_move(self):
+        """نصوص محفوظة قبل كده لازم تفضل شغالة بنفس المفاتيح."""
+        keys = [f["key"] for f in B.SECTION_TEXT_OVERLAY_FIELD["fields"]]
+        self.assertEqual(keys[:3], ["text", "color", "font"])
+
+    def test_a_size_reaches_the_page_as_a_fluid_value(self):
+        style = invite_tags.video_text_style(
+            {"text": "x", "size": 40, "color": "#ffffff"})
+        self.assertIn("--section-text-size:clamp(", style)
+
+    def test_zero_size_writes_nothing(self):
+        """صفر = حجم القالب زي ما هو، مش ‎0px‎."""
+        style = invite_tags.video_text_style({"text": "x", "size": 0})
+        self.assertNotIn("--section-text-size", style)
+
+    def test_junk_size_is_dropped(self):
+        for bad in ("9999", "-5", "abc", None):
+            with self.subTest(size=bad):
+                self.assertNotIn(
+                    "--section-text-size:clamp(1",
+                    invite_tags.video_text_style({"text": "x", "size": bad}))
+
+    def test_the_stylesheet_reads_the_variable(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn("font-size: var(--section-text-size, inherit)", css)
+
+    def test_the_editor_passes_the_gear_into_list_items(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("var itemCtx = {", js)
+        self.assertIn("itemSet,\n                itemCtx", js.replace("\r\n", "\n"))
+        # ومابيفردش الحقول المخفية تحت النص
+        self.assertIn("if (sub.editor_hidden) return;", js)

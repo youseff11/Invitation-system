@@ -687,6 +687,8 @@
   max-width: 90%;
   color: var(--video-text-color, #fff);
   font-family: var(--video-text-font, inherit);
+  /* صفر في المحرر = مافيش متغيّر أصلاً، فالحجم بيفضل موروث زي ما كان */
+  font-size: var(--section-text-size, inherit);
   text-align: center;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

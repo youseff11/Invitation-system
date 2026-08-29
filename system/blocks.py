@@ -253,12 +253,33 @@ BUTTON_SUBFIELDS = [
 # نصوص فوق أي قسم — نفس البنية بتتخزن في props عشان تفضل متوافقة
 # مع نصوص الفيديو القديمة، لكنها بتظهر في المحرر لكل أنواع الأقسام.
 # --------------------------------------------------------------------------
+def _overlay_style(spec: dict, role: str) -> dict:
+    """حقل من حقول ترس نص الأوفرلاي.
+
+    عناصر الـ‎list‎ مالهاش ``style_of`` بالمعنى العادي — كل عنصر بيتخزن
+    لوحده، فالترس بيتبني من نفس حقول العنصر. المفتاح ``text`` هنا اسم
+    حقل النص جوّه العنصر مش مفتاح في ``props``.
+    """
+    spec["style_of"] = "text"
+    spec["style_role"] = role
+    spec["editor_hidden"] = True
+    return spec
+
+
 SECTION_TEXT_OVERLAY_FIELD = field(
     "text_overlays", "نصوص فوق القسم", "list", [], group="التنسيق",
     add_label="إضافة نص", fields=[
         field("text", "النص", "textarea", "اكتب النص هنا"),
-        field("color", "لون النص", "color", "#ffffff"),
-        field("font", "الخط", "font", "", options=FONT_CHOICES),
+        # التنسيق بيتلم ورا ترس جنب النص زي أي حقل نص تاني في المحرر.
+        # المفاتيح زي ما هي (‎color‎/‎font‎) عشان النصوص المحفوظة
+        # ماتتغيّرش، و‎video_text_style‎ لسه بتقراهم بنفس الأسماء.
+        _overlay_style(
+            field("color", "اللون", "color", "#ffffff"), "color"),
+        _overlay_style(
+            field("font", "الخط", "font", ""), "font"),
+        _overlay_style(
+            field("size", "الحجم", "range", 0, minimum=0, maximum=160, step=1,
+                  unit="px", help_text="صفر = حجم القالب زي ما هو"), "size"),
         field("width", "عرض النص", "range", 0, minimum=0, maximum=90, step=1, unit="%",
               help_text="بيحدّد فين السطر بيقطع. صفر = تلقائي. تقدر "
                         "تسحبه من المقبضين على جنبي النص في المعاينة."),

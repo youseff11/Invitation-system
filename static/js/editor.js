@@ -744,17 +744,30 @@
             card.appendChild(head);
 
             var body = el("div", "ed-list-body");
+            /* عنصر القايمة بيتخزن لوحده، فالترس بيتبني من حقول العنصر
+               نفسه: ‎ctx.get‎ بتقرا من ‎item‎ و‎setBySpec‎ بتكتب فيه.
+               من غير التمرير ده كان نص الأوفرلاي — وهو نص زي أي نص —
+               يفضل من غير ترس وحقوله مفرودة تحته. */
+            var itemSet = function (sub, v) {
+              item[sub.key] = v;
+              setValue(items);
+              head.firstChild.textContent = String(
+                item[(spec.fields[0] || {}).key] || ("عنصر " + (index + 1))
+              ).slice(0, 40);
+            };
+            var itemCtx = {
+              specs: spec.fields || [],
+              get: function (sub) { return item[sub.key]; }
+            };
             (spec.fields || []).forEach(function (sub) {
+              // الحقول اللي جوّه الترس مابتتفردش تحته
+              if (sub.editor_hidden) return;
               body.appendChild(buildField(
                 sub,
                 function () { return item[sub.key]; },
-                function (v) {
-                  item[sub.key] = v;
-                  setValue(items);
-                  head.firstChild.textContent = String(
-                    item[(spec.fields[0] || {}).key] || ("عنصر " + (index + 1))
-                  ).slice(0, 40);
-                }
+                function (v) { itemSet(sub, v); },
+                itemSet,
+                itemCtx
               ));
             });
             card.appendChild(body);

@@ -207,12 +207,20 @@ def video_text_style(item):
         width = max(0.0, min(90.0, float(item.get("width", 0) or 0)))
     except (TypeError, ValueError):
         width = 0.0
+    # حجم النص من ترس النص. صفر = حجم القالب زي ما هو. بيمشي بـ‎_fluid‎
+    # زي باقي المقاسات في الدعوة عشان يصغّر مع الشاشة بدل ما يفضل ثابت.
+    try:
+        size = max(0.0, min(160.0, float(item.get("size", 0) or 0)))
+    except (TypeError, ValueError):
+        size = 0.0
     style = (
         f"--video-text-x:{x:g}%;--video-text-y:{y:g}%;"
         f"--video-text-color:{color};--video-text-font:{font}"
     )
     if width > 0:
         style += f";--section-text-w:{width:g}%"
+    if size > 0:
+        style += f";--section-text-size:{_fluid(size)}"
     return mark_safe(style)
 
 
