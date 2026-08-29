@@ -181,38 +181,49 @@ def video_url(value):
     return value
 
 
+_OVL_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent")
+_OVL_FONT_RE = re.compile(r"[A-Za-z0-9_\s,'-]+")
+
+
+def _ovl_num(item, key, low, high, fallback=0.0):
+    try:
+        return max(low, min(high, float(item.get(key, 0) or 0)))
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _ovl_color(item, key, fallback):
+    value = str(item.get(key) or "").strip()
+    return value if _OVL_COLOR_RE.fullmatch(value) else fallback
+
+
+def _ovl_font(item, key):
+    value = str(item.get(key) or "").strip()
+    if not value or len(value) > 120 or not _OVL_FONT_RE.fullmatch(value):
+        return "inherit"
+    return value
+
+
 @register.filter
 def video_text_style(item):
+    """متغيرات CSS آمنة لعنصر واحد فوق القسم — نص أو صورة أو زرار.
 
-    """يبني متغيرات CSS آمنة لنص واحد فوق فيديو."""
+    كل قيمة بتتفحص هنا قبل ما تدخل سمة ``style``: اللون لازم يطابق
+    شكل لون CSS، والخط محارف مسموحة بس، والأرقام داخل حدود حقولها.
+    يعني مفيش نص حر جاي من المحرر بيوصل للصفحة.
+    """
     item = item if hasattr(item, "get") else {}
-    try:
-        x = max(-1000.0, min(1000.0, float(item.get("x", 0) or 0)))
-    except (TypeError, ValueError):
-        x = 0.0
-    try:
-        y = max(-1000.0, min(1000.0, float(item.get("y", 0) or 0)))
-    except (TypeError, ValueError):
-        y = 0.0
-    color = str(item.get("color") or "#ffffff").strip()
-    if not re.fullmatch(r"(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent)", color):
-        color = "#ffffff"
-    font = str(item.get("font") or "inherit").strip()
-    if len(font) > 120 or not re.fullmatch(r"[A-Za-z0-9_\s,'-]+", font):
-        font = "inherit"
-    # عرض صندوق النص كنسبة من القسم. صفر = تلقائي.
+    x = _ovl_num(item, "x", -1000.0, 1000.0)
+    y = _ovl_num(item, "y", -1000.0, 1000.0)
+    color = _ovl_color(item, "color", "#ffffff")
+    font = _ovl_font(item, "font")
+    # عرض الصندوق كنسبة من القسم. صفر = تلقائي.
     # من غير عرض ثابت، العرض بيتحسب من المسافة بين ‎left‎ وحافة القسم،
-    # يعني بيتغيّر كل ما النص يتحرك يمين أو شمال والكلام بيعيد التفاف.
-    try:
-        width = max(0.0, min(90.0, float(item.get("width", 0) or 0)))
-    except (TypeError, ValueError):
-        width = 0.0
+    # يعني بيتغيّر كل ما العنصر يتحرك يمين أو شمال والكلام بيعيد التفاف.
+    width = _ovl_num(item, "width", 0.0, 90.0)
     # حجم النص من ترس النص. صفر = حجم القالب زي ما هو. بيمشي بـ‎_fluid‎
     # زي باقي المقاسات في الدعوة عشان يصغّر مع الشاشة بدل ما يفضل ثابت.
-    try:
-        size = max(0.0, min(160.0, float(item.get("size", 0) or 0)))
-    except (TypeError, ValueError):
-        size = 0.0
+    size = _ovl_num(item, "size", 0.0, 160.0)
     style = (
         f"--video-text-x:{x:g}%;--video-text-y:{y:g}%;"
         f"--video-text-color:{color};--video-text-font:{font}"
@@ -221,7 +232,33 @@ def video_text_style(item):
         style += f";--section-text-w:{width:g}%"
     if size > 0:
         style += f";--section-text-size:{_fluid(size)}"
+
+    kind = str(item.get("kind") or "text")
+    if kind == "image":
+        radius = _ovl_num(item, "radius", 0.0, 200.0)
+        style += f";--ovl-radius:{radius:g}px"
+    elif kind == "button":
+        btn_size = _ovl_num(item, "btn_size", 0.0, 120.0)
+        style += (
+            f";--ovl-btn-bg:{_ovl_color(item, 'btn_bg', '#b8914f')}"
+            f";--ovl-btn-color:{_ovl_color(item, 'btn_color', '#ffffff')}"
+            f";--ovl-btn-font:{_ovl_font(item, 'btn_font')}"
+            f";--ovl-btn-radius:{_ovl_num(item, 'btn_radius', 0.0, 999.0, 999.0):g}px"
+        )
+        if btn_size > 0:
+            style += f";--ovl-btn-size:{_fluid(btn_size)}"
     return mark_safe(style)
+
+
+@register.filter
+def overlay_target(href):
+    """‎_blank‎ للروابط الخارجية بس.
+
+    رابط داخل نفس الصفحة (‎#rsvp‎) لو اتفتح في تبويب جديد بيفتح نسخة
+    تانية من الدعوة بدل ما ينزّل الضيف للقسم.
+    """
+    return "_blank" if str(href or "").strip().lower().startswith(
+        ("http://", "https://", "mailto:", "tel:")) else ""
 
 
 @register.filter

@@ -371,6 +371,36 @@
     return { gear: gear, panel: panel };
   }
 
+  /* عنصر القايمة ممكن يبقى نوعه مختلف عن اللي جنبه (نص/صورة/زرار).
+     ‎show_kind‎ في المخطط بيقول الحقل ده لأنهي نوع. النوع بيتحدد وقت
+     الإضافة ومابيتغيّرش، فمفيش داعي نعيد بناء الكارت. */
+  function fieldFitsItem(sub, item) {
+    if (!sub || !sub.show_kind || !sub.show_kind.length) return true;
+    var kind = (item && item.kind) || "text";
+    return sub.show_kind.indexOf(kind) !== -1;
+  }
+
+  var LIST_ITEM_ICONS = { text: "¶", image: "▣", button: "⬬" };
+
+  /** عنوان كارت العنصر — أول حاجة فيه كلام، وإلا نوعه. */
+  function listItemTitle(spec, item, index) {
+    var fields = spec.fields || [];
+    for (var i = 0; i < fields.length; i++) {
+      var sub = fields[i];
+      if (!fieldFitsItem(sub, item)) continue;
+      if (sub.type !== "text" && sub.type !== "textarea") continue;
+      var value = item[sub.key];
+      if (typeof value === "string" && value.trim()) {
+        return String(value).trim().slice(0, 40);
+      }
+    }
+    if (item && item.kind && LIST_ITEM_ICONS[item.kind]) {
+      var kindLabel = { text: "نص", image: "صورة", button: "زرار" }[item.kind];
+      return LIST_ITEM_ICONS[item.kind] + " " + kindLabel + " " + (index + 1);
+    }
+    return String(item.label || item.name || ("عنصر " + (index + 1))).slice(0, 40);
+  }
+
   /** يحط حقل النص ومعاه ترسه لو ليه تنسيق، وإلا يحطه لوحده. */
   function appendWithGear(wrap, input, spec, ctx, setBySpec) {
     var gear = buildTextStyleGear(spec, ctx, setBySpec);
@@ -701,9 +731,7 @@
           items.forEach(function (item, index) {
             var card = el("div", "ed-list-item");
             var head = el("div", "ed-list-head");
-            var titleText = item[(spec.fields[0] || {}).key] || item.label || item.name ||
-              ("عنصر " + (index + 1));
-            head.appendChild(el("span", null, String(titleText).slice(0, 40)));
+            head.appendChild(el("span", null, listItemTitle(spec, item, index)));
 
             var up = el("button", "ed-icon-btn", "▲");
             up.type = "button"; up.title = "لأعلى";
@@ -751,9 +779,7 @@
             var itemSet = function (sub, v) {
               item[sub.key] = v;
               setValue(items);
-              head.firstChild.textContent = String(
-                item[(spec.fields[0] || {}).key] || ("عنصر " + (index + 1))
-              ).slice(0, 40);
+              head.firstChild.textContent = listItemTitle(spec, item, index);
             };
             var itemCtx = {
               specs: spec.fields || [],
@@ -762,6 +788,8 @@
             (spec.fields || []).forEach(function (sub) {
               // الحقول اللي جوّه الترس مابتتفردش تحته
               if (sub.editor_hidden) return;
+              // ولا حقول نوع تاني (صورة في عنصر نص مثلاً)
+              if (!fieldFitsItem(sub, item)) return;
               body.appendChild(buildField(
                 sub,
                 function () { return item[sub.key]; },
@@ -776,21 +804,49 @@
         }
         redraw();
 
-        var addBtn = el("button", "ed-btn ed-btn--sm ed-btn--block", "＋ " + (spec.add_label || "إضافة عنصر"));
-        addBtn.type = "button";
-        addBtn.addEventListener("click", function () {
+        function addItem(variant) {
           snapshot();
           var row = {};
           (spec.fields || []).forEach(function (sub) { row[sub.key] = clone(sub.default); });
+          if (variant) {
+            row[variant.key] = variant.value;
+            Object.keys(variant.seed || {}).forEach(function (k) {
+              row[k] = variant.seed[k];
+            });
+          }
           items.push(row);
           setValue(items);
           redraw();
           requestPreview();
-        });
+        }
+
+        /* قايمة ليها أكتر من نوع عنصر (نص/صورة/زرار) بتعرض زرار لكل
+           نوع **فوق** القايمة، عشان تبان من أول نظرة بدل ما تبقى
+           مدفونة تحت العناصر. */
+        var addBox;
+        if ((spec.add_variants || []).length) {
+          addBox = el("div", "ed-add-row");
+          spec.add_variants.forEach(function (variant) {
+            var b = el("button", "ed-btn ed-btn--sm ed-add-btn", variant.label);
+            b.type = "button";
+            b.addEventListener("click", function () { addItem(variant); });
+            addBox.appendChild(b);
+          });
+        } else {
+          addBox = el("button", "ed-btn ed-btn--sm ed-btn--block",
+                      "＋ " + (spec.add_label || "إضافة عنصر"));
+          addBox.type = "button";
+          addBox.addEventListener("click", function () { addItem(null); });
+        }
 
         wrap.appendChild(label);
-        wrap.appendChild(listBox);
-        wrap.appendChild(addBtn);
+        if (spec.add_variants) {
+          wrap.appendChild(addBox);
+          wrap.appendChild(listBox);
+        } else {
+          wrap.appendChild(listBox);
+          wrap.appendChild(addBox);
+        }
         break;
       }
 
@@ -833,6 +889,12 @@
     order.forEach(function (name, i) {
       var details = el("details", "ed-group");
       if (i === 0 && openFirst !== false) details.open = true;
+      /* مجموعة بتفتح لوحدها مهما كان ترتيبها — للأدوات اللي المفروض
+         تبان من غير ما المستخدم يدوّر عليها (زي أزرار إضافة عنصر). */
+      if (groups[name].some(function (s) { return s.group_open; })) {
+        details.open = true;
+        details.classList.add("ed-group--accent");
+      }
       var sum = el("summary");
       sum.appendChild(el("span", null, name));
       details.appendChild(sum);
@@ -1481,14 +1543,14 @@
 
     box.appendChild(buildLayoutGroup(block, spec));
     if (codeLast) {
-      /* custom_html عنده الآن إضافة نص/صورة من داخل العنصر المحدد.
-         لذلك نخفي مجموعة text_overlays القديمة فقط من هذا النوع،
-         ونترك مجموعة التنسيق العامة الخاصة بالقسم كما هي. */
+      /* «عناصر فوق القسم» بقت متاحة في القسم المستورد كمان.
+         الفرق عن إضافة نص/صورة من «العنصر المحدَّد»: دي بتتحط جوّه
+         كود القالب نفسه، ودي طبقة فوق القسم بتتسحب لأي حتة ومابتلمسش
+         الكود — والزرار موجود في دي بس. */
             var hasImportedCountdown = /countdowncontainer|countdown[-_ ]?(?:grid|wrapper|container|heading|sub)|section-countdown|time-block|number-wrap|(?:^|[\s"'_-])cd-(?:days?|hours?|mins?|minutes?|secs?|seconds?)(?:$|[\s"'_-])/i.test(
         String((block.props || {}).html || "")
       );
       var advancedProps = spec.props.filter(function (s) {
-        if (s.key === "text_overlays") return false;
         return s.key !== "countdown_date" || hasImportedCountdown;
       });
 
@@ -3594,10 +3656,21 @@
         suppressClick = true;
         if (e) { e.preventDefault(); e.stopPropagation(); }
         markDirty();
+        /* خانات «الموضع» في اللوحة اتكتبت وقت البناء، فبعد السحب كانت
+           بتفضل بالرقم القديم والمستخدم يشوف صفر وهو حرّك فعلاً.
+           بنعيد بناء اللوحة للقسم المفتوح بس، ومرة واحدة عند نهاية
+           السحب مش مع كل حركة. */
+        if (state.selected === blockId) renderInspector();
       }
       node.addEventListener("pointerup", finish);
       node.addEventListener("pointercancel", finish);
       node.addEventListener("click", function (e) {
+        /* زرار فوق القسم جوّاه ‎<a>‎ حقيقي عشان الضيف يقدر يدوس عليه.
+           جوّه المحرر الضغطة معناها «اختار القسم ده»، فلو سبنا
+           المتصفح يمشي على الرابط كان الإطار هيسيب المعاينة ويروح
+           للصفحة اللي المستخدم لسه كاتبها. */
+        var link = e.target.closest && e.target.closest("a[href]");
+        if (link && node.contains(link)) e.preventDefault();
         if (suppressClick) {
           suppressClick = false;
           e.preventDefault();

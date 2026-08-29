@@ -708,6 +708,50 @@
   cursor: grabbing;
   outline-style: solid;
 }
+/* ---- عناصر فوق القسم: صورة وزرار
+   نفس الصندوق المتموضع بتاع النص بالظبط — الموضع والعرض والمقابض
+   والسحب كلهم بيشتغلوا من غير أي قاعدة جديدة. اللي تحت بيغيّر
+   المحتوى جوّه الصندوق بس. */
+.lb .lb-ovl,
+.lb-video-wrap .lb-ovl { text-shadow: none; }
+/* الصورة من غير عرض محدد بتاخد مقاسها الطبيعي وممكن تملا القسم،
+   فافتراضيها ٤٠٪ لحد ما المستخدم يسحب المقبض. */
+.lb .lb-section-text.lb-ovl--image,
+.lb-video-wrap .lb-video-text.lb-ovl--image { width: var(--section-text-w, 40%); }
+.lb-ovl--image img {
+  display: block; width: 100%; height: auto;
+  border-radius: var(--ovl-radius, 0);
+}
+/* الزرار لازم يتضغط عند الضيف — باقي العناصر ‎pointer-events:none‎
+   عشان ما تحجبش الضغط على القسم اللي تحتها. */
+.lb .lb-section-text.lb-ovl--button,
+.lb-video-wrap .lb-video-text.lb-ovl--button { pointer-events: auto; }
+.lb-ovl-btn {
+  display: inline-block;
+  padding: .72em 1.7em;
+  background: var(--ovl-btn-bg, var(--accent));
+  color: var(--ovl-btn-color, #fff);
+  font-family: var(--ovl-btn-font, inherit);
+  font-size: var(--ovl-btn-size, inherit);
+  border-radius: var(--ovl-btn-radius, 999px);
+  text-decoration: none;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px -14px rgba(0, 0, 0, .55);
+  transition: filter .15s;
+}
+.lb-ovl-btn:hover { filter: brightness(1.07); }
+/* جوّه المحرر الزرار بيتسحب مش بيتفتح، فمؤشر السحب أصدق من اليد */
+.lb-doc--editing .lb-ovl-btn { cursor: inherit; }
+/* عنصر لسه مافيهوش محتوى — في المحرر بس، عشان مكانه يبان */
+.lb-ovl--empty {
+  display: grid; place-items: center; min-height: 90px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent); font-size: 12px; text-align: center; padding: 10px;
+}
+
 /* مقبضا عرض النص: بيحددوا فين السطر يقطع. في المحرر بس. */
 .lb-section-text__grip { display: none; }
 .lb-doc--editing .lb-section-text__grip {

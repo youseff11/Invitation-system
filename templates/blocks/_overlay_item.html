@@ -1,0 +1,13 @@
+{% load invite %}{% comment %}
+عنصر واحد فوق القسم: نص أو صورة أو زرار.
+
+الصندوق الخارجي واحد للتلاتة عن قصد — هو اللي شايل الموضع والعرض،
+وهو اللي المحرر بيربط عليه السحب والمقبضين. أي نوع جديد بيتضاف هنا
+بيورث الحركة والمقابض من غير أي كود جديد في ‎editor.js‎.
+
+وجوّه المحرر بس (‎editable‎) العنصر الفاضي بيبان كصندوق مكانه، عشان
+اللي يدوس «＋ صورة» مايلاقيش المعاينة زي ما هي ويفتكرها ماشتغلتش.
+
+المتغيرات: ‎index‎ رقم العنصر في القايمة، ‎wrap_class‎ كلاس الصندوق
+(نص القسم ولا نص الفيديو)، و‎is_video‎ عشان علامة نص الفيديو.
+{% endcomment %}{% if overlay.kind == 'image' %}{% if overlay.src or editable %}<div class="{{ wrap_class }} lb-ovl lb-ovl--image{% if not overlay.src %} lb-ovl--empty{% endif %}" data-section-text{% if is_video %} data-video-text{% endif %} data-section-text-index="{{ index }}" style="{{ overlay|video_text_style }}">{% if overlay.src %}<img src="{{ overlay.src }}" alt="" loading="lazy">{% else %}<span>اختر صورة من المحرر</span>{% endif %}</div>{% endif %}{% elif overlay.kind == 'button' %}{% if overlay.label or editable %}<div class="{{ wrap_class }} lb-ovl lb-ovl--button" data-section-text{% if is_video %} data-video-text{% endif %} data-section-text-index="{{ index }}" style="{{ overlay|video_text_style }}">{% if overlay.href %}<a class="lb-ovl-btn" href="{{ overlay.href }}"{% with t=overlay.href|overlay_target %}{% if t %} target="{{ t }}" rel="noopener"{% endif %}{% endwith %}>{{ overlay.label|default:"اكتب نص الزرار" }}</a>{% else %}<span class="lb-ovl-btn">{{ overlay.label|default:"اكتب نص الزرار" }}</span>{% endif %}</div>{% endif %}{% elif overlay.text %}<div class="{{ wrap_class }}" data-section-text{% if is_video %} data-video-text{% endif %} data-section-text-index="{{ index }}" style="{{ overlay|video_text_style }}">{{ overlay.text }}</div>{% endif %}

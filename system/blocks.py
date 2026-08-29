@@ -253,23 +253,54 @@ BUTTON_SUBFIELDS = [
 # نصوص فوق أي قسم — نفس البنية بتتخزن في props عشان تفضل متوافقة
 # مع نصوص الفيديو القديمة، لكنها بتظهر في المحرر لكل أنواع الأقسام.
 # --------------------------------------------------------------------------
-def _overlay_style(spec: dict, role: str) -> dict:
-    """حقل من حقول ترس نص الأوفرلاي.
+def _overlay_style(spec: dict, role: str, owner: str = "text") -> dict:
+    """حقل من حقول ترس عنصر الأوفرلاي.
 
     عناصر الـ‎list‎ مالهاش ``style_of`` بالمعنى العادي — كل عنصر بيتخزن
-    لوحده، فالترس بيتبني من نفس حقول العنصر. المفتاح ``text`` هنا اسم
-    حقل النص جوّه العنصر مش مفتاح في ``props``.
+    لوحده، فالترس بيتبني من نفس حقول العنصر. ``owner`` هنا اسم حقل
+    النص جوّه العنصر (``text`` للنص، ``label`` للزرار) مش مفتاح في
+    ``props``.
     """
-    spec["style_of"] = "text"
+    spec["style_of"] = owner
     spec["style_role"] = role
     spec["editor_hidden"] = True
     return spec
 
 
+def _only(spec: dict, *kinds: str) -> dict:
+    """الحقل ده يظهر لأنواع معيّنة من العناصر بس.
+
+    النوع بيتحدد وقت الإضافة ومابيتغيّرش بعدها، فالمحرر مش محتاج
+    يعيد بناء الكارت — بيتخطّى الحقل وخلاص.
+    """
+    spec["show_kind"] = list(kinds)
+    return spec
+
+
+OVERLAY_KINDS = [
+    opt("text", "نص"), opt("image", "صورة"), opt("button", "زرار"),
+]
+
+# --------------------------------------------------------------------------
+# عناصر فوق أي قسم — نص أو صورة أو زرار، وكلهم بيتسحبوا بالماوس
+# --------------------------------------------------------------------------
+# المفتاح فضل ``text_overlays`` عن قصد: ده اسم متخزّن في مستندات
+# شغّالة، وتغييره معناه إن كل نص فوق قسم في كل دعوة قديمة يختفي.
+# العناصر التلاتة في **قايمة واحدة** عشان السحب والموضع والمقابض
+# يشتغلوا لهم بنفس الكود بدل تلات نسخ من نفس المنطق.
 SECTION_TEXT_OVERLAY_FIELD = field(
-    "text_overlays", "نصوص فوق القسم", "list", [], group="التنسيق",
+    "text_overlays", "عناصر فوق القسم", "list", [],
+    group="عناصر فوق القسم",
     add_label="إضافة نص", fields=[
-        field("text", "النص", "textarea", "اكتب النص هنا"),
+        # النوع بيتكتب من زرار الإضافة. القديم من غير مفتاح = نص.
+        field("kind", "النوع", "select", "text", options=OVERLAY_KINDS,
+              editor_hidden=True, translate=False),
+
+        # ---- نص
+        # الافتراضي فاضي عن قصد: زرار الإضافة هو اللي بيزرع الكلام
+        # المبدئي. لو الافتراضي كان مكتوب، كل عنصر صورة أو زرار كان
+        # هيتخزّن ومعاه نص وهمي ويطلع في جدول الترجمة.
+        _only(field("text", "النص", "textarea", ""), "text"),
         # التنسيق بيتلم ورا ترس جنب النص زي أي حقل نص تاني في المحرر.
         # المفاتيح زي ما هي (‎color‎/‎font‎) عشان النصوص المحفوظة
         # ماتتغيّرش، و‎video_text_style‎ لسه بتقراهم بنفس الأسماء.
@@ -280,13 +311,55 @@ SECTION_TEXT_OVERLAY_FIELD = field(
         _overlay_style(
             field("size", "الحجم", "range", 0, minimum=0, maximum=160, step=1,
                   unit="px", help_text="صفر = حجم القالب زي ما هو"), "size"),
-        field("width", "عرض النص", "range", 0, minimum=0, maximum=90, step=1, unit="%",
-              help_text="بيحدّد فين السطر بيقطع. صفر = تلقائي. تقدر "
-                        "تسحبه من المقبضين على جنبي النص في المعاينة."),
+
+        # ---- صورة
+        _only(field("src", "الصورة", "image", ""), "image"),
+        _only(field("radius", "استدارة الحواف", "range", 0,
+                    minimum=0, maximum=200, step=2, unit="px"), "image"),
+
+        # ---- زرار
+        _only(field("label", "نص الزرار", "text", ""), "button"),
+        _only(field("href", "الرابط", "url", "",
+                    placeholder="https://... أو ‎#rsvp‎",
+                    help_text="سيبه فاضي = الزرار شكلي مش بيروح لحتة."),
+              "button"),
+        _overlay_style(
+            field("btn_font", "الخط", "font", ""), "font", owner="label"),
+        _overlay_style(
+            field("btn_color", "لون الكلام", "color", "#ffffff"),
+            "color", owner="label"),
+        _overlay_style(
+            field("btn_size", "الحجم", "range", 0, minimum=0, maximum=120,
+                  step=1, unit="px", help_text="صفر = حجم القالب زي ما هو"),
+            "size", owner="label"),
+        _overlay_style(
+            field("btn_bg", "لون الخلفية", "color", "#b8914f"),
+            "bg", owner="label"),
+        _overlay_style(
+            field("btn_radius", "استدارة الحواف", "range", 999,
+                  minimum=0, maximum=999, step=1, unit="px"),
+            "radius", owner="label"),
+
+        # ---- مشترك: العرض والموضع (ليهم مقابض في المعاينة)
+        field("width", "العرض", "range", 0, minimum=0, maximum=90, step=1, unit="%",
+              help_text="للنص: بيحدّد فين السطر بيقطع. للصورة والزرار: "
+                        "عرضهم. صفر = تلقائي. تقدر تسحبه من المقبضين "
+                        "على الجنبين في المعاينة."),
         field("x", "الموضع أفقياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
         field("y", "الموضع رأسياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
     ],
 )
+# التلات أزرار اللي بتظهر **فوق** القايمة في المحرر. ``seed`` هو
+# الكلام المبدئي للعنصر الجديد — الافتراضيات في المخطط فاضية عشان
+# العنصر ما يتخزّنش ومعاه كلام نوع تاني.
+SECTION_TEXT_OVERLAY_FIELD["group_open"] = True
+SECTION_TEXT_OVERLAY_FIELD["add_variants"] = [
+    {"key": "kind", "value": "text", "label": "＋ نص",
+     "seed": {"text": "اكتب النص هنا"}},
+    {"key": "kind", "value": "image", "label": "＋ صورة", "seed": {}},
+    {"key": "kind", "value": "button", "label": "＋ زرار",
+     "seed": {"label": "اضغط هنا"}},
+]
 
 
 # --------------------------------------------------------------------------

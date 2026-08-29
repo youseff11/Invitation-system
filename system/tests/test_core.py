@@ -4187,9 +4187,28 @@ class OverlayTextGearTests(TestCase):
                 self.assertFalse(self._sub(key).get("editor_hidden"))
 
     def test_the_saved_keys_did_not_move(self):
-        """نصوص محفوظة قبل كده لازم تفضل شغالة بنفس المفاتيح."""
-        keys = [f["key"] for f in B.SECTION_TEXT_OVERLAY_FIELD["fields"]]
-        self.assertEqual(keys[:3], ["text", "color", "font"])
+        """نصوص محفوظة قبل كده لازم تفضل شغالة بنفس المفاتيح.
+
+        الترتيب مش مهم — المهم إن المفاتيح نفسها موجودة بنفس النوع،
+        لأن ``video_text_style`` والمستندات المحفوظة بيقروها بالاسم.
+        """
+        fields = {f["key"]: f for f in B.SECTION_TEXT_OVERLAY_FIELD["fields"]}
+        for key, ftype in (("text", "textarea"), ("color", "color"),
+                           ("font", "font"), ("width", "range"),
+                           ("x", "range"), ("y", "range")):
+            with self.subTest(key=key):
+                self.assertEqual(fields[key]["type"], ftype)
+
+    def test_an_old_overlay_becomes_a_text_element(self):
+        """عنصر متخزّن قبل ما النوع يتولد لازم يفضل نص."""
+        doc = B.normalize_document({"blocks": [{
+            "type": "text",
+            "props": {"text_overlays": [{"text": "قديم", "color": "#ff0000"}]},
+        }]})
+        item = doc["blocks"][0]["props"]["text_overlays"][0]
+        self.assertEqual(item["kind"], "text")
+        self.assertEqual(item["text"], "قديم")
+        self.assertEqual(item["color"], "#ff0000")
 
     def test_a_size_reaches_the_page_as_a_fluid_value(self):
         style = invite_tags.video_text_style(
@@ -4218,3 +4237,126 @@ class OverlayTextGearTests(TestCase):
         self.assertIn("itemSet,\n                itemCtx", js.replace("\r\n", "\n"))
         # ومابيفردش الحقول المخفية تحت النص
         self.assertIn("if (sub.editor_hidden) return;", js)
+
+
+# ==========================================================================
+class SectionOverlayElementsTests(TestCase):
+    """عناصر فوق القسم: نص + صورة + زرار، وكلهم بيتسحبوا في أي حتة.
+
+    التلاتة في **قايمة واحدة** (`text_overlays`) عن قصد: الموضع والعرض
+    والسحب والمقابض كلهم كود واحد. نوع رابع بيتضاف في القالب بس.
+    """
+
+    def _render(self, overlay, block_type="text", editable=False):
+        block = B.make_block(block_type)
+        block["id"] = "ovl-1"
+        block["props"]["text_overlays"] = [overlay]
+        doc = B.normalize_document({"blocks": [block]})
+        return str(render_document(doc, editable=editable)["html"])
+
+    # ---- الأنواع التلاتة بتتعرض
+    def test_a_text_element_still_renders_the_old_way(self):
+        html = self._render({"kind": "text", "text": "أهلاً بيكم"})
+        self.assertIn("lb-section-text", html)
+        self.assertIn("أهلاً بيكم", html)
+
+    def test_an_image_element_renders_an_image(self):
+        html = self._render({"kind": "image", "src": "/media/x.jpg", "radius": 24})
+        self.assertIn("lb-ovl--image", html)
+        self.assertIn('src="/media/x.jpg"', html)
+        self.assertIn("--ovl-radius:24px", html)
+
+    def test_a_button_element_renders_a_real_link(self):
+        html = self._render({"kind": "button", "label": "احجز مكانك",
+                             "href": "https://example.com", "btn_bg": "#123456"})
+        self.assertIn("lb-ovl--button", html)
+        self.assertIn('href="https://example.com"', html)
+        self.assertIn("احجز مكانك", html)
+        self.assertIn("--ovl-btn-bg:#123456", html)
+
+    def test_a_button_without_a_link_is_not_a_link(self):
+        """‎href="#"‎ فاضي كان هيرجّع الضيف لأول الصفحة من غير سبب."""
+        html = self._render({"kind": "button", "label": "زرار"})
+        self.assertIn("lb-ovl-btn", html)
+        self.assertNotIn("<a class=\"lb-ovl-btn\"", html)
+
+    # ---- الحركة: كل عنصر بياخد نفس علامات السحب
+    def test_every_kind_carries_the_drag_hooks(self):
+        for overlay in (
+            {"kind": "text", "text": "نص"},
+            {"kind": "image", "src": "/media/x.jpg"},
+            {"kind": "button", "label": "زرار"},
+        ):
+            with self.subTest(kind=overlay["kind"]):
+                html = self._render(overlay)
+                self.assertIn("data-section-text", html)
+                self.assertIn('data-section-text-index="0"', html)
+                self.assertIn("--video-text-x:", html)
+
+    def test_the_position_is_written_for_every_kind(self):
+        html = self._render({"kind": "image", "src": "/media/x.jpg", "x": 12, "y": -8})
+        self.assertIn("--video-text-x:12%", html)
+        self.assertIn("--video-text-y:-8%", html)
+
+    # ---- الأمان
+    def test_a_javascript_link_never_reaches_the_page(self):
+        doc = B.normalize_document({"blocks": [{"type": "text", "props": {
+            "text_overlays": [{"kind": "button", "label": "خد بالك",
+                               "href": "javascript:alert(1)"}]}}]})
+        item = doc["blocks"][0]["props"]["text_overlays"][0]
+        self.assertEqual(item["href"], "")
+
+    def test_junk_colours_and_fonts_are_dropped(self):
+        html = self._render({
+            "kind": "button", "label": "زرار",
+            "btn_bg": "red;background:url(javascript:alert(1))",
+            "btn_font": "</style><script>x</script>",
+        })
+        self.assertNotIn("javascript", html)
+        self.assertNotIn("<script>x", html)
+        self.assertIn("--ovl-btn-bg:#b8914f", html)      # رجع للافتراضي
+        self.assertIn("--ovl-btn-font:inherit", html)
+
+    def test_an_external_link_opens_in_a_new_tab_but_an_anchor_does_not(self):
+        self.assertEqual(invite_tags.overlay_target("https://x.com"), "_blank")
+        self.assertEqual(invite_tags.overlay_target("#rsvp"), "")
+        self.assertEqual(invite_tags.overlay_target(""), "")
+
+    # ---- المحرر
+    def test_an_empty_element_shows_its_place_in_the_editor_only(self):
+        empty = {"kind": "image", "src": ""}
+        self.assertIn("lb-ovl--empty", self._render(empty, editable=True))
+        self.assertNotIn("lb-ovl--empty", self._render(empty, editable=False))
+
+    def test_the_three_add_buttons_are_declared_in_the_schema(self):
+        variants = B.SECTION_TEXT_OVERLAY_FIELD["add_variants"]
+        self.assertEqual([v["value"] for v in variants],
+                         ["text", "image", "button"])
+        self.assertTrue(B.SECTION_TEXT_OVERLAY_FIELD["group_open"])
+
+    def test_the_editor_renders_a_button_per_kind_above_the_list(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("spec.add_variants", js)
+        self.assertIn('el("div", "ed-add-row")', js)
+        # الحقول بتتفلتر حسب نوع العنصر
+        self.assertIn("function fieldFitsItem(", js)
+        self.assertIn("if (!fieldFitsItem(sub, item)) return;", js)
+
+    def test_the_editor_does_not_follow_the_link_while_editing(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn('e.target.closest("a[href]")', js)
+
+    def test_every_block_type_can_take_these_elements(self):
+        """«في أي قسم» — يعني كل نوع، المستورد كمان.
+
+        الاستثناء الوحيد ``spacer``: قالبه ``<div>`` مالوش ``</section>``
+        اللي الريندرر بيحقن عنده، وهو أصلاً مساحة فاضية.
+        """
+        for btype, spec in B.BLOCK_REGISTRY.items():
+            if btype == "spacer":
+                continue
+            with self.subTest(block=btype):
+                keys = [f["key"] for f in spec["props"]]
+                self.assertIn("text_overlays", keys)
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertNotIn('if (s.key === "text_overlays") return false;', js)
