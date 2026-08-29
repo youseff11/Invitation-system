@@ -316,39 +316,49 @@
     return tools;
   }
 
-  var INTRO_TEXT_FONT_FIELDS = {
-    intro_note: { font: "intro_note_font", color: "intro_note_color", size: "intro_note_size" },
-    intro_text: { font: "intro_text_font", color: "intro_text_color", size: "intro_text_size" },
-    intro_button: { font: "intro_button_font", color: "intro_button_color", size: "intro_button_size" },
-    intro_play_label: { font: "intro_play_font", color: "intro_play_color", size: "intro_play_size" }
+  /* ---------------------------------------------------------------
+     ترس النص — تنسيق كل نص جوّه ترسه هو
+
+     مفيش خريطة مكتوبة بالإيد هنا خالص. المخطط الجاي من ‎blocks.py‎
+     بيعلّم كل حقل تنسيق بـ‎style_of‎ (بتاع أنهي نص) و‎style_role‎
+     (الترتيب جوّه اللوحة)، والدالة دي بتلمّهم من نفس قايمة الحقول
+     اللي الحقل الأب فيها — يعني حقل جديد في بايثون بيظهر في الترس
+     من غير أي سطر جافاسكربت.
+
+     ‎setBySpec‎ بيكتب في مفتاح الحقل اللي تديهوله، مش في مفتاح الحقل
+     الأب. من غيره القيمة كانت بتتكتب مكان **نص الحقل** نفسه. */
+  var TEXT_STYLE_ORDER = {
+    font: 1, color: 2, size: 3, weight: 4, align: 5, ls: 6, lh: 7, zz_extra: 9
   };
 
-  function schemaSetting(key) {
-    var fields = (SCHEMA && SCHEMA.settings_fields) || [];
-    for (var i = 0; i < fields.length; i++) {
-      if (fields[i] && fields[i].key === key) return fields[i];
+  function textStyleChildren(ctx, key) {
+    var specs = (ctx && ctx.specs) || [];
+    var out = [];
+    for (var i = 0; i < specs.length; i++) {
+      if (specs[i] && specs[i].style_of === key) out.push(specs[i]);
     }
-    return null;
+    out.sort(function (a, b) {
+      return (TEXT_STYLE_ORDER[a.style_role] || 8) -
+             (TEXT_STYLE_ORDER[b.style_role] || 8);
+    });
+    return out;
   }
 
-  /* ‎setBySpec‎ بيكتب في مفتاح الحقل اللي تديهوله، مش في مفتاح الحقل
-     الأب. من غيره كنا بنستعمل الدالة المربوطة بالحقل الأب، فقيمة الخط
-     أو اللون كانت بتتكتب مكان **نص الزر** نفسه. */
-  function buildIntroFontGear(spec, setBySpec) {
-    var map = INTRO_TEXT_FONT_FIELDS[spec.key];
-    if (!map || typeof setBySpec !== "function") return null;
+  function buildTextStyleGear(spec, ctx, setBySpec) {
+    if (!ctx || typeof setBySpec !== "function") return null;
+    var children = textStyleChildren(ctx, spec.key);
+    if (!children.length) return null;
+
     var gear = el("button", "ed-font-gear", "⚙");
     gear.type = "button";
-    gear.title = "إعدادات الخط";
-    gear.setAttribute("aria-label", "إعدادات الخط");
+    gear.title = "تنسيق النص: الخط واللون والحجم";
+    gear.setAttribute("aria-label", "تنسيق النص");
     var panel = el("div", "ed-inline-font-panel");
     panel.hidden = true;
-    [map.font, map.color, map.size].forEach(function (key) {
-      var child = schemaSetting(key);
-      if (!child) return;
+    children.forEach(function (child) {
       panel.appendChild(buildField(
         child,
-        function () { return state.doc.settings[key]; },
+        function () { return ctx.get(child); },
         function (v) { setBySpec(child, v); }
       ));
     });
@@ -361,7 +371,18 @@
     return { gear: gear, panel: panel };
   }
 
-  function buildField(spec, getValue, setValue, setBySpec) {
+  /** يحط حقل النص ومعاه ترسه لو ليه تنسيق، وإلا يحطه لوحده. */
+  function appendWithGear(wrap, input, spec, ctx, setBySpec) {
+    var gear = buildTextStyleGear(spec, ctx, setBySpec);
+    if (!gear) { wrap.appendChild(input); return; }
+    var row = el("div", "ed-text-control-row");
+    row.appendChild(input);
+    row.appendChild(gear.gear);
+    wrap.appendChild(row);
+    wrap.appendChild(gear.panel);
+  }
+
+  function buildField(spec, getValue, setValue, setBySpec, ctx) {
 
     var wrap = el("div", "ed-field");
     // الميزة خارج الباقة = تحذير فقط؛ الحقل يظل قابلاً للتعديل والحفظ.
@@ -394,16 +415,7 @@
         if (spec.placeholder) input.placeholder = spec.placeholder;
                 input.addEventListener("input", function () { setValue(input.value); });
         wrap.appendChild(label);
-        var textRow = el("div", "ed-text-control-row");
-        textRow.appendChild(input);
-        var textGear = buildIntroFontGear(spec, setBySpec);
-        if (textGear) {
-          textRow.appendChild(textGear.gear);
-          wrap.appendChild(textRow);
-          wrap.appendChild(textGear.panel);
-        } else {
-          wrap.appendChild(input);
-        }
+        appendWithGear(wrap, input, spec, ctx, setBySpec);
         break;
 
       case "textarea":
@@ -414,7 +426,7 @@
         input.value = value == null ? "" : value;
         input.addEventListener("input", function () { setValue(input.value); });
         wrap.appendChild(label);
-        wrap.appendChild(input);
+        appendWithGear(wrap, input, spec, ctx, setBySpec);
         break;
 
       // ---------------------------------------------------- رقم / شريط
@@ -777,8 +789,11 @@
         wrap.appendChild(input);
     }
 
-    // نسم الحقل بمفتاحه حتى يمكن مزامنته مع التحرير المباشر داخل المعاينة
+    // نسم الحقل بمفتاحه حتى يمكن مزامنته مع التحرير المباشر داخل المعاينة.
+    // حقول التنسيق اللي جوّه الترس علّمت نفسها بمفاتيحها وهي بتتبني،
+    // فمابنكتبش فوقها بمفتاح الحقل الأب.
     $$("input, textarea", wrap).forEach(function (n) {
+      if (n.dataset.fieldKey) return;
       if (n.type !== "range" && n.type !== "color" && n.type !== "file") {
         n.dataset.fieldKey = spec.key;
       }
@@ -809,12 +824,16 @@
       sum.appendChild(el("span", null, name));
       details.appendChild(sum);
       var body = el("div", "ed-group-body");
+      // ‎ctx‎ بيدّي الترس طريقه لإخوات الحقل: القايمة نفسها عشان يلاقي
+      // حقول التنسيق بتاعته، و‎get‎ عشان يقرا قيمة كل واحد فيهم.
+      var ctx = { specs: specs, get: getValue };
       groups[name].forEach(function (spec) {
         body.appendChild(buildField(
           spec,
           function () { return getValue(spec); },
           function (v) { setValue(spec, v); },
-          setValue
+          setValue,
+          ctx
         ));
       });
       details.appendChild(body);
@@ -1773,6 +1792,25 @@
       (theirs.length ? " · " + theirs[0] : ""));
     body.appendChild(head);
 
+    /* نفس فكرة ترس النص في الحقول العادية: كل أدوات التنسيق (الخط
+       والحجم والسُمك والمحاذاة والألوان والتباعد) بتتلم ورا ترس واحد
+       جنب النص، فالوحة تفضل «نص + ترس» مهما كان عدد الأدوات. مفيش أداة
+       اتشالت — اللي اتغيّر مكانها. */
+    var typoPanel = el("div", "ed-inline-font-panel");
+    typoPanel.hidden = true;
+    var typoGear = el("button", "ed-font-gear", "⚙");
+    typoGear.type = "button";
+    typoGear.title = "تنسيق العنصر: الخط واللون والحجم";
+    typoGear.setAttribute("aria-label", "تنسيق العنصر");
+    typoGear.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      typoPanel.hidden = !typoPanel.hidden;
+      typoGear.setAttribute("aria-expanded", typoPanel.hidden ? "false" : "true");
+    });
+    // كل اللي تحت بيروح جوّه اللوحة بدل ما يتفرد في العمود
+    var styleBox = typoPanel;
+
         if (textNode) {
       var textEditor = el("textarea", "ed-input");
       textEditor.rows = 4;
@@ -1787,8 +1825,12 @@
         commit();
       });
       textEditor.addEventListener("change", function () { textStarted = false; });
-      body.appendChild(ctrlRow("محتوى النص", textEditor));
+      body.appendChild(ctrlRow("محتوى النص", textEditor, typoGear));
+    } else {
+      // مفيش نص (صورة، فيديو، خريطة) — الترس بيقف لوحده بعنوانه
+      body.appendChild(ctrlRow("تنسيق العنصر", typoGear));
     }
+    body.appendChild(typoPanel);
 
     /* الصورة مش نص. الخط والحجم والسُمك والمحاذاة وتباعد الحروف
 
@@ -1831,7 +1873,7 @@
     }
     if (isImg) {
 
-      body.appendChild(el("p", "ed-hint",
+      styleBox.appendChild(el("p", "ed-hint",
         "دي صورة — أدوات الخط والنص مش بتأثر عليها فمخفية."));
     }
 
@@ -1869,8 +1911,8 @@
     fontSel.addEventListener("change", function () {
       snapshot(); setStyle("font-family", fontSel.value);
     });
-        body.appendChild(ctrlRow("الخط", fontSel));
-    body.appendChild(buildInlineFontTools(fontSel, function (value) {
+        styleBox.appendChild(ctrlRow("الخط", fontSel));
+    styleBox.appendChild(buildInlineFontTools(fontSel, function (value) {
       snapshot();
       setStyle("font-family", value);
     }));
@@ -1889,7 +1931,7 @@
       setStyle("font-size", size.value + "px");
     });
     size.addEventListener("change", function () { sizeStarted = false; });
-    body.appendChild(ctrlRow("حجم الخط", size, sizeOut));
+    styleBox.appendChild(ctrlRow("حجم الخط", size, sizeOut));
 
     // ---- السُمك والمحاذاة
     [["font-weight", "سُمك الخط", WEIGHTS],
@@ -1901,7 +1943,7 @@
       sel.addEventListener("change", function () {
         snapshot(); setStyle(spec[0], sel.value);
       });
-      body.appendChild(ctrlRow(spec[1], sel));
+      styleBox.appendChild(ctrlRow(spec[1], sel));
     });
     }
 
@@ -1929,7 +1971,7 @@
       clear.addEventListener("click", function () {
         snapshot(); setStyle(spec[0], "");
       });
-      body.appendChild(ctrlRow(spec[1], input, clear));
+      styleBox.appendChild(ctrlRow(spec[1], input, clear));
     });
 
         // ---- المسافات
@@ -1957,7 +1999,7 @@
         setStyle(spec[0], r.value + spec[5]);
       });
       r.addEventListener("change", function () { started = false; });
-      body.appendChild(ctrlRow(spec[1], r, out));
+      styleBox.appendChild(ctrlRow(spec[1], r, out));
     });
     }
 
@@ -2054,7 +2096,7 @@
           setStyle(spec[0], r2.value + spec[5]);
         });
         r2.addEventListener("change", function () { began = false; });
-        body.appendChild(ctrlRow(spec[1], r2, out2));
+        styleBox.appendChild(ctrlRow(spec[1], r2, out2));
       });
     }
 
@@ -2254,6 +2296,15 @@
       "Delete يحذف · Ctrl+C نسخ · Ctrl+V لصق · Ctrl+D تكرار · " +
       "الأسهم تحرّك ربع خطوة (مع Shift خطوة كاملة) · " +
       "Shift مع السحب = حركة دقيقة"));
+
+    /* عنصر مالوش ولا أداة تنسيق (الخريطة مثلاً) — الترس يتشال بدل ما
+       يفضل زرار بيفتح لوحة فاضية. */
+    if (!typoPanel.childElementCount) {
+      var gearRow = typoGear.closest ? typoGear.closest(".ed-field") : null;
+      if (!textNode && gearRow) gearRow.remove();
+      else if (typoGear.parentNode) typoGear.remove();
+      typoPanel.remove();
+    }
 
     return wrap;
   }
@@ -2810,6 +2861,23 @@
     style.textContent = css;
   }
 
+  /* إزاحات النصوص وتنسيق كل نص لوحده بيتولدوا على السيرفر وبيعيشوا في
+     رأس الإطار. ‎applyPreview‎ بتبدّل محتوى المسرح بس، فلو ماكتبناش
+     الستايل ده من جديد كان بيفضل بتاع أول تحميل: تغيّر لون من الترس
+     أو تحرّك نص، الرد يرجع، وشكل الصفحة زي ما هو لحد ريفريش كامل.
+     بنكتب في **نفس** الوسم اللي القالب طبعه (‎data-lb-layout-css‎) مش
+     في وسم جديد، عشان القاعدة القديمة تتشال فعلاً مش تتغطّى. */
+  function applyLayoutCss(fdoc, css) {
+    if (!fdoc || typeof css !== "string") return;
+    var style = fdoc.querySelector("style[data-lb-layout-css]");
+    if (!style) {
+      style = fdoc.createElement("style");
+      style.setAttribute("data-lb-layout-css", "");
+      (fdoc.head || fdoc.documentElement).appendChild(style);
+    }
+    style.textContent = css;
+  }
+
   /* نفس منطق ‎_COUNTDOWN_DATE_RE‎ في ‎renderer.py‎: أي اسم متغيّر، بشرط
      إن التاريخ مكتوب بالإيد. ‎new Date()‎ الفاضية مابتتلمسش. */
   var COUNTDOWN_RUNTIME_DATE_RE =
@@ -2951,6 +3019,7 @@
 
     // الخط قد يتغير من إعدادات الافتتاحية، لذلك نطبقه في الحالتين.
     applyFontCss(fdoc, data.fontCss || "");
+    applyLayoutCss(fdoc, data.layoutCss);
     applyIntro(fdoc, data.intro);
     applyMusic(fdoc, data.music || {});
 

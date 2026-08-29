@@ -47,11 +47,15 @@ html, body { margin: 0; min-height: 100%; }
 {% if render.runtime_scripts and not editable or run_template_runtime %}{% for script in render.runtime_scripts %}{% if script.src %}<link rel="preload" href="{{ script.src }}" as="script">{% endif %}{% endfor %}{% endif %}
 {% if render.font_css %}<style data-font-faces>{{ render.font_css }}</style>{% endif %}
 {% for font_url in render.font_preloads %}<link rel="preload" href="{{ font_url }}" as="font" crossorigin>{% endfor %}
-{% if render.layout_css %}<style>{{ render.layout_css }}</style>{% endif %}
+{# إزاحات النصوص + تنسيق كل نص لوحده (ترس النص). #}
+{# الوسم متعلّم عشان المحرر يلاقيه ويكتب فيه بعد كل تحديث معاينة: #}
+{# applyPreview بتبدّل محتوى المسرح بس ومابتلمسش الرأس، فمن غير كده #}
+{# التنسيق كان هيفضل بتاع أول تحميل ومايبانش غير بعد ريفريش. #}
+{% if render.layout_css %}<style data-lb-layout-css>{{ render.layout_css }}</style>{% endif %}
 <!-- {# ستايل الأقسام المستوردة: نسخة واحدة بدل نسخة مكررة مع كل قسم. #} -->
 {% if render.shared_css %}<style data-imported-css>{{ render.shared_css }}</style>{% endif %}
-<!-- {# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة -->
-   <!-- من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #} -->
+{# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة #}
+{# من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #}
 {% if render.zero_css %}<style data-zero-block-css>{{ render.zero_css }}</style>{% endif %}
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="1">

@@ -3,7 +3,7 @@
 <div class="lb-inner">
   {% if props.src %}<figure data-move="image" class="lb-figure lb-figure--{{ props.frame }}" style="max-width:{{ props.max_width }}px">
     <img src="{{ props.src }}" alt="{{ props.caption|default:'' }}" loading="lazy">
-    {% if props.caption %}<figcaption>{{ props.caption }}</figcaption>{% endif %}
+    {% if props.caption %}<figcaption data-ts="caption">{{ props.caption }}</figcaption>{% endif %}
   </figure>{% else %}<div class="lb-gempty">اختر صورة من المحرر</div>{% endif %}
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}

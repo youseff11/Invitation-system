@@ -269,6 +269,177 @@ SECTION_TEXT_OVERLAY_FIELD = field(
 
 
 # --------------------------------------------------------------------------
+# ترس النص — تنسيق كل نص جوّه ترسه
+# --------------------------------------------------------------------------
+"""كل حقل نص في المحرر بياخد ترس (⚙) جنبه فيه تنسيقه هو لوحده.
+
+الحقول دي **مخفية من القائمة المسطحة** (``editor_hidden``) وبتظهر جوّه
+الترس بس — المحرر بيلمّها بـ``style_of`` اللي بيقول الترس ده بتاع أنهي
+حقل نص، و``style_role`` اللي بيرتّبها جوّه اللوحة.
+
+الحقول القديمة (``heading_font``، ``quote_size``، ``name_font``…) اتربطت
+بأصحابها بنفس المفتاحين بدل ما تتكرر: قيمها المحفوظة وطريقة عرضها في
+القوالب زي ما هي بالظبط، اللي اتغيّر هو مكانها في الواجهة.
+
+المفاتيح المولّدة كلها بتبدأ بـ``ts_`` عشان ماتصطدمش بأي مفتاح موجود
+(``text_color`` في التنسيق مثلاً)، والريندرر بيطبّقها من
+``renderer.text_style_css`` على العنصر اللي عليه ``data-ts`` في القالب.
+"""
+
+TEXT_STYLE_PREFIX = "ts_"
+
+# الترتيب ده هو ترتيب ظهورهم جوّه الترس
+TEXT_STYLE_ROLES = ("font", "color", "size", "weight", "align", "ls", "lh")
+
+TEXT_WEIGHT_CHOICES = [
+    opt("", "زي ما هو"), opt("300", "خفيف"), opt("400", "عادي"),
+    opt("500", "متوسط"), opt("600", "نص عريض"), opt("700", "عريض"),
+    opt("800", "عريض جداً"),
+]
+
+TEXT_ALIGN_CHOICES = [
+    opt("", "زي ما هو"), opt("right", "يمين"),
+    opt("center", "وسط"), opt("left", "يسار"),
+]
+
+# أنواع الحقول اللي بتاخد ترس
+TEXT_STYLE_OWNER_TYPES = {"text", "textarea", "html"}
+
+# نصوص مالهاش عنصر ثابت في الصفحة تتحط عليه القاعدة، فمالهاش ترس:
+#   • countdown.finished_text بيتكتب من الجافاسكربت بعد ما الموعد يعدّي
+#   • custom_html.html/css كود مش كلام — تنسيقه من «العنصر المحدَّد»
+NO_TEXT_STYLE = {
+    ("countdown", "finished_text"),
+    ("custom_html", "html"),
+    ("custom_html", "css"),
+}
+
+# الحقول القديمة: {نوع البلوك: {حقل النص: {الدور: مفتاح الحقل القديم}}}
+# الدور ``extra`` معناه حقل زيادة بيتعرض في آخر الترس زي ما هو.
+LEGACY_TEXT_STYLE = {
+    "hero": {
+        "name_one": {
+            "font": "name_font", "size": "name_size",
+            "ls": "name_spacing", "extra": ["name_size_mobile"],
+        },
+    },
+    "text": {
+        "heading": {"font": "heading_font", "size": "heading_size"},
+        "body": {"size": "body_size", "lh": "body_line_height"},
+    },
+    "quote": {
+        "text": {"font": "quote_font", "size": "quote_size"},
+    },
+}
+
+
+def _text_style_field(owner: str, role: str, group: str) -> dict:
+    key = f"{TEXT_STYLE_PREFIX}{owner}_{role}"
+    if role == "font":
+        # من غير ‎options‎ عن قصد: المحرر بيقع على ‎SCHEMA.fonts‎ (نفس
+        # ‎FONT_CHOICES‎) لما الحقل مايجيبش قايمته. لو كل حقل جاب نسخته،
+        # المخطط اللي بيروح للمتصفح كان بيزيد ~٤٠ كيلوبايت من نفس الكلام.
+        spec = field(key, "الخط", "font", "", group=group, editor_hidden=True)
+    elif role == "color":
+        spec = field(key, "اللون", "color", "", group=group, editor_hidden=True)
+    elif role == "size":
+        spec = field(key, "الحجم", "range", 0, group=group,
+                     minimum=0, maximum=160, step=1, unit="px",
+                     editor_hidden=True,
+                     help_text="صفر = حجم القالب زي ما هو")
+    elif role == "weight":
+        spec = field(key, "سُمك الخط", "select", "", group=group,
+                     options=TEXT_WEIGHT_CHOICES, editor_hidden=True)
+    elif role == "align":
+        spec = field(key, "المحاذاة", "select", "", group=group,
+                     options=TEXT_ALIGN_CHOICES, editor_hidden=True)
+    elif role == "ls":
+        spec = field(key, "تباعد الحروف", "range", 0, group=group,
+                     minimum=-5, maximum=30, step=0.5, unit="px",
+                     editor_hidden=True)
+    else:  # lh
+        spec = field(key, "ارتفاع السطر", "range", 0, group=group,
+                     minimum=0, maximum=3.2, step=0.05, editor_hidden=True,
+                     help_text="صفر = تلقائي")
+    spec["style_of"] = owner
+    spec["style_role"] = role
+    return spec
+
+
+def attach_text_styles(btype: str, specs: list[dict]) -> list[dict]:
+    """يرجّع نفس قائمة الحقول + حقول تنسيق لكل حقل نص فيها.
+
+    بيشتغل مرة واحدة وقت التسجيل، فمفيش أي حساب وقت العرض.
+    """
+    by_key = {f["key"]: f for f in specs}
+    legacy_all = LEGACY_TEXT_STYLE.get(btype, {})
+    extra: list[dict] = []
+
+    for spec in list(specs):
+        owner = spec["key"]
+        if spec["type"] not in TEXT_STYLE_OWNER_TYPES:
+            continue
+        if spec.get("editor_hidden") or spec.get("translate") is False:
+            continue
+        if (btype, owner) in NO_TEXT_STYLE:
+            continue
+
+        group = spec.get("group") or "المحتوى"
+        legacy = legacy_all.get(owner) or {}
+        taken = set()
+
+        # الحقول القديمة بتتنقل جوّه الترس بمفتاحها وقيمتها زي ما هي
+        for role, old_key in legacy.items():
+            if role == "extra":
+                continue
+            old = by_key.get(old_key)
+            if not old:
+                continue
+            old["style_of"] = owner
+            old["style_role"] = role
+            old["editor_hidden"] = True
+            taken.add(role)
+        for old_key in legacy.get("extra") or []:
+            old = by_key.get(old_key)
+            if not old:
+                continue
+            old["style_of"] = owner
+            old["style_role"] = "zz_extra"
+            old["editor_hidden"] = True
+
+        for role in TEXT_STYLE_ROLES:
+            if role in taken:
+                continue
+            new_key = f"{TEXT_STYLE_PREFIX}{owner}_{role}"
+            if new_key in by_key:
+                continue
+            child = _text_style_field(owner, role, group)
+            by_key[new_key] = child
+            extra.append(child)
+
+    return specs + extra
+
+
+def text_style_map(specs: list[dict]) -> dict[str, dict[str, str]]:
+    """{حقل النص: {الدور: مفتاح}} — للمفاتيح المولّدة بس.
+
+    الحقول القديمة مستثناة عن قصد: القوالب بترسمها inline خلاص
+    (``font-size:{{ props.heading_size|fluid }}``)، فلو الريندرر طبّعها
+    تاني كنا هنكتب نفس الحاجة مرتين بقيمتين ممكن يختلفوا.
+    """
+    out: dict[str, dict[str, str]] = {}
+    for spec in specs:
+        owner = spec.get("style_of")
+        role = spec.get("style_role")
+        if not owner or not role or role == "zz_extra":
+            continue
+        if not str(spec.get("key", "")).startswith(TEXT_STYLE_PREFIX):
+            continue
+        out.setdefault(owner, {})[role] = spec["key"]
+    return out
+
+
+# --------------------------------------------------------------------------
 # سجل أنواع البلوكات
 # --------------------------------------------------------------------------
 BLOCK_REGISTRY: dict[str, dict] = {}
@@ -345,6 +516,9 @@ def register(
     block_props = list(props)
     if supports_style and not any(f.get("key") == "text_overlays" for f in block_props):
         block_props.append(SECTION_TEXT_OVERLAY_FIELD)
+    # كل حقل نص بياخد حقول تنسيقه (ترسه). لازم تيجي قبل ما المخطط
+    # يتخزّن عشان normalize_document تعرف المفاتيح الجديدة.
+    block_props = attach_text_styles(btype, block_props)
     BLOCK_REGISTRY[btype] = {
         "type": btype,
         "label": label,
@@ -929,6 +1103,47 @@ SETTINGS_FIELDS = [
     field("share_description", "وصف المشاركة", "text", "", group="مشاركة"),
     field("show_branding", "إظهار توقيع المنصة", "toggle", True, group="مشاركة"),
 ]
+
+
+# نصوص الافتتاحية: حقول الخط واللون والحجم موجودة من الأول وبيقراها
+# ‎renderer.intro_item_css‎، فهنا بنقول للمحرر بس إن كل واحد منهم بتاع
+# أنهي نص — عشان يطلعوا جوّه ترس النص ده بدل خريطة مكتوبة بالإيد في
+# ‎editor.js‎ كانت لازم تتحدّث مع كل حقل جديد.
+INTRO_TEXT_STYLE = {
+    "intro_note": {
+        "font": "intro_note_font", "color": "intro_note_color",
+        "size": "intro_note_size",
+    },
+    "intro_text": {
+        "font": "intro_text_font", "color": "intro_text_color",
+        "size": "intro_text_size",
+    },
+    "intro_button": {
+        "font": "intro_button_font", "color": "intro_button_color",
+        "size": "intro_button_size",
+    },
+    "intro_play_label": {
+        "font": "intro_play_font", "color": "intro_play_color",
+        "size": "intro_play_size",
+    },
+}
+
+
+def _mark_settings_text_styles() -> None:
+    by_key = {f["key"]: f for f in SETTINGS_FIELDS}
+    for owner, roles in INTRO_TEXT_STYLE.items():
+        if owner not in by_key:
+            continue
+        for role, key in roles.items():
+            spec = by_key.get(key)
+            if not spec:
+                continue
+            spec["style_of"] = owner
+            spec["style_role"] = role
+            spec["editor_hidden"] = True
+
+
+_mark_settings_text_styles()
 
 
 # --------------------------------------------------------------------------

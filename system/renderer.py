@@ -509,6 +509,110 @@ def layout_css(blocks: list[dict]) -> str:
     return mark_safe("".join(rules))
 
 
+# --------------------------------------------------------------------------
+# تنسيق كل نص لوحده — الترس اللي جنب الحقل في المحرر
+# --------------------------------------------------------------------------
+# المفاتيح المولّدة في ‎blocks.attach_text_styles‎ (‎ts_<حقل>_<دور>‎)
+# بتتحوّل هنا لقاعدة CSS واحدة على العنصر اللي عليه ‎data-ts="<حقل>"‎ في
+# قالب البلوك. **بالسيرفر مش بالجافاسكربت** عشان الضيف يشوف التنسيق من
+# أول رسمة، وعشان نفس الناتج يطلع في المعاينة والصفحة الحية.
+#
+# الحقول القديمة (‎heading_size‎، ‎name_font‎…) مش هنا: قوالبها بترسمها
+# ‎inline‎ خلاص، والـ‎inline‎ بيكسب أي قاعدة، فتكرارها كان هيبقى سطرين
+# بيقولوا حاجتين.
+_TEXT_STYLE_MAPS: dict[str, dict[str, dict[str, str]]] = {}
+
+_CSS_COLOR_RE = re.compile(
+    r"#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)|transparent"
+)
+_TEXT_WEIGHTS = {"300", "400", "500", "600", "700", "800"}
+_TEXT_ALIGNS = {"right", "center", "left"}
+
+
+def _text_style_map(btype: str) -> dict[str, dict[str, str]]:
+    """خريطة {الحقل: {الدور: المفتاح}} لنوع بلوك — بتتحسب مرة واحدة."""
+    cached = _TEXT_STYLE_MAPS.get(btype)
+    if cached is None:
+        spec = blocks_engine.BLOCK_REGISTRY.get(btype) or {}
+        cached = blocks_engine.text_style_map(spec.get("props") or [])
+        _TEXT_STYLE_MAPS[btype] = cached
+    return cached
+
+
+def _num(value: object, low: float, high: float) -> float | None:
+    try:
+        num = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    if num != num or not (low <= num <= high):   # NaN أو خارج الحدود
+        return None
+    return num
+
+
+def text_style_css(blocks: list[dict], theme: dict | None = None) -> str:
+    """قواعد تنسيق النصوص لكل الأقسام.
+
+    كل قيمة بتتفحص قبل ما تدخل الناتج (خط من القايمة أو من مكتبة الخطوط،
+    لون CSS صالح، أرقام داخل حدود الحقل) — مفيش نص حر بيوصل للـCSS.
+    """
+    from .templatetags.invite import _fluid
+
+    ref = (theme or {}).get("max_width")
+    rules: list[str] = []
+    for block in blocks:
+        bid = str(block.get("id") or "")
+        if not _SAFE_ID.match(bid):
+            continue
+        props = block.get("props") or {}
+        for slot, roles in _text_style_map(str(block.get("type") or "")).items():
+            if not _SAFE_ID.match(slot):
+                continue
+            decls: list[str] = []
+
+            font = _safe_intro_font(props.get(roles.get("font", "")))
+            if font:
+                decls.append(f"font-family:{font}")
+
+            color = str(props.get(roles.get("color", "")) or "").strip()
+            if color and _CSS_COLOR_RE.fullmatch(color):
+                decls.append(f"color:{color}")
+
+            size = _num(props.get(roles.get("size", "")), 1, 160)
+            if size:
+                # نفس فلتر القوالب: المقاس بيصغّر مع عرض الدعوة بدل ما
+                # يفضل ثابت ويطلع برّه الشاشة على الموبايل.
+                decls.append(f"font-size:{_fluid(size, ref=ref)}")
+
+            weight = str(props.get(roles.get("weight", "")) or "").strip()
+            if weight in _TEXT_WEIGHTS:
+                decls.append(f"font-weight:{weight}")
+
+            align = str(props.get(roles.get("align", "")) or "").strip()
+            if align in _TEXT_ALIGNS:
+                decls.append(f"text-align:{align}")
+
+            ls = _num(props.get(roles.get("ls", "")), -5, 30)
+            if ls:
+                decls.append(f"letter-spacing:{ls:g}px")
+
+            lh = _num(props.get(roles.get("lh", "")), 0.5, 3.2)
+            if lh:
+                decls.append(f"line-height:{lh:g}")
+
+            if decls:
+                # قسم تأكيد الحضور بيكتب ‎id="rsvp"‎ ثابت مش ‎block.id‎،
+                # فنطاق ‎#id‎ لوحده مكانش هيلاقيه أبداً. ‎:is()‎ بتاخد
+                # أولوية أقوى وسيط جوّاها، يعني القاعدة تفضل بقوة
+                # المُعرِّف حتى لما تطابق بالـ‎data-block‎ — من غير كده
+                # كانت هتخسر قدام قواعد القالب العادية.
+                rules.append(
+                    f':is(#{bid},[data-block="{bid}"]) '
+                    f'[data-ts="{slot}"]{{{";".join(decls)}}}'
+                )
+
+    return mark_safe("".join(rules))
+
+
 def shared_block_css(blocks: list[dict]) -> tuple[str, set[str]]:
     """يجمّع الستايل المكرر بين الأقسام المستوردة في نسخة واحدة.
 
@@ -812,7 +916,14 @@ def render_document(
             item: intro_item_css(doc_settings, item)
             for item in ("note", "guest_name", "text", "button", "play")
         },
-        "layout_css": layout_css(doc["blocks"]),
+        # تنسيق كل نص لوحده بيتلزق مع ‎layout_css‎ في نفس المفتاح عن قصد:
+        # الاتنين قواعد بتتحط في نفس المكان، وإضافة مفتاح جديد للحمولة
+        # معناها تعديل في ‎views.py‎ و‎render.html‎ و‎applyPreview‎ — تلات
+        # أماكن تانية تنسى واحدة فيهم فالتنسيق يبان في المعاينة ويضيع
+        # في الصفحة الحية.
+        "layout_css": mark_safe(
+            layout_css(doc["blocks"]) + text_style_css(doc["blocks"], theme)
+        ),
         # ستايل الأقسام المستوردة، نسخة واحدة بدل نسخة لكل قسم
         "shared_css": mark_safe(shared_css),
         # مواضع عناصر Tilda Zero محسوبة على السيرفر — من غيرها الصفحة
@@ -845,7 +956,9 @@ _PREVIEW_KEYS = (
 )
 
 
-_PREVIEW_RENDER_REVISION = "2026-08-27-map-center-px-offsets-v3"
+# لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
+# بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
+_PREVIEW_RENDER_REVISION = "2026-08-29-per-text-style-gear-v1"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

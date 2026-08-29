@@ -1,9 +1,9 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
 {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
 <div class="lb-inner">
-  {% if props.eyebrow %}<p class="lb-eyebrow" data-slot="eyebrow" data-move="eyebrow">{{ props.eyebrow }}</p>{% endif %}
-  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading" style="font-size:{{ props.heading_size|fluid:theme.max_width }}{% if props.heading_font %};font-family:{{ props.heading_font }}{% endif %}">{{ props.heading }}</h2>{% endif %}
-  {% if props.body %}<div class="lb-body" data-slot="body" data-move="body" style="font-size:{{ props.body_size|fluid:theme.max_width }};line-height:{{ props.body_line_height }}">{{ props.body|safe_html }}</div>{% endif %}
+  {% if props.eyebrow %}<p class="lb-eyebrow" data-slot="eyebrow" data-move="eyebrow" data-ts="eyebrow">{{ props.eyebrow }}</p>{% endif %}
+  {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading" data-ts="heading" style="font-size:{{ props.heading_size|fluid:theme.max_width }}{% if props.heading_font %};font-family:{{ props.heading_font }}{% endif %}">{{ props.heading }}</h2>{% endif %}
+  {% if props.body %}<div class="lb-body" data-slot="body" data-move="body" data-ts="body" style="font-size:{{ props.body_size|fluid:theme.max_width }};line-height:{{ props.body_line_height }}">{{ props.body|safe_html }}</div>{% endif %}
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}

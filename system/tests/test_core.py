@@ -3416,7 +3416,7 @@ class ElementInspectorTests(TestCase):
 
     def _guard_span(self, start_at):
         """مدى أول حارس ‎if (!isImg)‎ بعد ‎start_at‎ — بعدّ الأقواس مش بالشكل."""
-        at = self.body.index("if (!isImg) {", start_at)
+        at = self.body.index("if (!isImg && !isMap) {", start_at)
         opening = self.body.index("{", at)
         depth = 0
         for j in range(opening, len(self.body)):
@@ -3442,7 +3442,10 @@ class ElementInspectorTests(TestCase):
             pos = end
 
     def test_an_image_is_recognised_by_its_tag(self):
-        self.assertIn('var isImg = tag === "IMG"', self.body)
+        """الصورة ممكن تكون هي العنصر نفسه أو جوّه العنصر المحدَّد."""
+        self.assertIn('var imageNode = tag === "IMG" ? node : node.querySelector("img")',
+                      self.body)
+        self.assertIn("var isImg = !!imageNode;", self.body)
 
     def test_the_font_controls_are_hidden_for_images(self):
         for probe in ('"font-family"', '"font-size"', '"font-weight"', '"text-align"'):
@@ -3477,7 +3480,7 @@ class ElementInspectorTests(TestCase):
 
     def test_the_guard_helper_would_catch_a_regression(self):
         """ضمان إن الفحص نفسه بيفرّق — مش بيرجع True على طول."""
-        self.assertFalse(self._guarded('var isImg = tag === "IMG"'))
+        self.assertFalse(self._guarded("var isImg = !!imageNode;"))
 
     def test_editor_only_classes_are_not_shown_as_the_element_name(self):
         """‎lb-el-picked‎ كلاس بيحطه المحرر وقت الاختيار، مش كلاس القالب —
@@ -3993,3 +3996,164 @@ class FaststartTests(TestCase):
             self.assertEqual(out.read(), b"webm-ish")
         finally:
             video.available = real
+
+
+# ==========================================================================
+class TextStyleGearTests(TestCase):
+    """ترس النص — كل حقل نص في المحرر بياخد تنسيقه هو.
+
+    قبل كده كان فيه ٤ بلوكات بس عندها حقول خط/حجم، بأسماء مالهاش علاقة
+    بأسماء حقول النص (‎quote_font‎ لحقل اسمه ‎text‎)، ومفيش ولا حقل لون
+    نص واحد. والترس كان لأربع حقول في الافتتاحية بخريطة مكتوبة بالإيد
+    في ‎editor.js‎.
+    """
+
+    TEXT_TYPES = {"text", "textarea", "html"}
+
+    def _owners(self, btype, spec):
+        """حقول النص اللي المفروض ليها ترس في البلوك ده."""
+        return [
+            f for f in spec["props"]
+            if f["type"] in self.TEXT_TYPES
+            and not f.get("editor_hidden")
+            and f.get("translate") is not False
+            and (btype, f["key"]) not in B.NO_TEXT_STYLE
+        ]
+
+    # ---- المخطط
+    def test_every_text_field_has_style_children(self):
+        for btype, spec in B.BLOCK_REGISTRY.items():
+            children = {}
+            for f in spec["props"]:
+                if f.get("style_of"):
+                    children.setdefault(f["style_of"], set()).add(f["style_role"])
+            for owner in self._owners(btype, spec):
+                with self.subTest(block=btype, field=owner["key"]):
+                    roles = children.get(owner["key"], set())
+                    for role in ("font", "color", "size"):
+                        self.assertIn(role, roles)
+
+    def test_style_children_never_show_in_the_flat_list(self):
+        """لو ظهروا في القايمة، يبقى نفس الإعداد في مكانين."""
+        for btype, spec in B.BLOCK_REGISTRY.items():
+            for f in spec["props"]:
+                if f.get("style_of"):
+                    with self.subTest(block=btype, field=f["key"]):
+                        self.assertTrue(f.get("editor_hidden"))
+
+    def test_the_old_font_fields_moved_into_the_gear_instead_of_doubling(self):
+        """‎heading_font‎ و‎quote_size‎ و‎name_font‎ اتنقلوا مش اتكرروا."""
+        cases = {
+            "text": {"heading_font": "heading", "heading_size": "heading",
+                     "body_size": "body", "body_line_height": "body"},
+            "quote": {"quote_font": "text", "quote_size": "text"},
+            "hero": {"name_font": "name_one", "name_size": "name_one",
+                     "name_spacing": "name_one"},
+        }
+        for btype, expected in cases.items():
+            fields = {f["key"]: f for f in B.BLOCK_REGISTRY[btype]["props"]}
+            for key, owner in expected.items():
+                with self.subTest(block=btype, field=key):
+                    self.assertEqual(fields[key].get("style_of"), owner)
+                    self.assertTrue(fields[key].get("editor_hidden"))
+            # ومفيش مفتاح مولّد بيكرّر نفس الدور
+            self.assertNotIn(f"{B.TEXT_STYLE_PREFIX}heading_font", fields)
+
+    def test_intro_texts_keep_their_own_keys(self):
+        """قيم الافتتاحية المحفوظة مالهاش تتغيّر — الترس بيقرا نفس المفاتيح."""
+        fields = {f["key"]: f for f in B.SETTINGS_FIELDS}
+        self.assertEqual(fields["intro_text_font"].get("style_of"), "intro_text")
+        self.assertEqual(fields["intro_play_size"].get("style_of"),
+                         "intro_play_label")
+
+    def test_generated_font_fields_do_not_ship_their_own_font_list(self):
+        """قايمة الخطوط بتتبعت مرة واحدة في المخطط، مش مع كل حقل."""
+        heavy = [
+            f["key"] for spec in B.BLOCK_REGISTRY.values() for f in spec["props"]
+            if f["key"].startswith(B.TEXT_STYLE_PREFIX) and f.get("options")
+            and f["type"] == "font"
+        ]
+        self.assertEqual(heavy, [])
+
+    # ---- القوالب
+    def test_every_gear_owner_has_a_hook_in_its_template(self):
+        """من غير ‎data-ts‎ الترس بيتفتح ومايغيّرش حاجة على الشاشة."""
+        root = Path(settings.BASE_DIR) / "templates" / "blocks"
+        for btype, spec in B.BLOCK_REGISTRY.items():
+            path = root / f"{btype}.html"
+            if not path.exists():
+                continue
+            hooks = set(re.findall(r'data-ts="([^"]+)"', path.read_text("utf-8")))
+            owners = {f["style_of"] for f in spec["props"] if f.get("style_of")}
+            with self.subTest(block=btype):
+                self.assertEqual(owners - hooks, set())
+
+    # ---- الناتج
+    def _hero(self, **props):
+        block = B.make_block("hero")
+        block["id"] = "hero-test1"
+        block["props"].update(props)
+        return block
+
+    def test_a_set_value_becomes_one_scoped_rule(self):
+        from system.renderer import text_style_css
+        css = text_style_css([self._hero(
+            ts_kicker_color="#b8914f", ts_kicker_weight="700",
+            ts_kicker_align="center", ts_kicker_ls=1.5, ts_kicker_lh=1.4,
+        )], {"max_width": 720})
+        self.assertIn('[data-ts="kicker"]', css)
+        for want in ("color:#b8914f", "font-weight:700", "text-align:center",
+                     "letter-spacing:1.5px", "line-height:1.4"):
+            self.assertIn(want, css)
+
+    def test_the_size_follows_the_screen_like_the_rest(self):
+        from system.renderer import text_style_css
+        css = text_style_css([self._hero(ts_kicker_size=22)], {"max_width": 720})
+        self.assertIn("font-size:clamp(", css)
+
+    def test_an_untouched_document_adds_no_css_at_all(self):
+        from system.renderer import text_style_css
+        self.assertEqual(text_style_css([self._hero()], {"max_width": 720}), "")
+
+    def test_junk_values_never_reach_the_stylesheet(self):
+        from system.renderer import text_style_css
+        css = text_style_css([self._hero(
+            ts_kicker_color="red;background:url(javascript:alert(1))",
+            ts_kicker_font="</style><script>x</script>",
+            ts_kicker_weight="999", ts_kicker_align="justify",
+            ts_kicker_size=9999,
+        )], {"max_width": 720})
+        self.assertEqual(css, "")
+
+    def test_the_rule_still_finds_the_rsvp_section(self):
+        """قالب تأكيد الحضور بيكتب ‎id="rsvp"‎ ثابت مش ‎block.id‎."""
+        from system.renderer import text_style_css
+        block = B.make_block("rsvp")
+        block["id"] = "rsvp-test1"
+        block["props"]["ts_submit_label_color"] = "#ffffff"
+        css = text_style_css([block], {"max_width": 720})
+        self.assertIn('[data-block="rsvp-test1"]', css)
+        # ‎:is()‎ بتدّي القاعدة قوة المُعرِّف حتى وهي بتطابق بالسمة
+        self.assertTrue(css.startswith(":is(#rsvp-test1,"))
+
+    def test_the_stylesheet_reaches_the_page_with_the_offsets(self):
+        doc = B.normalize_document({"blocks": [self._hero(ts_kicker_color="#123456")]})
+        out = render_document(doc, editable=False)
+        self.assertIn('[data-ts="kicker"]', out["layout_css"])
+
+    # ---- المحرر
+    def test_the_editor_builds_the_gear_from_the_schema(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("function buildTextStyleGear(", js)
+        self.assertIn('specs[i].style_of === key', js)
+        # الخريطة المكتوبة بالإيد اتشالت — حقل جديد في بايثون بيبان لوحده
+        self.assertNotIn("INTRO_TEXT_FONT_FIELDS", js)
+
+    def test_the_editor_rewrites_the_head_css_after_every_preview(self):
+        """‎applyPreview‎ بتبدّل المسرح بس — من غير ده التعديل مايبانش."""
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("function applyLayoutCss(", js)
+        self.assertIn("applyLayoutCss(fdoc, data.layoutCss)", js)
+        render = (Path(settings.BASE_DIR) / "templates/invitations/render.html"
+                  ).read_text("utf-8")
+        self.assertIn("<style data-lb-layout-css>", render)

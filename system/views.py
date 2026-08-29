@@ -1290,6 +1290,9 @@ def template_api_preview(request, pk):
         "intro": intro_html.strip(),
         "cssVars": result["css_vars"],
         "fontCss": result["font_css"],
+        # إزاحات النصوص + تنسيق كل نص لوحده. المحرر بيكتبها في رأس
+        # الإطار بعد كل تحديث، لأن applyPreview بتبدّل المسرح بس.
+        "layoutCss": str(result.get("layout_css") or ""),
         "pattern": result["theme"].get("pattern") or "none",
         "maxWidth": result["theme"].get("max_width"),
         "runtimeCountdownDate": result.get("runtime_countdown_date") or "",
@@ -1475,6 +1478,9 @@ def api_preview(request, pk):
         "intro": intro_html.strip(),
         "cssVars": result["css_vars"],
         "fontCss": result["font_css"],
+        # إزاحات النصوص + تنسيق كل نص لوحده — تتكتب في رأس الإطار
+        # بعد كل تحديث معاينة (applyPreview بتبدّل المسرح بس).
+        "layoutCss": str(result.get("layout_css") or ""),
         "pattern": result["theme"].get("pattern") or "none",
 
                 "maxWidth": result["theme"].get("max_width"),
