@@ -4231,6 +4231,21 @@ class OverlayTextGearTests(TestCase):
         css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
         self.assertIn("font-size: var(--section-text-size, inherit)", css)
 
+    def test_the_width_can_reach_the_full_section(self):
+        """الحد الأقصى مكتوب في ٤ أماكن — لازم يتغيّروا مع بعض.
+
+        لو واحد منهم اتغيّر لوحده، القيمة المحفوظة بتقول رقم والشاشة
+        بتعرض رقم تاني.
+        """
+        width = self._sub("width")
+        self.assertEqual(width["max"], 100)
+        style = invite_tags.video_text_style({"text": "x", "width": 100})
+        self.assertIn("--section-text-w:100%", style)
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn("max-width: 100%;", css)
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("clamp(percent, 8, 100)", js)
+
     def test_the_editor_passes_the_gear_into_list_items(self):
         js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
         self.assertIn("var itemCtx = {", js)
@@ -4360,3 +4375,49 @@ class SectionOverlayElementsTests(TestCase):
                 self.assertIn("text_overlays", keys)
         js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
         self.assertNotIn('if (s.key === "text_overlays") return false;', js)
+
+
+# ==========================================================================
+class EditorMatchesTheLivePageTests(TestCase):
+    """اللي في المحرر لازم يبقى هو اللي في الدعوة بالظبط.
+
+    ``applyPreview`` بتبدّل محتوى المسرح بس ومابتلمسش رأس الإطار. يعني
+    كل ستايل بيتولّد على السيرفر (مواضع عناصر Tilda، ارتفاعات الأقسام،
+    الستايل المشترك، إزاحات النصوص) كان بيتكتب مرة واحدة وقت تحميل
+    المحرر، وبعد أي تعديل المحرر يفضل على القديم والصفحة الحية على
+    الجديد.
+    """
+
+    def _js(self):
+        return (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+
+    def test_every_server_built_stylesheet_is_rewritten_after_a_preview(self):
+        js = self._js()
+        for attr in ("data-lb-layout-css", "data-zero-block-css",
+                     "data-imported-css"):
+            with self.subTest(attr=attr):
+                self.assertIn(attr, js)
+        self.assertIn("applyHeadCss(fdoc, \"data-zero-block-css\", data.zeroCss)", js)
+        self.assertIn("applyHeadCss(fdoc, \"data-imported-css\", data.sharedCss)", js)
+
+    def test_the_page_tags_those_stylesheets_so_they_can_be_found(self):
+        html = (Path(settings.BASE_DIR) / "templates/invitations/render.html"
+                ).read_text("utf-8")
+        for tag in ("<style data-lb-layout-css>", "<style data-zero-block-css>",
+                    "<style data-imported-css>"):
+            with self.subTest(tag=tag):
+                self.assertIn(tag, html)
+
+    def test_the_preview_response_carries_them(self):
+        source = (Path(settings.BASE_DIR) / "system/views.py").read_text("utf-8")
+        # المسارين: الدعوة والقالب
+        self.assertEqual(source.count('"zeroCss": str(result.get("zero_css")'), 2)
+        self.assertEqual(source.count('"sharedCss": str(result.get("shared_css")'), 2)
+
+    def test_android_text_inflation_is_switched_off(self):
+        """الخط اللي بيتكبّر لوحده بيزوّد الأسطر ويكسر مواضع القالب."""
+        html = (Path(settings.BASE_DIR) / "templates/invitations/render.html"
+                ).read_text("utf-8")
+        self.assertIn("text-size-adjust: 100%", html)
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn("text-size-adjust: 100%", css)

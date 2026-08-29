@@ -341,10 +341,10 @@ SECTION_TEXT_OVERLAY_FIELD = field(
             "radius", owner="label"),
 
         # ---- مشترك: العرض والموضع (ليهم مقابض في المعاينة)
-        field("width", "العرض", "range", 0, minimum=0, maximum=90, step=1, unit="%",
+        field("width", "العرض", "range", 0, minimum=0, maximum=100, step=1, unit="%",
               help_text="للنص: بيحدّد فين السطر بيقطع. للصورة والزرار: "
-                        "عرضهم. صفر = تلقائي. تقدر تسحبه من المقبضين "
-                        "على الجنبين في المعاينة."),
+                        "عرضهم. صفر = تلقائي، و١٠٠٪ = عرض القسم كله. "
+                        "تقدر تسحبه من المقبضين على الجنبين في المعاينة."),
         field("x", "الموضع أفقياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
         field("y", "الموضع رأسياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
     ],

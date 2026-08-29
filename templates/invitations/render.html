@@ -17,6 +17,10 @@
 
 <style data-loading-critical>
 html, body { margin: 0; min-height: 100%; }
+/* التكبير التلقائي للخط في أندرويد ومتصفحات التطبيقات بيزوّد
+   أسطر الكلام، والقوالب المستوردة مواضعها ثابتة بالبكسل — فالسطر
+   الزيادة بيركب على العنصر اللي تحته. الآيفون مابيعملش كده. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* تثبيت مركز شاشة الدعوة قبل وبعد تشغيل runtime القالب المستورد. */
 .lb-doc > .lb-stage { width: 100% !important; max-width: none !important; margin-inline: 0 !important; }
 .lb-doc > .lb-stage > #allrecords,

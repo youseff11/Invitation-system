@@ -2943,11 +2943,18 @@
      بنكتب في **نفس** الوسم اللي القالب طبعه (‎data-lb-layout-css‎) مش
      في وسم جديد، عشان القاعدة القديمة تتشال فعلاً مش تتغطّى. */
   function applyLayoutCss(fdoc, css) {
+    applyHeadCss(fdoc, "data-lb-layout-css", css);
+  }
+
+  /* ستايل الرأس اللي السيرفر بيولّده لكل مستند. لازم كل واحد فيهم
+     يتكتب في **نفس** وسمه المتعلّم بعد كل تحديث معاينة، عشان القاعدة
+     القديمة تتشال فعلاً مش تتغطّى. */
+  function applyHeadCss(fdoc, attr, css) {
     if (!fdoc || typeof css !== "string") return;
-    var style = fdoc.querySelector("style[data-lb-layout-css]");
+    var style = fdoc.querySelector("style[" + attr + "]");
     if (!style) {
       style = fdoc.createElement("style");
-      style.setAttribute("data-lb-layout-css", "");
+      style.setAttribute(attr, "");
       (fdoc.head || fdoc.documentElement).appendChild(style);
     }
     style.textContent = css;
@@ -3095,6 +3102,14 @@
     // الخط قد يتغير من إعدادات الافتتاحية، لذلك نطبقه في الحالتين.
     applyFontCss(fdoc, data.fontCss || "");
     applyLayoutCss(fdoc, data.layoutCss);
+    /* مواضع عناصر Tilda وارتفاعات الأقسام بيتحسبوا على السيرفر مع كل
+       رد معاينة، لكنهم كانوا بيتكتبوا مرة واحدة وقت تحميل الإطار بس.
+       يعني بعد أي تعديل المحرر بيفضل بيوري مواضع **قديمة** والصفحة
+       الحية بتوري الجديدة — وده بالظبط «شكل في المحرر وشكل في الدعوة».
+       الستايل المشترك بين الأقسام المستوردة كمان بيتغيّر لما قسم
+       يتشال أو يتضاف. */
+    applyHeadCss(fdoc, "data-zero-block-css", data.zeroCss);
+    applyHeadCss(fdoc, "data-imported-css", data.sharedCss);
     applyIntro(fdoc, data.intro);
     applyMusic(fdoc, data.music || {});
 
@@ -3729,9 +3744,9 @@
           if (!current) return;
           var next = resize.startWidth + 2 * dx * resize.dir;
           var percent = (next / resize.holderWidth) * 100;
-          /* ٩٠٪ هو نفس ‎max-width‎ في ‎invite.css‎ — لو عدّيناه القيمة
+          /* ١٠٠٪ هو نفس ‎max-width‎ في ‎invite.css‎ — لو عدّيناه القيمة
              المحفوظة هتقول رقم والشاشة تعرض رقم تاني. */
-          percent = Math.round(clamp(percent, 8, 90) * 10) / 10;
+          percent = Math.round(clamp(percent, 8, 100) * 10) / 10;
           current.width = percent;
           node.style.setProperty("--section-text-w", percent + "%");
         });
