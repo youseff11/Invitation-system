@@ -4421,3 +4421,52 @@ class EditorMatchesTheLivePageTests(TestCase):
         self.assertIn("text-size-adjust: 100%", html)
         css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
         self.assertIn("text-size-adjust: 100%", css)
+
+
+# ==========================================================================
+class FontsMustBeLoadedNotAssumedTests(TestCase):
+    """أي خط في قايمة المحرر لازم يتحمّل مع الصفحة، مايتفترضش.
+
+    «جورجيا» كانت في القايمة من غير ما تتحمّل: الويندوز والآيفون
+    عندهم الخط فبيعرضوه، وأندرويد مالوش فبيحطّ خط تاني بعرض مختلف.
+    نفس الدعوة كانت بتطلع بأشكال مختلفة، والفرق بيكبر في القوالب اللي
+    مواضعها ثابتة بالبكسل.
+    """
+
+    def _loaded_families(self):
+        html = (Path(settings.BASE_DIR) / "templates/invitations/render.html"
+                ).read_text("utf-8")
+        return {
+            fam.replace("+", " ")
+            for fam in re.findall(r"family=([A-Za-z+]+)", html)
+        }
+
+    def test_every_font_in_the_editor_is_actually_downloaded(self):
+        loaded = self._loaded_families()
+        for option in B.FONT_CHOICES:
+            first = option["value"].split(",")[0].strip().strip("'\"")
+            with self.subTest(font=option["label"]):
+                self.assertIn(first, loaded)
+
+    def test_georgia_maps_to_its_metric_compatible_web_font(self):
+        """جيلاسيو مقاساته مطابقة لجورجيا حرفاً بحرف، فالشكل مايتغيّرش."""
+        value = next(o["value"] for o in B.FONT_CHOICES if o["label"] == "Georgia")
+        self.assertTrue(value.startswith("'Gelasio'"))
+        self.assertIn("Georgia", value)          # احتياطي لو الويب فونت ماوصلش
+
+    def test_an_old_document_saying_georgia_is_migrated_on_the_fly(self):
+        doc = B.normalize_document({"blocks": [{"type": "text", "props": {
+            "text_overlays": [{"kind": "text", "text": "x",
+                               "font": "Georgia, serif"}]}}]})
+        self.assertEqual(doc["blocks"][0]["props"]["text_overlays"][0]["font"],
+                         "'Gelasio', Georgia, serif")
+
+    def test_the_migration_leaves_every_other_font_alone(self):
+        for option in B.FONT_CHOICES:
+            with self.subTest(font=option["label"]):
+                doc = B.normalize_document({"blocks": [{"type": "text", "props": {
+                    "text_overlays": [{"kind": "text", "text": "x",
+                                       "font": option["value"]}]}}]})
+                self.assertEqual(
+                    doc["blocks"][0]["props"]["text_overlays"][0]["font"],
+                    option["value"])

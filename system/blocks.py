@@ -143,8 +143,19 @@ FONT_CHOICES = [
     opt("'Marcellus', serif", "Marcellus"),
     opt("'Great Vibes', cursive", "Great Vibes — خط يد"),
     opt("'Montserrat', sans-serif", "Montserrat"),
-    opt("Georgia, serif", "Georgia"),
+    # جورجيا مش متنصّبة على أندرويد — الآيفون والويندوز عندهم وهو لأ،
+    # فنفس النص كان بيطلع بخط تاني وعرض تاني على كل جهاز. جيلاسيو خط ويب
+    # **مطابق لجورجيا في المقاسات**، فبيتحمّل مع الصفحة والتلاتة بيبقوا
+    # واحد. جورجيا سايباها وراه للأجهزة اللي الخط مايوصلهاش.
+    opt("'Gelasio', Georgia, serif", "Georgia"),
 ]
+
+# القيم المتخزّنة في مستندات قديمة اللي اتغيّر تعريفها. التحويل بيحصل
+# وقت التطبيع، فالدعوة القديمة بتتصلّح لوحدها من غير migration.
+FONT_ALIASES = {
+    "Georgia, serif": "'Gelasio', Georgia, serif",
+}
+
 
 ANIMATION_CHOICES = [
     opt("none", "بدون حركة"),
@@ -1330,6 +1341,8 @@ def _coerce(value: Any, spec: dict) -> Any:
         return value if value in {"right", "center", "left"} else default
 
     if ftype == "font":
+        if isinstance(value, str):
+            value = FONT_ALIASES.get(value.strip(), value)
         allowed = {o["value"] for o in FONT_CHOICES}
         custom = isinstance(value, str) and re.fullmatch(
             r"'[A-Za-z][A-Za-z0-9 _-]{0,119}'(?:,\s*(?:sans-serif|serif|cursive))?",
