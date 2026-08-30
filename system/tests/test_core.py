@@ -4538,3 +4538,95 @@ class SectionHeightIsProportionalTests(TestCase):
     def test_the_stage_is_a_container_so_cqw_means_the_section_width(self):
         css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
         self.assertIn("container-type: inline-size", css)
+
+
+# ==========================================================================
+class BrandingSectionTests(TestCase):
+    """قسم الدعاية — آخر الدعوة: لوجو وكلام وأيقونات سوشيال.
+
+    الترس والتلات أزرار (نص/صورة/زرار) مابتتكتبش هنا: بييجوا لوحدهم من
+    ``attach_text_styles`` و``SECTION_TEXT_OVERLAY_FIELD``. الاختبارات
+    دي بتتأكد إن ده حصل فعلاً، لأن قسم جديد بيفوّت الآلية دي هو بالظبط
+    نوع الغلط اللي مايبانش غير لما المستخدم يدوّر على الترس ومايلاقيهوش.
+    """
+
+    def _render(self, editable=False, **props):
+        block = B.make_block("branding")
+        block["id"] = "brand-1"
+        block["props"].update(props)
+        doc = B.normalize_document({"blocks": [block]})
+        return str(render_document(doc, editable=editable)["html"])
+
+    # ---- المخطط
+    def test_the_section_is_registered_and_offered_in_the_editor(self):
+        spec = B.BLOCK_REGISTRY["branding"]
+        self.assertEqual(spec["category"], "عام")
+        self.assertFalse(spec["feature"])          # مش محبوس في باقة
+
+    def test_the_three_networks_each_have_a_switch_a_link_and_a_colour(self):
+        keys = {f["key"] for f in B.BLOCK_REGISTRY["branding"]["props"]}
+        for net in ("whatsapp", "facebook", "instagram"):
+            with self.subTest(net=net):
+                self.assertIn(f"show_{net}", keys)
+                self.assertIn(f"{net}_url", keys)
+                self.assertIn(f"{net}_color", keys)
+
+    def test_the_text_gets_its_gear_like_any_other_text(self):
+        gear = {f["style_role"] for f in B.BLOCK_REGISTRY["branding"]["props"]
+                if f.get("style_of") == "text"}
+        for role in ("font", "color", "size"):
+            with self.subTest(role=role):
+                self.assertIn(role, gear)
+
+    def test_the_section_takes_the_three_add_buttons_too(self):
+        keys = [f["key"] for f in B.BLOCK_REGISTRY["branding"]["props"]]
+        self.assertIn("text_overlays", keys)
+
+    # ---- العرض
+    def test_the_logo_and_text_reach_the_page(self):
+        html = self._render(logo="/media/logo.png", logo_width=55,
+                            text="صُممت عبر فرحة")
+        self.assertIn('src="/media/logo.png"', html)
+        self.assertIn("width:55%", html)
+        self.assertIn("صُممت عبر فرحة", html)
+        self.assertIn('data-ts="text"', html)      # هوك الترس
+
+    def test_an_icon_links_out_in_a_new_tab_with_its_own_colour(self):
+        html = self._render(whatsapp_url="https://wa.me/20100",
+                            whatsapp_color="#25D366")
+        self.assertIn('href="https://wa.me/20100"', html)
+        self.assertIn('target="_blank"', html)
+        self.assertIn("color:#25D366", html)
+
+    def test_a_hidden_network_is_not_rendered_at_all(self):
+        html = self._render(show_facebook=False,
+                            facebook_url="https://facebook.com/x")
+        self.assertNotIn("facebook.com/x", html)
+
+    def test_an_icon_without_a_link_is_shown_but_is_not_a_link(self):
+        html = self._render(whatsapp_url="", show_facebook=False,
+                            show_instagram=False)
+        self.assertIn("lb-social-icon", html)
+        self.assertNotIn('<a class="lb-social"', html)
+
+    # ---- الأمان
+    def test_a_javascript_link_never_reaches_the_page(self):
+        doc = B.normalize_document({"blocks": [{"type": "branding", "props": {
+            "instagram_url": "javascript:alert(1)"}}]})
+        self.assertEqual(doc["blocks"][0]["props"]["instagram_url"], "")
+
+    def test_a_junk_colour_falls_back_instead_of_leaking_into_the_style(self):
+        out = invite_tags.social_link(
+            "whatsapp", "https://wa.me/1", "red;background:url(x)", 34)
+        self.assertIn("color:currentColor", out)
+        self.assertNotIn("background", out)
+
+    def test_an_unknown_network_renders_nothing(self):
+        self.assertEqual(invite_tags.social_link("myspace", "https://x.com",
+                                                 "#fff", 34), "")
+
+    def test_the_icon_size_is_clamped(self):
+        self.assertIn('width="120"', invite_tags.social_link(
+            "facebook", "https://x.com", "#fff", 9999))
+        self.assertIn('width="34"', invite_tags.social_link(
+            "facebook", "https://x.com", "#fff", "مش رقم"))

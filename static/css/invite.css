@@ -764,6 +764,24 @@
   color: var(--accent); font-size: 12px; text-align: center; padding: 10px;
 }
 
+/* ---- قسم الدعاية: لوجو وكلام وأيقونات سوشيال */
+.lb-branding { display: grid; justify-items: center; gap: 18px; text-align: center; }
+.lb-branding-logo { max-width: 100%; height: auto; margin-inline: auto; }
+.lb-branding-logo--empty {
+  display: grid; place-items: center; width: 60%; min-height: 110px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  border-radius: 12px; color: var(--accent); font-size: 12px;
+}
+.lb-branding-text { margin: 0; }
+.lb-social-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--social-gap, 22px); flex-wrap: wrap;
+}
+/* اللون بيتكتب على الرابط نفسه من المحرر، والأيقونة بتاخده بـcurrentColor */
+.lb-social { display: inline-flex; line-height: 0; text-decoration: none; transition: transform .15s, opacity .15s; }
+a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
+.lb-social-icon { display: block; }
+
 /* مقبضا عرض النص: بيحددوا فين السطر يقطع. في المحرر بس. */
 .lb-section-text__grip { display: none; }
 .lb-doc--editing .lb-section-text__grip {

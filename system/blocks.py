@@ -993,6 +993,50 @@ register(
     ],
 )
 
+# ---- الدعاية (آخر الدعوة) ------------------------------------------------
+# اللوجو والكلام حقول عادية، فبياخدوا ترس التنسيق من ‎attach_text_styles‎
+# وأزرار «＋ نص / ＋ صورة / ＋ زرار» من ‎SECTION_TEXT_OVERLAY_FIELD‎ زي أي
+# قسم. الجديد هنا هو أيقونات السوشيال بس.
+SOCIAL_NETWORKS = (
+    # (المفتاح, الاسم, اللون الافتراضي, مثال الرابط)
+    ("whatsapp", "واتساب", "#25D366", "https://wa.me/201234567890"),
+    ("facebook", "فيسبوك", "#1877F2", "https://facebook.com/..."),
+    ("instagram", "إنستجرام", "#C13584", "https://instagram.com/..."),
+)
+
+
+def _social_fields() -> list[dict]:
+    g = "سوشيال ميديا"
+    out: list[dict] = []
+    for key, label, color, sample in SOCIAL_NETWORKS:
+        out.extend([
+            field(f"show_{key}", f"إظهار {label}", "toggle", True, group=g),
+            field(f"{key}_url", f"رابط {label}", "url", "", group=g,
+                  placeholder=sample, translate=False),
+            field(f"{key}_color", f"لون {label}", "color", color, group=g),
+        ])
+    out.extend([
+        field("icon_size", "حجم الأيقونات", "range", 34, group=g,
+              minimum=16, maximum=90, step=1, unit="px"),
+        field("icon_gap", "المسافة بينهم", "range", 22, group=g,
+              minimum=0, maximum=80, step=2, unit="px"),
+    ])
+    return out
+
+
+register(
+    "branding", "قسم الدعاية", icon="❦", category="عام",
+    description="آخر الدعوة — لوجو وكلام وأيقونات سوشيال بروابطها",
+    props=[
+        field("logo", "الصورة / اللوجو", "image", ""),
+        field("logo_width", "عرض الصورة", "range", 42,
+              minimum=10, maximum=100, step=1, unit="%",
+              help_text="نسبة من عرض القسم."),
+        field("text", "الكلام", "textarea", "صُممت هذه الدعوة عبر فرحة"),
+        *_social_fields(),
+    ],
+)
+
 # ---- HTML مخصص (مخرج أمان للقوالب المستوردة) ----------------------------
 register(
     "custom_html", "كود HTML مخصص", icon="</>", category="متقدم",

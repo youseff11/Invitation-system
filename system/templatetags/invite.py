@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from html import escape
 
 from django import template
 from django.conf import settings
@@ -123,6 +124,76 @@ def icon(name: str, size: int | str = 22):
 @register.simple_tag
 def icon_names():
     return list(_ICONS.keys())
+
+
+# --------------------------------------------------------------------------
+# أيقونات السوشيال — لقسم الدعاية
+# --------------------------------------------------------------------------
+# مرسومة هنا كـSVG مضمّن مش صور: اللون بيتغيّر من المحرر عن طريق
+# ‎currentColor‎، ومفيش طلب شبكة زيادة على الدعوة.
+_SOCIAL_ICONS = {
+    "whatsapp": (
+        '<path fill="currentColor" d="M12 2a9.9 9.9 0 0 0-8.5 15l-1.3 4.8 '
+        '4.9-1.3A9.9 9.9 0 1 0 12 2zm0 1.8a8.1 8.1 0 1 1-4.2 15l-.3-.2-2.9.8'
+        '.8-2.8-.2-.3A8.1 8.1 0 0 1 12 3.8zm-3.4 4c-.2 0-.5.1-.7.4-.2.3-.9.9'
+        '-.9 2.1s.9 2.4 1 2.6c.1.2 1.7 2.7 4.2 3.7 2.1.8 2.5.7 3 .6.5-.1 '
+        '1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2l-.6-.3s-1.4-.7-1.6-.8c-.2-.1-.4-.1'
+        '-.5.1l-.7.9c-.1.2-.3.2-.5.1-.2-.1-1-.4-2-1.2-.7-.6-1.2-1.4-1.4-1.7'
+        '-.1-.2 0-.3.1-.4l.4-.5.3-.5v-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.4z"/>'
+    ),
+    "facebook": (
+        '<path fill="currentColor" d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12'
+        'h2.5V9.8c0-2.5 1.5-3.9 3.7-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0'
+        '-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0 0 22 12z"/>'
+    ),
+    "instagram": (
+        '<rect x="3" y="3" width="18" height="18" rx="5.2" fill="none" '
+        'stroke="currentColor" stroke-width="1.9"/>'
+        '<circle cx="12" cy="12" r="4.1" fill="none" stroke="currentColor" '
+        'stroke-width="1.9"/>'
+        '<circle cx="17.2" cy="6.8" r="1.25" fill="currentColor"/>'
+    ),
+}
+
+# الروابط اللي بتوصل الضيف لحتة تانية. أي حاجة غير كده مابتتكتبش أصلاً.
+_SOCIAL_HREF_RE = re.compile(r"^(?:https?://|mailto:|tel:)[^\s\"<>]{1,600}$", re.I)
+
+
+@register.simple_tag
+def social_link(name, url, color, size=34):
+    """أيقونة سوشيال واحدة — ومعاها رابطها ولونها.
+
+    كل حاجة بتتفحص هنا قبل ما تدخل الصفحة: الاسم لازم يكون من القايمة،
+    الرابط لازم يبدأ بـ‎http(s)‎ أو ‎mailto‎ أو ‎tel‎ (يعني ‎javascript:‎
+    مابيعديش)، واللون لازم يبقى لون CSS صالح. الأيقونة من غير رابط
+    بتتعرض من غير ما تبقى لينك بدل ‎href="#"‎ اللي بيرجّع الضيف لفوق.
+    """
+    body = _SOCIAL_ICONS.get(str(name or "").strip())
+    if not body:
+        return ""
+    try:
+        px = max(14, min(120, int(float(size))))
+    except (TypeError, ValueError):
+        px = 34
+    hue = str(color or "").strip()
+    if not re.fullmatch(r"#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\)", hue):
+        hue = "currentColor"
+    svg = (
+        f'<svg class="lb-social-icon" width="{px}" height="{px}" '
+        f'viewBox="0 0 24 24" aria-hidden="true">{body}</svg>'
+    )
+    href = str(url or "").strip()
+    label = escape(str(name).strip())
+    if _SOCIAL_HREF_RE.match(href):
+        return mark_safe(
+            f'<a class="lb-social" href="{escape(href)}" target="_blank" '
+            f'rel="noopener" aria-label="{label}" '
+            f'style="color:{hue}">{svg}</a>'
+        )
+    return mark_safe(
+        f'<span class="lb-social" aria-label="{label}" '
+        f'style="color:{hue}">{svg}</span>'
+    )
 
 
 # --------------------------------------------------------------------------
