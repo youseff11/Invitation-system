@@ -5,9 +5,9 @@
   {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading" data-ts="heading">{{ props.heading }}</h2>{% endif %}
   {% if props.venue %}<p class="lb-venue" data-slot="venue" data-move="venue" data-ts="venue">{{ props.venue }}</p>{% endif %}
   {% if props.address %}<p class="lb-address" data-slot="address" data-move="address" data-ts="address">{{ props.address|linebreaksbr }}</p>{% endif %}
-  {# ‎map_embed_url‎ هي النسخة القابلة للتضمين من اللي المستخدم لزقه (شوف
-     ‎renderer.map_embed_url‎). لو رجعت فاضية يبقى الرابط ده جوجل بيرفض
-     عرضه جوّه إطار، فبنوري رسالة توضّح المطلوب بدل إطار مكسور. #}
+  <!-- {# ‎map_embed_url‎ هي النسخة القابلة للتضمين من اللي المستخدم لزقه (شوف -->
+     <!-- ‎renderer.map_embed_url‎). لو رجعت فاضية يبقى الرابط ده جوجل بيرفض -->
+     <!-- عرضه جوّه إطار، فبنوري رسالة توضّح المطلوب بدل إطار مكسور. #} -->
   {% if props.show_map and props.map_embed_url %}<div data-move="map" class="lb-map" style="--map-w:{{ props.map_width|default:100 }}%;--map-h:{{ props.map_height }}px">
     <iframe src="{{ props.map_embed_url }}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="خريطة الموقع"></iframe>
   </div>{% elif props.show_map %}<div class="lb-map lb-map--empty" style="--map-w:{{ props.map_width|default:100 }}%;--map-h:{{ props.map_height }}px">{% icon 'pin' 34 %}<span>{% if editable and props.map_embed %}الرابط ده مايتعرضش جوّه الدعوة. افتح المكان في خرائط جوجل ← مشاركة ← «تضمين خريطة» والصق الكود، أو الصق الإحداثيات كده: 29.990823, 31.130000{% else %}أضف رابط الخريطة من المحرر{% endif %}</span></div>{% endif %}
