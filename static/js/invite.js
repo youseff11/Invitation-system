@@ -502,6 +502,10 @@
     doc.body.style.overflow = startsOpen ? "" : "hidden";
 
     var open = function () {
+      // بقى في أكتر من طريق للفتح (الزر، لمسة في أي مكان، نهاية
+      // الفيديو، العدّاد) وممكن اتنين يوصلوا مع بعض — الحارس ده بيمنع
+      // إشارة ‎lb:intro-open‎ إنها تتبعت مرتين.
+      if (intro.classList.contains("is-open")) return;
       if (timer) { clearTimeout(timer); timer = null; }
       intro.classList.add("is-open");
       doc.body.style.overflow = "";
@@ -534,6 +538,8 @@
 
     var video = $("[data-intro-video]", intro);
     var playBtn = $("[data-intro-play]", intro);
+    // بيتملّى تحت لو الافتتاحية فيديو مستني ضغطة تشغيل
+    var startManualVideo = null;
     if (video && !video.getAttribute("poster")) {
       /* لو مفيش صورة غلاف، نلتقط أول فريم من الفيديو ونستخدمه كغلاف.
          ده يتعمل في المتصفح عشان يشتغل أيضاً مع فيديوهات المكتبة والروابط
@@ -569,8 +575,10 @@
 
       if (manual && playBtn) {
         intro.classList.add("is-awaiting-play");
-        playBtn.addEventListener("click", function (e) {
-          e.stopPropagation();          // ما نفتحش الدعوة بالغلط
+        /* نفس الفعل بالظبط سواء الضغطة جت على زر التشغيل أو على أي
+           حتة في الشاشة — الزر بقى دلالة بصرية مش الطريق الوحيد. */
+        startManualVideo = function () {
+          if (!intro.classList.contains("is-awaiting-play")) return;
           intro.classList.remove("is-awaiting-play");
           video.muted = !wantsSound;
           var play = video.play();
@@ -589,6 +597,10 @@
           }
 
           startAuto();                  // العدّاد يبدأ من دلوقتي
+        };
+        playBtn.addEventListener("click", function (e) {
+          e.stopPropagation();          // ما نفتحش الدعوة بالغلط
+          startManualVideo();
         });
       } else {
         video.muted = !wantsSound;
@@ -606,22 +618,34 @@
       }
 
     var btn = $("[data-intro-open]", intro);
-    if (btn) btn.addEventListener("click", open);
+    if (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        open();
+      });
+    }
 
-    /* الزر بقى اختياري — لو المصمّم فضّى نصه مايتعرضش خالص. ساعتها
-       لازم يفضل فيه مخرج، وإلا الضيف بيتقفل على الافتتاحية والتمرير
-       مقفول تحته. المخارج: نهاية الفيديو، العدّاد التلقائي، ولمسة في
-       أي مكان.
+    /* لمسة في أي مكان = نفس اللي بيعمله الزر.
 
-       ولمسة «أي مكان» مش مسموحة وإحنا لسه مستنيين زر التشغيل — الضيف
-       ساعتها ما شافش الافتتاحية أصلاً، والضغطة المفروض تروح لزر
-       التشغيل مش تتخطّى كل حاجة. زر التشغيل بيوقف الضغطة بنفسه فمش هيوصلوا هنا. */
+       قبل كده الضغطة برّه الزر كانت بتتجاهل: مع زر «افتح الدعوة» كان
+       لازم تدوس على الخلفية العارية بالظبط، ومع زر تشغيل الفيديو كانت
+       الضغطة بتتلغي خالص. النتيجة إن الضيف — وأغلبه على تليفون —
+       بيلمس الشاشة ومايحصلش حاجة. دلوقتي الشاشة كلها زرار: أول لمسة
+       بتشغّل الفيديو المستني، واللمسة اللي بعدها بتفتح الدعوة. الزرار
+       نفسه فاضل مكانه كدلالة بصرية لمن لا يعرف أن الشاشة قابلة للمس.
+
+       جوّه المحرر بس بنستثني عناصر الافتتاحية القابلة للتحرير — من
+       غير كده أي ضغطة على نص عشان تعدّله كانت هتقفل الافتتاحية. */
     intro.addEventListener("click", function (e) {
-      if (intro.classList.contains("is-awaiting-play")) return;
-      if (btn) { if (e.target === intro) open(); return; }
+      if (editable && e.target && e.target.closest &&
+          e.target.closest("[data-intro-item],[data-intro-move]")) return;
+      if (intro.classList.contains("is-awaiting-play")) {
+        if (startManualVideo) startManualVideo();
+        return;
+      }
       open();
     });
-    if (!btn) intro.style.cursor = "pointer";
+    if (!editable) intro.style.cursor = "pointer";
   }
 
 
