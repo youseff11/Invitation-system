@@ -370,14 +370,68 @@ def zero_block_css(block_id: str, html: str) -> str:
 # الارتفاع يبقى نسبة (780/390 = 2)، نسبة الصندوق تفضل ثابتة على أي
 # عرض، فالقص يفضل زي ما هو في المحرر بالظبط.
 #
-# التابلت والديسكتوب سايبينهم بالبكسل: المسرح هناك محدود بـ‎--max-width‎
-# من الثيم، يعني عرضه مش هو عرض الشاشة، فالنسبة مكانتش هتتحسب صح من
-# غير ما نعرف قيمة الثيم.
+# التابلت والديسكتوب بالبكسل لما المستخدم يحدّد ارتفاعهم بنفسه: المسرح
+# هناك محدود بـ‎--max-width‎ من الثيم، يعني عرضه في المحرر = عرضه على
+# الشاشة الحقيقية، فالبكسل بيوصل زي ما هو.
 _SECTION_HEIGHT_MEDIA = (
     ("section_height_mobile", "@media (max-width:480px)", 390),
     ("section_height_tablet", "@media (min-width:481px) and (max-width:960px)", 0),
     ("section_height_desktop", "@media (min-width:961px)", 0),
 )
+
+# عرض إطار الموبايل في المحرر — الإطار اللي التصميم اتعمل وهو شايفه.
+_MOBILE_FRAME = 390
+
+
+def _section_height_for(style: dict, key: str, frame: int,
+                        inherit_phone: bool = True) -> tuple[int, int]:
+    """يرجّع ‎(القيمة, الإطار)‎ لمقاس واحد. الإطار بيقرّر بكسل ولا نسبة.
+
+    الترتيب: قيمة المقاس نفسه ← القيمة القديمة الموحّدة ← **تصميم
+    الموبايل كنسبة**.
+
+    الخطوة التالتة هي اللي بتمنع انهيار القسم على الشاشات الكبيرة.
+    المستخدم بيصمّم على إطار الموبايل ويسحب ارتفاع القسم هناك، وأغلب
+    الأقسام مابتاخدش ارتفاع للتابلت والديسكتوب أبداً. من غير القيمة دي
+    القسم على الديسكتوب بيرجع لارتفاعه الطبيعي — وده الحشو بس
+    (‎--block-pt‎ + ‎--block-pb‎) لأن العناصر اللي فوق القسم كلها
+    ‎position:absolute‎ فمابتضيفش طول. قياس على قالب حقيقي: قسم ارتفاعه
+    781px على الموبايل انهار لـ160px على الديسكتوب، والعناصر اللي طولها
+    180–210px اترصّت فوق بعضها.
+
+    والنسبة (مش البكسل) هي اللي بتصلّح ده، لأن العناصر متموضعة
+    ‎left:calc(50% + x%)‎ و‎top:calc(50% + y%)‎ — يعني نسبة من عرض القسم
+    وارتفاعه. لو نسبة الصندوق اتغيّرت بين المقاسين، التوزيع بيتغيّر
+    معاها. تثبيت النسبة = نفس التركيب بالظبط، أكبر وبس.
+
+    ``inherit_phone=False`` **للأقسام المستوردة**: القالب المستورد
+    بيجيب معاه تخطيط لكل مقاس، وارتفاعه الطبيعي على الديسكتوب هو
+    ارتفاع لوحة Tilda بتاعة المقاس ده. لو ورّثناه نسبة الموبايل القسم
+    بيطوّل لأربع أضعاف محتواه — قياس على ‎imp-4‎: 780px طبيعي → 3118px.
+    القسم العادي هو اللي بينهار، لأن مافيش عنده تخطيط تاني يقع عليه.
+    """
+    try:
+        value = int(float((style or {}).get(key) or 0))
+    except (TypeError, ValueError):
+        value = 0
+    if value > 0:
+        return value, frame
+    # القيمة القديمة (رقم واحد لكل المقاسات) — بتفضل بنفس معاملتها
+    try:
+        legacy = int(float((style or {}).get("section_height") or 0))
+    except (TypeError, ValueError):
+        legacy = 0
+    if legacy > 0:
+        return legacy, frame
+    if key == "section_height_mobile" or not inherit_phone:
+        return 0, frame
+    try:
+        inherited = int(float((style or {}).get("section_height_mobile") or 0))
+    except (TypeError, ValueError):
+        inherited = 0
+    if inherited > 0:
+        return inherited, _MOBILE_FRAME
+    return 0, frame
 
 
 def _section_height_value(value: int, frame: int) -> str:
@@ -469,16 +523,8 @@ def section_surface_css(block_id: str, style: dict, imported: bool = True) -> st
     ])
     out: list[str] = []
     for key, query, frame in _SECTION_HEIGHT_MEDIA:
-        try:
-            value = int(float((style or {}).get(key) or 0))
-        except (TypeError, ValueError):
-            value = 0
-        if value <= 0:
-            # القيمة القديمة (رقم واحد لكل المقاسات) كقيمة احتياطية
-            try:
-                value = int(float((style or {}).get("section_height") or 0))
-            except (TypeError, ValueError):
-                value = 0
+        value, frame = _section_height_for(style, key, frame,
+                                           inherit_phone=not imported)
         if value <= 0:
             continue
         # ‎overflow:visible‎ مع الارتفاع: من غيرها العنصر اللي اتسحب

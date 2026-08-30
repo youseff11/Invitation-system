@@ -1192,6 +1192,25 @@
                frame: 0 }
   };
 
+  /* عرض إطار الموبايل — الإطار اللي التصميم اتعمل وهو شايفه. */
+  var MOBILE_FRAME = 390;
+
+  /* نفس ‎_section_height_for‎ في ‎tildacss.py‎: قيمة المقاس نفسه ←
+     القيمة القديمة الموحّدة ← تصميم الموبايل كنسبة. الخطوة
+     التالتة بتمنع انهيار القسم على الشاشات الكبيرة: العناصر
+     اللي فوق القسم كلها ‎absolute‎ فمابتضيفش طول، فالقسم
+     بينهار على الحشو والعناصر تترصّ فوق بعضها. */
+  function sectionHeightFor(st, key, frame, inheritPhone) {
+    var value = Number(st[key] || 0);
+    if (value > 0) return { value: value, frame: frame };
+    var legacy = Number(st.section_height || 0);
+    if (legacy > 0) return { value: legacy, frame: frame };
+    if (key === "section_height_mobile" || !inheritPhone) return { value: 0, frame: frame };
+    var inherited = Number(st.section_height_mobile || 0);
+    if (inherited > 0) return { value: inherited, frame: MOBILE_FRAME };
+    return { value: 0, frame: frame };
+  }
+
   /** نفس ‎_section_height_value‎ في ‎tildacss.py‎ حرفاً بحرف. */
   function sectionHeightValue(value, frame) {
     if (!frame) return value + "px";
@@ -1295,7 +1314,12 @@
 
       Object.keys(SECTION_HEIGHT_MEDIA).forEach(function (device) {
         var spec = SECTION_HEIGHT_MEDIA[device];
-        var value = Number(st[spec.key] || st.section_height || 0);
+        /* القسم المستورد عنده تخطيط لكل مقاس فمابينهارش —
+           نفس استثناء ``imported`` في ``tildacss.section_surface_css``. */
+        var inheritPhone = !(block.props &&
+                             typeof block.props.html === "string");
+        var got = sectionHeightFor(st, spec.key, spec.frame, inheritPhone);
+        var value = got.value;
         if (!(value > 0)) return;
         /* ‎!important‎ زي القاعدة اللي السيرفر بيولّدها بالظبط. من غيرها
            القاعدة المستوردة ‎#imp-4 #recXXX .t396__artboard{height:...}‎
@@ -1304,7 +1328,7 @@
            و‎min-height‎ مكتوبة معاها لأن ‎.lb‎ عندها
            ‎min-height:var(--block-section-height)‎ من الحقل القديم —
            من غير ما نكتب فوقها التصغير تحت القيمة القديمة مابيحصلش. */
-        var size = sectionHeightValue(value, spec.frame);
+        var size = sectionHeightValue(value, got.frame);
         out.push(spec.query + "{" + targets + "{" +
                  sectionHeightDecls(size) + "}" +
                  overflowTargets + "{overflow:visible!important}}");

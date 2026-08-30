@@ -4496,8 +4496,8 @@ class SectionHeightIsProportionalTests(TestCase):
 
     def test_a_phone_height_becomes_a_ratio_of_the_section_width(self):
         """780 على إطار 390 = ضعف العرض، على أي تليفون."""
-        self.assertEqual(self._heights({"section_height_mobile": 780}),
-                         ["calc(100cqw*2)"])
+        self.assertEqual(self._heights({"section_height_mobile": 780})[0],
+                         "calc(100cqw*2)")
 
     def test_the_ratio_keeps_the_box_shape_identical_on_every_phone(self):
         ratio = 780 / 390
@@ -4539,6 +4539,87 @@ class SectionHeightIsProportionalTests(TestCase):
     def test_the_stage_is_a_container_so_cqw_means_the_section_width(self):
         css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
         self.assertIn("container-type: inline-size", css)
+
+
+# ==========================================================================
+class SectionHeightFallsBackToThePhoneDesignTests(TestCase):
+    """القسم من غير ارتفاع للديسكتوب كان بينهار على الشاشة الكبيرة.
+
+    المستخدم بيصمّم على إطار الموبايل ويسحب الارتفاع هناك؛ حقول
+    التابلت والديسكتوب بتفضل صفر في أغلب الأقسام. ومن غير ارتفاع
+    القسم بيرجع لطوله الطبيعي — وده الحشو بس، لأن كل العناصر اللي
+    فوق القسم ‎position:absolute‎ فمابتضيفش طول.
+
+    قياس على قالب حقيقي (‎/templates/new/preview/‎):
+
+    | المقاس | عرض المسرح | ارتفاع القسم | العناصر |
+    |---|---|---|---|
+    | موبايل | 390 | 781px (`calc(100cqw*2)`) | متوزّعة صح |
+    | ديسكتوب | 720 | **160px** (حشو بس، مفيش قاعدة) | طولها 180–210px واترصّت فوق بعضها |
+
+    ولازم تبقى **نسبة** مش بكسل: العناصر متموضعة
+    ‎left:calc(50% + x%)‎ و‎top:calc(50% + y%)‎ — نسبة من العرض ومن
+    الارتفاع. تثبيت نسبة الصندوق = نفس التركيب بالظبط، أكبر وبس.
+    """
+
+    def _heights(self, style):
+        """قسم عادي — التوريث للأقسام غير المستوردة بس."""
+        css = tildacss.section_surface_css("sec-1", style, imported=False)
+        return re.findall(r"\{height:([^!]+)!important;min-height:", css)
+
+    def test_the_phone_design_carries_to_tablet_and_desktop(self):
+        self.assertEqual(self._heights({"section_height_mobile": 780}),
+                         ["calc(100cqw*2)"] * 3)
+
+    def test_it_is_a_ratio_not_the_raw_pixel_value(self):
+        """780px على مسرح 720 كان هيضغط التوزيع رأسياً."""
+        got = self._heights({"section_height_mobile": 780})
+        self.assertNotIn("780px", got)
+
+    def test_a_height_you_set_yourself_still_wins(self):
+        self.assertEqual(
+            self._heights({"section_height_mobile": 780,
+                           "section_height_desktop": 1000}),
+            ["calc(100cqw*2)", "calc(100cqw*2)", "1000px"])
+
+    def test_the_old_single_height_is_not_touched(self):
+        """مستند قديم لازم يفضل زي ما هو بالظبط."""
+        self.assertEqual(self._heights({"section_height": 600}),
+                         ["calc(100cqw*1.5385)", "600px", "600px"])
+
+    def test_a_section_with_no_phone_height_stays_natural(self):
+        """مانخترعش ارتفاع لقسم المستخدم ماحددهوش أصلاً."""
+        self.assertEqual(self._heights({"section_height_tablet": 0}), [])
+
+    def test_an_imported_section_keeps_its_own_desktop_layout(self):
+        """القالب المستورد جايب تخطيط لكل مقاس — التوريث بيطوّله ٤ أضعاف.
+
+        قياس على ‎imp-4‎ في قالب حقيقي: 780px طبيعي على الديسكتوب،
+        والتوريث خلاه 3118px — قسم فاضي أربع أضعاف محتواه.
+        """
+        css = tildacss.section_surface_css("imp-4", {"section_height_mobile": 950},
+                                           imported=True)
+        got = re.findall(r"\{height:([^!]+)!important;min-height:", css)
+        self.assertEqual(got, ["calc(100cqw*2.4359)"])      # الموبايل بس
+
+    def test_the_editor_makes_the_same_exception(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn('typeof block.props.html === "string"', js)
+        self.assertIn("sectionHeightFor(st, spec.key, spec.frame, inheritPhone)", js)
+
+    def test_the_box_shape_is_identical_on_phone_and_desktop(self):
+        ratio = 780 / 390
+        for width in (390, 430, 720):
+            with self.subTest(width=width):
+                self.assertAlmostEqual((width * ratio) / width, ratio, places=9)
+
+    def test_the_editor_falls_back_the_same_way(self):
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("function sectionHeightFor(st, key, frame, inheritPhone)", js)
+        self.assertIn("var MOBILE_FRAME = 390;", js)
+        self.assertIn('if (key === "section_height_mobile" || !inheritPhone)', js)
+        self.assertIn("var inherited = Number(st.section_height_mobile || 0);", js)
+        self.assertIn("sectionHeightValue(value, got.frame)", js)
 
 
 # ==========================================================================
