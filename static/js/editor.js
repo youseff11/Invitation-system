@@ -1199,6 +1199,21 @@
     return "calc(100cqw*" + ratio + ")";
   }
 
+  /* الارتفاع بالنسبة بيطلع بكسور (393 × 2.4359 = 957.297px)،
+     والأقسام بتتراص تحت بعضها، فسفاري بيسيب جزء من
+     البكسل مش مدهون فتبان خلفية المسرح زي خط أبيض بين
+     الأقسام. نفس التقريب اللي في
+     ``tildacss._section_height_decls`` بالظبط — لو اتغير هنا
+     لازم يتغير هناك. */
+  function sectionHeightDecls(size) {
+    var plain = "height:" + size + "!important;min-height:" + size +
+                "!important";
+    if (size.indexOf("calc(") !== 0) return plain;
+    var snapped = "round(" + size.slice(5, -1) + ",1px)";
+    return plain + ";height:" + snapped + "!important;min-height:" +
+           snapped + "!important";
+  }
+
   function sectionHeightSpec() {
     return SECTION_HEIGHT_MEDIA[state.device] || SECTION_HEIGHT_MEDIA.mobile;
   }
@@ -1290,8 +1305,8 @@
            ‎min-height:var(--block-section-height)‎ من الحقل القديم —
            من غير ما نكتب فوقها التصغير تحت القيمة القديمة مابيحصلش. */
         var size = sectionHeightValue(value, spec.frame);
-        out.push(spec.query + "{" + targets + "{height:" + size +
-                 "!important;min-height:" + size + "!important}" +
+        out.push(spec.query + "{" + targets + "{" +
+                 sectionHeightDecls(size) + "}" +
                  overflowTargets + "{overflow:visible!important}}");
 
       });

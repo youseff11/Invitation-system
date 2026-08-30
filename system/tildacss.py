@@ -393,6 +393,32 @@ def _section_height_value(value: int, frame: int) -> str:
     return f"calc(100cqw*{ratio:g})"
 
 
+def _section_height_decls(size: str) -> str:
+    """‎height‎ و‎min-height‎ للقسم — ومعاهم نسخة مقرّبة لأقرب بكسل.
+
+    النسبة بتطلع ارتفاع بكسور: 390 × 2.4359 = 950px بالظبط، لكن 393 ×
+    2.4359 = 957.297px. الأقسام بتتراص تحت بعض، فأول قسم بكسر بيخلّي
+    كل اللي بعده يبدأ على حدّ مش على شبكة البكسل. سفاري بيرسم حدود
+    الصناديق دي بحرف ناعم، فبيفضل جزء من البكسل مش مدهون وخلفية المسرح
+    (‎--bg‎ = كريمي) بتبان من ورا على شكل خط رفيع بين الأقسام. كروم
+    بيلزق الحدين على نفس البكسل فمابيبانش — وده بالظبط اللي المستخدم
+    شافه: خط في الآيفون ومش موجود في الأندرويد.
+
+    الحل إن الارتفاع نفسه يبقى رقم صحيح، فمافيش كسور من أصله.
+    ‎round()‎ مدعومة في سفاري من 15.4 وكروم من 125؛ المتصفح اللي
+    مايعرفهاش بيرمي السطر التاني ويفضل على ‎calc‎ زي دلوقتي بالظبط —
+    يعني أسوأ حالة = الوضع الحالي، مش رجوع لورا.
+
+    التقريب بيغيّر النسبة بأقل من نص بكسل (‎<0.05%‎)، والمحرر بيقرّب
+    بنفس الطريقة، فاللي في المحرر يفضل هو اللي في الدعوة.
+    """
+    plain = f"height:{size}!important;min-height:{size}!important"
+    if not (size.startswith("calc(") and size.endswith(")")):
+        return plain
+    snapped = f"round({size[5:-1]},1px)"
+    return f"{plain};height:{snapped}!important;min-height:{snapped}!important"
+
+
 def section_surface_css(block_id: str, style: dict, imported: bool = True) -> str:
     """يتجاوز ارتفاع القسم لما المستخدم يسحب حدود القسم.
 
@@ -463,7 +489,7 @@ def section_surface_css(block_id: str, style: dict, imported: bool = True) -> st
         size = _section_height_value(value, frame)
         out.append(
             f"{query}{{{targets}"
-            f"{{height:{size}!important;min-height:{size}!important}}"
+            f"{{{_section_height_decls(size)}}}"
             f"{overflow_targets}{{overflow:visible!important}}}}"
         )
 

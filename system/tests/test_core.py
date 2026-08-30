@@ -4490,8 +4490,9 @@ class SectionHeightIsProportionalTests(TestCase):
     """
 
     def _heights(self, style):
+        """القيمة الأساسية بس — القوس ‎{‎ قبلها بيستبعد نسخة ‎round()‎."""
         css = tildacss.section_surface_css("sec-1", style)
-        return re.findall(r"height:([^!]+)!important;min-height:", css)
+        return re.findall(r"\{height:([^!]+)!important;min-height:", css)
 
     def test_a_phone_height_becomes_a_ratio_of_the_section_width(self):
         """780 على إطار 390 = ضعف العرض، على أي تليفون."""
@@ -4538,6 +4539,67 @@ class SectionHeightIsProportionalTests(TestCase):
     def test_the_stage_is_a_container_so_cqw_means_the_section_width(self):
         css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
         self.assertIn("container-type: inline-size", css)
+
+
+# ==========================================================================
+class SectionHeightSnapsToWholePixelsTests(TestCase):
+    """الارتفاع النسبي لازم يترسم على شبكة البكسل، مش بكسور.
+
+    النسبة بتدّي أرقام بكسور على أي عرض غير 390:
+
+    | عرض الشاشة | ارتفاع قسم 950px | البداية اللي بعده |
+    |---|---|---|
+    | 390 | 950.000 | رقم صحيح |
+    | 393 | 957.297 | **بكسر** |
+    | 412 | 1003.578 | **بكسر** |
+
+    والأقسام متراصة تحت بعضها، يعني أول كسر بيورّث نفسه لكل اللي
+    بعده. سفاري بيرسم حدود الصناديق دي بحرف ناعم فبيفضل جزء من
+    البكسل مش مدهون، وخلفية المسرح الكريمية بتبان من ورا زي خط رفيع
+    بين الأقسام؛ كروم بيلزق الحدين على نفس البكسل فمابيبانش. ده
+    بالظبط اللي المستخدم شافه: خط في الآيفون ومش موجود في الأندرويد.
+    """
+
+    def _rules(self, style):
+        return tildacss.section_surface_css("sec-1", style)
+
+    def test_a_ratio_height_also_gets_a_whole_pixel_version(self):
+        css = self._rules({"section_height_mobile": 950})
+        self.assertIn("height:calc(100cqw*2.4359)!important", css)
+        self.assertIn("height:round(100cqw*2.4359,1px)!important", css)
+        self.assertIn("min-height:round(100cqw*2.4359,1px)!important", css)
+
+    def test_the_rounded_one_comes_after_so_it_wins(self):
+        """المتصفح اللي مايعرفش ‎round()‎ بيرمي السطر ويفضل على ‎calc‎."""
+        css = self._rules({"section_height_mobile": 950})
+        self.assertLess(css.index("height:calc(100cqw*2.4359)"),
+                        css.index("height:round(100cqw*2.4359,1px)"))
+
+    def test_the_fallback_is_exactly_what_shipped_before(self):
+        """أسوأ حالة = الوضع القديم، مش رجوع لورا."""
+        self.assertEqual(tildacss._section_height_value(950, 390),
+                         "calc(100cqw*2.4359)")
+
+    def test_pixel_heights_are_left_alone(self):
+        """التابلت والديسكتوب بالبكسل أصلاً — مافيش حاجة تتقرّب."""
+        css = self._rules({"section_height_tablet": 900})
+        self.assertIn("height:900px!important", css)
+        self.assertNotIn("round(", css)
+
+    def test_rounding_moves_the_box_by_less_than_a_pixel(self):
+        """التقريب مايخربش الشكل اللي اتظبط قبل كده."""
+        for width in (360, 375, 390, 393, 412, 430):
+            with self.subTest(width=width):
+                exact = width * 950 / 390
+                self.assertLess(abs(round(exact) - exact), 1.0)
+
+    def test_the_editor_snaps_with_exactly_the_same_rule(self):
+        """لو المحرر ماقرّبش زي السيرفر، الاتنين يختلفوا بنص بكسل."""
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("function sectionHeightDecls(size)", js)
+        self.assertIn('var snapped = "round(" + size.slice(5, -1) + ",1px)";', js)
+        self.assertIn('if (size.indexOf("calc(") !== 0) return plain;', js)
+        self.assertIn("sectionHeightDecls(size)", js)
 
 
 # ==========================================================================
