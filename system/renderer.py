@@ -16,7 +16,7 @@ import datetime as dt
 import hashlib
 import json
 import re
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qs, quote, unquote, urlencode, urlparse
 
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -368,6 +368,150 @@ AUTO_FIELD_MAP = {
 }
 
 
+# --------------------------------------------------------------------------
+# رابط الخريطة المضمّنة
+# --------------------------------------------------------------------------
+# اللي بيحصل مع المستخدم: بيفتح خرائط جوجل، بينسخ الرابط من شريط العنوان،
+# وبيلزقه في «رابط الخريطة المضمّنة». الرابط ده جوجل بيرفض عرضه جوّه
+# ‎<iframe>‎ (‎X-Frame-Options‎)، فالضيف بيشوف مربّع رمادي مكسور بدل
+# الخريطة — من غير أي رسالة تقول له إيه اللي حصل.
+#
+# الحل: نقبل أي شكل بيوصل من المستخدم ونحوّله لرابط ‎output=embed‎ اللي
+# جوجل بيسمح بتضمينه. الأشكال المدعومة:
+#   • كود التضمين كامل ‎<iframe src="…">‎  → بناخد الـsrc
+#   • رابط ‎/maps/embed?pb=…‎ أو أي رابط فيه ‎output=embed‎  → زي ما هو
+#   • رابط عادي فيه إحداثيات (‎?ll=‎ / ‎@lat,lng,17z‎ / ‎!3d…!4d…‎)
+#   • رابط بحث أو مكان (‎?q=‎ / ‎/maps/place/<اسم>‎)
+#   • إحداثيات مكتوبة بالإيد ‎29.99, 31.13‎ أو اسم مكان
+# اللي مش بنقدر نحوّله (الروابط المختصرة ‎maps.app.goo.gl‎ مثلاً، لأنها
+# محتاجة طلب شبكة عشان تتفك) بيرجّع فاضي — والقالب بيوري رسالة توضّح
+# المطلوب بدل الإطار المكسور.
+_MAP_IFRAME_SRC_RE = re.compile(r"<iframe[^>]*\bsrc\s*=\s*(['\"])(.*?)\1", re.I | re.S)
+_MAP_LATLNG_RE = re.compile(
+    r"^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,،]\s*(-?\d{1,3}(?:\.\d+)?)\s*$"
+)
+_MAP_AT_RE = re.compile(r"@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)(?:,(\d+(?:\.\d+)?)z)?")
+_MAP_3D4D_RE = re.compile(r"!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)")
+_MAP_PLACE_RE = re.compile(r"/maps/(?:place|search|dir)/([^/@?]+)")
+_MAP_GOOGLE_HOSTS = ("google.", "maps.google.")
+_MAP_SHORT_HOSTS = ("goo.gl", "maps.app.goo.gl", "g.co")
+
+
+def _map_valid_latlng(lat: str, lng: str) -> str:
+    try:
+        lat_f, lng_f = float(lat), float(lng)
+    except (TypeError, ValueError):
+        return ""
+    if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
+        return ""
+    return f"{lat_f:.7f}".rstrip("0").rstrip(".") + "," + f"{lng_f:.7f}".rstrip("0").rstrip(".")
+
+
+def _map_embed_from_query(query: str, zoom: str = "") -> str:
+    """يبني رابط جوجل القابل للتضمين من إحداثيات أو نص بحث."""
+    if not query:
+        return ""
+    url = "https://www.google.com/maps?q=" + quote(query, safe=",")
+    if zoom:
+        url += "&z=" + zoom
+    return url + "&output=embed"
+
+
+def map_embed_url(value: str) -> str:
+    """يحوّل اللي المستخدم لزقه إلى رابط خريطة ينفع يتعرض جوّه iframe."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+
+    # كود التضمين كامل — بناخد الـsrc منه
+    if "<iframe" in raw.lower():
+        match = _MAP_IFRAME_SRC_RE.search(raw)
+        if not match:
+            return ""
+        raw = match.group(2).strip().replace("&amp;", "&")
+
+    if not raw.lower().startswith(("http://", "https://")):
+        # إحداثيات مكتوبة بالإيد، أو اسم مكان — الاتنين ينفعوا كـ‎q=‎
+        coords = _MAP_LATLNG_RE.match(raw)
+        if coords:
+            pair = _map_valid_latlng(coords.group(1), coords.group(2))
+            return _map_embed_from_query(pair, "16") if pair else ""
+        return _map_embed_from_query(raw) if len(raw) <= 300 else ""
+
+    parsed = urlparse(raw)
+    host = (parsed.netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+
+    # الروابط المختصرة محتاجة طلب شبكة عشان تتفك — مش بنعمل ده وقت العرض
+    if host in _MAP_SHORT_HOSTS:
+        return ""
+    # مش جوجل: ممكن يكون OpenStreetMap أو Mapbox أو خدمة تانية بتسمح
+    # بالتضمين — مالناش دعوة نحوّله، بنسيبه زي ما هو.
+    if not any(marker in host for marker in _MAP_GOOGLE_HOSTS):
+        return raw
+    # رابط تضمين جاهز
+    if "/maps/embed" in parsed.path or "output=embed" in (parsed.query or ""):
+        return raw
+
+    params = parse_qs(parsed.query or "")
+
+    def first(*names: str) -> str:
+        for name in names:
+            values = params.get(name) or []
+            if values and str(values[0]).strip():
+                return str(values[0]).strip()
+        return ""
+
+    at = _MAP_AT_RE.search(parsed.path or "")
+    zoom = ""
+    zoom_raw = first("z", "zoom")
+    if re.fullmatch(r"\d{1,2}(?:\.\d+)?", zoom_raw):
+        zoom = zoom_raw
+    elif at and at.group(3):
+        zoom = str(int(float(at.group(3))))
+
+    # الإحداثيات بالترتيب: الأدق الأول. ‎!3d!4d‎ هي إحداثيات الدبوس نفسه،
+    # و‎@‎ هي مركز الشاشة وقت النسخ — ساعات بيكونوا مختلفين.
+    pair = ""
+    m3d = _MAP_3D4D_RE.search(raw)
+    if m3d:
+        pair = _map_valid_latlng(m3d.group(1), m3d.group(2))
+    if not pair:
+        coords = _MAP_LATLNG_RE.match(first("ll", "sll", "center"))
+        if coords:
+            pair = _map_valid_latlng(coords.group(1), coords.group(2))
+    if not pair and at:
+        pair = _map_valid_latlng(at.group(1), at.group(2))
+    if not pair:
+        for name in ("q", "query", "daddr", "destination"):
+            coords = _MAP_LATLNG_RE.match(first(name))
+            if coords:
+                pair = _map_valid_latlng(coords.group(1), coords.group(2))
+                if pair:
+                    break
+    if not pair:
+        # ‎/maps/dir//29.99,31.13‎ وأشكالها: الإحداثيات جوّه المسار نفسه
+        for segment in (parsed.path or "").split("/"):
+            coords = _MAP_LATLNG_RE.match(unquote(segment))
+            if coords:
+                pair = _map_valid_latlng(coords.group(1), coords.group(2))
+                if pair:
+                    break
+    if pair:
+        return _map_embed_from_query(pair, zoom or "16")
+
+    # مفيش إحداثيات — نجرّب نص البحث أو اسم المكان
+    text = first("q", "query", "daddr", "destination")
+    if not text:
+        place = _MAP_PLACE_RE.search(parsed.path or "")
+        if place:
+            text = unquote(place.group(1)).replace("+", " ").strip()
+    if text:
+        return _map_embed_from_query(text[:300], zoom)
+    return ""
+
+
 def _resolve_props(block: dict, data: dict) -> dict:
     """يملأ الحقول الفارغة من بيانات الدعوة."""
     props = dict(block.get("props") or {})
@@ -382,6 +526,19 @@ def _resolve_props(block: dict, data: dict) -> dict:
         props["venue"] = props.get("venue") or data["venue"]
         props["address"] = props.get("address") or data["address"]
         props["map_link"] = props.get("map_link") or data["map_url"]
+        # القيمة المحفوظة بتفضل زي ما المستخدم لزقها؛ اللي بيروح للـiframe
+        # هو النسخة القابلة للتضمين بس.
+        raw_embed = str(props.get("map_embed") or "").strip()
+        props["map_embed_url"] = map_embed_url(raw_embed)
+        # اللي لزق رابط خرايط عادي في خانة التضمين غالباً عايز نفس الرابط
+        # يفتح في زرار «افتح الاتجاهات» — أحسن من زرار مالوش لينك.
+        if (
+            not props["map_link"]
+            and raw_embed.lower().startswith(("http://", "https://"))
+            and "/maps/embed" not in raw_embed
+            and "output=embed" not in raw_embed
+        ):
+            props["map_link"] = raw_embed
 
     elif btype == "details":
         rows = []
@@ -958,7 +1115,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-08-30-desktop-inherits-phone-section-height-v2"
+_PREVIEW_RENDER_REVISION = "2026-08-30-map-embed-normalize-countdown-dir-v1"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

@@ -807,9 +807,16 @@ register(
               help_text="اتركه فارغاً ليُملأ من بيانات الدعوة"),
         field("address", "العنوان التفصيلي", "textarea", ""),
         field("map_embed", "رابط الخريطة المضمّنة", "url", "",
-              help_text="رابط embed من خرائط جوجل — يعرض الخريطة داخل الدعوة"),
+              help_text="الصق كود التضمين (مشاركة ← تضمين خريطة)، أو رابط "
+                        "الموقع من خرائط جوجل، أو الإحداثيات كده: "
+                        "29.990823, 31.130000 — بنحوّله تلقائياً. الروابط "
+                        "المختصرة (maps.app.goo.gl) افتحها الأول وانسخ "
+                        "الرابط الكامل."),
         field("map_link", "رابط فتح الخريطة", "url", ""),
         field("show_map", "إظهار الخريطة", "toggle", True),
+        field("map_width", "عرض الخريطة", "range", 100,
+              minimum=30, maximum=100, step=1, unit="%",
+              help_text="نسبة من عرض القسم."),
         field("map_height", "ارتفاع الخريطة", "range", 320,
               minimum=160, maximum=640, step=10, unit="px"),
         field("directions_label", "نص زر الاتجاهات", "text", "افتح الاتجاهات"),

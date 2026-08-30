@@ -611,14 +611,29 @@
 .lb-venue { margin: 0; font-family: var(--font-heading); font-size: 1.5em; }
 .lb-address { margin: 0; color: var(--muted); }
 .lb-map {
-  width: 100%;
+  width: var(--map-w, 100%);
+  max-width: 100%;
   height: var(--map-h, 320px);
+  /* الحد والحشو جوّه الارتفاع المطلوب — من غير كده صندوق الرسالة
+     (اللي فيه حشو) بيطلع أطول من الخريطة بنفس الإعداد. */
+  box-sizing: border-box;
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
 }
 .lb-map iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* جوّه المحرر الخريطة لازم تتسحب زي أي عنصر تاني. الـ‎<iframe>‎ بيبلع
+   ضغطة الماوس قبل ما توصل للحاوية (‎[data-move]‎)، فكان مفيش سحب خالص —
+   نفس المعالجة الموجودة لخرايط القوالب المستوردة تحت. زوم جوجل بيرجع
+   طبيعي في الدعوة المنشورة. */
+.lb-doc--editing .lb-map iframe {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+.lb-doc--editing .lb-map { cursor: grab; }
+.lb-doc--editing .lb-map.lb-dragging { cursor: grabbing; }
 .lb-map--empty {
   display: flex;
   flex-direction: column;
@@ -628,6 +643,12 @@
   color: var(--muted);
   font-size: 0.86em;
   border-style: dashed;
+  /* رسالة «الرابط ده مايتعرضش» أطول من سطر — من غير الحشو والالتفاف
+     كانت بتخرج بره الإطار على الموبايل. */
+  padding: 16px 18px;
+  text-align: center;
+  line-height: 1.6;
+  overflow: auto;
 }
 
 /* ---------------------------------------------------------- المعرض */

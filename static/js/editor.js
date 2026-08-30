@@ -1653,6 +1653,95 @@
   }
 
   /** صف تحكّم: عنوان + عنصر إدخال. */
+  /* ---- رابط الخريطة القابل للتضمين -------------------------------------
+     نفس منطق ‎renderer.map_embed_url‎ في بايثون بالظبط. جوجل بيرفض عرض
+     رابط الخرايط العادي جوّه ‎<iframe>‎، فاللي بيلزق الرابط من شريط
+     العنوان كان بيشوف إطار مكسور. بنحوّله لرابط ‎output=embed‎، وبنرجّع
+     ‎""‎ لما مانعرفش (الروابط المختصرة) عشان المنادي يقول للمستخدم. */
+  function mapLatLngPair(text) {
+    var m = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,،]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(String(text || ""));
+    if (!m) return "";
+    var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)) return "";
+    return lat + "," + lng;
+  }
+
+  function mapEmbedFromQuery(query, zoom) {
+    if (!query) return "";
+    return "https://www.google.com/maps?q=" + encodeURIComponent(query).replace(/%2C/g, ",") +
+      (zoom ? "&z=" + zoom : "") + "&output=embed";
+  }
+
+  function mapEmbedUrl(value) {
+    var raw = String(value == null ? "" : value).trim();
+    if (!raw) return "";
+    if (/<iframe/i.test(raw)) {
+      var src = /<iframe[^>]*\ssrc\s*=\s*(['"])([\s\S]*?)\1/i.exec(raw);
+      if (!src) return "";
+      raw = src[2].trim().replace(/&amp;/g, "&");
+    }
+    if (!/^https?:\/\//i.test(raw)) {
+      var typed = mapLatLngPair(raw);
+      if (typed) return mapEmbedFromQuery(typed, "16");
+      return raw.length <= 300 ? mapEmbedFromQuery(raw, "") : "";
+    }
+    var url;
+    try { url = new URL(raw); } catch (err) { return ""; }
+    var host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "goo.gl" || host === "maps.app.goo.gl" || host === "g.co") return "";
+    if (host.indexOf("google.") < 0) return raw;
+    if (url.pathname.indexOf("/maps/embed") >= 0 ||
+        /(?:^|&)output=embed(?:&|$)/.test(url.search.replace(/^\?/, ""))) return raw;
+
+    function first() {
+      for (var i = 0; i < arguments.length; i++) {
+        var v = url.searchParams.get(arguments[i]);
+        if (v && v.trim()) return v.trim();
+      }
+      return "";
+    }
+    var at = /@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)(?:,(\d+(?:\.\d+)?)z)?/.exec(url.pathname);
+    var zoom = "";
+    var z = first("z", "zoom");
+    if (/^\d{1,2}(?:\.\d+)?$/.test(z)) zoom = z;
+    else if (at && at[3]) zoom = String(Math.round(parseFloat(at[3])));
+
+    var pair = "";
+    var precise = /!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/.exec(raw);
+    if (precise) pair = mapLatLngPair(precise[1] + "," + precise[2]);
+    if (!pair) pair = mapLatLngPair(first("ll", "sll", "center"));
+    if (!pair && at) pair = mapLatLngPair(at[1] + "," + at[2]);
+    if (!pair) {
+      ["q", "query", "daddr", "destination"].some(function (key) {
+        pair = mapLatLngPair(first(key));
+        return !!pair;
+      });
+    }
+    if (!pair) {
+      url.pathname.split("/").some(function (segment) {
+        var decoded = segment;
+        try { decoded = decodeURIComponent(segment); } catch (err3) { /* زي ما هو */ }
+        pair = mapLatLngPair(decoded);
+        return !!pair;
+      });
+    }
+    if (pair) return mapEmbedFromQuery(pair, zoom || "16");
+
+    var text = first("q", "query", "daddr", "destination");
+    if (!text) {
+      var place = /\/maps\/(?:place|search|dir)\/([^/@?]+)/.exec(url.pathname);
+      if (place) {
+        try { text = decodeURIComponent(place[1]); } catch (err2) { text = place[1]; }
+        text = text.replace(/\+/g, " ").trim();
+      }
+    }
+    return text ? mapEmbedFromQuery(text.slice(0, 300), zoom) : "";
+  }
+
+  var MAP_EMBED_HELP =
+    "الرابط ده مايتعرضش جوّه إطار. افتح المكان في خرائط جوجل ← مشاركة ← " +
+    "«تضمين خريطة» والصق الكود، أو الصق الإحداثيات كده: 29.990823, 31.130000";
+
   function ctrlRow(label, input, extra) {
     var row = el("div", "ed-field");
     var lab = el("label");
@@ -2266,12 +2355,9 @@
       applyMapUrl.addEventListener("click", function () {
         var value = (mapUrl.value || "").trim();
         if (!value) { toast("اكتب رابط الخريطة أولاً.", "error"); return; }
+        var mapSrc = mapEmbedUrl(value);
+        if (!mapSrc) { toast(MAP_EMBED_HELP, "error"); return; }
         snapshot();
-        var mapSrc = value;
-        if (/google\.com\/maps|maps\.google/i.test(value) &&
-            !/\/maps\/embed|[?&]output=embed/i.test(value)) {
-          mapSrc = "https://www.google.com/maps?q=" + encodeURIComponent(value) + "&output=embed";
-        }
         mapFrame.setAttribute("src", mapSrc);
         mapUrl.value = mapSrc;
         commit();
