@@ -861,7 +861,7 @@
     // نسم الحقل بمفتاحه حتى يمكن مزامنته مع التحرير المباشر داخل المعاينة.
     // حقول التنسيق اللي جوّه الترس علّمت نفسها بمفاتيحها وهي بتتبني،
     // فمابنكتبش فوقها بمفتاح الحقل الأب.
-    $$("input, textarea", wrap).forEach(function (n) {
+    $$("input, textarea, select", wrap).forEach(function (n) {
       if (n.dataset.fieldKey) return;
       if (n.type !== "range" && n.type !== "color" && n.type !== "file") {
         n.dataset.fieldKey = spec.key;
@@ -1604,8 +1604,9 @@
             var hasImportedCountdown = /countdowncontainer|countdown[-_ ]?(?:grid|wrapper|container|heading|sub)|section-countdown|time-block|number-wrap|(?:^|[\s"'_-])cd-(?:days?|hours?|mins?|minutes?|secs?|seconds?)(?:$|[\s"'_-])/i.test(
         String((block.props || {}).html || "")
       );
+      var COUNTDOWN_ONLY_KEYS = { countdown_date: 1, countdown_dir: 1 };
       var advancedProps = spec.props.filter(function (s) {
-        return s.key !== "countdown_date" || hasImportedCountdown;
+        return !COUNTDOWN_ONLY_KEYS[s.key] || hasImportedCountdown;
       });
 
       box.appendChild(buildGroups(
@@ -1978,7 +1979,7 @@
     var countdownRoot = node.closest && node.closest("#countdownContainer, .countdown-container");
     if (countdownRoot && block.type === "custom_html") {
       body.appendChild(el("p", "ed-hint",
-        "ده عدّاد مستورد — تقدر تغيّر موعده، وتختار أي تسمية من الطبقات لتعديل نصها أو خطها."));
+        "ده عدّاد مستورد — تقدر تغيّر موعده واتجاه خاناته، وتختار أي تسمية من الطبقات لتعديل نصها أو خطها."));
       var dateInput = el("input", "ed-input");
       dateInput.type = "datetime-local";
       dateInput.value = String((block.props || {}).countdown_date || "");
@@ -1999,6 +2000,28 @@
         requestPreview();
       });
       body.appendChild(ctrlRow("موعد العدّاد", dateInput, clearDate));
+
+      /* اتجاه الخانات: ترتيب الأيام/الساعات/الدقائق/الثواني. القالب
+         المستورد مثبّت الترتيب في الـHTML بتاعه، والاختيار ده بيقلبه
+         بالـCSS من غير ما يلمس الكود. */
+      var dirSelect = doc.createElement("select");
+      dirSelect.className = "ed-input";
+      dirSelect.dataset.fieldKey = "countdown_dir";
+      [["", "زي ما هو (اتجاه القالب)"],
+       ["rtl", "من اليمين للشمال — «أيام» على اليمين"],
+       ["ltr", "من الشمال لليمين — «أيام» على الشمال"]].forEach(function (pair) {
+        var op = el("option", null, pair[1]);
+        op.value = pair[0];
+        dirSelect.appendChild(op);
+      });
+      dirSelect.value = String((block.props || {}).countdown_dir || "");
+      dirSelect.addEventListener("change", function () {
+        snapshot();
+        block.props.countdown_dir = dirSelect.value;
+        markDirty();
+        requestPreview();
+      });
+      body.appendChild(ctrlRow("اتجاه الخانات", dirSelect));
     }
     if (isImg) {
 
@@ -4046,7 +4069,7 @@
         input.scrollIntoView({ block: "nearest" });
       }
     }
-    toast("اختَر تاريخ ووقت العدّاد من إعدادات العداد.", "ok");
+    toast("من «إعدادات العداد»: اختَر تاريخ ووقت العدّاد، أو اقلب اتجاه الخانات.", "ok");
   }
 
   function delegatedCustomTextWriteBack(node) {

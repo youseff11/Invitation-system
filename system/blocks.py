@@ -723,6 +723,15 @@ register(
 )
 
 # ---- العد التنازلي -------------------------------------------------------
+# اتجاه خانات العدّاد. مش لغة ولا محاذاة نص — ده ترتيب الخانات نفسها:
+# «أيام» تبدأ من اليمين ولا من الشمال. القالب المستورد بيثبّت الترتيب
+# في الـHTML بتاعه، وده بيقلبه من غير ما يلمس الكود ولا الشكل.
+COUNTDOWN_DIR_CHOICES = [
+    opt("", "زي ما هو (اتجاه القالب)"),
+    opt("rtl", "من اليمين للشمال — «أيام» على اليمين"),
+    opt("ltr", "من الشمال لليمين — «أيام» على الشمال"),
+]
+
 register(
     "countdown", "العد التنازلي", icon="⏱", category="تفاعلي", feature="countdown",
     description="عدّاد يتناقص حتى موعد المناسبة",
@@ -739,6 +748,9 @@ register(
             opt("boxes", "صناديق"), opt("circles", "دوائر"),
             opt("minimal", "أرقام فقط"), opt("flip", "بطاقات مقلوبة"),
         ]),
+        field("countdown_dir", "اتجاه الخانات", "select", "", translate=False,
+              options=COUNTDOWN_DIR_CHOICES,
+              help_text="يقلب ترتيب الأيام/الساعات/الدقائق/الثواني من غير ما يغيّر شكلها."),
         field("number_size", "حجم الأرقام", "range", 40, group="الخطوط",
               minimum=18, maximum=96, step=2, unit="px"),
     ],
@@ -1052,6 +1064,10 @@ register(
         field("countdown_date", "موعد العدّاد المستورد", "datetime", "",
               group="إعدادات العداد", translate=False,
               help_text="يظهر هذا الحقل للأقسام التي تحتوي على Countdown؛ اتركه فارغاً لاستخدام موعد القالب الأصلي."),
+        field("countdown_dir", "اتجاه خانات العدّاد", "select", "",
+              group="إعدادات العداد", translate=False,
+              options=COUNTDOWN_DIR_CHOICES,
+              help_text="يقلب ترتيب الأيام/الساعات/الدقائق/الثواني من غير ما يغيّر شكل الخانات."),
 
     ],
 )

@@ -492,6 +492,34 @@
 .lb-countdown--flip .lb-cd-unit span { color: rgba(255, 255, 255, .7); }
 .lb-countdown.is-done { font-family: var(--font-heading); font-size: 1.4em; color: var(--accent); }
 
+/* ---- اتجاه خانات العدّاد ----------------------------------------------
+   المقصود ترتيب الخانات نفسها: «أيام» تبدأ من اليمين ولا من الشمال.
+   ‎direction‎ هي الحاجة الوحيدة اللي بتقلب ترتيب الـflex والـgrid
+   الاتنين — و‎flex-direction:row-reverse‎ مش بديل لأنها قلب **نسبي**
+   (يعني نتيجتها بتختلف على صفحة عربي عن صفحة إنجليزي)، والاختيار هنا
+   مطلق. الخانة جوّاها رقم وكلمة واحدة متمركزين، فالاتجاه مابيبانش
+   عليهم أي فرق. */
+.lb-countdown[data-cd-dir="rtl"] { direction: rtl; }
+.lb-countdown[data-cd-dir="ltr"] { direction: ltr; }
+
+/* العدّاد المستورد جوّه قسم من قالب: كل قالب بيسمّي حاوية الخانات على
+   مزاجه، فبنمسك الأسماء المتكرّرة + أي حاوية الخانات بنات مباشرة ليها
+   عن طريق ‎:has()‎. ‎!important‎ لأن ستايل القالب المستورد بيتحقن جوّه
+   القسم وممكن يكون محدّد ‎direction‎ لنفسه — والقاعدة دي مابتشتغلش
+   أصلاً غير لما المستخدم يختار الاتجاه بنفسه. */
+.lb-custom[data-cd-dir="rtl"] :is(
+  #countdownContainer, .countdown-container, .countdown-grid, .countdown-wrapper,
+  .countdown-items, .countdown-boxes, .countdown-list, .cd-grid, .cd-wrapper,
+  .timer-grid, .time-blocks,
+  :has(> .time-block), :has(> .time-box), :has(> .countdown-item), :has(> .cd-item)
+) { direction: rtl !important; }
+.lb-custom[data-cd-dir="ltr"] :is(
+  #countdownContainer, .countdown-container, .countdown-grid, .countdown-wrapper,
+  .countdown-items, .countdown-boxes, .countdown-list, .cd-grid, .cd-wrapper,
+  .timer-grid, .time-blocks,
+  :has(> .time-block), :has(> .time-box), :has(> .countdown-item), :has(> .cd-item)
+) { direction: ltr !important; }
+
 /* ---------------------------------------------------------- التفاصيل */
 .lb-details { width: 100%; display: grid; gap: 16px; }
 .lb-details--cards { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
