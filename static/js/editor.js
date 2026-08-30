@@ -1179,11 +1179,25 @@
   /* لازم تطابق ‎_SECTION_HEIGHT_MEDIA‎ في ‎tildacss.py‎ بالظبط، وإلا اللي
      تشوفه في المحرر يختلف عن اللي يتولّد على السيرفر. */
   var SECTION_HEIGHT_MEDIA = {
-    mobile: { key: "section_height_mobile", query: "@media (max-width:480px)" },
+    /* ‎frame‎ = عرض إطار المحرر اللي الارتفاع اتسحب وهو شايفه. لو
+       موجود، الارتفاع بيتكتب نسبة من عرض القسم مش بكسل ثابت — عشان
+       نسبة الصندوق تفضل واحدة على أي تليفون، فخلفية ‎cover‎ تتقص زي
+       ما بتتقص في المحرر بالظبط. */
+    mobile: { key: "section_height_mobile", query: "@media (max-width:480px)",
+              frame: 390 },
     tablet: { key: "section_height_tablet",
-              query: "@media (min-width:481px) and (max-width:960px)" },
-    desktop: { key: "section_height_desktop", query: "@media (min-width:961px)" }
+              query: "@media (min-width:481px) and (max-width:960px)",
+              frame: 0 },
+    desktop: { key: "section_height_desktop", query: "@media (min-width:961px)",
+               frame: 0 }
   };
+
+  /** نفس ‎_section_height_value‎ في ‎tildacss.py‎ حرفاً بحرف. */
+  function sectionHeightValue(value, frame) {
+    if (!frame) return value + "px";
+    var ratio = Math.round((value / frame) * 10000) / 10000;
+    return "calc(100cqw*" + ratio + ")";
+  }
 
   function sectionHeightSpec() {
     return SECTION_HEIGHT_MEDIA[state.device] || SECTION_HEIGHT_MEDIA.mobile;
@@ -1275,8 +1289,9 @@
            و‎min-height‎ مكتوبة معاها لأن ‎.lb‎ عندها
            ‎min-height:var(--block-section-height)‎ من الحقل القديم —
            من غير ما نكتب فوقها التصغير تحت القيمة القديمة مابيحصلش. */
-        out.push(spec.query + "{" + targets + "{height:" + value +
-                 "px!important;min-height:" + value + "px!important}" +
+        var size = sectionHeightValue(value, spec.frame);
+        out.push(spec.query + "{" + targets + "{height:" + size +
+                 "!important;min-height:" + size + "!important}" +
                  overflowTargets + "{overflow:visible!important}}");
 
       });

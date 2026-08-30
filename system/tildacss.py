@@ -356,11 +356,41 @@ def zero_block_css(block_id: str, html: str) -> str:
 
 # مقاسات المحرر: موبايل 390، تابلت 768، ديسكتوب لحد 1280. الحدود دي
 # مختارة عشان كل مقاس يقع في نطاق واحد بالظبط من غير تداخل.
+#
+# الرقم التالت = عرض إطار المحرر اللي المستخدم سحب الارتفاع وهو شايفه.
+# لو موجود، الارتفاع بيتكتب **نسبة من عرض القسم** مش بكسل ثابت.
+#
+# ليه: الارتفاع الثابت مع خلفية ‎background-size:cover‎ معناه إن نسبة
+# الصندوق بتتغيّر مع عرض التليفون، والمتصفح بيقص الفرق. قياس على قسم
+# ارتفاعه 780px وصورته 614×1175:
+#   • عرض 393 (آيفون عادي) → القص أفقي 15px، رأسي صفر
+#   • عرض 430 (آيفون Pro Max) → القص **رأسي 43px** (٢١ فوق و٢١ تحت)
+#   • عرض 360 (أندرويد) → القص أفقي 48px، رأسي صفر
+# يعني نفس الدعوة بتتاكل من فوق وتحت على التليفون العريض بس. لما
+# الارتفاع يبقى نسبة (780/390 = 2)، نسبة الصندوق تفضل ثابتة على أي
+# عرض، فالقص يفضل زي ما هو في المحرر بالظبط.
+#
+# التابلت والديسكتوب سايبينهم بالبكسل: المسرح هناك محدود بـ‎--max-width‎
+# من الثيم، يعني عرضه مش هو عرض الشاشة، فالنسبة مكانتش هتتحسب صح من
+# غير ما نعرف قيمة الثيم.
 _SECTION_HEIGHT_MEDIA = (
-    ("section_height_mobile", "@media (max-width:480px)"),
-    ("section_height_tablet", "@media (min-width:481px) and (max-width:960px)"),
-    ("section_height_desktop", "@media (min-width:961px)"),
+    ("section_height_mobile", "@media (max-width:480px)", 390),
+    ("section_height_tablet", "@media (min-width:481px) and (max-width:960px)", 0),
+    ("section_height_desktop", "@media (min-width:961px)", 0),
 )
+
+
+def _section_height_value(value: int, frame: int) -> str:
+    """ارتفاع القسم: نسبة من عرض القسم، أو بكسل ثابت.
+
+    ``100cqw`` = عرض المسرح (‎.lb-stage‎ عندها ‎container-type:inline-size‎).
+    ولو مافيش حاوية لأي سبب، الوحدة بترجع لعرض الشاشة الصغير — وده نفس
+    الشيء تحت 480px لأن المسرح بياخد عرض الشاشة كله هناك.
+    """
+    if not frame:
+        return f"{value}px"
+    ratio = round(value / frame, 4)
+    return f"calc(100cqw*{ratio:g})"
 
 
 def section_surface_css(block_id: str, style: dict, imported: bool = True) -> str:
@@ -412,7 +442,7 @@ def section_surface_css(block_id: str, style: dict, imported: bool = True) -> st
         f"#{block_id} .lb-custom .t396__artboard",
     ])
     out: list[str] = []
-    for key, query in _SECTION_HEIGHT_MEDIA:
+    for key, query, frame in _SECTION_HEIGHT_MEDIA:
         try:
             value = int(float((style or {}).get(key) or 0))
         except (TypeError, ValueError):
@@ -430,9 +460,10 @@ def section_surface_css(block_id: str, style: dict, imported: bool = True) -> st
         # ‎min-height‎ مكتوبة مع الارتفاع لأن ‎.lb‎ عندها
         # ‎min-height:var(--block-section-height)‎ من الحقل القديم، ومن
         # غير ما نكتب فوقها القسم مابيصغّرش تحت القيمة القديمة.
+        size = _section_height_value(value, frame)
         out.append(
             f"{query}{{{targets}"
-            f"{{height:{value}px!important;min-height:{value}px!important}}"
+            f"{{height:{size}!important;min-height:{size}!important}}"
             f"{overflow_targets}{{overflow:visible!important}}}}"
         )
 

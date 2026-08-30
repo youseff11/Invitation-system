@@ -21,7 +21,7 @@ from urllib.parse import quote
 from system.renderer import block_style_css, layout_css, render_document
 
 from system.sanitize import clean_html
-from system import cssscope, customtext, guestimport, images, templateimport, video
+from system import cssscope, customtext, guestimport, images, templateimport, tildacss, video
 from system.templatetags import invite as invite_tags
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
@@ -4470,3 +4470,71 @@ class FontsMustBeLoadedNotAssumedTests(TestCase):
                 self.assertEqual(
                     doc["blocks"][0]["props"]["text_overlays"][0]["font"],
                     option["value"])
+
+
+# ==========================================================================
+class SectionHeightIsProportionalTests(TestCase):
+    """ارتفاع القسم لازم يبقى نسبة من عرضه، مش رقم بكسل ثابت.
+
+    الارتفاع الثابت مع خلفية ``cover`` معناه إن نسبة الصندوق بتتغيّر
+    مع عرض التليفون، والمتصفح بيقص الفرق. قياس على قسم ارتفاعه 780px
+    وصورة خلفية 614×1175:
+
+    | عرض الشاشة | القص الأفقي | القص الرأسي |
+    |---|---|---|
+    | 360 (أندرويد) | 48px | صفر |
+    | 393 (آيفون) | 15px | صفر |
+    | 430 (آيفون Pro Max) | صفر | **43px** — ٢١ فوق و٢١ تحت |
+
+    يعني الدعوة بتتاكل من فوق وتحت على التليفون العريض بس.
+    """
+
+    def _heights(self, style):
+        css = tildacss.section_surface_css("sec-1", style)
+        return re.findall(r"height:([^!]+)!important;min-height:", css)
+
+    def test_a_phone_height_becomes_a_ratio_of_the_section_width(self):
+        """780 على إطار 390 = ضعف العرض، على أي تليفون."""
+        self.assertEqual(self._heights({"section_height_mobile": 780}),
+                         ["calc(100cqw*2)"])
+
+    def test_the_ratio_keeps_the_box_shape_identical_on_every_phone(self):
+        ratio = 780 / 390
+        for width in (360, 393, 412, 430):
+            with self.subTest(width=width):
+                # نسبة الصندوق = العرض ÷ (العرض × النسبة) = ثابتة
+                self.assertAlmostEqual(width / (width * ratio), 1 / ratio, places=9)
+
+    def test_tablet_and_desktop_stay_in_pixels(self):
+        """المسرح هناك محدود بـ‎--max-width‎، فعرضه مش عرض الشاشة."""
+        self.assertEqual(
+            self._heights({"section_height_tablet": 900,
+                           "section_height_desktop": 1000}),
+            ["900px", "1000px"])
+
+    def test_the_legacy_single_height_gets_the_same_treatment(self):
+        got = self._heights({"section_height": 600})
+        self.assertEqual(got[0], "calc(100cqw*1.5385)")     # موبايل
+        self.assertEqual(got[1:], ["600px", "600px"])       # تابلت وديسكتوب
+
+    def test_no_height_writes_no_rule(self):
+        self.assertEqual(self._heights({}), [])
+
+    def test_the_editor_writes_exactly_the_same_rule(self):
+        """لو الاتنين اختلفوا، اللي في المحرر غير اللي في الدعوة تاني."""
+        js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+        self.assertIn("function sectionHeightValue(value, frame)", js)
+        self.assertIn('return "calc(100cqw*" + ratio + ")";', js)
+        self.assertIn('frame: 390', js)
+        # ونفس الحدود بالظبط
+        for query in ("@media (max-width:480px)",
+                      "@media (min-width:481px) and (max-width:960px)",
+                      "@media (min-width:961px)"):
+            with self.subTest(query=query):
+                self.assertIn(query, js)
+                self.assertIn(query, [q for _k, q, _f in
+                                      tildacss._SECTION_HEIGHT_MEDIA])
+
+    def test_the_stage_is_a_container_so_cqw_means_the_section_width(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn("container-type: inline-size", css)
