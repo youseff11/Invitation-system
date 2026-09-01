@@ -637,8 +637,18 @@
        جوّه المحرر بس بنستثني عناصر الافتتاحية القابلة للتحرير — من
        غير كده أي ضغطة على نص عشان تعدّله كانت هتقفل الافتتاحية. */
     intro.addEventListener("click", function (e) {
-      if (editable && e.target && e.target.closest &&
-          e.target.closest("[data-intro-item],[data-intro-move]")) return;
+      if (editable && e.target && e.target.closest) {
+        /* الكود اللي المصمّم كتبه في «كود متقدّم» محتوى حي — زراره
+           المفروض يشتغل في المحرر زي ما هيشتغل عند الضيف، عشان يقدر
+           يجرّب التسلسل كله من غير ما يفتح الدعوة. الضغطة على المربع
+           نفسه (مش على حاجة جوّاه) بتفضل للتحديد والسحب.
+           السحب مش بيوصل هنا أصلاً: ‎bindIntroDrag‎ بيلغي الـclick
+           بعد أي سحب في مرحلة الالتقاط. */
+        var codeBox = e.target.closest(".lb-intro-extra");
+        var insideCode = codeBox && e.target !== codeBox;
+        if (!insideCode &&
+            e.target.closest("[data-intro-item],[data-intro-move]")) return;
+      }
       if (intro.classList.contains("is-awaiting-play")) {
         if (startManualVideo) startManualVideo();
         return;

@@ -3773,7 +3773,10 @@
           moved: false,
           pointerId: e.pointerId
         };
-        try { node.setPointerCapture(e.pointerId); } catch (err) {}
+        /* الـcapture بيتأخّر لحد ما السحب يبدأ فعلاً. لو اتاخد هنا،
+           المتصفح بيعيد توجيه حدث ‎click‎ للعنصر الماسك بدل اللي
+           اتضغط عليه — يعني زرار جوّه كود المصمّم مايشتغلش، ولا
+           الضغطة تفتح الدعوة. (نفس اللي اتصلّح في ‎bindSlotDrag‎.) */
         e.stopPropagation();
       });
 
@@ -3784,6 +3787,7 @@
         if (!drag.moved) {
           if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
           drag.moved = true;
+          try { node.setPointerCapture(e.pointerId); } catch (err) {}
           snapshot();
           node.classList.add("lb-intro-dragging");
         }
