@@ -1508,7 +1508,7 @@
     favoriteBtn.addEventListener("click", saveSelectedAsFavorite);
     head.appendChild(favoriteBtn);
 
-    if (block.type === "custom_html") {
+    if (block.type === "custom_html" || hasCodeBox(block)) {
       var layersBtn = el("button", "ed-btn ed-btn--sm ed-layers-btn", "☷ الطبقات");
       layersBtn.type = "button";
       layersBtn.title = "اختيار أي عنصر داخل هذا القسم من قائمة الطبقات";
@@ -1584,6 +1584,12 @@
       box.appendChild(buildLayersGroup(block));
       box.appendChild(buildElementGroup(block));
       box.appendChild(buildColorGroup(block));
+    } else if (hasCodeBox(block)) {
+      /* قسم عادي فيه «كود متقدّم»: العناصر اللي جوّه الكود محتاجة نفس
+         لوحة «العنصر المحدَّد» — ضغطة على الكلام تفتح الترس وتغيّر
+         الخط واللون والمقاس من غير ما يفتح الكود. */
+      box.appendChild(buildLayersGroup(block));
+      box.appendChild(buildElementGroup(block));
     }
 
     if (spec.style && spec.style.length) {
@@ -1757,14 +1763,29 @@
   // ---------- عمليات على العنصر (نسخ/لصق/تكرار/إضافة/حذف) ----------
 
   /** الجذر اللي بنعيد بناء الـHTML منه بعد أي تعديل. */
+  /* «جذر التحرير»: القسم المستورد (‎.lb-custom‎) أو مربع «كود متقدّم».
+     الاتنين بيتعاملوا بنفس الطريقة — العناصر جوّاهم بتتحدّد وتتنسّق
+     وتتحرّك — واللي بيختلف هو الخانة اللي بنحفظ فيها. */
   function customRoot(node) {
-    return node && node.closest ? node.closest(".lb-custom") : null;
+    return node && node.closest
+      ? node.closest(".lb-custom, .lb-extra-html, .lb-intro-extra") : null;
+  }
+
+  function isCodeRoot(root) {
+    return !!root && !root.classList.contains("lb-custom");
+  }
+
+  /** يحفظ الجذر في خانته: ‎props.html‎ للمستورد، وخانة الكود للمربع. */
+  function commitRoot(block, root) {
+    if (!root) return;
+    if (isCodeRoot(root)) { codeWriteBack(root); return; }
+    block.props.html = serializeCustom(root);
+    markDirty();
   }
 
   /** يحفظ الـHTML ويعيد بناء المعاينة (عشان الترقيم يتظبط). */
   function commitStructure(block, root) {
-    block.props.html = serializeCustom(root);
-    markDirty();
+    commitRoot(block, root);
     requestPreview();
   }
 
@@ -1906,16 +1927,19 @@
     if (!state.layersOpen) return wrap;
     var fdoc = frameDoc();
     var section = fdoc && fdoc.querySelector('[data-block="' + block.id + '"]');
-    var root = section && section.querySelector(".lb-custom");
-    var nodes = root ? $$("[data-move]", root).filter(function (node) {
-      if (node.closest("[data-block]") !== section) return false;
-      // Tilda يضع data-move على الحاوية وعلى العنصر الداخلي معاً.
-      // نعرض العنصر المرئي الحقيقي فقط: نص، صورة، فيديو، iframe،
-      // أو حاوية شكل لا تحتوي واحداً من هذه العناصر.
-      var hasText = node.getAttribute("data-lb-text") === "1";
-      var hasChildVisual = !!node.querySelector("[data-lb-text], img, video, iframe");
-      return hasText || !hasChildVisual;
-    }) : [];
+    // القسم ممكن يكون فيه الاتنين: قالب مستورد + مربع «كود متقدّم»
+    var nodes = [];
+    (section ? $$(".lb-custom, .lb-extra-html", section) : []).forEach(function (root) {
+      $$("[data-move]", root).forEach(function (node) {
+        if (node.closest("[data-block]") !== section) return;
+        // Tilda يضع data-move على الحاوية وعلى العنصر الداخلي معاً.
+        // نعرض العنصر المرئي الحقيقي فقط: نص، صورة، فيديو، iframe،
+        // أو حاوية شكل لا تحتوي واحداً من هذه العناصر.
+        var hasText = node.getAttribute("data-lb-text") === "1";
+        var hasChildVisual = !!node.querySelector("[data-lb-text], img, video, iframe");
+        if (hasText || !hasChildVisual) nodes.push(node);
+      });
+    });
     if (!nodes.length) {
       body.appendChild(el("p", "ed-hint", "لم يتم العثور على عناصر قابلة للاختيار داخل القسم."));
       return wrap;
@@ -1967,6 +1991,13 @@
     return wrap;
   }
 
+  /** القسم ده فيه مربع «كود متقدّم» متولّد في المعاينة؟ */
+  function hasCodeBox(block) {
+    var fdoc = frameDoc();
+    if (!fdoc || !block) return false;
+    return !!fdoc.querySelector('[data-block="' + block.id + '"] .lb-extra-html');
+  }
+
   function buildElementGroup(block) {
 
     var node = selectedElNode();
@@ -1983,8 +2014,11 @@
       return wrap;
     }
     var commit = function () {
-      block.props.html = serializeCustom(
-        node.closest("[data-block]").querySelector(".lb-custom"));
+      var root = customRoot(node);
+      if (!root) return;
+      // المربع: نزامن العنصر ده لوحده بالمسار بدل ما نحفظ اللقطة كلها
+      if (isCodeRoot(root)) { codeWriteBack(root, node); return; }
+      block.props.html = serializeCustom(root);
       markDirty();
     };
         var tag = node.tagName;
@@ -2417,12 +2451,13 @@
       var btn = el("button", "ed-btn ed-btn--sm", d[0]);
       btn.type = "button";
       var step = slotIsPx(state.selEl) ? 1 : 0.25;
+      var stepY = slotUnitY(state.selEl) === "px" ? 1 : step;
       btn.title = slotIsPx(state.selEl) ? "تحريك بكسل واحد" : "تحريك ربع خطوة";
       btn.addEventListener("click", function () {
         snapshot();
         var p2 = layoutOf(block, state.selEl);
         p2.dx = Math.round(((p2.dx || 0) + d[1] * step) * 100) / 100;
-        p2.dy = Math.round(((p2.dy || 0) + d[2] * step) * 100) / 100;
+        p2.dy = Math.round(((p2.dy || 0) + d[2] * stepY) * 100) / 100;
         applySlotOffset(node, p2.dx, p2.dy);
         markDirty();
         renderInspector();
@@ -3354,7 +3389,8 @@
      من عرض المسرح، والمسرح في المحرر إطار جهاز ضيّق وفي المعاينة عرض
      الشاشة كله — فنفس الرقم كان بيطلع إزاحة مختلفة في الاتنين. الأقسام
      العادية بتفضل نسبية زي ما هي عشان تتقاس مع الشاشة. */
-  var EL_SLOT_RE = /^el-\d{1,4}$/;
+  // ‎el-N‎ = عنصر في قالب مستورد، ‎ce-N‎ = عنصر جوّه مربع «كود متقدّم»
+  var EL_SLOT_RE = /^(?:el|ce)-\d{1,4}$/;
 
   /* مربع «كود متقدّم» إزاحته نسبية (cqw = ١٪ من عرض المسرح) زي باقي
      العناصر العادية، مش بالبكسل زي عناصر القوالب المستوردة.
@@ -3365,8 +3401,15 @@
      ينزل بره القسم لما تبدّل الجهاز. النسبة بتخلي الموضع «موازي»:
      نفس المكان بالنسبة للقسم على أي مقاس. */
   function slotUnit(slot) {
-    if (slot === "code") return "%";      // نسبة من صندوق القسم نفسه
+    if (slot === "code") return "%";      // أفقياً: نسبة من عرض القسم
     return EL_SLOT_RE.test(slot || "") ? "px" : "cqw";
+  }
+
+  /* مربع الكود بقى داخل تدفّق القسم، والقسم بيطول على قده — فارتفاعه
+     واحد في المحرر وفي المعاينة والبكسل بيتطابق. النسبة هنا كانت
+     هتتحسب من ارتفاع بيتغيّر مع الإزاحة نفسها. */
+  function slotUnitY(slot) {
+    return slot === "code" ? "px" : slotUnit(slot);
   }
 
   function slotIsPx(slot) { return slotUnit(slot) === "px"; }
@@ -3380,9 +3423,9 @@
   }
 
   function applySlotOffset(node, dx, dy) {
-    var unit = slotUnit(node && node.getAttribute && node.getAttribute("data-move"));
-    node.style.setProperty("--dx", dx + unit);
-    node.style.setProperty("--dy", dy + unit);
+    var slot = node && node.getAttribute && node.getAttribute("data-move");
+    node.style.setProperty("--dx", dx + slotUnit(slot));
+    node.style.setProperty("--dy", dy + slotUnitY(slot));
   }
 
   function pruneLayout(block) {
@@ -3400,7 +3443,7 @@
     fdoc.querySelectorAll(".lb-guide, .lb-drag-badge").forEach(function (n) { n.remove(); });
   }
 
-  function showGuides(fdoc, node, snapX, snapY, dx, dy, unit) {
+  function showGuides(fdoc, node, snapX, snapY, dx, dy, unit, unitY) {
     clearGuides();
     var r = node.getBoundingClientRect();
     if (snapX) {
@@ -3418,7 +3461,8 @@
     var badge = fdoc.createElement("div");
     badge.className = "lb-drag-badge";
     var suffix = unit === "cqw" ? "%" : unit;
-    badge.textContent = dx.toFixed(1) + suffix + " , " + dy.toFixed(1) + suffix;
+    var suffixY = (unitY || unit) === "cqw" ? "%" : (unitY || unit);
+    badge.textContent = dx.toFixed(1) + suffix + " , " + dy.toFixed(1) + suffixY;
     badge.style.left = Math.round(r.left + r.width / 2) + "px";
     badge.style.top = Math.max(6, Math.round(r.top - 30)) + "px";
     badge.style.transform = "translateX(-50%)";
@@ -3500,6 +3544,12 @@
       e.stopPropagation();
       // التحرير الكتابي له الأولوية: لو العنصر متفتَّح للكتابة سيبه
       if (node.getAttribute("contenteditable") === "true") return;
+      /* مربع الكود: السحب على الحاوية كلها، فلو الضغطة على كلام اتفتح
+         للكتابة جوّاها لازم تعدّي — وإلا مايقدرش يحرّك المؤشر ولا يحدّد
+         حرف. (باقي العناصر بتتربط على النص نفسه فالشرط اللي فوق كفاية،
+         وكل ‎[data-slot]‎ عليه ‎contenteditable‎ دايماً فمانعمّمش الشرط.) */
+      if (slot === "code" && e.target && e.target.closest &&
+          e.target.closest("[contenteditable]")) return;
       if (e.button !== 0) return;
       var block = findBlock(blockId);
       if (!block || block.locked) return;
@@ -3514,12 +3564,12 @@
         unit: slotIsPx(slot) ? 1 : stageWidth(fdoc) / 100,
         moved: false, pointerId: e.pointerId
       };
-      /* مربع الكود بيتقاس بنسبة من **القسم**، والقسم عرضه غير ارتفاعه —
-         فمحتاج وحدة لكل محور بدل وحدة واحدة زي باقي العناصر. */
+      /* مربع الكود أفقياً بنسبة من عرض **القسم**، ورأسياً بالبكسل —
+         وحدة لكل محور بدل وحدة واحدة زي باقي العناصر. */
       var host = slot === "code" ? node.closest("[data-block]") : null;
       var hostRect = host ? host.getBoundingClientRect() : null;
       drag.unitX = hostRect ? hostRect.width / 100 : drag.unit;
-      drag.unitY = hostRect ? hostRect.height / 100 : drag.unit;
+      drag.unitY = hostRect ? 1 : drag.unit;
       /* ‎setPointerCapture‎ اتأخّر لحد ما السحب يبدأ فعلاً (تحت في
          ‎pointermove‎). لما كان بيتاخد هنا، المتصفح بيعيد توجيه حدث
          ‎click‎ للحاوية بدل العنصر اللي اتضغط جوّاها — يعني أي زرار أو
@@ -3535,7 +3585,12 @@
           minX: (hostRect.left - baseL) / drag.unitX,
           maxX: (hostRect.right - (baseL + nr.width)) / drag.unitX,
           minY: (hostRect.top - baseT) / drag.unitY,
-          maxY: (hostRect.bottom - (baseT + nr.height)) / drag.unitY
+          /* الإزاحة لتحت بقت ‎margin-top‎، يعني القسم بيطول معاها —
+             فمفيش حد أقصى يخرج منه أصلاً. الحد القديم (قاع القسم وقت
+             الضغط) كان بيمنع أي نزول لو الكود مالي القسم. */
+          maxY: slot === "code"
+            ? Infinity
+            : (hostRect.bottom - (baseT + nr.height)) / drag.unitY
         };
       }
     });
@@ -3562,7 +3617,9 @@
       var dy = drag.dy0 + (my / (drag.unitY || drag.unit)) * fine;
 
       var snap = drag.px ? SNAP_PX : SNAP;
-      var snapX = Math.abs(dx) < snap, snapY = Math.abs(dy) < snap;
+      // مربع الكود: أفقياً نسبة ورأسياً بكسل — عتبة اللزق لكل محور بوحدته
+      var snapYLimit = slotUnitY(drag.slot) === "px" ? SNAP_PX : snap;
+      var snapX = Math.abs(dx) < snap, snapY = Math.abs(dy) < snapYLimit;
       if (snapX) dx = 0;
       if (snapY) dy = 0;
       dx = Math.max(-MAX_X, Math.min(MAX_X, dx));
@@ -3580,7 +3637,7 @@
       drag.dy = Math.round(dy * 100) / 100;
       applySlotOffset(node, drag.dx, drag.dy);
       showGuides(drag.fdoc, node, snapX, snapY, drag.dx, drag.dy,
-                 slotUnit(drag.slot));
+                 slotUnit(drag.slot), slotUnitY(drag.slot));
       markSwapTarget(drag, e.clientX, e.clientY);
     });
 
@@ -3703,10 +3760,13 @@
         var step = slotIsPx(state.selEl)
           ? (e.shiftKey ? 4 : 1)
           : (e.shiftKey ? 1 : 0.25);
+        // مربع الكود رأسياً بالبكسل — ربع بكسل مش هيبان
+        var stepY = slotUnitY(state.selEl) === "px"
+          ? (e.shiftKey ? 4 : 1) : step;
         snapshot();
         var pos = layoutOf(block, state.selEl);
         pos.dx = Math.round(((pos.dx || 0) + dir[0] * step) * 100) / 100;
-        pos.dy = Math.round(((pos.dy || 0) + dir[1] * step) * 100) / 100;
+        pos.dy = Math.round(((pos.dy || 0) + dir[1] * stepY) * 100) / 100;
         applySlotOffset(node, pos.dx, pos.dy);
         markDirty();
         renderInspector();
@@ -3762,7 +3822,10 @@
       var suppressClick = false;
 
       node.addEventListener("pointerdown", function (e) {
-        if (e.button !== 0 || (e.target.closest && e.target.closest("a, input, video"))) return;
+        // ‎[contenteditable]‎: الكلام اللي اتفتح للكتابة جوّه كود المصمّم —
+        // السحب هنا كان بيخطف الضغطة ويمنع تحريك المؤشر جوّه النص.
+        if (e.button !== 0 || (e.target.closest &&
+            e.target.closest("a, input, video, [contenteditable]"))) return;
         var settings = state.doc.settings || {};
         var saved = positions()[key] || {};
         drag = {
@@ -4020,6 +4083,23 @@
             node.addEventListener("click", function (e) {
         var slot = e.target.closest("[data-slot]");
         if (slot && slot.isContentEditable) return;
+        /* مربع «كود متقدّم»: المستمع ده في مرحلة **الالتقاط**، يعني
+           ‎stopPropagation‎ هنا بيوقف الضغطة قبل ما تنزل لجوّه الكود
+           أصلاً — فأي زرار أو نص جوّه كود المصمّم كان ميت في المحرر.
+           بنسيب الضغطة تكمّل، والعنصر نفسه بيحدّد نفسه (‎bindCustomHtml‎
+           بيربط ‎click‎ على كل عنصر مرقّم جوّه المربع). */
+        var codeBox = e.target.closest && e.target.closest(".lb-extra-html");
+        if (codeBox) {
+          if (!e.target.closest("[data-move]")) {
+            var codeBlockId = node.getAttribute("data-block");
+            if (state.selected !== codeBlockId) {
+              state.fromPreview = true;
+              selectBlock(codeBlockId);
+              state.fromPreview = false;
+            }
+          }
+          return;
+        }
                 var movable = e.target.closest && e.target.closest(".lb-custom [data-move]");
         if (movable) state.selEl = movable.getAttribute("data-move");
         if (movable && (e.ctrlKey || e.metaKey)) {
@@ -4244,10 +4324,268 @@
     markDirty();
   }
 
+  // ==========================================================
+  // «كود متقدّم» — تعديل الكلام اللي جوّه من على المعاينة
+  // ==========================================================
+  /* الكود بيتحفظ كنص واحد فيه ‎<style>‎ وHTML و‎<script>‎. عشان يغيّر
+     اسم العروسين جوّاه كان لازم يفتح الخانة ويدوّر على السطر بإيده.
+     دلوقتي: ضغطتين على الكلام في المعاينة → يكتب → النص بيترجع مكانه
+     في الخانة. الستايل والسكربت الأصليين بيتحفظوا زي ما هُمّ بالنص،
+     واللي بيتبدّل هو جزء الـHTML بس. */
+  var CODE_STYLE_RE = /<style\b[^>]*>[\s\S]*?(?:<\/style\s*>|$)/gi;
+  var CODE_SCRIPT_RE = /<script\b[^>]*>[\s\S]*?(?:<\/script\s*>|$)/gi;
+
+  function rebuildCode(original, html) {
+    var raw = String(original || "");
+    var parts = (raw.match(CODE_STYLE_RE) || [])
+      .concat(String(html || "").trim())
+      .concat(raw.match(CODE_SCRIPT_RE) || []);
+    return parts.filter(function (part) {
+      return String(part).trim();
+    }).join("\n");
+  }
+
+  function codeBoxOf(target) {
+    return target && target.closest
+      ? target.closest(".lb-extra-html, .lb-intro-extra") : null;
+  }
+
+  /* أوسع من ‎isTextUnit‎ في حتة وأضيق في حتة، والاتنين مقصودين:
+       • أوسع: كود المصمّم بيكتب الأسامي في ‎<div>‎ زي ما بيكتبها في
+         ‎<h1>‎ — مافيش قايمة وسوم هنا، الشرط إن العنصر كله كلام.
+       • أضيق: ‎<div class="names"><span>ليلى</span><span>كريم</span></div>‎
+         شكل شائع جداً في كود التصميم، والمصمّم كاتب كل اسم في ‎span‎
+         لوحده عشان يتحكّم فيه لوحده. فالأب اللي كل كلامه في أبنائه
+         بيبقى **حاوية**، وكل ابن فيهم وحدة نص بنفسه. لو الأب نفسه فيه
+         كلام مباشر (‎<h1>ليلى<span>&</span>كريم</h1>‎) يبقى هو الوحدة. */
+  function hasOwnText(node) {
+    for (var i = 0; i < node.childNodes.length; i++) {
+      var child = node.childNodes[i];
+      if (child.nodeType === 3 && (child.nodeValue || "").trim()) return true;
+    }
+    return false;
+  }
+
+  function isCodeTextUnit(node, box) {
+    if (!node || node.nodeType !== 1 || node === box) return false;
+    if (!(node.textContent || "").trim()) return false;
+    if (node.querySelector(
+      "img,video,iframe,input,textarea,select,button,svg,canvas")) return false;
+    for (var i = 0; i < node.children.length; i++) {
+      if (!INLINE[node.children[i].tagName]) return false;
+      // ابن سطري فيه كلام والأب مالوش كلام خاص = الأب حاوية
+      if (!hasOwnText(node) && (node.children[i].textContent || "").trim()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function codeTextUnitFrom(target) {
+    var box = codeBoxOf(target);
+    if (!box) return null;
+    var node = target;
+    while (node && node !== box) {
+      if (isCodeTextUnit(node, box)) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  /* مسار العنصر جوّه المربع بأرقام الأبناء — عشان نلاقيه في **النص
+     الأصلي** بدل ما نكتب الـDOM كله فوق الكود.
+
+     ليه: سكربت المصمّم بيغيّر الـDOM وهو شغال (عدّاد بيكتب أرقام،
+     صندوق بيفتح فيتحط عليه ‎class‎…). لو حفظنا المربع كله بعد تعديل
+     كلمة، حالة اللحظة دي كانت هتتخبّط في الكود المحفوظ للأبد. */
+  function codeNodePath(node, box) {
+    var path = [];
+    var current = node;
+    while (current && current !== box) {
+      var parent = current.parentElement;
+      if (!parent) return null;
+      path.unshift(Array.prototype.indexOf.call(parent.children, current));
+      current = parent;
+    }
+    return current === box ? path : null;
+  }
+
+  /** نسخة نضيفة من العنصر — من غير علاماتنا الوقتية. */
+  function cleanEditedNode(node) {
+    var clone = node.cloneNode(true);
+    var strip = function (n) {
+      n.removeAttribute("contenteditable");
+      n.removeAttribute("spellcheck");
+      n.removeAttribute("data-lb-edit");
+      n.removeAttribute("data-lb-text");
+      n.classList.remove("lb-el-typing");
+      n.classList.remove("lb-el-picked");
+      n.classList.remove("lb-dragging");
+      if (!n.getAttribute("class")) n.removeAttribute("class");
+      if (n.style) {
+        n.style.removeProperty("--dx");     // الإزاحة في ‎block.layout‎
+        n.style.removeProperty("--dy");
+        // ستايل بتاع المحرر نفسه — نفس اللي ‎serializeCustom‎ بتشيله
+        n.style.removeProperty("outline");
+        n.style.removeProperty("box-shadow");
+        if (!n.getAttribute("style")) n.removeAttribute("style");
+      }
+    };
+    strip(clone);
+    clone.querySelectorAll("*").forEach(strip);
+    return clone;
+  }
+
+  /** يمشي بالمسار جوّه شجرة مبنية من النص الأصلي. */
+  function walkCodePath(holder, path, node) {
+    var target = holder;
+    for (var i = 0; i < path.length; i++) {
+      target = target.children[path[i]];
+      if (!target) return null;
+    }
+    if (target === holder || (node && target.tagName !== node.tagName)) return null;
+    return target;
+  }
+
+  /* يزامن عنصر (أو أكتر) من المعاينة على النص الأصلي **بالمسار**.
+     ‎items‎: [{path, node, html}] — ‎html:true‎ يعني ننقل محتواه كمان.
+     بيرجّع ‎null‎ لو أي مسار ضاع، فالنداهة تقع على آخر حل بدل ما تكتب
+     في المكان الغلط. */
+  function syncCodeNodes(original, items) {
+    var region = String(original || "")
+      .replace(CODE_STYLE_RE, "").replace(CODE_SCRIPT_RE, "");
+    var holder = document.createElement("div");
+    holder.innerHTML = region;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var target = walkCodePath(holder, item.path, item.node);
+      if (!target) return null;
+      var clean = cleanEditedNode(item.node);
+      // الخصائص: بنحط اللي في المعاينة ونشيل اللي اتشال
+      Array.prototype.slice.call(target.attributes).forEach(function (attr) {
+        if (!clean.hasAttribute(attr.name)) target.removeAttribute(attr.name);
+      });
+      Array.prototype.slice.call(clean.attributes).forEach(function (attr) {
+        target.setAttribute(attr.name, attr.value);
+      });
+      if (item.html) target.innerHTML = clean.innerHTML;
+    }
+    return holder.innerHTML;
+  }
+
+  /** يرجّع {get,set} لخانة الكود اللي المربع ده متولّد منها. */
+  function codeOwnerOf(box) {
+    if (box.classList.contains("lb-intro-extra")) {
+      var settings = state.doc && state.doc.settings;
+      if (!settings) return null;
+      return {
+        get: function () { return settings.intro_code; },
+        set: function (value) {
+          settings.intro_code = value;
+          syncFieldByKey("intro_code", value);
+        }
+      };
+    }
+    var section = box.closest("[data-block]");
+    var block = section && findBlock(section.getAttribute("data-block"));
+    if (!block || !block.props || typeof block.props.code !== "string") return null;
+    return {
+      get: function () { return block.props.code; },
+      set: function (value) {
+        block.props.code = value;
+        syncInspectorField(block.id, "code", value);
+      }
+    };
+  }
+
+  function codeWriteBack(box, node) {
+    if (!box) return;
+    var owner = codeOwnerOf(box);
+    if (!owner) return;
+    var source = owner.get();
+    var path = node && node !== box ? codeNodePath(node, box) : null;
+    var html = path
+      ? syncCodeNodes(source, [{ path: path, node: node, html: true }])
+      : null;
+    // آخر حل: نحفظ المربع كله (لو تركيب الـDOM اختلف عن النص الأصلي)
+    if (html === null) html = serializeCustom(box);
+    owner.set(rebuildCode(source, html));
+    markDirty();
+  }
+
+  /* ترقيم العناصر (‎data-move="el-N"‎) لازم يترسّب في النص المحفوظ،
+     وإلا الموضع بيضيع مع أول حفظ. بنكتبه **بالمسار على النص الأصلي**
+     مش بحفظ المربع كله: سكربت المصمّم بيغيّر الـDOM وهو شغال، ولو
+     حفظنا اللقطة دي كنّا هنخبّط حالة اللحظة في كوده للأبد. */
+  function codeWriteMoveAttrs(box, nodes) {
+    var owner = codeOwnerOf(box);
+    if (!owner) return;
+    var source = owner.get();
+    var items = [];
+    for (var i = 0; i < nodes.length; i++) {
+      var path = codeNodePath(nodes[i], box);
+      if (!path) return;                       // مسار ضايع — مانكتبش
+      items.push({ path: path, node: nodes[i], html: false });
+    }
+    if (!items.length) return;
+    var html = syncCodeNodes(source, items);
+    if (html === null) return;
+    var next = rebuildCode(source, html);
+    if (next === source) return;
+    owner.set(next);
+    markDirty();
+  }
+
+  /** زي ‎syncInspectorField‎ لكن للحقول اللي مش تبع بلوك (إعدادات الدعوة). */
+  function syncFieldByKey(key, value) {
+    var pane = refs.inspector;
+    if (!pane) return;
+    var inputs = $$("input, textarea", pane);
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].dataset.fieldKey === key) { inputs[i].value = value; return; }
+    }
+  }
+
+  function openCodeTextEdit(node) {
+    beginCustomTextEdit(node);
+    if (node.dataset.lbCodeEdit === "1") return;
+    node.dataset.lbCodeEdit = "1";
+    var box = codeBoxOf(node);
+    node.addEventListener("input", function () { codeWriteBack(box, node); });
+    node.addEventListener("blur", function () {
+      node.removeAttribute("contenteditable");
+      node.classList.remove("lb-el-typing");
+      codeWriteBack(box, node);
+    });
+    node.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        node.blur();
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        node.blur();
+      }
+    });
+  }
+
   function bindDelegatedCustomTextEditing(fdoc) {
     if (!fdoc || fdoc.__lbDelegatedTextEditing) return;
     fdoc.__lbDelegatedTextEditing = true;
     fdoc.addEventListener("dblclick", function (e) {
+      /* مربع الكود في قسم: ‎bindCustomHtml‎ بيربطه بنفسه زي أي عنصر
+         مرقّم. اللي فاضل هنا هو مربع كود **الافتتاحية** — مش جوّه
+         ‎[data-block]‎ فمالوش ترقيم، والكتابة فيه بتتظبط من هنا. */
+      var codeBox = codeBoxOf(e.target);
+      if (codeBox && !codeBox.classList.contains("lb-intro-extra")) return;
+      var codeText = codeBox ? codeTextUnitFrom(e.target) : null;
+      if (codeText) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCodeTextEdit(codeText);
+        return;
+      }
       var countdownPart = e.target && e.target.closest && e.target.closest(".lb-custom [data-move]");
       if (countdownPart && isImportedCountdownPart(countdownPart)) {
         var countdownSection = countdownPart.closest('[data-block-type="custom_html"]');
@@ -4301,15 +4639,33 @@
   }
 
   function bindCustomHtml(fdoc) {
-
+    var roots = [];
     fdoc.querySelectorAll('[data-block-type="custom_html"]').forEach(function (sec) {
       var root = sec.querySelector(".lb-custom");
-      if (!root) return;
+      if (root) roots.push(root);
+    });
+    /* مربع «كود متقدّم» بياخد نفس المعاملة: العناصر جوّه كود المصمّم
+       بتتحدّد وتتنسّق من «العنصر المحدَّد» زيها زي عناصر القالب
+       المستورد — من غير ما المصمّم يفتح الكود ويدوّر على السطر. */
+    fdoc.querySelectorAll(".lb-extra-html").forEach(function (root) {
+      roots.push(root);
+    });
+
+    roots.forEach(function (root) {
+      var sec = root.closest("[data-block]");
+      if (!sec) return;
       var blockId = sec.getAttribute("data-block");
       var block = findBlock(blockId);
-      if (!block || !("html" in block.props)) return;
+      if (!block || !block.props) return;
+      var codeRoot = isCodeRoot(root);
+      if (codeRoot ? typeof block.props.code !== "string"
+                   : !("html" in block.props)) return;
 
-      var writeBack = function () {
+      var writeBack = function (node) {
+        if (codeRoot) {
+          codeWriteBack(root, node && node.nodeType === 1 ? node : null);
+          return;
+        }
         block.props.html = serializeCustom(root);
         markDirty();
       };
@@ -4322,7 +4678,12 @@
          ٣) ترقيم وربط. */
       var all = movableIn(root);
       all.forEach(function (n) {
-        if ((isTextUnit(n) || isTildaTextUnit(n) || isCountdownLabel(n)) && !(n.parentElement &&
+        /* في المربع بنستعمل شرط أوسع: كود المصمّم بيكتب الأسامي في
+           ‎<div>‎ زي ما بيكتبها في ‎<h1>‎، والاتنين المفروض يتعدّلوا. */
+        var texty = codeRoot
+          ? isCodeTextUnit(n, root)
+          : (isTextUnit(n) || isTildaTextUnit(n) || isCountdownLabel(n));
+        if (texty && !(n.parentElement &&
             n.parentElement.closest("[data-lb-text]"))) {
 
           n.setAttribute("data-lb-text", "1");
@@ -4333,11 +4694,16 @@
         return !(n.parentElement && n.parentElement.closest("[data-lb-text]"));
       });
 
+      /* بادئة مختلفة لعناصر المربع (‎ce-N‎) — القسم المستورد ممكن يكون
+         فيه الاتنين، و‎layout_css‎ بيكتب ‎#block [data-move="el-1"]‎،
+         فترقيم واحد كان هيخلي عنصرين في مكانين مختلفين ياخدوا نفس
+         الإزاحة. */
+      var prefix = codeRoot ? "ce-" : "el-";
       var next = 1;
       nodes.forEach(function (n) {
         if (!n.getAttribute("data-move")) {
-          while (root.querySelector('[data-move="el-' + next + '"]')) next++;
-          n.setAttribute("data-move", "el-" + next);
+          while (root.querySelector('[data-move="' + prefix + next + '"]')) next++;
+          n.setAttribute("data-move", prefix + next);
           next++;
         }
       });
@@ -4369,9 +4735,9 @@
           n.addEventListener("blur", function () {
             n.removeAttribute("contenteditable");
             n.classList.remove("lb-el-typing");
-            writeBack();
+            writeBack(n);
           });
-          n.addEventListener("input", writeBack);
+          n.addEventListener("input", function () { writeBack(n); });
           n.addEventListener("keydown", function (e) {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); n.blur(); }
             // Esc بيخرج من الكتابة بس — العنصر يفضل محدَّد عشان تكمّل
@@ -4405,11 +4771,15 @@
 
         n.addEventListener("click", pick);
 
-        bindSlotDrag(n, blockId, n.getAttribute("data-move"), writeBack);
+        bindSlotDrag(n, blockId, n.getAttribute("data-move"), function () {
+          writeBack(n);
+        });
       });
 
       // أول ما نضيف data-move لازم نحفظها، وإلا هتضيع مع أول حفظ
-      if (nodes.length) writeBack();
+      if (!nodes.length) return;
+      if (codeRoot) codeWriteMoveAttrs(root, nodes);
+      else writeBack();
     });
     markSelectedEl();
   }

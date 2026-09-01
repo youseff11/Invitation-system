@@ -629,8 +629,9 @@ def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None
 
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-# نفس نمط ‎blocks._EL_SLOT‎ — خانة عنصر جوّه قالب مستورد
-_EL_SLOT = re.compile(r"^el-\d{1,4}$")
+# نفس نمط ‎blocks._EL_SLOT‎ — عنصر جوّه قالب مستورد (‎el-N‎)
+# أو جوّه مربع «كود متقدّم» (‎ce-N‎). الاتنين بالبكسل.
+_EL_SLOT = re.compile(r"^(?:el|ce)-\d{1,4}$")
 
 
 def layout_css(blocks: list[dict]) -> str:
@@ -657,15 +658,19 @@ def layout_css(blocks: list[dict]) -> str:
             # نفس الرقم بيطلع إزاحة مختلفة في المحرر (إطار جهاز ضيّق)
             # وفي المعاينة (عرض الشاشة كله) — وده بالظبط سبب «شكل في
             # المحرر وشكل تاني في المعاينة». البكسل بيتطابق في الاتنين.
-            # مربع «كود متقدّم» موضعه نسبة من صندوق القسم نفسه (بيتحط
-            # في ‎left/top‎ مش في ‎transform‎) — عشان يفضل في نفس المكان
-            # من القسم على أي مقاس شاشة.
+            # مربع «كود متقدّم» له وحدة لكل محور. أفقياً نسبة من عرض
+            # القسم عشان المكان يفضل «موازي» على أي مقاس شاشة. رأسياً
+            # بكسل في ‎margin-top‎: المربع بقى داخل تدفّق القسم والقسم
+            # بيطول على قده، فارتفاعه واحد في المحرر وفي المعاينة
+            # والبكسل بيتطابق — والنسبة كانت هتتحسب من ارتفاع بيتغيّر
+            # مع الإزاحة نفسها.
             if slot == "code":
-                unit = "%"
+                unit_x, unit_y = "%", "px"
             else:
-                unit = "px" if _EL_SLOT.match(slot) else "cqw"
+                unit_x = unit_y = "px" if _EL_SLOT.match(slot) else "cqw"
             rules.append(
-                f'#{bid} [data-move="{slot}"]{{--dx:{dx}{unit};--dy:{dy}{unit}}}'
+                f'#{bid} [data-move="{slot}"]'
+                f'{{--dx:{dx}{unit_x};--dy:{dy}{unit_y}}}'
             )
     # آمن بحكم البناء: المعرّفات متحققة بـ_SAFE_ID والأرقام float،
     # فمفيش أي مدخل من المستخدم بيوصل للناتج كنص حر.
@@ -1140,7 +1145,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-08-31-countdown-own-date-v11"
+_PREVIEW_RENDER_REVISION = "2026-09-01-code-box-elements-v13"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

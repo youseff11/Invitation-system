@@ -614,7 +614,8 @@ BLOCK_REGISTRY: dict[str, dict] = {}
 # القيم الكبيرة تمنع خروج أرقام غير منطقية مع إبقاء السحب حراً داخل المحرر.
 LAYOUT_MAX_X = 1000.0  # cqw
 LAYOUT_MAX_Y = 1000.0  # cqw
-_EL_SLOT = re.compile(r"^el-\d{1,4}$")
+# ‎el-N‎ = عنصر جوّه قالب مستورد، ‎ce-N‎ = عنصر جوّه مربع «كود متقدّم»
+_EL_SLOT = re.compile(r"^(?:el|ce)-\d{1,4}$")
 _SLOT_RE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 
