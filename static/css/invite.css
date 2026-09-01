@@ -267,7 +267,10 @@
   max-width: 100%;
   padding: 3px;
   box-sizing: border-box;
-  contain: layout paint;
+  /* ‎layout‎ من غير ‎paint‎: لسه بيمنع ‎position:fixed‎ إنه يهرب للشاشة،
+     لكن مابيقصّش الرسم — تصميمات زي صندوق بيتفتح وكارت بيطلع منه
+     محتاجة تخرج بره حدود المربع، وكانت بتتقص من نصها. */
+  contain: layout;
   text-align: var(--block-align, center);
 }
 .lb-extra-html:empty { display: none; }

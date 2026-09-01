@@ -3520,6 +3520,10 @@
       var hostRect = host ? host.getBoundingClientRect() : null;
       drag.unitX = hostRect ? hostRect.width / 100 : drag.unit;
       drag.unitY = hostRect ? hostRect.height / 100 : drag.unit;
+      /* ‎setPointerCapture‎ اتأخّر لحد ما السحب يبدأ فعلاً (تحت في
+         ‎pointermove‎). لما كان بيتاخد هنا، المتصفح بيعيد توجيه حدث
+         ‎click‎ للحاوية بدل العنصر اللي اتضغط جوّاها — يعني أي زرار أو
+         عنصر تفاعلي في كود المصمّم مابيشتغلش في المحرر خالص. */
       // مربع الكود مايخرجش من قسمه أبداً. القسم ‎overflow:hidden‎ فاللي
       // بيخرج بيتقص ويبان ناقص — والمصمّم مش فاهم ليه. بنحسب المدى
       // المسموح من الموضع الأساسي (قبل أي إزاحة) مرة واحدة هنا.
@@ -3534,7 +3538,6 @@
           maxY: (hostRect.bottom - (baseT + nr.height)) / drag.unitY
         };
       }
-      try { node.setPointerCapture(e.pointerId); } catch (err) {}
     });
 
     node.addEventListener("pointermove", function (e) {
@@ -3544,6 +3547,8 @@
       if (!drag.moved) {
         if (Math.abs(mx) < THRESHOLD && Math.abs(my) < THRESHOLD) return;
         drag.moved = true;
+        // دلوقتي بس بناخد الـcapture — الضغطة العادية بتوصل لجوّه
+        try { node.setPointerCapture(e.pointerId); } catch (err) {}
         node.classList.add("lb-dragging");
         node.removeAttribute("contenteditable");   // منع الكتابة أثناء السحب
         if (state.selected !== drag.block.id) selectBlock(drag.block.id);
