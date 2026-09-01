@@ -85,6 +85,21 @@ ALLOWED_CSS_PROPS = {
     "opacity", "display", "direction",
     "background-image", "background-size", "background-position",
     "background-repeat", "min-height", "aspect-ratio",
+    # خصائص تخطيط وشكل شائعة في أي كود جاهز. من غيرها كان
+    # ‎<div style="display:flex;gap:12px">‎ بيفقد الـgap بالسكوت،
+    # فالكود يطلع متكوّم والمصمّم مش عارف ليه.
+    "gap", "row-gap", "column-gap", "flex", "flex-direction", "flex-wrap",
+    "justify-content", "align-items", "align-self", "order",
+    "grid-template-columns", "grid-template-rows", "grid-column", "grid-row",
+    "box-shadow", "text-shadow", "transform", "transform-origin",
+    "transition", "filter", "backdrop-filter", "overflow", "object-fit",
+    "border-color", "border-width", "border-style", "border-top",
+    "border-bottom", "border-inline-start", "border-inline-end",
+    "min-width", "max-height", "text-transform", "white-space",
+    "word-break", "vertical-align", "list-style", "cursor", "font-variant",
+    # ‎position‎ و‎inset‎ و‎z-index‎ **مش** موجودين هنا عن قصد: دي وسيلة
+    # الهروب من حدود القسم لتغطية الصفحة كلها. اللي محتاجهم يكتبهم في
+    # خانة «ستايل القسم» — هناك الحصر بيربطهم بالقسم نفسه.
 }
 _CSS_DANGER_RE = re.compile(r"(expression|javascript:|@import|behavior)", re.I)
 

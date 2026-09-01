@@ -1,0 +1,16 @@
+{% load invite %}{% comment %}
+  «كود متقدّم» لأي قسم — خانة واحدة بيتلزق فيها الكود كله زي ما هو.
+  بيتحقن قبل ‎</section>‎ من ‎renderer.render_document‎ عشان ماتلمسش
+  الـ٢٠ قالب قسم واحداً واحداً.
+
+  المربع **مش** بياخد كلاس ‎lb-inner‎ عن قصد: ستايل القوالب المستوردة
+  بيفرض ارتفاع الـartboard على ‎#القسم > .lb-inner‎ بـ‎!important‎، فكان
+  المربع بياخد ارتفاع القسم كله — إطار التحديد يطلع طويل ومفيش مساحة
+  تسحبه فيها لتحت. عرضه وارتفاعه دلوقتي على مقاس الكود + ٣px.
+
+  ‎split_code‎ بتفصل الثلاثة: الستايل بيتحصر على القسم، والـHTML بيمر
+  على منقّي الأمان جوّه حاوية محبوسة، والجافاسكربت بيتلف في دالة
+  مقفولة عليها try/catch. علامة ‎data-lb-section-script‎ عشان المحرر
+  يعرف يعيد تشغيله بعد ما يبدّل محتوى المعاينة (‎innerHTML‎ مابيشغّلش
+  السكربتات).
+{% endcomment %}{% with parts=props.code|split_code %}{% if parts.css %}<style>{{ parts.css|safe_css:block.id }}</style>{% endif %}{% if parts.html.strip %}<div class="lb-extra-html" data-move="code">{{ parts.html|safe_html:0 }}</div>{% endif %}{% if parts.js %}<script data-lb-section-script="1">{{ parts.js }}</script>{% endif %}{% endwith %}

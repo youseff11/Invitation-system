@@ -2,13 +2,13 @@
   <div class="lb-hero-veil"></div>
   <div class="lb-inner lb-hero-inner">
     {% if props.kicker %}<p class="lb-kicker" data-slot="kicker" data-move="kicker" data-ts="kicker">{{ props.kicker }}</p>{% endif %}
-    {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 46 %}{% endif %}
+    {% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 46 'ornament_top' %}{% endif %}
     <h1 class="lb-names lb-names--{{ props.names_layout }}">
       <span class="lb-name" data-slot="name_one" data-move="name_one" data-ts="name_one">{{ props.name_one }}</span>
       {% if props.separator %}<span class="lb-sep" data-slot="separator" data-move="separator" data-ts="separator">{{ props.separator }}</span>{% endif %}
       {% if props.name_two %}<span class="lb-name" data-slot="name_two" data-move="name_two" data-ts="name_two">{{ props.name_two }}</span>{% endif %}
     </h1>
-    {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 46 %}{% endif %}
+    {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 46 'ornament_bottom' %}{% endif %}
     {% if props.subtitle %}<p class="lb-hero-sub" data-slot="subtitle" data-move="subtitle" data-ts="subtitle">{{ props.subtitle }}</p>{% endif %}
     {% if props.date_text %}<p class="lb-hero-date" data-slot="date_text" data-move="date_text" data-ts="date_text">{{ props.date_text }}</p>{% endif %}
     {% if props.buttons %}<div class="lb-btn-row" data-move="buttons">

@@ -1,5 +1,5 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
-{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 'ornament_top' %}{% endif %}
 <div class="lb-inner">
   {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading" data-ts="heading">{{ props.heading }}</h2>{% endif %}
   <div data-move="gallery" class="lb-gallery lb-gallery--{{ props.layout }}" style="--cols:{{ props.columns }};--gap:{{ props.gap }}px;--img-radius:{{ props.image_radius }}px;--aspect:{{ props.aspect }}"{% if props.lightbox %} data-lightbox="1"{% endif %}>
@@ -9,6 +9,6 @@
     </figure>{% endif %}{% empty %}<div class="lb-gempty">أضف صوراً من المحرر</div>{% endfor %}
   </div>
 </div>
-{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 'ornament_bottom' %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
 </section>{% endlocalize %}

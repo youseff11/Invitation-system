@@ -3051,6 +3051,25 @@
     return false;
   }
 
+  /* جافاسكربت خانة «كود متقدّم».
+
+     المعاينة بتتحدّث بـ‎stage.innerHTML = html‎، والمتصفح **مابيشغّلش**
+     أي ‎<script>‎ بيدخل بالطريقة دي — فالكود كان بيشتغل في الدعوة
+     المنشورة وماينفّذش في المحرر، والمصمّم يفتكره باظ. الحل المعتاد:
+     نستبدل كل وسم بوسم جديد اتعمل بـ‎createElement‎، وده بيشتغل.
+
+     السكربت بيتنقل مكان القديم بالظبط عشان ‎document.currentScript‎
+     جوّه اللفّة تلاقي القسم الصح. */
+  function runSectionScripts(fdoc) {
+    if (!fdoc) return;
+    fdoc.querySelectorAll("script[data-lb-section-script]").forEach(function (old) {
+      var fresh = fdoc.createElement("script");
+      fresh.setAttribute("data-lb-section-script", "1");
+      fresh.textContent = old.textContent;
+      old.parentNode.replaceChild(fresh, old);
+    });
+  }
+
   function applyIntro(fdoc, html) {
     if (html === undefined) return;          // نسخة سيرفر قديمة — ما نلمسش حاجة
     var current = fdoc.querySelector(".lb-intro");
@@ -3275,6 +3294,7 @@
     applyHeadCss(fdoc, "data-imported-css", data.sharedCss);
     applyIntro(fdoc, data.intro);
     applyMusic(fdoc, data.music || {});
+    runSectionScripts(fdoc);
 
     var runtimeReady = introOnly
       ? Promise.resolve()
@@ -3328,7 +3348,16 @@
      العادية بتفضل نسبية زي ما هي عشان تتقاس مع الشاشة. */
   var EL_SLOT_RE = /^el-\d{1,4}$/;
 
+  /* مربع «كود متقدّم» إزاحته نسبية (cqw = ١٪ من عرض المسرح) زي باقي
+     العناصر العادية، مش بالبكسل زي عناصر القوالب المستوردة.
+
+     السبب: المربع بقى بمقاس محتواه ومتوسّط أفقياً، فموضعه الأساسي واحد
+     على أي عرض. اللي فاضل هو الإزاحة، ولو اتخزّنت بالبكسل كانت نفس
+     الإزاحة تبقى نص الشاشة على الموبايل وشوية على الديسكتوب — فالمربع
+     ينزل بره القسم لما تبدّل الجهاز. النسبة بتخلي الموضع «موازي»:
+     نفس المكان بالنسبة للقسم على أي مقاس. */
   function slotUnit(slot) {
+    if (slot === "code") return "%";      // نسبة من صندوق القسم نفسه
     return EL_SLOT_RE.test(slot || "") ? "px" : "cqw";
   }
 
@@ -3380,7 +3409,7 @@
     }
     var badge = fdoc.createElement("div");
     badge.className = "lb-drag-badge";
-    var suffix = unit === "px" ? "px" : "%";
+    var suffix = unit === "cqw" ? "%" : unit;
     badge.textContent = dx.toFixed(1) + suffix + " , " + dy.toFixed(1) + suffix;
     badge.style.left = Math.round(r.left + r.width / 2) + "px";
     badge.style.top = Math.max(6, Math.round(r.top - 30)) + "px";
@@ -3477,6 +3506,26 @@
         unit: slotIsPx(slot) ? 1 : stageWidth(fdoc) / 100,
         moved: false, pointerId: e.pointerId
       };
+      /* مربع الكود بيتقاس بنسبة من **القسم**، والقسم عرضه غير ارتفاعه —
+         فمحتاج وحدة لكل محور بدل وحدة واحدة زي باقي العناصر. */
+      var host = slot === "code" ? node.closest("[data-block]") : null;
+      var hostRect = host ? host.getBoundingClientRect() : null;
+      drag.unitX = hostRect ? hostRect.width / 100 : drag.unit;
+      drag.unitY = hostRect ? hostRect.height / 100 : drag.unit;
+      // مربع الكود مايخرجش من قسمه أبداً. القسم ‎overflow:hidden‎ فاللي
+      // بيخرج بيتقص ويبان ناقص — والمصمّم مش فاهم ليه. بنحسب المدى
+      // المسموح من الموضع الأساسي (قبل أي إزاحة) مرة واحدة هنا.
+      if (hostRect) {
+        var nr = node.getBoundingClientRect();
+        var baseL = nr.left - drag.dx0 * drag.unitX;
+        var baseT = nr.top - drag.dy0 * drag.unitY;
+        drag.limit = {
+          minX: (hostRect.left - baseL) / drag.unitX,
+          maxX: (hostRect.right - (baseL + nr.width)) / drag.unitX,
+          minY: (hostRect.top - baseT) / drag.unitY,
+          maxY: (hostRect.bottom - (baseT + nr.height)) / drag.unitY
+        };
+      }
       try { node.setPointerCapture(e.pointerId); } catch (err) {}
     });
 
@@ -3496,8 +3545,8 @@
       // في RTL محور الصفحة مقلوب، لكن transform دايماً فيزيائي — فبنسيبه زي ما هو
       // Shift بيبطّأ الحركة للربع عشان الظبط الدقيق
       var fine = e.shiftKey ? 0.25 : 1;
-      var dx = drag.dx0 + (mx / drag.unit) * fine;
-      var dy = drag.dy0 + (my / drag.unit) * fine;
+      var dx = drag.dx0 + (mx / (drag.unitX || drag.unit)) * fine;
+      var dy = drag.dy0 + (my / (drag.unitY || drag.unit)) * fine;
 
       var snap = drag.px ? SNAP_PX : SNAP;
       var snapX = Math.abs(dx) < snap, snapY = Math.abs(dy) < snap;
@@ -3505,12 +3554,20 @@
       if (snapY) dy = 0;
       dx = Math.max(-MAX_X, Math.min(MAX_X, dx));
       dy = Math.max(-MAX_Y, Math.min(MAX_Y, dy));
+      if (drag.limit) {
+        // المربع أعرض/أطول من القسم؟ ساعتها المدى بالسالب — بنلزقه
+        // على الحافة بدل ما نطلّع رقم مقلوب.
+        dx = Math.min(Math.max(dx, Math.min(drag.limit.minX, drag.limit.maxX)),
+                      Math.max(drag.limit.minX, drag.limit.maxX));
+        dy = Math.min(Math.max(dy, Math.min(drag.limit.minY, drag.limit.maxY)),
+                      Math.max(drag.limit.minY, drag.limit.maxY));
+      }
 
       drag.dx = Math.round(dx * 100) / 100;
       drag.dy = Math.round(dy * 100) / 100;
       applySlotOffset(node, drag.dx, drag.dy);
       showGuides(drag.fdoc, node, snapX, snapY, drag.dx, drag.dy,
-                 drag.px ? "px" : "cqw");
+                 slotUnit(drag.slot));
       markSwapTarget(drag, e.clientX, e.clientY);
     });
 
@@ -3720,6 +3777,8 @@
         e.preventDefault();
         e.stopPropagation();
 
+        // كل عناصر الافتتاحية — بما فيها مربع الكود — إزاحتها نسبية
+        // (vw/vh) عشان الموضع يفضل «موازي» على أي مقاس شاشة.
         var vw = Math.max(1, view.innerWidth || 1) / 100;
         var vh = Math.max(1, view.innerHeight || 1) / 100;
         var x = Math.round(clamp(drag.startX + dx / vw, -35, 35) * 100) / 100;

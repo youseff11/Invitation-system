@@ -1,5 +1,5 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
-{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 'ornament_top' %}{% endif %}
 <div class="lb-inner">
   {% if props.eyebrow %}<p class="lb-eyebrow" data-ts="eyebrow">{{ props.eyebrow }}</p>{% endif %}
   {% if props.heading %}<h2 class="lb-heading" data-slot="heading" data-move="heading" data-ts="heading">{{ props.heading }}</h2>{% endif %}
@@ -14,6 +14,6 @@
   {% if props.map_link %}<a class="lb-btn lb-btn--solid" href="{{ props.map_link }}" target="_blank" rel="noopener">{% icon 'pin' 18 %}<span data-ts="directions_label">{{ props.directions_label }}</span></a>{% endif %}
   {% if props.notes %}<p class="lb-note" data-ts="notes">{{ props.notes|linebreaksbr }}</p>{% endif %}
 </div>
-{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 'ornament_bottom' %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
 </section>{% endlocalize %}

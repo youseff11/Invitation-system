@@ -1,11 +1,11 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
-{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 'ornament_top' %}{% endif %}
 <div class="lb-inner">
   <blockquote class="lb-quote lb-quote--{{ props.frame }}" style="font-size:{{ props.quote_size|fluid:theme.max_width }}{% if props.quote_font %};font-family:{{ props.quote_font }}{% endif %}">
     <p data-slot="text" data-move="text" data-ts="text">{{ props.text }}</p>
     {% if props.source %}<cite data-slot="source" data-move="source" data-ts="source">{{ props.source }}</cite>{% endif %}
   </blockquote>
 </div>
-{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 'ornament_bottom' %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
 </section>{% endlocalize %}

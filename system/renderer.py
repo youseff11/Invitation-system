@@ -657,7 +657,13 @@ def layout_css(blocks: list[dict]) -> str:
             # نفس الرقم بيطلع إزاحة مختلفة في المحرر (إطار جهاز ضيّق)
             # وفي المعاينة (عرض الشاشة كله) — وده بالظبط سبب «شكل في
             # المحرر وشكل تاني في المعاينة». البكسل بيتطابق في الاتنين.
-            unit = "px" if _EL_SLOT.match(slot) else "cqw"
+            # مربع «كود متقدّم» موضعه نسبة من صندوق القسم نفسه (بيتحط
+            # في ‎left/top‎ مش في ‎transform‎) — عشان يفضل في نفس المكان
+            # من القسم على أي مقاس شاشة.
+            if slot == "code":
+                unit = "%"
+            else:
+                unit = "px" if _EL_SLOT.match(slot) else "cqw"
             rules.append(
                 f'#{bid} [data-move="{slot}"]{{--dx:{dx}{unit};--dy:{dy}{unit}}}'
             )
@@ -1047,6 +1053,16 @@ def render_document(
         if block["type"] != "video" and ctx["props"].get("text_overlays"):
             overlays = render_to_string("blocks/_section_text_overlays.html", ctx, request=request)
             rendered = rendered.replace("</section>", overlays + "</section>", 1)
+        # «كود متقدّم» في كل قسم **بما فيهم المستورد** — نفس الحقنة
+        # ونفس الحاوية ونفس السحب، عشان الشكل والسلوك يبقوا واحد في كل
+        # حتة. القسم المستورد ليه ‎html/css‎ بمعنى تاني، بس دول تخزين
+        # مالوش دعوة بخانة «الكود».
+        if str(ctx["props"].get("code") or "").strip():
+            code = render_to_string("blocks/_section_code.html", ctx, request=request)
+            # ‎rsplit‎ مش ‎replace‎: القسم ممكن يكون جوّاه ‎</section>‎ من
+            # HTML إضافي كتبه المصمّم، والمقصود آخر واحدة (بتاعة القسم).
+            head, sep, tail = rendered.rpartition("</section>")
+            rendered = head + code + sep + tail if sep else rendered + code
         chunks.append(rendered)
 
     runtime_attrs = dict(runtime_root_attrs or {})
@@ -1071,7 +1087,7 @@ def render_document(
 
         "intro_item_styles": {
             item: intro_item_css(doc_settings, item)
-            for item in ("note", "guest_name", "text", "button", "play")
+            for item in ("note", "guest_name", "text", "button", "play", "code")
         },
         # تنسيق كل نص لوحده بيتلزق مع ‎layout_css‎ في نفس المفتاح عن قصد:
         # الاتنين قواعد بتتحط في نفس المكان، وإضافة مفتاح جديد للحمولة
@@ -1115,7 +1131,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-08-30-map-embed-normalize-countdown-dir-v1"
+_PREVIEW_RENDER_REVISION = "2026-08-31-draggable-ornaments-v10"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

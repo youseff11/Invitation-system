@@ -1,4 +1,4 @@
-{% comment %}
+{% load invite %}{% comment %}
   الشاشة الافتتاحية — ملف منفصل عن render.html عن قصد.
 
   المحرر بيحدّث المعاينة بتبديل محتوى ‎.lb-stage‎ بس، والافتتاحية أخت
@@ -76,6 +76,15 @@
       مخرج. (شوف ‎initIntro‎ في ‎invite.js‎.)
     {% endcomment %}
     {% if render.settings.intro_button %}<button type="button" class="lb-btn lb-btn--solid" data-intro-item="button" data-intro-open style="{{ render.intro_item_styles.button }}">{{ render.settings.intro_button }}</button>{% endif %}
+    {% comment %}
+      نفس معالجة الأقسام بالظبط: خانة واحدة بتتفصل لستايل محصور على
+      ‎.lb-intro‎، وHTML جوّه حاوية محبوسة، وجافاسكربت في دالة مقفولة.
+    {% endcomment %}
+    {% with parts=render.settings.intro_code|split_code %}
+    {% if parts.css %}<style>{{ parts.css|safe_css:".lb-intro" }}</style>{% endif %}
+    {% if parts.html.strip %}<div class="lb-intro-extra" data-intro-item="code" style="{{ render.intro_item_styles.code }}">{{ parts.html|safe_html:0 }}</div>{% endif %}
+    {% if parts.js %}<script data-lb-section-script="1">{{ parts.js }}</script>{% endif %}
+    {% endwith %}
   </div>
 </div>
 {% endif %}

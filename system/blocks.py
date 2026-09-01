@@ -299,6 +299,63 @@ OVERLAY_KINDS = [
 # شغّالة، وتغييره معناه إن كل نص فوق قسم في كل دعوة قديمة يختفي.
 # العناصر التلاتة في **قايمة واحدة** عشان السحب والموضع والمقابض
 # يشتغلوا لهم بنفس الكود بدل تلات نسخ من نفس المنطق.
+# --------------------------------------------------------------------------
+# كود متقدّم — لكل قسم، مش المستورد بس
+# --------------------------------------------------------------------------
+# خانة واحدة بيتلزق فيها الكود كله زي ما هو — ستايل وHTML وجافاسكربت.
+# الكود الجاهز اللي أي حد بينسخه مكتوب كده أصلاً، وتقسيمه على خانتين كان
+# بيخلي المصمّم يفصل الحتت بإيده ويسيب ‎<script>‎ يتشال من غير ما ياخد
+# باله. الفصل بقى شغل السيرفر وقت العرض (``templatetags.invite.split_code``).
+#
+# الاسم ‎code‎ مش ‎html‎ عن قصد: ``renderer`` بيعرف القسم المستورد من وجود
+# مفتاح ‎html‎ بالذات، فلو سمّيناه كده كان هيعتبر كل قسم مستورد.
+SECTION_CODE_FIELD = field(
+    "code", "الكود", "textarea", "", group="كود متقدّم", translate=False,
+    help_text="الصق الكود كله هنا زي ما هو: <style> وHTML و<script>. "
+              "الستايل بيتحصر على القسم ده وحده، والكود بيطلع في مربع "
+              "واحد محبوس جوّه حدود القسم وبيتسحب بالماوس كقطعة واحدة. "
+              "جوّه <script> المتغيّر root هو عنصر القسم نفسه.")
+
+# الخانتين القديمتين. اتلمّوا في خانة واحدة، والقيم المحفوظة بتتنقل لها
+# تلقائياً في ``normalize_document`` — فضلوا متسجّلين عشان التطبيع يشوف
+# القيمة القديمة قبل ما ينقلها، ومخفيين عن المحرر. مالهمش لازمة في
+# القسم المستورد: ‎css‎ هناك اسم متاخد لستايل القالب نفسه.
+SECTION_LEGACY_CODE_FIELDS = [
+    field("css", "ستايل القسم (قديم)", "textarea", "", group="كود متقدّم",
+          translate=False, editor_hidden=True),
+    field("extra_html", "HTML إضافي (قديم)", "html", "", group="كود متقدّم",
+          translate=False, editor_hidden=True),
+]
+
+
+def merge_legacy_code(values: dict, *, code_key: str, css_key: str,
+                      html_key: str) -> None:
+    """يلمّ خانتَي الستايل والـHTML القديمتين في خانة «الكود» الواحدة.
+
+    بيشتغل جوّه التطبيع، والتطبيع بيتنادى على كل عرض كمان — فالمستند
+    القديم بيتصلّح لوحده من غير migration ومن غير ما المصمّم يعمل حاجة،
+    وبيتخزّن بالشكل الجديد أول مرة يتحفظ.
+    """
+    if code_key not in values or str(values.get(code_key) or "").strip():
+        return
+    # القسم المستورد عنده ‎css‎ بمعنى تاني خالص (ستايل القالب كله) ومالوش
+    # ‎extra_html‎ أصلاً. من غير الحارس ده كان الدمج هيبلع ستايل كل قالب
+    # مستورد ويحطه في خانة الكود.
+    if html_key not in values or css_key not in values:
+        return
+    css = str(values.get(css_key) or "").strip()
+    html = str(values.get(html_key) or "").strip()
+    if not css and not html:
+        return
+    parts = []
+    if css:
+        parts.append(f"<style>\n{css}\n</style>")
+    if html:
+        parts.append(html)
+    values[code_key] = "\n".join(parts)
+    values[css_key] = ""
+    values[html_key] = ""
+
 SECTION_TEXT_OVERLAY_FIELD = field(
     "text_overlays", "عناصر فوق القسم", "list", [],
     group="عناصر فوق القسم",
@@ -566,6 +623,8 @@ MOVABLE_PARTS = {
     "buttons", "ornament_top", "ornament_bottom", "image", "gallery", "map",
     "countdown", "qr", "form", "details", "video", "hosts", "agenda", "share",
     "scroll_hint", "card", "media",
+    # حاوية «كود متقدّم» — بتتسحب بالماوس زي أي عنصر تاني في القسم
+    "code",
 }
 
 
@@ -621,6 +680,13 @@ def register(
     block_props = list(props)
     if supports_style and not any(f.get("key") == "text_overlays" for f in block_props):
         block_props.append(SECTION_TEXT_OVERLAY_FIELD)
+    # «كود متقدّم» في كل قسم، مش في المستورد بس. القسم المستورد (اللي
+    # عنده مفتاح ‎html‎) معرّف حقوله بنفسه بمعنى مختلف — الـHTML هناك
+    # **هو** القسم — فبنسيبه زي ما هو.
+    block_props.append(copy.deepcopy(SECTION_CODE_FIELD))
+    if not any(f.get("key") == "html" for f in block_props):
+        for spec in SECTION_LEGACY_CODE_FIELDS:
+            block_props.append(copy.deepcopy(spec))
     # كل حقل نص بياخد حقول تنسيقه (ترسه). لازم تيجي قبل ما المخطط
     # يتخزّن عشان normalize_document تعرف المفاتيح الجديدة.
     block_props = attach_text_styles(btype, block_props)
@@ -1063,11 +1129,17 @@ register(
     props=[
         # المجموعة دي مقفولة افتراضياً. التعديل العادي بيتم من المعاينة
         # مباشرة (اكتب فوق النص، اسحب العنصر) ومن مجموعة الألوان.
+        # الاتنين دول تخزين مش خانات في المحرر: ‎html‎ بيتكتب من المحرر
+        # البصري مع كل تعديل، و‎css‎ ستايل القالب المستورد اللي
+        # ‎shared_block_css‎ بتطبعه مرة واحدة. الكود اللي المصمّم بيكتبه
+        # بإيده بيروح لخانة «الكود» زي أي قسم تاني بالظبط.
         field("html", "الكود", "html", "", group="كود متقدّم",
+              editor_hidden=True,
               help_text="يمر عبر منقّي أمان — الوسوم الخطرة تُزال تلقائياً"),
-                field("css", "ستايل القسم", "textarea", "",      group="كود متقدّم",
-              translate=False,
+        field("css", "ستايل القسم", "textarea", "", group="كود متقدّم",
+              translate=False, editor_hidden=True,
               help_text="يُحصر داخل هذا القسم فقط — لن يؤثر على باقي الدعوة"),
+
         field("countdown_date", "موعد العدّاد المستورد", "datetime", "",
               group="إعدادات العداد", translate=False,
               help_text="يظهر هذا الحقل للأقسام التي تحتوي على Countdown؛ اتركه فارغاً لاستخدام موعد القالب الأصلي."),
@@ -1243,6 +1315,21 @@ SETTINGS_FIELDS = [
           minimum=0, maximum=15, step=1, group="الافتتاحية",
           help_text="صفر = يستنى الضيف يضغط. أي رقم = الدعوة تفتح لوحدها بعده."),
     field("intro_image", "صورة خلفية الافتتاحية", "image", "", group="الافتتاحية"),
+    # نفس فكرة «كود متقدّم» بتاعة الأقسام، بس للشاشة الافتتاحية. الاسم
+    # ‎intro_custom_css‎ مش ‎intro_css‎ لأن ‎intro_css‎ اسم محجوز في ناتج
+    # ‎render_document‎ (ستايل مواضع عناصر الافتتاحية المحسوب).
+    field("intro_code", "كود الافتتاحية", "textarea", "",
+          group="كود متقدّم", translate=False,
+          help_text="الصق الكود كله هنا زي ما هو: <style> وHTML و"
+                    "<script>. الستايل بيتحصر على الشاشة الافتتاحية "
+                    "وحدها، والكود محبوس جوّه حدودها. جوّه <script> "
+                    "المتغيّر root هو عنصر الافتتاحية."),
+    # القديمتين — القيم بتتنقل لـ‎intro_code‎ في التطبيع (شوف
+    # ``merge_legacy_code``) وبعدها بيفضلوا فاضيين.
+    field("intro_custom_css", "ستايل الافتتاحية (قديم)", "textarea", "",
+          group="كود متقدّم", translate=False, editor_hidden=True),
+    field("intro_custom_html", "HTML إضافي في الافتتاحية (قديم)", "html", "",
+          group="كود متقدّم", translate=False, editor_hidden=True),
     # حقلا الإزاحة القديمة مخفيان للتوافق مع الدعوات التي حُفظت قبل السحب المستقل.
     field("intro_text_x", "موضع نص الافتتاحية القديم أفقياً", "range", 0,
           group="الافتتاحية", minimum=-35, maximum=35, step=1, unit="vw",
@@ -1458,9 +1545,10 @@ def _coerce(value: Any, spec: dict) -> Any:
         # أقساماً مهمة من HTML بعد الحفظ. التنقية نفسها ما زالت مطبقة.
         return clean_html(value if isinstance(value, str) else "", max_length=100000)
 
-    if ftype == "textarea" and spec.get("key") == "css":
+    if ftype == "textarea" and str(spec.get("key") or "").endswith(("css", "code")):
         # stylesheet كامل للقالب المستورد، مع إبقاء حد أعلى مستقل حتى لا
-        # تتسرب قيمة ضخمة إلى قاعدة البيانات.
+        # تتسرب قيمة ضخمة إلى قاعدة البيانات. نفس المعاملة لأي حقل ستايل
+        # تاني (‎intro_custom_css‎) — الحد العام ٥٠٠٠ حرف كان بيقص CSS.
         return str(value or "")[:250000]
 
     if ftype in {"image", "media"}:
@@ -1543,6 +1631,14 @@ def _legacy_intro_play_mode(settings: dict) -> str:
     return "button" if effects is False else "button_effects"
 
 
+def _block_props(props_raw: dict, spec: dict) -> dict:
+    """حقول القسم بعد التحقّق، مع لمّ خانات الكود القديمة في خانة واحدة."""
+    props = {s["key"]: _coerce(props_raw.get(s["key"]), s) for s in spec["props"]}
+    merge_legacy_code(props, code_key="code", css_key="css",
+                      html_key="extra_html")
+    return props
+
+
 def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) -> dict:
 
     """ينظّف مستنداً قادماً من المستخدم ويعيده بشكل آمن ومكتمل.
@@ -1566,6 +1662,8 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
         s["key"]: _coerce(settings_for_schema.get(s["key"]), s)
         for s in SETTINGS_FIELDS
     }
+    merge_legacy_code(out["settings"], code_key="intro_code",
+                      css_key="intro_custom_css", html_key="intro_custom_html")
 
     # نحتفظ بالمفاتيح القديمة داخل المستند للتوافق مع أي نسخة قديمة من
     # التطبيق أو أدوات التصدير، لكن لا نعرضها في schema ولا نستخدمها إذا
@@ -1631,7 +1729,7 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
             "visible": bool(item.get("visible", True)),
             "locked": bool(item.get("locked", False)),
             "gated": bool(item.get("_gated", False)),
-            "props": {s["key"]: _coerce(props_raw.get(s["key"]), s) for s in spec["props"]},
+            "props": _block_props(props_raw, spec),
             "style": {s["key"]: _coerce(style_raw.get(s["key"]), s) for s in spec["style"]},
             "layout": _clean_layout(item.get("layout"), slots),
         })

@@ -1,10 +1,10 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="{{ block.type }}"{% if editable %} data-editable="1"{% endif %}>
-{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 %}{% endif %}
+{% if style.divider_top and style.divider_top != 'none' %}{% ornament style.divider_top 44 'ornament_top' %}{% endif %}
 <div class="lb-inner">
   <div data-move="buttons" class="lb-btn-row lb-btn-row--{{ props.layout }}">
     {% for b in props.items %}{% if b.label %}<a class="lb-btn lb-btn--{{ b.style }}" href="{% button_href b.action b.target data %}" data-action="{{ b.action }}"{% if b.action == 'link' or b.action == 'map' or b.action == 'calendar' %} target="_blank" rel="noopener"{% endif %}>{% if b.icon %}{% icon b.icon 18 %}{% endif %}<span>{{ b.label }}</span></a>{% endif %}{% endfor %}
   </div>
 </div>
-{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 %}{% endif %}
+{% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 'ornament_bottom' %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">تنبيه: هذا القسم خارج الباقة لكنه مفعّل في الدعوة</div>{% endif %}
 </section>{% endlocalize %}

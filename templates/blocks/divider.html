@@ -1,3 +1,3 @@
 {% load invite l10n %}{% localize off %}<section id="{{ block.id }}" class="{{ classes }}{% if hidden %} lb--hidden{% endif %}" style="{{ css }}" data-block="{{ block.id }}" data-block-type="divider"{% if editable %} data-editable="1"{% endif %}>
-<div class="lb-inner">{% ornament props.variant props.size %}</div>
+<div class="lb-inner">{% ornament props.variant props.size 'ornament_top' %}</div>
 </section>{% endlocalize %}

@@ -17,6 +17,9 @@ from ..sanitize import clean_html
 register = template.Library()
 
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# نطاق مكتوب بالإيد جوّه القالب — ‎.lb-intro‎ مثلاً. مابيجيش من المستخدم
+# أبداً، بس بنتحقق منه برضو عشان مايتسربش منه حاجة للمُحدِّد.
+_SAFE_SCOPE = re.compile(r"^[.#][A-Za-z][A-Za-z0-9_-]{0,63}$")
 _VIDEO_ATTR_RE = re.compile(
     r'((?:src|poster)\s*=\s*["\'])(/media/[^"\']+\.(?:mp4|m4v|mov|webm|ogv)(?:\?[^"\']*)?)(["\'])',
     re.I,
@@ -69,8 +72,13 @@ _ORNAMENTS = {
 
 
 @register.simple_tag
-def ornament(variant: str, size: int | str = 40):
-    """يرسم زخرفة فاصلة كـSVG مضمّن."""
+def ornament(variant: str, size: int | str = 40, slot: str = ""):
+    """يرسم زخرفة فاصلة كـSVG مضمّن.
+
+    ‎slot‎ بيدّي الزخرفة اسم موضع (‎ornament_top‎/‎ornament_bottom‎) فتبقى
+    قابلة للسحب بالماوس زي أي عنصر تاني في القسم — الأسماء دي متسجّلة
+    خلاص في ``blocks.MOVABLE_PARTS`` فالموضع بيتحفظ ويترسم من السيرفر.
+    """
     svg = _ORNAMENTS.get(variant or "")
     if not svg:
         return ""
@@ -78,8 +86,11 @@ def ornament(variant: str, size: int | str = 40):
         px = max(10, min(400, int(float(size))))
     except (TypeError, ValueError):
         px = 40
+    move = ""
+    if _SAFE_ID.match(str(slot or "")):
+        move = f' data-move="{slot}"'
     return mark_safe(
-        f'<div class="lb-ornament lb-ornament--{variant}" '
+        f'<div class="lb-ornament lb-ornament--{variant}"{move} '
         f'style="--orn-size:{px}px" aria-hidden="true">{svg}</div>'
     )
 
@@ -222,6 +233,86 @@ def safe_html(value, max_length=20000):
     return mark_safe(cleaned)
 
 
+# اللي بيلزق كود جاهز بيلزقه قطعة واحدة: ‎<style>…</style>‎ وبعدها الـHTML.
+# ‎clean_html‎ بترمي وسم ‎<style>‎ ومحتواه بالكامل (‎DROP_CONTENT_TAGS‎)، لأن
+# ستايل حر جوّه الصفحة يقدر يلمس أي حاجة فيها. فبدل ما نرميه، بنفصله
+# ونمرّره على نفس الحصر بتاع ‎safe_css‎ — الستايل بيشتغل بس محبوس جوّه
+# القسم. الفلترين دول بيتنادوا مع بعض في نفس القالب.
+_STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>(.*?)(?:</style\s*>|$)", re.I | re.S)
+
+
+@register.filter(name="style_css")
+def style_css(value):
+    """يرجّع محتوى كل ‎<style>‎ جوّه HTML — من غير حصر (‎safe_css‎ بتحصره)."""
+    blocks = _STYLE_BLOCK_RE.findall(str(value or ""))
+    return "\n".join(block for block in blocks if block.strip())
+
+
+@register.filter(name="strip_style")
+def strip_style(value):
+    """نفس الـHTML من غير وسوم ‎<style>‎ — ستايلها اتاخد في ‎style_css‎."""
+    return _STYLE_BLOCK_RE.sub("", str(value or ""))
+
+
+_SCRIPT_BLOCK_RE = re.compile(
+    r"<script\b([^>]*)>(.*?)(?:</script\s*>|$)", re.I | re.S)
+# ‎src‎ الخارجي مالوش لازمة هنا وبيفتح باب لكود من سيرفر تاني — الكود
+# المكتوب جوّه الوسم بس هو اللي بيشتغل.
+_SCRIPT_SRC_RE = re.compile(r"\bsrc\s*=", re.I)
+
+
+@register.filter(name="split_code")
+def split_code(value):
+    """يفصل خانة «الكود» الواحدة لتلات حتت: ستايل، وHTML، وجافاسكربت.
+
+    المصمّم بيلزق الكود قطعة واحدة زي ما نسخه. الفصل بيحصل هنا وقت
+    العرض عشان المخزَّن يفضل زي ما هو مكتوب ويتقرا ويتعدّل تاني.
+
+    الجافاسكربت بيتلف في دالة مقفولة عليها ‎try/catch‎: كود غلط في قسم
+    مايوقّعش باقي الدعوة، والمتغيّرات مابتتسربش للنطاق العام. ‎root‎
+    جوّاها = عنصر القسم، فالكود يشتغل على قسمه من غير ما يدوّر بإيده.
+    """
+    raw = str(value or "")
+    if not raw.strip():
+        return {"css": "", "html": "", "js": ""}
+
+    scripts: list[str] = []
+
+    def take_script(match: "re.Match[str]") -> str:
+        attrs, body = match.group(1) or "", match.group(2) or ""
+        if _SCRIPT_SRC_RE.search(attrs):
+            return ""
+        if body.strip():
+            scripts.append(body)
+        return ""
+
+    css = style_css(raw)
+    html = _SCRIPT_BLOCK_RE.sub(take_script, strip_style(raw))
+
+    return {"css": css, "html": html, "js": wrap_js("\n".join(scripts))}
+
+
+@register.filter(name="wrap_js")
+def wrap_js(value):
+    """يلفّ كود المصمّم في دالة مقفولة عليها ‎try/catch‎ ومعاها ‎root‎.
+
+    ‎split_code‎ بتنده الدالة دي على السكربتات اللي فصلتها. متاحة
+    كفلتر برضو لو قالب احتاج يلفّ كود جاهز عنده.
+    """
+    body = str(value or "").strip()
+    if not body:
+        return ""
+    # ‎</script>‎ جوّه نص في كود المستخدم بينهي الوسم بدري عند المتصفح —
+    # بنكسرها زي ما بيتعمل في أي حقن سكربت.
+    body = body.replace("</script", "<\\/script")
+    return mark_safe(
+        "(function(){var s=document.currentScript;"
+        "var root=s&&s.closest?s.closest('[data-block],.lb-intro'):null;"
+        "try{" + body + "}catch(e){"
+        "console.error('[farha] كود القسم وقع:',e);}})();"
+    )
+
+
 @register.filter(name="safe_css")
 def safe_css(value, block_id=""):
     """يحصر ستايل القسم المستورد جوّه القسم نفسه — وقت العرض.
@@ -233,7 +324,14 @@ def safe_css(value, block_id=""):
     if not value:
         return ""
     bid = str(block_id or "").strip()
-    scope = f"#{bid}" if _SAFE_ID.match(bid) else ".lb-custom"
+    if _SAFE_SCOPE.match(bid):
+        # نطاق مكتوب بالإيد في القالب (‎.lb-intro‎) — الافتتاحية مالهاش
+        # مُعرِّف قسم زي البلوكات.
+        scope = bid
+    elif _SAFE_ID.match(bid):
+        scope = f"#{bid}"
+    else:
+        scope = ".lb-custom"
     return mark_safe(scope_css(str(value), scope))
 
 
