@@ -3404,17 +3404,16 @@
      الإزاحة تبقى نص الشاشة على الموبايل وشوية على الديسكتوب — فالمربع
      ينزل بره القسم لما تبدّل الجهاز. النسبة بتخلي الموضع «موازي»:
      نفس المكان بالنسبة للقسم على أي مقاس. */
+  /* مربع الكود بالبكسل زي عناصره: هو متوسّط وعلى مقاس الكود، فمرجعه
+     نص القسم والبكسل بيتطابق بين إطار الموبايل والمعاينة. لو كان
+     بالنسبة، السحب بيطلع بشكل لما تمسك المربع من حرفه وبشكل تاني لما
+     تمسك الشكل اللي جوّاه — وده اللي المصمّم شافه. */
   function slotUnit(slot) {
-    if (slot === "code") return "%";      // أفقياً: نسبة من عرض القسم
+    if (slot === "code") return "px";
     return EL_SLOT_RE.test(slot || "") ? "px" : "cqw";
   }
 
-  /* مربع الكود بقى داخل تدفّق القسم، والقسم بيطول على قده — فارتفاعه
-     واحد في المحرر وفي المعاينة والبكسل بيتطابق. النسبة هنا كانت
-     هتتحسب من ارتفاع بيتغيّر مع الإزاحة نفسها. */
-  function slotUnitY(slot) {
-    return slot === "code" ? "px" : slotUnit(slot);
-  }
+  function slotUnitY(slot) { return slotUnit(slot); }
 
   function slotIsPx(slot) { return slotUnit(slot) === "px"; }
   var THRESHOLD = 4;       // px — أقل من كده تبقى ضغطة مش سحب
@@ -3568,12 +3567,13 @@
         unit: slotIsPx(slot) ? 1 : stageWidth(fdoc) / 100,
         moved: false, pointerId: e.pointerId
       };
-      /* مربع الكود أفقياً بنسبة من عرض **القسم**، ورأسياً بالبكسل —
-         وحدة لكل محور بدل وحدة واحدة زي باقي العناصر. */
-      var host = slot === "code" ? node.closest("[data-block]") : null;
+      /* المربع بالبكسل زي باقي العناصر — القسم بيتقاس بس عشان الحد
+         الأفقي (المربع مايخرجش بره قسمه). */
+      var host = (slot === "code" || /^ce-\d/.test(slot || ""))
+        ? node.closest("[data-block]") : null;
       var hostRect = host ? host.getBoundingClientRect() : null;
-      drag.unitX = hostRect ? hostRect.width / 100 : drag.unit;
-      drag.unitY = hostRect ? 1 : drag.unit;
+      drag.unitX = drag.unit;
+      drag.unitY = drag.unit;
       /* ‎setPointerCapture‎ اتأخّر لحد ما السحب يبدأ فعلاً (تحت في
          ‎pointermove‎). لما كان بيتاخد هنا، المتصفح بيعيد توجيه حدث
          ‎click‎ للحاوية بدل العنصر اللي اتضغط جوّاها — يعني أي زرار أو
@@ -4171,6 +4171,13 @@
     // الصور، الخريطة، العدّاد، الفورم…). النصوص متعلّمة تلقائياً في القوالب.
     fdoc.querySelectorAll("[data-move]").forEach(function (node) {
       if (node.hasAttribute("data-slot")) return;      // اتربط فوق
+      /* حاوية «كود متقدّم»: اللي بيتسحب هو الشكل اللي جوّاها (‎ce-1‎)
+         مش هي. الاتنين كانوا بيتسحبوا، فلو مسكت من حرف المربع بتحرّك
+         الحاوية ولو مسكت من نص الشكل بتحرّك الشكل — حركتين مختلفتين
+         لنفس الحاجة. لو الكود مافيهوش عنصر مرقّم أصلاً، الحاوية
+         بتفضل هي المقبض. */
+      if (node.classList.contains("lb-extra-html") &&
+          node.querySelector("[data-move]")) return;
       var holder = node.closest("[data-block]");
       if (!holder) return;
       bindSlotDrag(node, holder.getAttribute("data-block"),
