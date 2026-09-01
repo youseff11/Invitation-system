@@ -3062,9 +3062,17 @@
      جوّه اللفّة تلاقي القسم الصح. */
   function runSectionScripts(fdoc) {
     if (!fdoc) return;
-    fdoc.querySelectorAll("script[data-lb-section-script]").forEach(function (old) {
+    /* ‎data-lb-ran‎ بيتحط على النسخة اللي اشتغلت. من غيره كان السكربت
+       يتنفّذ تاني مع **كل** تحديث معاينة — والتحديث بيحصل مع كل حرف
+       بتكتبه — فمستمعات الأحداث والمؤقتات تتكرّر والكود يتصرّف غلط.
+       التحديث الكامل بيستبدل محتوى المسرح، فالسكربتات الجديدة بتيجي
+       من السيرفر من غير العلامة دي وبتشتغل مرة واحدة. */
+    fdoc.querySelectorAll(
+      "script[data-lb-section-script]:not([data-lb-ran])"
+    ).forEach(function (old) {
       var fresh = fdoc.createElement("script");
       fresh.setAttribute("data-lb-section-script", "1");
+      fresh.setAttribute("data-lb-ran", "1");
       fresh.textContent = old.textContent;
       old.parentNode.replaceChild(fresh, old);
     });
