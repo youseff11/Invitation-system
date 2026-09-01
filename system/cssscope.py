@@ -25,7 +25,10 @@ _DANGER = re.compile(r"(expression\s*\(|javascript:|vbscript:|behavior\s*:|"
 _COMMENT = re.compile(r"/\*.*?\*/", re.S)
 
 # مُحدِّدات بتشاور على الصفحة كلها — بنستبدلها بالقسم نفسه
-_ROOT_SELECTORS = {"html", "body", ":root", "*", "html body", ":root body"}
+_ROOT_SELECTORS = {"html", "body", ":root", "html body", ":root body"}
+# ‎*‎ معناها «كل حاجة»، فلو حوّلناها للقسم لوحده بيبقى ريست الـCSS
+# الشائع (‎*{box-sizing:border-box}‎) مش بيوصل لأي عنصر جوّه القالب
+# ومحدش فاهم ليه المقاسات طالعة غلط. بتتحوّل للقسم **وكل** اللي جوّاه.
 
 # at-rules ليها مُحدِّدات جوّاها لازم تتحصر هي كمان
 _NESTED_AT = re.compile(r"^@(media|supports|container|layer)\b", re.I)
@@ -90,6 +93,8 @@ def _scope_selector(sel: str, scope: str) -> str:
     if not sel:
         return ""
     low = sel.lower()
+    if low == "*":
+        return f"{scope},{scope} *"
     if low in _ROOT_SELECTORS:
         return scope
     # زي html.dark أو body.rtl — نخلّيها على القسم نفسه
