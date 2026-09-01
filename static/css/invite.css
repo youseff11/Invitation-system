@@ -268,7 +268,11 @@
    هنا الإزاحة في ‎left/margin-top‎ مش في ‎transform‎. */
 .lb-extra-html {
   position: relative;
-  z-index: 4;
+  /* تحت «عناصر فوق القسم» (‎z-index:4‎) عن قصد: دي اسمها «فوق القسم»
+     وبتتضاف بعد الكود، فالمفروض تبان فوقه وتاخد الضغطة هي. الكود
+     بيتحقن آخر حاجة في الـ‎<section>‎، فبنفس الـ‎z-index‎ كان بيكسب
+     بترتيب الـDOM ويحجب النص اللي المستخدم حطّه فوقه. */
+  z-index: 2;
   left: var(--dx, 0%);
   margin-top: var(--dy, 0px);
   transform: none !important;
@@ -1485,6 +1489,31 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   outline-offset: 3px; cursor: grab;
 }
 .lb-doc--editing .lb-custom [data-move].lb-dragging { cursor: grabbing; }
+
+/* ---- عناصر «كود متقدّم»: إطار واحد بس، وعلى قد العنصر
+
+   كل عنصر مرقّم بيرسم إطار عند الـ‎hover‎، و‎:hover‎ بتتحقق على كل
+   الآباء كمان — فكارت واحد جوّه ٣ حاويات كان بيوريك ٣ إطارات متداخلة
+   مرة واحدة. ‎:has()‎ بتسيب الإطار للعنصر **الأعمق** اللي الماوس
+   عليه بس، والحاوية نفسها (‎.lb-extra-html‎) مالهاش إطار أصلاً. */
+.lb-doc--editing .lb-extra-html:hover,
+.lb-doc--editing .lb-extra-html.lb-dragging,
+.lb-doc--editing .lb-extra-html [data-move]:hover:has([data-move]:hover) {
+  outline: none !important;
+}
+/* ‎!important‎ لأن وحدة النص بياخد ‎style="outline:none"‎ من المحرر
+   نفسه (عشان مؤشّر الكتابة مايرسمش إطار المتصفح) — والـinline بيكسب
+   أي قاعدة من غيرها. */
+.lb-doc--editing .lb-extra-html [data-move]:hover:not(:has([data-move]:hover)) {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent) !important;
+  outline-offset: 3px;
+  cursor: grab;
+}
+.lb-doc--editing .lb-extra-html [data-move].lb-dragging {
+  outline: 1px solid var(--accent) !important;
+  outline-offset: 3px;
+  cursor: grabbing;
+}
 
 /* العنصر المحدَّد جوّه قسم مستورد */
 .lb-doc--editing .lb-el-picked {

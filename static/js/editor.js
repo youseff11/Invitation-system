@@ -3312,7 +3312,11 @@
       // لا نفرّغ stage إلا في تحديث المستند الكامل؛ تغيير إعدادات intro
       // يستبدل عقدة الافتتاحية فقط حتى لا تظهر شاشة بيضاء.
       var footer = stage.querySelector(".lb-footer");
-      if (typeof data.html === "string" && data.html.trim()) stage.innerHTML = data.html;
+      /* «فاضي» حالة شرعية: لما تمسح آخر قسم، السيرفر بيرجّع ‎html‎ فاضية
+         وده صح. شرط ‎.trim()‎ هنا كان بيتخطّى التحديث، فالقسم المحذوف
+         يفضل باين في المعاينة لحد ما تعمل ريفريش. الحماية من رد ناقص
+         موجودة فوق أصلاً: ‎applyPreview‎ مابتتنداش غير بعد ‎data.ok‎. */
+      if (typeof data.html === "string") stage.innerHTML = data.html;
       if (footer && !stage.contains(footer)) stage.appendChild(footer);
 
       if (fdoc.body) fdoc.body.setAttribute("style", data.cssVars || "");
@@ -4239,6 +4243,33 @@
       (!(n.textContent || "").trim() || !n.querySelector("img,video,iframe,input,textarea,select"));
   }
 
+  /* عناصر مربع «كود متقدّم» — **مش** كل حاوية زي القالب المستورد.
+
+     كود التصميم بيلف الشكل في تلات أو أربع حاويات (‎section > inner >
+     arch > names‎)، وكل واحدة مرقّمة كانت بترسم إطار تحديد لوحدها —
+     فالمصمّم بيشوف ٣ إطارات على كارت واحد، وأول ما يمسك يسحب بيمسك
+     حاوية جوّانية فيتحرك جزء من الشكل بدل الشكل كله.
+
+     اللي بيتّرقّم: الطبقة الخارجية (الشكل كله — سحبها بيحرّك كل اللي
+     جوّاها)، والكلام، والصور. الحاويات اللي في النص بتتشال. */
+  var CODE_MEDIA_RE = /^(?:IMG|VIDEO|IFRAME|SVG|CANVAS|PICTURE)$/;
+
+  function codeMovables(root) {
+    var out = [];
+    var big = function (n) {
+      var r = n.getBoundingClientRect();
+      return r.width > 6 && r.height > 6;
+    };
+    Array.prototype.forEach.call(root.children, function (n) {
+      if (big(n)) out.push(n);
+    });
+    root.querySelectorAll("*").forEach(function (n) {
+      if (out.indexOf(n) > -1 || !big(n)) return;
+      if (CODE_MEDIA_RE.test(n.tagName) || isCodeTextUnit(n, root)) out.push(n);
+    });
+    return out;
+  }
+
   /** العناصر اللي نسمح بسحبها — أي حاجة ليها حجم حقيقي. */
   function movableIn(root) {
 
@@ -4676,7 +4707,7 @@
             من غير الخطوة دي، <span> جوّه <h1> بتخطف الاختيار من العنوان
             وتخلّيك تحرّك علامة & لوحدها بدل الاسم.
          ٣) ترقيم وربط. */
-      var all = movableIn(root);
+      var all = codeRoot ? codeMovables(root) : movableIn(root);
       all.forEach(function (n) {
         /* في المربع بنستعمل شرط أوسع: كود المصمّم بيكتب الأسامي في
            ‎<div>‎ زي ما بيكتبها في ‎<h1>‎، والاتنين المفروض يتعدّلوا. */
@@ -4699,6 +4730,20 @@
          فترقيم واحد كان هيخلي عنصرين في مكانين مختلفين ياخدوا نفس
          الإزاحة. */
       var prefix = codeRoot ? "ce-" : "el-";
+      /* ترقيم قديم لحاويات مابقتش تتحدّد (من نسخة أقدم من المحرر)
+         بيفضل في النص المحفوظ ويكمّل يرسم إطارات — بنشيله وبنشيل
+         موضعه المحفوظ معاه. */
+      var dropped = [];
+      if (codeRoot) {
+        root.querySelectorAll("[data-move]").forEach(function (n) {
+          if (nodes.indexOf(n) > -1) return;
+          var slot = n.getAttribute("data-move");
+          n.removeAttribute("data-move");
+          n.removeAttribute("data-lb-text");
+          if (block.layout && slot) delete block.layout[slot];
+          dropped.push(n);
+        });
+      }
       var next = 1;
       nodes.forEach(function (n) {
         if (!n.getAttribute("data-move")) {
@@ -4777,8 +4822,8 @@
       });
 
       // أول ما نضيف data-move لازم نحفظها، وإلا هتضيع مع أول حفظ
-      if (!nodes.length) return;
-      if (codeRoot) codeWriteMoveAttrs(root, nodes);
+      if (!nodes.length && !dropped.length) return;
+      if (codeRoot) codeWriteMoveAttrs(root, nodes.concat(dropped));
       else writeBack();
     });
     markSelectedEl();
