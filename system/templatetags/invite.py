@@ -332,7 +332,10 @@ def safe_css(value, block_id=""):
         scope = f"#{bid}"
     else:
         scope = ".lb-custom"
-    return mark_safe(scope_css(str(value), scope))
+    # الشاشة الافتتاحية بس هي اللي مسموح فيها ‎position:fixed‎ — دي
+    # أصلاً طبقة بتغطي الشاشة. أي قسم تاني بيفضل محصور.
+    return mark_safe(scope_css(str(value), scope,
+                               allow_fixed=(scope == ".lb-intro")))
 
 
 @register.filter(name="video_url")

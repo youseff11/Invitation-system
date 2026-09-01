@@ -289,10 +289,21 @@
 .lb-extra-html > *,
 .lb-intro-extra > * { margin-inline: auto; }
 
-/* نفس الحبس للكود الإضافي في الشاشة الافتتاحية */
+/* الكود الإضافي في الشاشة الافتتاحية — **من غير حبس** عن قصد.
+
+   الافتتاحية أصلاً طبقة بتغطي الشاشة، فمنطقي إن المصمّم يعمل شاشة
+   افتتاح كاملة بـ‎position:fixed‎. أي ‎contain‎ (وكمان أي ‎transform‎
+   ولو بصفر) بتخلي الحاوية هي مرجع الـ‎fixed‎ بدل الشاشة — فتصميم
+   المفروض يملا الشاشة بيتحبس في مربع صغير. قياس حي: ٢٠٠×١٠٠ بدل
+   ٦٣٢×٧١٦.
+
+   عشان كده الإزاحة هنا في ‎left/top‎ مش في ‎transform‎: ‎position:relative‎
+   بيزحزح العنصر من غير ما يعمل مرجع للـ‎fixed‎. */
 .lb-intro-extra {
-  position: relative;
-  contain: layout paint;
+  position: static;
+  margin-inline-start: var(--intro-item-x, 0px);
+  margin-top: var(--intro-item-y, 0px);
+  transform: none !important;
   max-width: 100%;
 }
 .lb-intro-extra:empty { display: none; }

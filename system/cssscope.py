@@ -61,7 +61,8 @@ def resolve_urls(css: str, url_map: dict[str, str]) -> str:
     return _rewrite_urls(css or "", url_map or {})
 
 
-def _clean_declarations(body: str, url_map: dict[str, str]) -> str:
+def _clean_declarations(body: str, url_map: dict[str, str],
+                        allow_fixed: bool = False) -> str:
     out = []
     for decl in body.split(";"):
         if ":" not in decl:
@@ -72,8 +73,11 @@ def _clean_declarations(body: str, url_map: dict[str, str]) -> str:
         prop, val = prop.strip(), val.strip()
         if not prop or not val:
             continue
-        # fixed بيطلع بره القسم ويفضل معلّق فوق باقي الدعوة
-        if prop.lower() == "position" and val.lower() == "fixed":
+        # ‎fixed‎ بيطلع بره القسم ويفضل معلّق فوق باقي الدعوة — إلا في
+        # الشاشة الافتتاحية: دي أصلاً طبقة بتغطي الشاشة، والمصمّم اللي
+        # بيعمل شاشة افتتاح كاملة محتاج ‎fixed‎ فعلاً.
+        if (prop.lower() == "position" and val.lower() == "fixed"
+                and not allow_fixed):
             val = "absolute"
         if "url(" in val.lower():
             val = _rewrite_urls(val, url_map)
@@ -133,7 +137,7 @@ def _split_top_level(css: str):
 
 
 def scope_css(css: str, scope: str, url_map: dict[str, str] | None = None,
-              *, _depth: int = 0) -> str:
+              *, allow_fixed: bool = False, _depth: int = 0) -> str:
     """يرجّع CSS محصور داخل ``scope`` (زي ``#blk-3``)."""
     if not css or _depth > 3:
         return ""
@@ -149,19 +153,20 @@ def scope_css(css: str, scope: str, url_map: dict[str, str] | None = None,
             if _PASSTHROUGH_AT.match(prelude):
                 # مفيش مُحدِّدات هنا (نِسَب زي 0%/100%) — بننضّف التصريحات بس
                 inner = "".join(
-                    f"{p.strip()}{{{_clean_declarations(b, url_map)}}}"
+                    f"{p.strip()}{{{_clean_declarations(b, url_map, allow_fixed)}}}"
                     for p, b in _split_top_level(body)
-                ) or _clean_declarations(body, url_map)
+                ) or _clean_declarations(body, url_map, allow_fixed)
                 out.append(f"{prelude}{{{inner}}}")
             elif _NESTED_AT.match(prelude):
-                inner = scope_css(body, scope, url_map, _depth=_depth + 1)
+                inner = scope_css(body, scope, url_map,
+                                  allow_fixed=allow_fixed, _depth=_depth + 1)
                 if inner:
                     out.append(f"{prelude}{{{inner}}}")
             # أي at-rule تانية (@import مثلاً) بتتشال
             continue
 
         selector = _scope_prelude(prelude, scope)
-        decls = _clean_declarations(body, url_map)
+        decls = _clean_declarations(body, url_map, allow_fixed)
         if selector and decls:
             out.append(f"{selector}{{{decls}}}")
 
