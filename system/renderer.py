@@ -1027,6 +1027,15 @@ def render_document(
         zero_css_parts.append(tildacss.section_surface_css(
             str(block.get("id") or ""), block.get("style") or {},
             imported=imported_html))
+        # موعد العدّاد: بيجي من تاريخ المناسبة، إلا لو القسم محدّد موعده
+        # بنفسه. القالب مالوش تاريخ مناسبة أصلاً، فمن غير الحقل ده
+        # مكانش فيه أي طريقة تظبط العدّاد وانت بتصمّم قالب.
+        block_countdown_iso = countdown_iso
+        if block["type"] == "countdown":
+            picked = str(resolved_props.get("countdown_date") or "").strip()
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", picked):
+                block_countdown_iso = picked
+
         ctx = {
             "block": block,
             "props": resolved_props,
@@ -1036,7 +1045,7 @@ def render_document(
             "settings": doc_settings,
             "data": data,
             "invitation": invitation,
-            "countdown_iso": countdown_iso,
+            "countdown_iso": block_countdown_iso,
             "editable": editable,
             "hidden": hidden,
             "gated": gated,
@@ -1131,7 +1140,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-08-31-draggable-ornaments-v10"
+_PREVIEW_RENDER_REVISION = "2026-08-31-countdown-own-date-v11"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

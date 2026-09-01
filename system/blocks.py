@@ -814,6 +814,10 @@ register(
             opt("boxes", "صناديق"), opt("circles", "دوائر"),
             opt("minimal", "أرقام فقط"), opt("flip", "بطاقات مقلوبة"),
         ]),
+        field("countdown_date", "موعد العدّاد", "datetime", "", translate=False,
+              help_text="سيبه فاضي عشان ياخد تاريخ المناسبة من تبويب "
+                        "البيانات. في القالب مفيش تاريخ مناسبة، فحدّده "
+                        "هنا عشان تعاين الشكل."),
         field("countdown_dir", "اتجاه الخانات", "select", "", translate=False,
               options=COUNTDOWN_DIR_CHOICES,
               help_text="يقلب ترتيب الأيام/الساعات/الدقائق/الثواني من غير ما يغيّر شكلها."),
