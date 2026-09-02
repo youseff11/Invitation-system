@@ -411,6 +411,22 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-modal-card > p { margin: 0 0 16px; color: var(--e-muted); font-size: 12.5px; }
 .ed-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
+/* ---- مكتبة الملفات: الرأس والزراير ثابتين، والقايمة هي اللي بتتمرّر
+
+   الزراير كانت آخر الكارت والكارت كله بيتمرّر، يعني عشان ترفع ملف
+   واحد لازم تنزل لآخر مئات الصور. دلوقتي الكارت عمود: العنوان
+   والزراير مكانهم ثابت فوق، والشبكة بتاخد الباقي وتتمرّر لوحدها. */
+.ed-modal-actions--top { margin-top: 0; margin-bottom: 14px; justify-content: flex-start; }
+.ed-modal[data-asset-modal] .ed-modal-card {
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.ed-asset-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  /* مساحة للسكرول بار من غير ما يركب على الصور */
+  padding-inline-end: 4px;
+  overscroll-behavior: contain;
+}
+
 .ed-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .ed-pick {
   display: flex; align-items: center; gap: 9px;

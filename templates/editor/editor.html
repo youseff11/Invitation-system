@@ -103,7 +103,8 @@
         <div class="ed-device" data-device-shell data-device="mobile">
                     <iframe data-preview-frame src="{% if template_mode %}{% url 'template_editor_frame' invitation.pk %}{% else %}{% url 'invitation_preview_frame' invitation.pk %}{% endif %}"
                   title="معاينة الدعوة"></iframe>
-
+
+
         </div>
       </div>
     </main>
@@ -356,13 +357,18 @@
   <div class="ed-modal-card" role="dialog" aria-modal="true" aria-label="المكتبة">
     <h3 data-asset-title>مكتبة الصور</h3>
     <p data-asset-hint>ارفع صوراً بصيغة JPG أو PNG أو WebP بحد أقصى ٨ ميجابايت للملف.</p>
-    {# مكتبة الموسيقى المشتركة — بتتعبّى من JS وبتفضل مخفية لغير الصوت #}
-    <div class="ed-lib" data-music-lib hidden></div>
-    <div class="ed-assets" data-asset-grid></div>
-    <input type="file" data-file-input accept="image/*,audio/*,video/*" multiple hidden>
-    <div class="ed-modal-actions">
-      <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
+    {# الزراير فوق مش تحت: المكتبة ممكن تبقى مئات الملفات، وكان لازم #}
+    {# تنزل لآخر القايمة عشان ترفع ملف واحد. #}
+    <div class="ed-modal-actions ed-modal-actions--top">
       <button class="ed-btn ed-btn--primary" type="button" data-upload-trigger>رفع ملفات</button>
+      <button class="ed-btn" type="button" data-close-modal>إغلاق</button>
+    </div>
+    <input type="file" data-file-input accept="image/*,audio/*,video/*" multiple hidden>
+    {# اللي بيتمرّر هو ده بس — الرأس والزراير ثابتين فوق #}
+    <div class="ed-asset-scroll">
+      {# مكتبة الموسيقى المشتركة — بتتعبّى من JS وبتفضل مخفية لغير الصوت #}
+      <div class="ed-lib" data-music-lib hidden></div>
+      <div class="ed-assets" data-asset-grid></div>
     </div>
   </div>
 </div>
