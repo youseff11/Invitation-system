@@ -691,10 +691,15 @@ def dashboard_invitations(request):
     _staff_required(request)
     q = (request.GET.get("q") or "").strip()
     status = request.GET.get("status", "")
+    # الأحدث فوق. الترتيب مكتوب هنا صراحةً مش متسايب لـ‎Meta.ordering‎:
+    # مع ‎annotate‎ بيتحوّل الاستعلام لتجميع (‎GROUP BY‎)، والترتيب
+    # الافتراضي بيضيع فالقايمة كانت بتطلع من الأقدم للأحدث. ‎-id‎
+    # كسّار تعادل: دعوتين اتعملوا في نفس الثانية يفضل ترتيبهم ثابت
+    # بدل ما يتبدّل مع كل فتحة للصفحة.
     qs = Invitation.objects.select_related("customer", "template", "plan").annotate(
         rsvp_total=Count("rsvps", distinct=True),
         guest_total=Count("guests", distinct=True),
-    )
+    ).order_by("-created_at", "-id")
     if q:
         qs = qs.filter(
             Q(title__icontains=q) | Q(customer__name__icontains=q)
