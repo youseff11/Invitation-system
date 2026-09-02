@@ -46,14 +46,12 @@
         <div class="tpl-body">
           <h3>{{ t.display_name }}</h3>
           <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
+          {% if t.display_description %}<p class="tpl-desc">{{ t.display_description }}</p>{% endif %}
+          {# زرار واحد بيفتح معاينة القالب — زرار «اطلبه» اتشال، والطلب #}
+          {# مكانه زرار واتساب العايم وقسم التواصل تحت. #}
           <div class="tpl-actions">
-            <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% translate "معاينة" %}</a>
-            {% if SITE_CTA.orders_enabled %}
-            <a class="btn btn--gold btn--sm" href="#contact">{% translate "اطلبه" %}</a>
-            {% elif SITE_CTA.whatsapp_url %}
-            <a class="btn btn--gold btn--sm" href="{{ SITE_CTA.whatsapp_url }}"
-               target="_blank" rel="noopener">{% translate "اطلبه" %}</a>
-            {% endif %}
+            <a class="btn btn--gold btn--sm" href="{% url 'template_demo' t.slug %}"
+               target="_blank" rel="noopener">{% translate "تجربة قالب" %}</a>
           </div>
         </div>
       </article>

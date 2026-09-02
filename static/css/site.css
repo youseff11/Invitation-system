@@ -756,8 +756,34 @@ tbody tr:hover { background: var(--surface-2); }
     padding-inline: 6px;          /* ‎.wrap‎ بتدي ١٨px لكل جنب، +٦ = ٢٤ */
   }
   #templates .tpl-card { padding: 10px; border-radius: 18px; }
-  #templates .tpl-cover { aspect-ratio: 1 / 1; border-radius: 10px; }
-  #templates .tpl-body { padding: 14px 6px 4px; }
+  #templates .tpl-cover { aspect-ratio: 1 / 1; border-radius: 12px; }
+
+  /* الجسم بارتفاع ثابت عشان كل الكروت تطلع بنفس الطول حتى لو
+     الوصف ناقص أو الاسم بيلف على سطرين. */
+  #templates .tpl-body {
+    padding: 16px 12px 12px;
+    min-height: 190px;
+    gap: 5px;
+  }
+  #templates .tpl-body h3 {
+    font-size: 18px; line-height: 1.35;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* سطرين بالظبط للوصف: كده كل الكروت بتقف عند ‎١٩٠px‎ اللي فوق
+     من غير ما وصف طويل يزوّد ارتفاع كارت عن التاني. */
+  #templates .tpl-desc {
+    margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    line-clamp: 2; overflow: hidden;
+  }
+  #templates .tpl-actions { padding-top: 12px; }
+  #templates .tpl-actions .btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.2;
+    border-radius: 10px;
+  }
 }
 
 /* ================================================================
