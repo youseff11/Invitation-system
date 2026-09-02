@@ -1244,19 +1244,9 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 }
 
 .lb-cta-name { color: var(--text); font-family: var(--font-heading); }
-.lb-cta-links { display: flex; gap: 5px; flex-shrink: 0; }
-.lb-cta-btn {
-  width: 34px; height: 34px;
-
-  display: grid; place-items: center;
-  border-radius: 50%; color: #fff;
-  text-decoration: none;
-  transition: transform .18s ease, filter .18s ease;
-}
-.lb-cta-btn:hover { transform: scale(1.08); filter: brightness(1.06); }
-.lb-cta-btn svg { width: 21px; height: 21px; }
-.lb-cta-btn--wa { background: #25d366; }
-.lb-cta-btn--fb { background: #1877f2; }
+/* الأيقونات هنا هي نفسها بتاعة قسم الدعاية (‎social_link‎) — ماشية
+   بلونها على أرضية الشريط بدل الدايرة الملوّنة القديمة. */
+.lb-cta-links { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 /* الشريط بيغطّي آخر الصفحة — بنزوّد مسافة تحت عشان التوقيع ما يختفيش */
 .lb-doc:has(.lb-cta) .lb-stage { padding-block-end: 74px; }
 /* أزرار التحكم فوق الشريط بمسافة آمنة، مع احترام شريط إيماءات الهاتف */

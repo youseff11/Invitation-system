@@ -171,13 +171,17 @@ _SOCIAL_HREF_RE = re.compile(r"^(?:https?://|mailto:|tel:)[^\s\"<>]{1,600}$", re
 
 
 @register.simple_tag
-def social_link(name, url, color, size=34):
+def social_link(name, url, color, size=34, label=""):
     """أيقونة سوشيال واحدة — ومعاها رابطها ولونها.
 
     كل حاجة بتتفحص هنا قبل ما تدخل الصفحة: الاسم لازم يكون من القايمة،
     الرابط لازم يبدأ بـ‎http(s)‎ أو ‎mailto‎ أو ‎tel‎ (يعني ‎javascript:‎
     مابيعديش)، واللون لازم يبقى لون CSS صالح. الأيقونة من غير رابط
     بتتعرض من غير ما تبقى لينك بدل ‎href="#"‎ اللي بيرجّع الضيف لفوق.
+
+    ‎label‎ اختياري لقارئ الشاشة — من غيره بيقرا مفتاح الشبكة
+    («whatsapp»)، وده مش مفيد في مكان زي شريط «عجبك القالب؟» اللي
+    الأيقونة فيه معناها «اطلب القالب» مش «افتح واتساب».
     """
     body = _SOCIAL_ICONS.get(str(name or "").strip())
     if not body:
@@ -194,7 +198,7 @@ def social_link(name, url, color, size=34):
         f'viewBox="0 0 24 24" aria-hidden="true">{body}</svg>'
     )
     href = str(url or "").strip()
-    label = escape(str(name).strip())
+    label = escape(str(label or name).strip())
     if _SOCIAL_HREF_RE.match(href):
         return mark_safe(
             f'<a class="lb-social" href="{escape(href)}" target="_blank" '
