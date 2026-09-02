@@ -21,7 +21,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, F, Max, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import (
     Http404, HttpResponse, HttpResponseBadRequest, JsonResponse,
     StreamingHttpResponse,
@@ -940,18 +940,6 @@ def favorite_api_create(request):
 
 
 @login_required
-def favorite_api_get(request, pk):
-    """محتوى بلوك مفضل واحد — بيتطلب لما تدوس «استخدام».
-
-    قايمة المفضلة بتنزل مع صفحة المحرر بأسماء بس، فالمحرر بيفضل خفيف
-    مهما كانت المفضلة أقسام مستوردة تقيلة.
-    """
-    _staff_required(request)
-    favorite = get_object_or_404(FavoriteBlock, pk=pk)
-    return JsonResponse({"ok": True, "favorite": _favorite_payload(favorite)})
-
-
-@login_required
 @require_POST
 def favorite_api_delete(request, pk):
     _staff_required(request)
@@ -1183,17 +1171,7 @@ def _favorite_payload(favorite):
 
 
 def _favorites_json():
-    """قائمة المفضلة **من غير** محتوى البلوكات.
-
-    البلوك المفضل ممكن يكون قسم مستورد بمئات الكيلوبايتات من HTML
-    وCSS، وكل ده كان بينزل مع كل فتحة للمحرر عشان قايمة أسماء (نص
-    القياس على السيرفر: نص ميجا). المحتوى بينزل لما تدوس «استخدام»
-    بس — ‎favorite_api_get‎.
-    """
-    return [
-        {"id": item.pk, "name": item.name, "blockType": item.block_type}
-        for item in FavoriteBlock.objects.all().only("id", "name", "block_type")
-    ]
+    return [_favorite_payload(item) for item in FavoriteBlock.objects.all()]
 
 
 def _font_payload(font):
@@ -1270,10 +1248,7 @@ def template_editor(request, pk):
     template_assets = list(Asset.objects.filter(
         invitation__isnull=True
     ).order_by("-id")[:300])
-    # علامة «مستخدمة» مابتتحسبش هنا: حسابها بيمسح كل مستندات القوالب
-    # والدعوات، والمستخدم مايشوفهاش أصلاً غير لما يفتح مكتبة الصور —
-    # فالمكتبة بتجيبها لوحدها من ‎urls.assets‎ أول ما تتفتح.
-    template_usage = {}
+    template_usage = _asset_usage_map(template_assets)
     return render(request, "editor/editor.html", {
         "invitation": proxy,
         "form": None,
@@ -1435,8 +1410,7 @@ def invitation_editor(request, pk):
     invitation_assets = list(Asset.objects.filter(
         Q(invitation=invitation) | Q(invitation__isnull=True)
     ).order_by("-id")[:300])
-    # زي محرر القالب: المكتبة بتجيب علامة «مستخدمة» لوحدها لما تتفتح
-    invitation_usage = {}
+    invitation_usage = _asset_usage_map(invitation_assets)
 
     return render(request, "editor/editor.html", {
 
@@ -1865,80 +1839,46 @@ def _asset_needles(asset):
     return names
 
 
-def _documents_stamp() -> str:
-    """بصمة رخيصة بتتغيّر مع أي تعديل في أي مستند.
+def _asset_usage_map(assets):
+    """Return usage flags while scanning every saved document only once.
 
-    استعلامين تجميع بس — مش بتقرا أي مستند. بتتحط في مفتاح الكاش
-    بتاع مسحة الاستخدام، فأول ما أي قالب أو دعوة تتحفظ، المسحة
-    القديمة بتبطل لوحدها من غير ما نمسح كاش بإيدنا.
+    The old implementation tested every asset needle against every document,
+    which becomes extremely slow for imported templates with large bundles.
+    A single compiled regex preserves the same substring semantics but reduces
+    the work to one pass per document.
     """
-    templates = Template.objects.aggregate(n=Count("pk"), u=Max("updated_at"))
-    invitations = Invitation.objects.aggregate(n=Count("pk"), u=Max("updated_at"))
-    return "{}|{}|{}|{}".format(
-        templates["n"], templates["u"], invitations["n"], invitations["u"]
-    )
+    usage = {asset.pk: False for asset in assets}
+    if not usage:
+        return usage
 
-
-def _scan_used_asset_ids(assets) -> set:
-    """مسحة واحدة على كل المستندات بترجّع أرقام الأصول المستعمَلة."""
     needle_to_assets = {}
     for asset in assets:
         for needle in _asset_needles(asset):
             needle_to_assets.setdefault(needle, set()).add(asset.pk)
     if not needle_to_assets:
-        return set()
+        return usage
 
     pattern = re.compile("|".join(
         re.escape(needle)
         for needle in sorted(needle_to_assets, key=len, reverse=True)
     ))
-    used = set()
-    remaining = {pk for ids in needle_to_assets.values() for pk in ids}
     documents = list(Template.objects.values_list("document", flat=True))
     documents += list(Invitation.objects.values_list("document", flat=True))
+    remaining = set(usage)
     for document in documents:
         text = json.dumps(document, ensure_ascii=False, default=str)
         for match in pattern.finditer(text):
             for asset_id in needle_to_assets[match.group(0)]:
-                used.add(asset_id)
+                usage[asset_id] = True
                 remaining.discard(asset_id)
         if not remaining:
             break
-    return used
-
-
-def _asset_usage_map(assets):
-    """علامة «مستخدمة» لكل أصل — مسحة واحدة متخزّنة لحد ما مستند يتغيّر.
-
-    المسحة بتحوّل كل مستندات القوالب والدعوات لنص وتمشي عليها بـregex.
-    مع قالب مستورد حجمه ٣ ميجا ده ثواني حقيقية، وكانت بتتعمل على كل
-    فتحة للمحرر — عشان فلتر في مكتبة الصور المستخدم بيفتحه مرة كل
-    شوية. دلوقتي بتتعمل لما المكتبة تتفتح بس، ونتيجتها بتتخزّن على
-    «بصمة المستندات»، فأي فتحة بعد كده بترجع فوراً لحد ما حد يحفظ
-    تعديل.
-    """
-    usage = {asset.pk: False for asset in assets}
-    if not usage:
-        return usage
-    stamp = _documents_stamp() + "|" + ",".join(str(pk) for pk in sorted(usage))
-    key = "farha:asset-usage:" + hashlib.md5(stamp.encode("utf-8")).hexdigest()
-    used = cache.get(key)
-    if used is None:
-        used = _scan_used_asset_ids(assets)
-        cache.set(key, used, 3600)
-    for pk in usage:
-        usage[pk] = pk in used
     return usage
 
 
 def _asset_is_used(asset):
-    """Do not remove a media file while a template or invitation still points to it.
-
-    مسحة لحظية من غير كاش عن قصد: ده قرار حذف ملف من على القرص،
-    ونتيجة متخزّنة من دقيقة فاتت ممكن تخلينا نمسح صورة اتحطت في
-    قالب دلوقتي حالاً.
-    """
-    return asset.pk in _scan_used_asset_ids([asset])
+    """Do not remove a media file while a template or invitation still points to it."""
+    return _asset_usage_map([asset]).get(asset.pk, False)
 
 
 def _delete_asset_files(asset):
