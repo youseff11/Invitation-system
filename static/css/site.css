@@ -1078,6 +1078,17 @@ html[lang="en"] .feature-en { display: inline; }
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 20px; margin-bottom: 24px;
 }
+/* ترويسة العميل: لوجو الموقع + ترحيب، وبعدها البيانات على طول.
+   الصفحة دي بيفتحها صاحب الدعوة نفسه — مش شغل داخلي. */
+.client-followup-welcome {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 10px; margin-bottom: 28px;
+}
+.client-followup-logo { height: 84px; margin-inline: auto; }
+.client-followup-welcome h1 { font-size: clamp(24px, 2.8vw, 34px); }
+.client-followup-welcome .client-followup-subtitle {
+  margin: 0; max-width: 46ch;
+}
 .client-followup-kicker {
   margin: 0 0 6px; color: var(--accent); font-size: 12px;
   letter-spacing: .14em; text-transform: uppercase;
@@ -1164,6 +1175,8 @@ html[lang="en"] .feature-en { display: inline; }
 @media (max-width: 680px) {
   .client-followup { width: min(100% - 24px, 560px); padding-top: 26px; }
   .client-followup-head { flex-direction: column; gap: 12px; }
+  .client-followup-logo { height: 64px; }
+  .client-followup-welcome { margin-bottom: 20px; }
   .client-followup-link-row { flex-direction: column; align-items: stretch; }
   .client-followup-link-row input { width: 100%; }
   .client-followup-link-row .btn { width: 100%; }

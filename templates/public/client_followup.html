@@ -1,31 +1,21 @@
 {% extends 'base.html' %}
 
-{% block title %}متابعة الدعوة — {{ invitation.title }}{% endblock %}
+{% block title %}متابعة دعوتكم — {{ SITE_NAME }}{% endblock %}
 {% block description %}صفحة متابعة خاصة بصاحب الدعوة{% endblock %}
 {% block body_class %}client-followup-page{% endblock %}
 
 {% block content %}
 <main class="client-followup">
-  <header class="client-followup-head">
-    <div>
-      <p class="client-followup-kicker">{{ SITE_NAME }}</p>
-      <h1>رابط متابعة صاحب الدعوة</h1>
-      <p class="client-followup-subtitle">تابع بيانات دعوة <strong>{{ invitation.title }}</strong> من مكان واحد.</p>
-    </div>
-    <div class="client-followup-badge">{{ invitation.get_status_display }}</div>
+  {# الصفحة دي بيفتحها **العميل** نفسه، فمفيش داعي يشوف كلام موجّه لينا #}
+  {# («ابعت الرابط للعميل») ولا العنوان الداخلي ولا حالة النشر. لوجو #}
+  {# وترحيب وبعدين بياناته على طول. نسخ الرابط مكانه لوحة الدعوات. #}
+  <header class="client-followup-welcome">
+    <a class="brand brand--stacked client-followup-logo" href="{% url 'home' %}">
+      <span class="sr-only">{{ SITE_NAME }}</span>
+    </a>
+    <h1>{% if invitation.name_one %}أهلاً بكم يا {{ invitation.name_one }}{% if invitation.name_two %} و{{ invitation.name_two }}{% endif %} 🤍{% else %}أهلاً بكم 🤍{% endif %}</h1>
+    <p class="client-followup-subtitle">دي صفحتكم لمتابعة الدعوة — كل رد وكل رسالة بتوصلكم هتلاقوها هنا أول بأول.</p>
   </header>
-
-  <section class="client-followup-link-card" aria-labelledby="followup-link-title">
-    <div>
-      <p class="client-followup-label" id="followup-link-title">رابط العميل للمتابعة</p>
-      <p class="client-followup-help">ابعت الرابط للعميل لمتابعة البيانات المفعّلة في دعوته فقط.</p>
-    </div>
-    <div class="client-followup-link-row">
-      <input type="text" value="{{ followup_url }}" readonly aria-label="رابط متابعة العميل">
-      <button type="button" class="btn btn--gold" data-copy="{{ followup_url }}">نسخ الرابط</button>
-      <a class="btn btn--ghost" href="{{ followup_url }}" target="_blank" rel="noopener">فتح الصفحة</a>
-    </div>
-  </section>
 
   <section class="client-followup-stats" aria-label="ملخص المتابعة">
     {% if has_rsvp %}
