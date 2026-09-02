@@ -423,15 +423,35 @@ def invitation_client_followup(request, slug, token):
         block.get("type") for block in document.get("blocks", [])
         if block.get("visible", True)
     }
+    rsvp_props = {}
+    for block in document.get("blocks", []):
+        if block.get("type") == "rsvp" and block.get("visible", True):
+            rsvp_props = block.get("props") or {}
+            break
+    # ‎is not False‎ مقصودة: المفتاح الناقص في مستند قديم = مفعّل
+    pass_enabled = (rsvp_props or {}).get("show_pass") is not False
+
     allowed = invitation.allowed_features
     has_rsvp = "rsvp" in visible_types and "rsvp" in allowed
-    has_qr = "qr" in visible_types and "qr" in allowed
-    has_guestbook = "wishes" in visible_types and "guestbook" in allowed
+    # الصفحة دي لوحة صاحب الدعوة نفسه، فالمقياس هو **البيانات اللي
+    # اتجمعت فعلاً** مش وجود بلوك معيّن في المستند. قبل كده كانت رسائل
+    # التهنئة مربوطة ببلوك «سجل التهاني»: اللي بيجمّع الرسائل من فورم
+    # التأكيد من غير ما يضيف البلوك ده كان بيلاقي الصفحة فاضية.
+    rsvps = list(invitation.rsvps.select_related("guest").order_by("-created_at"))
+    if rsvps:
+        has_rsvp = True
 
+    message_count = sum(1 for response in rsvps if response.message.strip())
+    has_guestbook = bool(message_count) or (
+        "wishes" in visible_types and "guestbook" in allowed
+    )
+
+    # تصريح الدخول مقفول من المحرر؟ يبقى مفيش عمود QR هنا خالص.
+    has_qr = pass_enabled and (
+        ("qr" in visible_types and "qr" in allowed)
+        or invitation.guests.exists()
+    )
     guests = list(invitation.guests.all()) if has_qr else []
-    rsvps = list(
-        invitation.rsvps.select_related("guest").order_by("-created_at")
-    ) if (has_rsvp or has_guestbook) else []
 
     rsvp_rows = [{
         "name": response.name,
@@ -619,7 +639,11 @@ def invitation_rsvp(request, slug):
             # الضيف غيّر عدد مرافقينه — التصريح يتحدّث معاه، بس
             # مانقلّلوش تحت عدد اللي دخلوا فعلاً
             guest.grant_entries(max(1 + companions, guest.entries_used))
-        pass_info = _guest_pass_payload(request, guest)
+        # المصمّم قافل تصريح الدخول من المحرر؟ سجل الضيف بيتعمل زي ما هو
+        # (الكشف والعدّ محتاجينه)، بس مفيش QR بيتعرض للضيف.
+        # ‎is not False‎ مقصودة: المفتاح الناقص في مستند قديم = مفعّل.
+        if rsvp_props.get("show_pass") is not False:
+            pass_info = _guest_pass_payload(request, guest)
     elif guest is not None and guest.entries_used == 0:
         # اعتذر قبل ما يدخل — نلغي التصريح
         guest.grant_entries(0)
@@ -1039,6 +1063,18 @@ def guests_sample_csv(request):
     return res
 
 
+def _rsvp_pass_enabled(invitation) -> bool:
+    """مفتاح «إظهار تصريح الدخول (QR)» في بلوك RSVP بتاع الدعوة.
+
+    ‎True‎ لو مفيش بلوك RSVP أصلاً أو المفتاح ناقص — المستندات المحفوظة
+    قبل الحقل ده لازم تفضل شغالة زي ما هي.
+    """
+    for block in invitation.get_document().get("blocks", []):
+        if block.get("type") == "rsvp" and block.get("visible", True):
+            return (block.get("props") or {}).get("show_pass") is not False
+    return True
+
+
 @login_required
 def guests_view(request, pk):
     _staff_required(request)
@@ -1078,6 +1114,9 @@ def guests_view(request, pk):
         "rsvps": invitation.rsvps.all(),
         "entries_allowed": totals["allowed"] or 0,
         "entries_used": totals["used"] or 0,
+        # تصريح الدخول مقفول من محرر الدعوة؟ يبقى مفيش أعمدة ولا أزرار
+        # QR هنا كمان — الكشف نفسه بيفضل شغال عادي.
+        "pass_enabled": _rsvp_pass_enabled(invitation),
         "form": form,
     })
 

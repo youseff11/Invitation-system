@@ -5,7 +5,7 @@
   <h1>ضيوف {{ invitation.title }}</h1>
   <div class="toolbar" style="margin:0">
     <a class="btn btn--gold" href="{% url 'checkin' invitation.pk %}">📷 مسح الدخول</a>
-    <a class="btn btn--ghost" href="{% url 'guest_qr_sheet' invitation.pk %}" target="_blank" rel="noopener">🖨 أكواد QR</a>
+    {% if pass_enabled %}<a class="btn btn--ghost" href="{% url 'guest_qr_sheet' invitation.pk %}" target="_blank" rel="noopener">🖨 أكواد QR</a>{% endif %}
     <a class="btn btn--ghost" href="{% url 'guests_export' invitation.pk %}">⤓ إكسل للقاعة</a>
     <a class="btn btn--ghost" href="{% url 'invitation_editor' invitation.pk %}">↩ المحرر</a>
   </div>
@@ -41,7 +41,7 @@
       <table class="guests-table">
         <thead><tr>
           <th>الكود</th><th>النوع</th><th>الضيف</th><th>الدخول</th>
-          <th>الحالة</th><th>الرابط الفردي</th><th>QR</th>
+          <th>الحالة</th><th>الرابط الفردي</th>{% if pass_enabled %}<th>QR</th>{% endif %}
         </tr></thead>
         <tbody>
           {% for g in guests %}
@@ -70,16 +70,16 @@
                    href="{{ g.get_absolute_url }}">فتح</a>
               </div>
             </td>
-            <td>
+            {% if pass_enabled %}<td>
               <div class="guest-link">
                 <a class="btn btn--gold btn--sm"
                    href="{% url 'guest_qr_png' invitation.slug g.token %}" download>تحميل</a>
                 <a class="btn btn--ghost btn--sm" target="_blank" rel="noopener"
                    href="{% url 'guest_pass' invitation.slug g.token %}">عرض</a>
               </div>
-            </td>
+            </td>{% endif %}
           </tr>
-          {% empty %}<tr><td colspan="7" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="{% if pass_enabled %}7{% else %}6{% endif %}" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

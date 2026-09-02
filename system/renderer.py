@@ -570,6 +570,25 @@ def _calendar_link(data: dict, title: str) -> str:
     return "https://calendar.google.com/calendar/render?" + urlencode(params)
 
 
+def _approved_wishes(invitation, limit) -> list:
+    """رسائل التهنئة المعتمَدة، الأحدث أولاً.
+
+    مشتركة بين بلوك «سجل التهاني» ومفتاح «إظهار رسائل التهنئة» في قسم
+    التأكيد — مصدر واحد فمفيش فرصة إن الاتنين يعرضوا حاجتين مختلفتين.
+    """
+    if invitation is None:
+        return []
+    try:
+        count = int(limit or 12)
+    except (TypeError, ValueError):
+        count = 12
+    return list(
+        invitation.rsvps.filter(is_approved=True)
+        .exclude(message="")
+        .order_by("-created_at")[: max(1, min(100, count))]
+    )
+
+
 # --------------------------------------------------------------------------
 def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None) -> dict:
     """بيانات إضافية يحتاجها بلوك معيّن ولا تأتي من المستند."""
@@ -605,16 +624,15 @@ def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None
                 closed = False
         extras["rsvp_closed"] = closed
 
+        # رسائل التهنئة تحت الفورم — نفس مصدر بلوك «سجل التهاني»،
+        # عشان اللي مضيفش البلوك ده يقدر يعرضها من قسم التأكيد نفسه.
+        extras["rsvp_wishes"] = (
+            _approved_wishes(invitation, props.get("wishes_limit"))
+            if props.get("show_wishes") else []
+        )
+
     elif btype == "wishes":
-        wishes = []
-        if invitation is not None:
-            limit = int(props.get("limit") or 12)
-            wishes = list(
-                invitation.rsvps.filter(is_approved=True)
-                .exclude(message="")
-                .order_by("-created_at")[: max(1, min(100, limit))]
-            )
-        extras["wishes"] = wishes
+        extras["wishes"] = _approved_wishes(invitation, props.get("limit"))
 
     elif btype == "qr":
         from . import qrcodes
@@ -1140,7 +1158,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-09-01-move-vars-no-inherit-v16"
+_PREVIEW_RENDER_REVISION = "2026-09-02-rsvp-pass-wishes-v17"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

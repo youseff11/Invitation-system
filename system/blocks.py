@@ -623,7 +623,7 @@ _SLOT_RE = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 MOVABLE_PARTS = {
     "buttons", "ornament_top", "ornament_bottom", "image", "gallery", "map",
     "countdown", "qr", "form", "details", "video", "hosts", "agenda", "share",
-    "scroll_hint", "card", "media",
+    "scroll_hint", "card", "media", "wishes",
     # حاوية «كود متقدّم» — بتتسحب بالماوس زي أي عنصر تاني في القسم
     "code",
 }
@@ -976,24 +976,23 @@ register(
 )
 
 # ---- تأكيد الحضور --------------------------------------------------------
+# مفاتيح التشغيل/الإيقاف بتاعة قسم التأكيد كانت متبعترة وسط حقول
+# الكلام، فاللوحة تطلع خليط: مربّع كتابة، بعده زرار تمرير، بعده مربّع
+# تاني. كل اللي بيتقفل ويتفتح بقى جوّه ترس واحد تحت جزء تعديل الكلام،
+# فالجزء الأول كله كتابة والباقي كله إعدادات.
+RSVP_SETTINGS = "⚙ إعدادات RSVP"
+
 register(
     "rsvp", "تأكيد الحضور", icon="✓", category="تفاعلي", feature="rsvp", singleton=True,
     description="نموذج يملؤه الضيف لتأكيد حضوره",
     props=[
+        # ---- تعديل الكلام
         field("heading", "العنوان", "text", "هل ستشرفوننا؟"),
         field("eyebrow", "نص فوق العنوان", "text", "تأكيد الحضور"),
         field("intro", "نص تمهيدي", "textarea", "نرجو تأكيد الحضور قبل الموعد بأسبوع."),
         field("name_label", "عنوان حقل الاسم", "text", "الاسم"),
-        # الافتراضي «مفعّل» عشان الدعوات المحفوظة من قبل الحقل ده
-        # يفضل الهاتف ظاهر فيها: التطبيع بيمشي على المخطط مش على
-        # المخزّن، والمفتاح الناقص بياخد الافتراضي.
-        field("ask_phone", "السؤال عن الهاتف", "toggle", True),
         field("phone_label", "عنوان حقل الهاتف", "text", "رقم الهاتف"),
-        field("phone_required", "الهاتف مطلوب", "toggle", False),
-        field("ask_companions", "السؤال عن المرافقين", "toggle", True, feature="companions"),
         field("companions_label", "عنوان حقل المرافقين", "text", "عدد المرافقين"),
-        field("max_companions", "أقصى عدد مرافقين", "number", 5, minimum=0, maximum=20),
-        field("ask_message", "السؤال عن رسالة", "toggle", True),
         field("message_label", "عنوان حقل الرسالة", "text", "كلمة للعروسين"),
         # كان مكتوب ثابت في القالب، فالقوالب الإنجليزية كانت بتطلع
         # بعنوان عربي وسط عناوين إنجليزية. الافتراضي نفس النص القديم.
@@ -1001,11 +1000,42 @@ register(
         field("attending_label", "خيار الحضور", "text", "سأحضر بكل سرور"),
         field("declined_label", "خيار الاعتذار", "text", "أعتذر عن الحضور"),
         field("maybe_label", "خيار غير متأكد", "text", "غير متأكد بعد"),
-        field("show_maybe", "إظهار خيار «غير متأكد»", "toggle", True),
         field("submit_label", "نص زر الإرسال", "text", "إرسال التأكيد"),
+        # الزر كان بيفضل «جارٍ الإرسال…» حتى بعد ما الرد يتسجّل فعلاً،
+        # فالضيف يفتكر إن حاجة علّقت ويبعت تاني.
+        field("sent_label", "نص الزر بعد الإرسال", "text", "تم الإرسال ✓"),
         field("success_message", "رسالة النجاح", "textarea", "شكراً لكم — تم تسجيل ردكم."),
-        field("deadline", "آخر موعد للتأكيد", "date", ""),
-        field("closed_message", "رسالة بعد إغلاق التأكيد", "text", "انتهى موعد تأكيد الحضور."),
+        field("wishes_heading", "عنوان رسائل التهنئة", "text", "كلمات وصلتنا منكم"),
+        field("wishes_empty", "النص عند عدم وجود رسائل", "text",
+              "كونوا أول من يهنئنا."),
+        field("closed_message", "رسالة بعد إغلاق التأكيد", "text",
+              "انتهى موعد تأكيد الحضور."),
+
+        # ---- ترس الإعدادات: كل اللي بيتفتح ويتقفل
+        # الافتراضي «مفعّل» عشان الدعوات المحفوظة من قبل الحقل ده
+        # يفضل الهاتف ظاهر فيها: التطبيع بيمشي على المخطط مش على
+        # المخزّن، والمفتاح الناقص بياخد الافتراضي.
+        field("ask_phone", "السؤال عن الهاتف", "toggle", True, group=RSVP_SETTINGS),
+        field("phone_required", "الهاتف مطلوب", "toggle", False, group=RSVP_SETTINGS),
+        field("ask_companions", "السؤال عن المرافقين", "toggle", True,
+              group=RSVP_SETTINGS, feature="companions"),
+        field("max_companions", "أقصى عدد مرافقين", "number", 5,
+              group=RSVP_SETTINGS, minimum=0, maximum=20),
+        field("ask_message", "السؤال عن رسالة", "toggle", True, group=RSVP_SETTINGS),
+        field("show_maybe", "إظهار خيار «غير متأكد»", "toggle", True,
+              group=RSVP_SETTINGS),
+        # تصريح الدخول (QR) بيتولّد بعد تأكيد الحضور. مش كل فرح بيمسح
+        # على الباب، فالمفتاح ده بيقفله من الدعوة ومن كشف الضيوف ومن
+        # صفحة متابعة العميل مرة واحدة. الافتراضي «مفعّل» عشان الدعوات
+        # المحفوظة من قبل الحقل ده تفضل زي ما هي.
+        field("show_pass", "إظهار تصريح الدخول (QR)", "toggle", True,
+              group=RSVP_SETTINGS),
+        # رسائل التهنئة اللي وصلت مع التأكيدات — تتعرض للكل تحت الفورم
+        field("show_wishes", "إظهار رسائل التهنئة للجميع", "toggle", False,
+              group=RSVP_SETTINGS, feature="guestbook"),
+        field("wishes_limit", "عدد الرسائل المعروضة", "number", 12,
+              group=RSVP_SETTINGS, minimum=1, maximum=100),
+        field("deadline", "آخر موعد للتأكيد", "date", "", group=RSVP_SETTINGS),
     ],
 )
 

@@ -686,6 +686,13 @@
         .then(function (data) {
           if (data && data.ok) {
             showMessage(data.message || "", true);
+            /* الزر كان بيفضل «جارٍ الإرسال…» حتى بعد ما الرد يتسجّل
+               فعلاً — الضيف يفتكر إن حاجة علّقت ويبعت تاني. بنقفله على
+               نص «تم الإرسال» اللي المصمّم كاتبه في المحرر. */
+            if (btn) {
+              btn.textContent = btn.dataset.sentLabel || "تم الإرسال ✓";
+              btn.classList.add("is-sent");
+            }
             form.querySelectorAll("input, textarea, button").forEach(function (el) {
               el.disabled = true;
             });

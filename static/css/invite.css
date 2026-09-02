@@ -1088,6 +1088,66 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 .lb-form-msg[hidden] { display: none; }
 .lb-rsvp-closed { margin: 0; color: var(--muted); text-align: center; }
 
+/* ---- رسائل التهنئة تحت فورم التأكيد
+
+   نفس كارت الفورم بالظبط (‎.lb-card‎) عشان القسم يفضل قطعة واحدة
+   متناسقة مش صندوقين بشكلين. الارتفاع محدود وبسكرول: عدد الرسائل
+   بيكبر مع أيام الفرح، ومن غير الحد ده القسم كان هيطول لآخر الصفحة
+   ويدفن اللي بعده. */
+.lb-rsvp-wishes { margin-top: 16px; padding: 20px 18px; }
+.lb-rsvp-wishes-title {
+  margin: 0 0 14px;
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 1.02em;
+  color: var(--accent);
+}
+.lb-rsvp-wishes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: var(--wishes-max-h, 320px);
+  overflow-y: auto;
+  /* مساحة للسكرول بار من غير ما يركب على الكلام */
+  padding-inline-end: 6px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-40) transparent;
+}
+.lb-rsvp-wishes-list::-webkit-scrollbar { width: 6px; }
+.lb-rsvp-wishes-list::-webkit-scrollbar-track { background: transparent; }
+.lb-rsvp-wishes-list::-webkit-scrollbar-thumb {
+  background: var(--accent-40);
+  border-radius: 999px;
+}
+.lb-rsvp-wish {
+  background: var(--accent-10);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 0.75);
+  padding: 12px 14px;
+  text-align: start;
+}
+.lb-rsvp-wish p {
+  margin: 0 0 6px;
+  font-size: 0.92em;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.lb-rsvp-wish cite {
+  font-style: normal;
+  font-size: 0.78em;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.lb-rsvp-wishes-empty {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9em;
+}
+/* الزر بعد ما الرد يتسجّل — مقفول ولونه هادي، فمحدش يحاول تاني */
+.lb-btn.is-sent { opacity: 1; background: var(--accent-20); color: var(--text); }
+
 /* ---------------------------------------------------------- التهاني */
 .lb-wishes { width: 100%; display: grid; gap: 12px; }
 .lb-wishes--cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

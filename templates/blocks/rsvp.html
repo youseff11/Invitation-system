@@ -38,11 +38,25 @@
         <input type="number" name="companions" min="0" max="{{ props.max_companions }}" value="0" inputmode="numeric"></label>{% endif %}{% endif %}
       {% if props.ask_message %}<label class="lb-field">{% if props.message_label %}<span data-ts="message_label">{{ props.message_label }}</span>{% endif %}
         <textarea name="message" rows="3" maxlength="600">{{ guest_answered.message|default:'' }}</textarea></label>{% endif %}
-      <button type="submit" class="lb-btn lb-btn--solid lb-btn--block" data-ts="submit_label">{{ props.submit_label }}</button>
+      {# ‎data-sent-label‎: الجافاسكربت مابيشوفش خصائص البلوك، فالنص #}
+      {# بيوصله من هنا — وبيفضل قابل للتعديل والترجمة زي أي نص تاني. #}
+      <button type="submit" class="lb-btn lb-btn--solid lb-btn--block" data-ts="submit_label"
+              data-sent-label="{{ props.sent_label|default:'تم الإرسال ✓' }}">{{ props.submit_label }}</button>
       <p class="lb-form-msg" data-rsvp-msg hidden data-ts="success_message">{{ props.success_message }}</p>
     </form>
     {% endif %}
   </div>
+  {% if props.show_wishes %}
+  {# رسائل التهنئة اللي وصلت مع التأكيدات. الصندوق بارتفاع محدود وبسكرول #}
+  {# عشان ٥٠ رسالة ما تطوّلش القسم لآخر الصفحة. #}
+  <div class="lb-card lb-rsvp-wishes" data-move="wishes">
+    {% if props.wishes_heading %}<p class="lb-rsvp-wishes-title" data-ts="wishes_heading">{{ props.wishes_heading }}</p>{% endif %}
+    <div class="lb-rsvp-wishes-list">
+      {% for w in rsvp_wishes %}<article class="lb-rsvp-wish"><p>{{ w.message }}</p><cite>{{ w.name }}</cite></article>
+      {% empty %}<p class="lb-rsvp-wishes-empty" data-ts="wishes_empty">{{ props.wishes_empty }}</p>{% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% if style.divider_bottom and style.divider_bottom != 'none' %}{% ornament style.divider_bottom 44 'ornament_bottom' %}{% endif %}
 {% if editable and gated %}<div class="lb-gate">هذا القسم غير متاح في باقة العميل الحالية</div>{% endif %}
