@@ -937,7 +937,7 @@
       info.appendChild(el("small", "ed-hint", favoriteTypeLabel(favorite.blockType)));
       var use = el("button", "ed-btn ed-btn--sm ed-btn--primary", "استخدام");
       use.type = "button";
-      use.addEventListener("click", function () { addFavoriteToDocument(favorite); });
+      use.addEventListener("click", function () { useFavorite(favorite, use); });
       var remove = el("button", "ed-btn ed-btn--sm", "حذف");
       remove.type = "button";
       remove.addEventListener("click", function () { deleteFavorite(favorite.id); });
@@ -974,6 +974,30 @@
       FAVORITES.unshift(data.favorite);
       toast("اتحفظ العنصر في مكتبة المفضلة.", "ok");
     }).catch(function () { toast("تعذّر الاتصال لحفظ المفضلة.", "error"); });
+  }
+
+  /* محتوى البلوك المفضل مابينزلش مع الصفحة — القايمة أسماء بس، عشان
+     مفضلة فيها أقسام مستوردة ما تحمّلش كل فتحة للمحرر مئات
+     الكيلوبايتات. بننزّله هنا أول مرة بس ونحتفظ بيه في الذاكرة. */
+  function useFavorite(favorite, button) {
+    if (favorite.block) { addFavoriteToDocument(favorite); return; }
+    if (button) { button.disabled = true; button.textContent = "جارٍ التحميل…"; }
+    // ‎favoriteDeleteBase‎ هو مسار المفضلة الأساسي: ‎<base><id>/‎ بيرجّع
+    // العنصر، و‎<base><id>/delete/‎ بيمسحه.
+    var url = META.urls.favoriteDeleteBase + encodeURIComponent(favorite.id) + "/";
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); }).then(function (data) {
+      if (button) { button.disabled = false; button.textContent = "استخدام"; }
+      if (!data || !data.ok || !data.favorite || !data.favorite.block) {
+        toast("تعذّر تحميل العنصر المفضل.", "error");
+        return;
+      }
+      favorite.block = data.favorite.block;
+      addFavoriteToDocument(favorite);
+    }).catch(function () {
+      if (button) { button.disabled = false; button.textContent = "استخدام"; }
+      toast("تعذّر الاتصال لتحميل العنصر المفضل.", "error");
+    });
   }
 
   function addFavoriteToDocument(favorite) {
@@ -5133,6 +5157,29 @@
     if (input) input.setAttribute("accept", t.accept);
     renderAssets();
     openModal(refs.assetModal);
+    refreshAssetUsage();
+  }
+
+  /* علامة «مستخدمة» جنب الصورة بتتحسب بمسحة على كل مستندات القوالب
+     والدعوات. كانت بتتعمل مع كل فتحة للمحرر، يعني ثواني على السيرفر
+     قبل ما الصفحة تبدأ تنزل — عشان فلتر مايفتحوش أصلاً في أغلب
+     المرات. بقت بتتطلب هنا: أول ما المكتبة تتفتح، ومرة واحدة. */
+  var assetUsageLoaded = false;
+  function refreshAssetUsage() {
+    if (assetUsageLoaded || !META.urls || !META.urls.assets) return;
+    assetUsageLoaded = true;
+    fetch(META.urls.assets, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok || !data.assets) return;
+        var used = {};
+        data.assets.forEach(function (a) { used[a.id] = !!a.used; });
+        ASSETS.forEach(function (a) {
+          if (a.id in used) a.used = used[a.id];
+        });
+        if (refs.assetModal && !refs.assetModal.hidden) renderAssets();
+      })
+      .catch(function () { assetUsageLoaded = false; });
   }
 
   /* مكتبة الموسيقى المشتركة: بتترفع مرة واحدة من لوحة التحكم وتبقى متاحة
