@@ -1575,3 +1575,111 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
   .btn:hover, .tpl-card:hover, .feature-card:hover, .plan:hover { transform: none; }
   .orn-diamond, .fx-glow { animation: none; }
 }
+
+
+/* ================================================================
+   «أربع خطوات فقط» — تايم‑لاين متوصّل
+   كان فيه رقمين على بعض: ‎<span class="step-number">01</span>‎ من الـHTML
+   و‎.step::before‎ عدّاد من الـCSS. الأول بقى هو الدايرة، والتاني اتقفل.
+   وكمان ‎.grid--4‎ كان بيعمل ٥ أعمدة لأربع خطوات فبيسيب عمود فاضي —
+   الأعمدة هنا مثبّتة بأربعة.
+   ================================================================ */
+.steps {
+  --step-gap: 22px;
+  --step-dot: 56px;                 /* قطر الدايرة */
+  --step-line: color-mix(in srgb, var(--accent) 45%, transparent);
+  /* نفس لون خلفية القسم بالظبط: ‎.section--alt‎ بيتحط بشفافية ٩٠٪ فوق ‎--bg‎،
+     فالدايرة بتاخد الناتج المركّب عشان تقطع الخط من غير ما تبان كبقعة. */
+  --step-punch: color-mix(in srgb, var(--surface-2) 90%, var(--bg));
+  position: relative;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px var(--step-gap);
+  counter-reset: none;
+}
+
+/* الخيط الذهبي اللي بيوصل الخطوات ببعض — بيبدأ ويخلص متلاشي */
+.steps::before {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  top: calc(var(--step-dot) / 2); inset-inline: 12%; height: 1px;
+  background: linear-gradient(to left, transparent, var(--step-line) 14%,
+                              var(--step-line) 86%, transparent);
+}
+
+.step {
+  position: relative; z-index: 1;
+  padding-inline-start: 0; text-align: center;
+}
+.step::before { content: none; }    /* إلغاء دايرة العدّاد القديمة */
+
+/* الرقم بقى هو الدايرة نفسها */
+.step-number {
+  position: relative; z-index: 1;
+  width: var(--step-dot); height: var(--step-dot);
+  display: grid; place-items: center; margin: 0 auto 16px;
+  border-radius: 50%; border: 1px solid var(--accent);
+  background: var(--step-punch); color: var(--accent);
+  font-family: "Amiri", Georgia, serif; font-size: 19px; line-height: 1;
+  /* من غير ‎direction: ltr‎ عن قصد: الأرقام بتتعرض صح من غيرها، ولو اتحطت
+     بتخلّي ‎inset-inline-start‎ للدايرة نفسها يتحسب شمال بدل يمين في RTL. */
+  letter-spacing: normal;
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 10px 24px -16px color-mix(in srgb, var(--accent) 80%, transparent);
+  transition: background-color .28s ease, color .28s ease,
+              transform .28s cubic-bezier(.22, .8, .3, 1), box-shadow .28s ease;
+}
+
+/* معيّن صغير قاعد على الخيط في نص المسافة بين كل خطوتين */
+.step:not(:last-child)::after {
+  content: ""; position: absolute; z-index: 1; pointer-events: none;
+  top: calc(var(--step-dot) / 2); margin-top: -3.5px;
+  inset-inline-start: 100%; margin-inline-start: calc((var(--step-gap) - 7px) / 2);
+  width: 7px; height: 7px; transform: rotate(45deg);
+  background: var(--accent); opacity: .75;
+}
+
+.step h3 { margin: 0 0 6px; font-size: 20px; }
+.step p { margin: 0; max-width: 24ch; margin-inline: auto; font-size: 14px; line-height: 1.75; }
+
+/* المرور: الدايرة بتتملي دهب والخطوة بتطلع لفوق شوية */
+.step:hover .step-number {
+  background: var(--accent); color: #fff; transform: translateY(-3px) scale(1.06);
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+/* ---- تابلت: نفس الصف الأفقي بمقاسات أصغر.
+       عمودين كانوا بيقطعوا الخيط ويضيّعوا فكرة إن الخطوات متوصلة. ---- */
+@media (max-width: 980px) and (min-width: 761px) {
+  .steps { --step-dot: 48px; --step-gap: 16px; gap: 26px var(--step-gap); }
+  .steps::before { inset-inline: 12.5%; }
+  .step-number { font-size: 16px; margin-bottom: 13px; }
+  .step h3 { font-size: 17px; }
+  .step p { font-size: 13px; max-width: none; }
+}
+
+/* ---- الموبايل: نفس التايم‑لاين بس رأسي، والخط جنب الأرقام ---- */
+@media (max-width: 760px) {
+  .steps {
+    --step-dot: 48px;
+    grid-template-columns: 1fr; gap: 0;
+  }
+  .steps::before {
+    top: 14px; bottom: 22px; height: auto; width: 1px;
+    inset-inline: auto; inset-inline-start: calc(var(--step-dot) / 2);
+    background: linear-gradient(to bottom, transparent, var(--step-line) 8%,
+                                var(--step-line) 92%, transparent);
+  }
+  .step {
+    text-align: start; padding-block: 13px;
+    padding-inline-start: calc(var(--step-dot) + 16px); padding-inline-end: 0;
+  }
+  .step-number {
+    position: absolute; top: 10px; inset-inline-start: 0; margin: 0; font-size: 16px;
+  }
+  .step h3 { font-size: 18px; margin-bottom: 3px; }
+  .step p { max-width: none; margin-inline: 0; font-size: 13.5px; }
+  .step:not(:last-child)::after {
+    top: auto; bottom: -3.5px; margin-top: 0;
+    inset-inline-start: calc(var(--step-dot) / 2 - 3.5px); margin-inline-start: 0;
+  }
+}
