@@ -1,54 +1,54 @@
-{% load i18n %}
+{% load i18n bilingual %}
 {% comment %}
   الترويسة العائمة — مكوّن واحد مشترك بين الموقع العام ولوحة التحكم.
   مرّر dash=True من لوحة التحكم عشان تظهر روابطها بدل روابط الموقع.
 {% endcomment %}
 
-<a class="skip-link" href="#main">{% translate "تخطَّ إلى المحتوى" %}</a>
+<a class="skip-link" href="#main">{% bi "تخطَّ إلى المحتوى" %}</a>
 
 <header class="nav" id="site-nav">
   <div class="nav-shell">
-    <a class="brand" href="{% url 'home' %}"><span class="sr-only">{{ SITE_NAME }}</span></a>
+    <a class="brand" href="{% url 'home' %}"><span class="sr-only">{% bidb SITE_NAME_AR SITE_NAME_EN %}</span></a>
 
-    <nav class="nav-links" id="nav-menu" aria-label="{% translate 'التنقل الرئيسي' %}">
+    <nav class="nav-links" id="nav-menu" {% bi_attr "aria-label" "التنقل الرئيسي" %}>
       {% if dash %}
-        <a href="{% url 'dashboard' %}"             class="{% if nav == 'home' %}is-active{% endif %}">{% translate "الرئيسية" %}</a>
-        <a href="{% url 'dashboard_invitations' %}" class="{% if nav == 'invitations' %}is-active{% endif %}">{% translate "الدعوات" %}</a>
-        <a href="{% url 'dashboard_templates' %}"   class="{% if nav == 'templates' %}is-active{% endif %}">{% translate "القوالب" %}</a>
-        <a href="{% url 'dashboard_fonts' %}"       class="{% if nav == 'fonts' %}is-active{% endif %}">{% translate "الخطوط" %}</a>
-        <a href="{% url 'dashboard_music' %}"       class="{% if nav == 'music' %}is-active{% endif %}">{% translate "الموسيقى" %}</a>
-        <a href="{% url 'dashboard_intros' %}"      class="{% if nav == 'intros' %}is-active{% endif %}">{% translate "الافتتاحيات" %}</a>
-        <a href="{% url 'dashboard_orders' %}"      class="{% if nav == 'orders' %}is-active{% endif %}">{% translate "الطلبات" %}</a>
-        <a href="{% url 'dashboard_plans' %}"       class="{% if nav == 'plans' or nav == 'site' %}is-active{% endif %}">{% translate "الباقات" %}</a>
-        <a href="{% url 'analytics' %}"             class="{% if nav == 'analytics' %}is-active{% endif %}">{% translate "الإحصائيات" %}</a>
-        <a href="/admin/">{% translate "إدارة البيانات" %}</a>
-        <a class="nav-only-mobile" href="{% url 'home' %}">{% translate "الموقع العام" %}</a>
+        <a href="{% url 'dashboard' %}"             class="{% if nav == 'home' %}is-active{% endif %}">{% bi "الرئيسية" %}</a>
+        <a href="{% url 'dashboard_invitations' %}" class="{% if nav == 'invitations' %}is-active{% endif %}">{% bi "الدعوات" %}</a>
+        <a href="{% url 'dashboard_templates' %}"   class="{% if nav == 'templates' %}is-active{% endif %}">{% bi "القوالب" %}</a>
+        <a href="{% url 'dashboard_fonts' %}"       class="{% if nav == 'fonts' %}is-active{% endif %}">{% bi "الخطوط" %}</a>
+        <a href="{% url 'dashboard_music' %}"       class="{% if nav == 'music' %}is-active{% endif %}">{% bi "الموسيقى" %}</a>
+        <a href="{% url 'dashboard_intros' %}"      class="{% if nav == 'intros' %}is-active{% endif %}">{% bi "الافتتاحيات" %}</a>
+        <a href="{% url 'dashboard_orders' %}"      class="{% if nav == 'orders' %}is-active{% endif %}">{% bi "الطلبات" %}</a>
+        <a href="{% url 'dashboard_plans' %}"       class="{% if nav == 'plans' or nav == 'site' %}is-active{% endif %}">{% bi "الباقات" %}</a>
+        <a href="{% url 'analytics' %}"             class="{% if nav == 'analytics' %}is-active{% endif %}">{% bi "الإحصائيات" %}</a>
+        <a href="/admin/">{% bi "إدارة البيانات" %}</a>
+        <a class="nav-only-mobile" href="{% url 'home' %}">{% bi "الموقع العام" %}</a>
         <form class="nav-only-mobile nav-logout-inline" method="post" action="{% url 'logout' %}">
           {% csrf_token %}
           <button class="btn btn--ghost btn--sm btn--block" type="submit">
-            {% translate "خروج" %} ({{ user.username }})
+            {% bi "خروج" %} ({{ user.username }})
           </button>
         </form>
       {% else %}
-        <a href="{% url 'home' %}#templates" data-spy="templates">{% translate "القوالب" %}</a>
-        <a href="{% url 'home' %}#how"       data-spy="how">{% translate "كيف تعمل" %}</a>
-        <a href="{% url 'home' %}#plans"     data-spy="plans">{% translate "الباقات" %}</a>
+        <a href="{% url 'home' %}#templates" data-spy="templates">{% bi "القوالب" %}</a>
+        <a href="{% url 'home' %}#how"       data-spy="how">{% bi "كيف تعمل" %}</a>
+        <a href="{% url 'home' %}#plans"     data-spy="plans">{% bi "الباقات" %}</a>
         {% comment %}
           لما نموذج الطلبات مقفول، «اطلب دعوتك» مايوديش لقسم مش موجود —
           بيوصّل على واتساب. ولو مفيش رقم كمان، بيتشال خالص: زرار
           بيروح لمكان فاضي أسوأ من زرار ناقص.
         {% endcomment %}
         {% if SITE_CTA.orders_enabled %}
-        <a href="{% url 'home' %}#order"     data-spy="order">{% translate "اطلب دعوتك" %}</a>
+        <a href="{% url 'home' %}#order"     data-spy="order">{% bi "اطلب دعوتك" %}</a>
         {% elif SITE_CTA.whatsapp_url %}
-        <a href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
+        <a href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% bi "اطلب على واتساب" %}</a>
         {% endif %}
-        {% if user.is_staff %}<a href="{% url 'dashboard' %}">{% translate "لوحة التحكم" %}</a>{% endif %}
+        {% if user.is_staff %}<a href="{% url 'dashboard' %}">{% bi "لوحة التحكم" %}</a>{% endif %}
         {% if SITE_CTA.orders_enabled %}
-        <a class="btn btn--gold btn--sm nav-cta-inline" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+        <a class="btn btn--gold btn--sm nav-cta-inline" href="{% url 'home' %}#order">{% bi "اطلب دعوتك" %}</a>
         {% elif SITE_CTA.whatsapp_url %}
         <a class="btn btn--gold btn--sm nav-cta-inline" href="{{ SITE_CTA.whatsapp_url }}"
-           target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
+           target="_blank" rel="noopener">{% bi "اطلب على واتساب" %}</a>
         {% endif %}
       {% endif %}
     </nav>
@@ -61,19 +61,21 @@
         <input type="hidden" name="language" value="{% if LANGUAGE_CODE == 'ar' %}en{% else %}ar{% endif %}">
         <button class="lang-btn" type="submit"
                 title="{% if LANGUAGE_CODE == 'ar' %}Switch to English{% else %}التبديل إلى العربية{% endif %}"
-                aria-label="{% if LANGUAGE_CODE == 'ar' %}Switch to English{% else %}التبديل إلى العربية{% endif %}">
+                aria-label="{% if LANGUAGE_CODE == 'ar' %}Switch to English{% else %}التبديل إلى العربية{% endif %}"
+                data-bi-attr="aria-label" data-bi-ar="Switch to English" data-bi-en="التبديل إلى العربية">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9"/>
             <path d="M3.5 9.2h17M3.5 14.8h17"/>
             <path d="M12 3c2.6 2.5 4 5.5 4 9s-1.4 6.5-4 9c-2.6-2.5-4-5.5-4-9s1.4-6.5 4-9Z"/>
           </svg>
-          <span>{% if LANGUAGE_CODE == 'ar' %}EN{% else %}ع{% endif %}</span>
+          {# الحرف اللي على الزرار: بيوري اللغة اللي هتروح لها #}
+          <span data-lang="ar">EN</span><span data-lang="en">ع</span>
         </button>
       </form>
 
       <button class="icon-btn" data-theme-toggle type="button"
-              aria-label="{% translate 'تبديل بين الوضع الفاتح والداكن' %}">
+              {% bi_attr "aria-label" "تبديل بين الوضع الفاتح والداكن" %}>
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
              stroke-linecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4.2"/>
@@ -88,17 +90,17 @@
       {% if dash %}
         <form class="nav-logout" method="post" action="{% url 'logout' %}">
           {% csrf_token %}
-          <button class="btn btn--ghost btn--sm nav-cta" type="submit">{% translate "خروج" %}</button>
+          <button class="btn btn--ghost btn--sm nav-cta" type="submit">{% bi "خروج" %}</button>
         </form>
       {% elif SITE_CTA.orders_enabled %}
-        <a class="btn btn--gold btn--sm nav-cta" href="{% url 'home' %}#order">{% translate "اطلب دعوتك" %}</a>
+        <a class="btn btn--gold btn--sm nav-cta" href="{% url 'home' %}#order">{% bi "اطلب دعوتك" %}</a>
       {% elif SITE_CTA.whatsapp_url %}
         <a class="btn btn--gold btn--sm nav-cta" href="{{ SITE_CTA.whatsapp_url }}"
-           target="_blank" rel="noopener">{% translate "اطلب على واتساب" %}</a>
+           target="_blank" rel="noopener">{% bi "اطلب على واتساب" %}</a>
       {% endif %}
 
       <button class="nav-burger" id="nav-burger" type="button"
-              aria-expanded="false" aria-controls="nav-menu" aria-label="{% translate 'فتح القائمة' %}">
+              aria-expanded="false" aria-controls="nav-menu" {% bi_attr "aria-label" "فتح القائمة" %}>
         <span></span><span></span><span></span>
       </button>
     </div>

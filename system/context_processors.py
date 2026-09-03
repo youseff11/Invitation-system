@@ -59,9 +59,19 @@ def _cta():
 
 def site_settings(request):
     en = (get_language() or "").startswith("en")
+    # النسختين مع بعض كمان: الصفحات ثنائية اللغة بتطبع الاتنين في نفس
+    # الـHTML عشان التبديل يبقى فوري من غير رحلة للسيرفر.
+    name_ar = settings.SITE_NAME
+    name_en = getattr(settings, "SITE_NAME_EN", "") or name_ar
+    tag_ar = settings.SITE_TAGLINE
+    tag_en = getattr(settings, "SITE_TAGLINE_EN", "") or tag_ar
     return {
-        "SITE_NAME": getattr(settings, "SITE_NAME_EN", "") if en else settings.SITE_NAME,
-        "SITE_TAGLINE": getattr(settings, "SITE_TAGLINE_EN", "") if en else settings.SITE_TAGLINE,
+        "SITE_NAME": name_en if en else name_ar,
+        "SITE_TAGLINE": tag_en if en else tag_ar,
+        "SITE_NAME_AR": name_ar,
+        "SITE_NAME_EN": name_en,
+        "SITE_TAGLINE_AR": tag_ar,
+        "SITE_TAGLINE_EN": tag_en,
         "SITE_WHATSAPP": settings.SITE_WHATSAPP,
         "SITE_EMAIL": settings.SITE_EMAIL,
         "SITE_CURRENCY": settings.SITE_CURRENCY,

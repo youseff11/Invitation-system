@@ -1757,3 +1757,52 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 @media (max-width: 900px) and (prefers-reduced-data: reduce) {
   .hero-sparks, .hero-shooting { display: none; }
 }
+
+
+/* ================================================================
+   تبديل اللغة — تقليل الإحساس بالانتظار
+   التبديل بيروح للسيرفر بالضرورة (جانجو بيرجّع HTML مترجم + محتوى
+   من قاعدة البيانات باللغة المطلوبة)، فمش زي الوضع الليلي اللي كله
+   في المتصفح. القياس على السيرفر المباشر: الذهاب والعودة لوحده
+   ٦٠٠–٩٠٠ms. اللي بنعمله هنا إننا نشيل كل حاجة بتتزوّد فوق الرقم ده:
+   الوميض الأبيض، وإعادة بناء الصفحة قدام العين، والقفزة لأول الصفحة.
+   ================================================================ */
+
+/* انتقال ناعم بين الصفحتين بدل الوميض الأبيض (كروم) */
+@view-transition { navigation: auto; }
+
+/* راجعين من تبديل لغة: الصفحة تظهر كاملة فوراً من غير ظهور تدريجي */
+html.no-intro [data-reveal],
+html.js.no-intro [data-reveal] {
+  opacity: 1; transform: none; transition: none;
+}
+
+/* رد فعل فوري لضغطة زرار اللغة — عشان الزرار ما يحسّش إنه مات */
+.lang-btn.is-busy { opacity: .55; pointer-events: none; }
+.lang-btn.is-busy svg { animation: lang-spin .9s linear infinite; }
+@keyframes lang-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lang-btn.is-busy svg { animation: none; }
+}
+
+
+/* ================================================================
+   ثنائية اللغة — التبديل الفوري
+   الصفحة بتطبع النصّين (عربي وإنجليزي) مع بعض، والقاعدة دي بتوري
+   واحد حسب ‎<html lang>‎. يعني تبديل اللغة بقى تغيير صفة واحدة زي
+   الوضع الليلي بالظبط، من غير أي رحلة للسيرفر.
+   ‎display: revert‎ مش ‎inline‎ عن قصد: العنصر بيرجع لعرضه الطبيعي حسب
+   نوعه — ‎span‎ سطري و‎div‎ و‎li‎ كتليين — فالفقرات والقوايم مابتتكسرش.
+   ================================================================ */
+[data-lang="en"] { display: none; }
+html[lang="en"] [data-lang="ar"] { display: none; }
+html[lang="en"] [data-lang="en"] { display: revert; }
+
+/* التبديل نفسه بيتلوّن كتلاشي ناعم بدل ما الصفحة تنطّ (كروم) */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: vt-out .18s ease both; }
+  ::view-transition-new(root) { animation: vt-in .22s ease both; }
+}
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; } }

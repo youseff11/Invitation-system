@@ -500,6 +500,80 @@
     refresh();
   })();
 
+  /* ------------------------------------------------ تبديل اللغة
+     الصفحات اللي بتطبع اللغتين مع بعض (‎<html data-bilingual>‎) بتتبدّل
+     في المتصفح على طول زي الوضع الليلي — صفة واحدة على ‎<html>‎ والـCSS
+     بيوري اللغة المطلوبة. السيرفر بيتبلّغ في الخلفية عشان أي صفحة
+     تانية تتفتح باللغة الصح.
+
+     الصفحات التانية (لوحة التحكم مثلاً) لسه محتاجة السيرفر، فبنسيب
+     الفورم يشتغل عادي ونحفظ مكان السكرول عشان الرجعة تبقى في مكانها. */
+  (function () {
+    var form = doc.querySelector(".lang-form");
+    if (!form) return;
+    var root = doc.documentElement;
+    var bilingual = root.hasAttribute("data-bilingual");
+
+    if (!bilingual) {
+      form.addEventListener("submit", function () {
+        try {
+          sessionStorage.setItem("farha-lang-switch", String(Math.round(window.scrollY)));
+        } catch (e) {}
+        var btn = form.querySelector(".lang-btn");
+        if (btn) btn.classList.add("is-busy");
+      });
+      return;
+    }
+
+    function applyLang(lang) {
+      root.setAttribute("lang", lang);
+      root.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
+
+      var title = root.getAttribute("data-title-" + lang);
+      if (title) doc.title = title;
+
+      /* السمات (title / aria-label) — مش عناصر فيبقى الـCSS مايوصلهاش */
+      var attrs = doc.querySelectorAll("[data-bi-attr]");
+      Array.prototype.forEach.call(attrs, function (el) {
+        var name = el.getAttribute("data-bi-attr");
+        var val = el.getAttribute("data-bi-" + lang);
+        if (name && val !== null) el.setAttribute(name, val);
+      });
+
+      /* الفورم يفضل مظبوط لو الجافاسكربت وقف بعد كده لأي سبب */
+      var input = form.querySelector('input[name="language"]');
+      if (input) input.value = lang === "ar" ? "en" : "ar";
+    }
+
+    /* لو المتصفح فاكر لغة غير اللي السيرفر رسمها، السكربت في base.html
+       بيكون ظبّط ‎lang‎ و‎dir‎ قبل الرسم — بنكمّل الباقي هنا. */
+    applyLang(root.getAttribute("lang") === "en" ? "en" : "ar");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var next = root.getAttribute("lang") === "ar" ? "en" : "ar";
+
+      var swap = function () { applyLang(next); };
+      if (doc.startViewTransition && !(window.matchMedia &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+        doc.startViewTransition(swap);
+      } else {
+        swap();
+      }
+
+      try { localStorage.setItem("farha-lang", next); } catch (e2) {}
+
+      /* تبليغ السيرفر في الخلفية — من غير انتظار ومن غير إعادة تحميل */
+      try {
+        var fd = new FormData(form);
+        fd.set("language", next);
+        fetch(form.action, {
+          method: "POST", body: fd, credentials: "same-origin", keepalive: true
+        }).catch(function () {});
+      } catch (e3) {}
+    });
+  })();
+
   /* ------------------------------------------------ مؤثرات الصفحة الرئيسية
      نجوم بتقع + شهاب + ظهور تدريجي بالسكرول.
      كله بيقف لو المستخدم مفعّل «تقليل الحركة»، وبيقف كمان لما التاب يبقى
@@ -596,6 +670,40 @@
     /* ---- الظهور التدريجي ---- */
     var items = doc.querySelectorAll("[data-reveal]");
     if (!items.length) return;
+
+    /* راجعين من تبديل لغة: كل حاجة تظهر على طول والصفحة ترجع لنفس
+       المكان اللي المستخدم كان واقف فيه — فالتبديل يحس كأنه في مكانه. */
+    var back = null;
+    try { back = sessionStorage.getItem("farha-lang-switch"); } catch (e) {}
+    if (back !== null) {
+      try { sessionStorage.removeItem("farha-lang-switch"); } catch (e) {}
+      items.forEach(function (el) { el.classList.add("is-in"); });
+      var y = parseInt(back, 10) || 0;
+      if (y > 0) {
+        var prev = history.scrollRestoration;
+        try { history.scrollRestoration = "manual"; } catch (e) {}
+        /* ‎html { scroll-behavior: smooth }‎ بيحوّل النطة دي لأنيميشن،
+           والمتصفح بيلغيها وهو بيرجّع الصفحة لأولها — فبنقفله لحظياً. */
+        var root = doc.documentElement;
+        var jump = function () {
+          var keep = root.style.scrollBehavior;
+          root.style.scrollBehavior = "auto";
+          window.scrollTo(0, y);
+          root.style.scrollBehavior = keep;
+        };
+        jump();
+        /* الصور بتغيّر الارتفاعات وهي بتخلص تحميل — نعيد الضبط بعدها */
+        window.addEventListener("load", function () {
+          jump();
+          requestAnimationFrame(function () {
+            jump();
+            try { history.scrollRestoration = prev || "auto"; } catch (e) {}
+          });
+        }, { once: true });
+      }
+      return;
+    }
+
     if (reduce || !("IntersectionObserver" in window)) {
       items.forEach(function (el) { el.classList.add("is-in"); });
       return;

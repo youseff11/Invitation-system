@@ -1,5 +1,5 @@
 {% load static i18n %}<!doctype html>
-<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" data-theme="light">
+<html lang="{{ LANGUAGE_CODE }}" dir="{% if LANGUAGE_BIDI %}rtl{% else %}ltr{% endif %}" data-theme="light"{% block html_attrs %}{% endblock %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,6 +19,28 @@
   /* علامة إن الجافاسكربت شغّال — الـCSS بيخبّي عناصر الظهور التدريجي
      تحت html.js بس، فمن غير جافاسكربت الصفحة بتفضل ظاهرة بالكامل. */
   document.documentElement.classList.add("js");
+  /* راجعين من تبديل لغة؟ الصفحة تظهر كاملة من غير أي ظهور تدريجي.
+     لازم يتحط هنا قبل أول رسم، وإلا هتلمح الصفحة وهي بتتبني من أول وجديد. */
+  try {
+    if (sessionStorage.getItem("farha-lang-switch")) {
+      document.documentElement.classList.add("no-intro");
+    }
+  } catch (e) {}
+  /* اللغة قبل أول رسم — بس على الصفحات اللي بتطبع اللغتين مع بعض.
+     الصفحات التانية بتسيب اللغة للسيرفر زي ما هي، وإلا هنقلب اتجاه
+     صفحة نصّها لسه بلغة واحدة. */
+  try {
+    var r = document.documentElement;
+    if (r.hasAttribute("data-bilingual")) {
+      var l = localStorage.getItem("farha-lang");
+      if (l === "ar" || l === "en") {
+        r.setAttribute("lang", l);
+        r.setAttribute("dir", l === "ar" ? "rtl" : "ltr");
+        var ti = r.getAttribute("data-title-" + l);
+        if (ti) document.title = ti;
+      }
+    }
+  } catch (e) {}
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">

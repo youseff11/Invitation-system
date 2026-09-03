@@ -1,6 +1,11 @@
 {% extends 'public/_base.html' %}
-{% load static i18n %}
+{% load static i18n bilingual %}
 {% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
+{% comment %}
+  data-bilingual بتقول لـsite.js إن الصفحة دي فيها اللغتين، فالتبديل
+  بيتم في المتصفح على طول من غير ما نروح للسيرفر.
+{% endcomment %}
+{% block html_attrs %} data-bilingual data-title-ar="{{ SITE_NAME_AR }} — {{ SITE_TAGLINE_AR }}" data-title-en="{{ SITE_NAME_EN }} — {{ SITE_TAGLINE_EN }}"{% endblock %}
 {% block content %}
 
 {% comment %} طبقة المؤثرات: نجوم بتقع + وهج ذهبي خفيف — بتتولّد من site.js وبتقف لو
@@ -13,7 +18,7 @@
 
 <section class="hero" id="main">
   <div class="hero-art">
-    <span class="sr-only">{% translate "دعوة إلكترونية أنيقة داخل هاتف محاط بالورود" %}</span>
+    <span class="sr-only">{% bi "دعوة إلكترونية أنيقة داخل هاتف محاط بالورود" %}</span>
     {% comment %} نجوم بتقع فوق صورة الهيرو + شهاب بيعدّي كل شوية.
        جوّه ‎.hero-art‎ عن قصد: على التليفون الكلام بينزل تحت الصورة،
        فكده المؤثرات تفضل على الصورة بس ومتعديش على النص. {% endcomment %}
@@ -34,8 +39,8 @@
         </svg>
       </span>
       <h1>
-        <span class="h1-top">{% translate "تصميم دعوات زفاف" %}</span>
-        <span class="h1-main">{% translate "تعكس قصة حبك" %}</span>
+        <span class="h1-top">{% bi "تصميم دعوات زفاف" %}</span>
+        <span class="h1-main">{% bi "تعكس قصة حبك" %}</span>
       </h1>
       <div class="hero-rule" aria-hidden="true">
         <i></i>
@@ -44,20 +49,20 @@
         </svg>
         <i></i>
       </div>
-      <p class="hero-sub">{% translate "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى" %}</p>
+      <p class="hero-sub">{% bi "تصاميم راقية ومخصصة لنجعل يومك مميزاً وذكرى لا تُنسى" %}</p>
       <div class="hero-actions">
         <a class="btn btn--gold btn--lg btn--shine" href="{% url 'template_gallery' %}">
-          <span>{% translate "ابدأ تصميم دعوتك" %}</span>
+          <span>{% bi "ابدأ تصميم دعوتك" %}</span>
           <svg class="btn-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13m0 0-5-5m5 5-5 5"/></svg>
         </a>
         <a class="btn btn--outline btn--lg" href="#plans">
-          <span>{% translate "شوف الباقات" %}</span>
+          <span>{% bi "شوف الباقات" %}</span>
         </a>
       </div>
       <ul class="hero-trust" aria-hidden="true">
-        <li><b>{% translate "+٥٠" %}</b><span>{% translate "قالب جاهز" %}</span></li>
-        <li><b>{% translate "٢٤ ساعة" %}</b><span>{% translate "متوسط التسليم" %}</span></li>
-        <li><b>{% translate "١٠٠٪" %}</b><span>{% translate "قابل للتعديل" %}</span></li>
+        <li><b>{% bi "+٥٠" %}</b><span>{% bi "قالب جاهز" %}</span></li>
+        <li><b>{% bi "٢٤ ساعة" %}</b><span>{% bi "متوسط التسليم" %}</span></li>
+        <li><b>{% bi "١٠٠٪" %}</b><span>{% bi "قابل للتعديل" %}</span></li>
       </ul>
     </div>
   </div>
@@ -66,30 +71,30 @@
 <section class="section" id="templates">
   <div class="wrap">
     <div class="section-head" data-reveal>
-      <p class="eyebrow">{% translate "المعرض" %}</p>
-      <h2>{% translate "قوالب مختارة بعناية" %}</h2>
-      <p>{% translate "تصاميم أنيقة، لتبدأ منها حكاية يومكم المميز." %}</p>
+      <p class="eyebrow">{% bi "المعرض" %}</p>
+      <h2>{% bi "قوالب مختارة بعناية" %}</h2>
+      <p>{% bi "تصاميم أنيقة، لتبدأ منها حكاية يومكم المميز." %}</p>
     </div>
     <div class="grid grid--4">
       {% for t in templates %}
       <article class="tpl-card" data-reveal data-reveal-stagger>
         <div class="tpl-cover"{% if t.cover_src %} style="background-image:url('{{ t.cover_src }}')"{% endif %}>
-          {% if not t.cover_src %}{{ t.display_name|slice:':1' }}{% endif %}
+          {% if not t.cover_src %}{% bidb t.name|slice:':1' t.name_en|slice:':1' %}{% endif %}
         </div>
         <div class="tpl-body">
-          <h3>{{ t.display_name }}</h3>
+          <h3>{% bidb t.name t.name_en %}</h3>
           <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
-          {% if t.display_description %}<p class="tpl-desc">{{ t.display_description }}</p>{% endif %}
+          {% if t.description or t.description_en %}<p class="tpl-desc">{% bidb t.description t.description_en %}</p>{% endif %}
           {# زرار واحد بيفتح معاينة القالب — زرار «اطلبه» اتشال، والطلب #}
           {# مكانه زرار واتساب العايم وقسم التواصل تحت. #}
           <div class="tpl-actions">
             <a class="btn btn--gold btn--sm" href="{% url 'template_demo' t.slug %}"
-               target="_blank" rel="noopener">{% translate "تجربة قالب" %}</a>
+               target="_blank" rel="noopener">{% bi "تجربة قالب" %}</a>
           </div>
         </div>
       </article>
       {% empty %}
-      <p class="empty">{% translate "لا توجد قوالب معروضة بعد." %}</p>
+      <p class="empty">{% bi "لا توجد قوالب معروضة بعد." %}</p>
       {% endfor %}
     </div>
   </div>
@@ -121,28 +126,28 @@
 <section class="section" id="plans">
   <div class="wrap">
     <div class="section-head" data-reveal>
-      <p class="eyebrow">{% translate "الأسعار" %}</p>
-      <h2>{% translate "باقات واضحة بلا مفاجآت" %}</h2>
+      <p class="eyebrow">{% bi "الأسعار" %}</p>
+      <h2>{% bi "باقات واضحة بلا مفاجآت" %}</h2>
     </div>
     <div class="grid grid--3">
       {% for p in plans %}
       <!-- التعديل الجذري هنا: max-content و align-self لضمان استقلالية طول كل كارت -->
       <div class="plan{% if p.is_featured %} plan--featured{% endif %}" style="align-self: flex-start; height: max-content; display: flex; flex-direction: column;">
-        {% if p.is_featured %}<span class="plan-badge">{% translate "الأكثر طلباً" %}</span>{% endif %}
-        <h3>{{ p.display_name }}</h3>
-        {% if p.display_tagline %}<p class="muted" style="margin:0">{{ p.display_tagline }}</p>{% endif %}
+        {% if p.is_featured %}<span class="plan-badge">{% bi "الأكثر طلباً" %}</span>{% endif %}
+        <h3>{% bidb p.name p.name_en %}</h3>
+        {% if p.tagline or p.tagline_en %}<p class="muted" style="margin:0">{% bidb p.tagline p.tagline_en %}</p>{% endif %}
         <div class="plan-price">{{ p.price|floatformat:0 }} <small>{{ SITE_CURRENCY }}</small></div>
-        <ul>{% for b in p.display_bullets %}<li>{{ b }}</li>{% endfor %}</ul>
+        <ul>{% for b in p.bullets %}<li data-lang="ar">{{ b }}</li>{% endfor %}{% for b in p.bullets_en|default:p.bullets %}<li data-lang="en">{{ b }}</li>{% endfor %}</ul>
 
         <div class="plan-bottom-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 14px; width: 100%;">
 
             {% if p.shown_addons %}
             <div class="plan-addons" style="display: none;">
-              <p class="plan-addons-title" style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">{% translate "إضافات اختيارية" %}</p>
+              <p class="plan-addons-title" style="font-size: 14px; font-weight: bold; margin-bottom: 8px;">{% bi "إضافات اختيارية" %}</p>
               <ul class="plan-addons-list" style="list-style: none; padding: 0; margin: 0; font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 8px;">
                 {% for a in p.shown_addons %}
                 <li style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                  <span>{{ a.display_name }}</span>
+                  <span>{% bidb a.name a.name_en %}</span>
                   <b>+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</b>
                 </li>
                 {% endfor %}
@@ -151,16 +156,16 @@
             {% endif %}
 
             {% if SITE_CTA.orders_enabled %}
-            <a class="btn btn--gold btn--block" href="#contact">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+            <a class="btn btn--gold btn--block" href="#contact">{% bi_fmt "اختر %(plan)s" p.name p.name_en %}</a>
             {% elif SITE_CTA.whatsapp_url %}
             <a class="btn btn--gold btn--block" href="{{ SITE_CTA.whatsapp_url }}"
-               target="_blank" rel="noopener">{% blocktranslate with plan=p.display_name %}اختر {{ plan }}{% endblocktranslate %}</a>
+               target="_blank" rel="noopener">{% bi_fmt "اختر %(plan)s" p.name p.name_en %}</a>
             {% endif %}
 
             {% if p.shown_addons %}
-            <button type="button" class="btn btn--ghost btn--block toggle-addons-btn">{% translate "عرض الإضافات المتاحة" %}</button>
+            <button type="button" class="btn btn--ghost btn--block toggle-addons-btn"><span data-addons-show>{% bi "عرض الإضافات المتاحة" %}</span><span data-addons-hide hidden>{% bi "إخفاء الإضافات" %}</span></button>
             {% else %}
-            <button type="button" class="btn btn--ghost btn--block" disabled style="opacity: 0.6; cursor: not-allowed;">{% translate "لا يوجد إضافات متاحة" %}</button>
+            <button type="button" class="btn btn--ghost btn--block" disabled style="opacity: 0.6; cursor: not-allowed;">{% bi "لا يوجد إضافات متاحة" %}</button>
             {% endif %}
 
         </div>
@@ -173,14 +178,14 @@
 <section class="section section--alt" id="how">
   <div class="wrap">
     <div class="section-head" data-reveal>
-      <p class="eyebrow">{% translate "كيف تعمل" %}</p>
-      <h2>{% translate "أربع خطوات فقط" %}</h2>
+      <p class="eyebrow">{% bi "كيف تعمل" %}</p>
+      <h2>{% bi "أربع خطوات فقط" %}</h2>
     </div>
     <div class="grid grid--4 steps">
-      <div class="step" data-reveal data-reveal-stagger><span class="step-number">01</span><h3>{% translate "اختر القالب" %}</h3><p class="muted">{% translate "تصفّح المعرض واختر ما يناسب مناسبتك." %}</p></div>
-      <div class="step" data-reveal data-reveal-stagger><span class="step-number">02</span><h3>{% translate "أرسل بياناتك" %}</h3><p class="muted">{% translate "الأسماء، الموعد، المكان، وأي تفاصيل إضافية." %}</p></div>
-      <div class="step" data-reveal data-reveal-stagger><span class="step-number">03</span><h3>{% translate "نصمّم دعوتك" %}</h3><p class="muted">{% translate "نضبط التفاصيل ونرسل لك معاينة قبل النشر." %}</p></div>
-      <div class="step" data-reveal data-reveal-stagger><span class="step-number">04</span><h3>{% translate "استلم الرابط" %}</h3><p class="muted">{% translate "رابط خاص جاهز للإرسال لكل الضيوف." %}</p></div>
+      <div class="step" data-reveal data-reveal-stagger><span class="step-number">01</span><h3>{% bi "اختر القالب" %}</h3><p class="muted">{% bi "تصفّح المعرض واختر ما يناسب مناسبتك." %}</p></div>
+      <div class="step" data-reveal data-reveal-stagger><span class="step-number">02</span><h3>{% bi "أرسل بياناتك" %}</h3><p class="muted">{% bi "الأسماء، الموعد، المكان، وأي تفاصيل إضافية." %}</p></div>
+      <div class="step" data-reveal data-reveal-stagger><span class="step-number">03</span><h3>{% bi "نصمّم دعوتك" %}</h3><p class="muted">{% bi "نضبط التفاصيل ونرسل لك معاينة قبل النشر." %}</p></div>
+      <div class="step" data-reveal data-reveal-stagger><span class="step-number">04</span><h3>{% bi "استلم الرابط" %}</h3><p class="muted">{% bi "رابط خاص جاهز للإرسال لكل الضيوف." %}</p></div>
     </div>
   </div>
 </section>
@@ -191,12 +196,12 @@
   <section class="section section--alt" id="order">
     <div class="wrap" style="max-width:640px;text-align:center">
       <div class="section-head" data-reveal>
-        <p class="eyebrow">{% translate "اطلب دعوتك" %}</p>
-        <h2>{% translate "كلّمنا على واتساب" %}</h2>
-        <p>{% translate "ابعتلنا الباقة والموعد وأي تفاصيل، ونرجعلك بمعاينة قبل النشر." %}</p>
+        <p class="eyebrow">{% bi "اطلب دعوتك" %}</p>
+        <h2>{% bi "كلّمنا على واتساب" %}</h2>
+        <p>{% bi "ابعتلنا الباقة والموعد وأي تفاصيل، ونرجعلك بمعاينة قبل النشر." %}</p>
       </div>
       <a class="btn btn--gold" href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">
-        {% translate "افتح المحادثة" %}
+        {% bi "افتح المحادثة" %}
       </a>
     </div>
   </section>
@@ -205,9 +210,9 @@
 <!-- <section class="section section--alt" id="order">
   <div class="wrap" style="max-width:760px">
     <div class="section-head" data-reveal>
-      <p class="eyebrow">{% translate "اطلب دعوتك" %}</p>
-      <h2>{% translate "ابدأ الآن" %}</h2>
-      <p>{% translate "املأ البيانات وسنتواصل معك خلال ساعات لتأكيد التفاصيل." %}</p>
+      <p class="eyebrow">{% bi "اطلب دعوتك" %}</p>
+      <h2>{% bi "ابدأ الآن" %}</h2>
+      <p>{% bi "املأ البيانات وسنتواصل معك خلال ساعات لتأكيد التفاصيل." %}</p>
     </div>
 
     {% if messages %}{% for m in messages %}
@@ -228,7 +233,7 @@
                 <input type="checkbox" name="addons" value="{{ a.pk }}"
                        data-price="{{ a.price|floatformat:0 }}">
                 <span class="addon-body">
-                  <span class="addon-name">{{ a.display_name }}</span>
+                  <span class="addon-name">{% bidb a.name a.name_en %}</span>
                   {% if a.description %}<span class="addon-desc">{{ a.description }}</span>{% endif %}
                 </span>
                 <span class="addon-price">+{{ a.price|floatformat:0 }} {{ SITE_CURRENCY }}</span>
@@ -247,7 +252,7 @@
         </div>
         {% endif %}
       {% endfor %}
-      <div class="span-2"><button class="btn btn--gold btn--block" type="submit">{% translate "إرسال الطلب" %}</button></div>
+      <div class="span-2"><button class="btn btn--gold btn--block" type="submit">{% bi "إرسال الطلب" %}</button></div>
     </form>
   </div>
 </section> -->
@@ -257,14 +262,14 @@
 <section class="section section--faq" id="faq">
   <div class="wrap wrap--narrow">
     <div class="section-head" data-reveal>
-      <p class="eyebrow">{% translate "مساعدة" %}</p>
-      <h2>{% translate "الأسئلة الشائعة" %}</h2>
+      <p class="eyebrow">{% bi "مساعدة" %}</p>
+      <h2>{% bi "الأسئلة الشائعة" %}</h2>
     </div>
     <div class="faq-list">
       {% for faq in faqs %}
       <details class="faq-item" data-reveal data-reveal-stagger{% if forloop.first %} open{% endif %}>
-        <summary>{{ faq.display_question }}</summary>
-        <div class="faq-answer">{{ faq.display_answer|linebreaksbr }}</div>
+        <summary>{% bidb faq.question_ar faq.question_en %}</summary>
+        <div class="faq-answer">{% bidb faq.answer_ar|linebreaksbr faq.answer_en|linebreaksbr wrap="div" %}</div>
       </details>
       {% endfor %}
     </div>
@@ -274,13 +279,13 @@
 
 <section class="section home-cta" id="contact">
   <div class="wrap home-cta-in" data-reveal>
-    <p class="eyebrow">{% translate "خطوتك التالية" %}</p>
-    <h2>{% translate "هل أنت مستعد لتصميم قالبك الآن؟" %}</h2>
-    <p>{% translate "تواصل معي لنبدأ دعوة تليق بمناسبتك." %}</p>
+    <p class="eyebrow">{% bi "خطوتك التالية" %}</p>
+    <h2>{% bi "هل أنت مستعد لتصميم قالبك الآن؟" %}</h2>
+    <p>{% bi "تواصل معي لنبدأ دعوة تليق بمناسبتك." %}</p>
     {% if SITE_CTA.whatsapp_url %}
-    <a class="btn btn--gold" href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% translate "تواصل معي" %}</a>
+    <a class="btn btn--gold" href="{{ SITE_CTA.whatsapp_url }}" target="_blank" rel="noopener">{% bi "تواصل معي" %}</a>
     {% elif SITE_EMAIL %}
-    <a class="btn btn--gold" href="mailto:{{ SITE_EMAIL }}">{% translate "تواصل معي" %}</a>
+    <a class="btn btn--gold" href="mailto:{{ SITE_EMAIL }}">{% bi "تواصل معي" %}</a>
     {% endif %}
   </div>
 </section>
@@ -288,8 +293,8 @@
 <footer class="foot">
   <div class="wrap foot-inner">
     <a class="foot-brand" href="{% url 'home' %}" aria-label="{{ SITE_NAME }}"><img src="{% static 'images/logo.jpeg' %}" alt="{{ SITE_NAME }}"></a>
-    <p>{{ SITE_NAME }} — {{ SITE_TAGLINE }}</p>
-    <div class="foot-socials" aria-label="{% translate 'روابط التواصل' %}">
+    <p>{% bidb SITE_NAME_AR SITE_NAME_EN %} — {% bidb SITE_TAGLINE_AR SITE_TAGLINE_EN %}</p>
+    <div class="foot-socials" {% bi_attr "aria-label" "روابط التواصل" %}>
       {% if site_config.whatsapp_url %}<a href="{{ site_config.whatsapp_url }}" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="wa-icon fa-brands fa-whatsapp" aria-hidden="true"></i></a>{% endif %}
       {% if site_config.facebook_enabled and site_config.facebook_url %}<a href="{{ site_config.facebook_url }}" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H6v4h3v5h4v-5h3l1-4h-4V9c0-.6.4-1 1-1Z"/></svg></a>{% endif %}
       {% if site_config.instagram_enabled and site_config.instagram_url %}<a href="{{ site_config.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.5" cy="6.8" r="1" fill="currentColor" stroke="none"/></svg></a>{% endif %}
@@ -300,26 +305,30 @@
 
 {% block extra_js %}
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    var toggleBtns = document.querySelectorAll('.toggle-addons-btn');
-    
-    toggleBtns.forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var addonsDiv = this.parentElement.querySelector('.plan-addons');
-        var isCurrentlyHidden = (addonsDiv.style.display === 'none');
-        
-        // إغلاق كل قوائم الإضافات المفتوحة
-        document.querySelectorAll('.plan-addons').forEach(function(div) {
-          div.style.display = 'none';
-        });
-        document.querySelectorAll('.toggle-addons-btn').forEach(function(otherBtn) {
-          otherBtn.textContent = '{% translate "عرض الإضافات المتاحة" %}';
-        });
-        
-        // فتح القائمة المضغوطة فقط
-        if (isCurrentlyHidden) {
-          addonsDiv.style.display = 'block';
-          this.textContent = '{% translate "إخفاء الإضافات" %}';
+  /* زرار «عرض الإضافات»: اللافتتين موجودتين في الصفحة بالعربي
+     والإنجليزي، وإحنا بنبدّل بينهم بـhidden بس. ممنوع نكتب النص
+     بالجافاسكربت — ده كان هيمسح نسخة اللغة التانية ويكسر التبديل. */
+  document.addEventListener("DOMContentLoaded", function () {
+    var btns = document.querySelectorAll('.toggle-addons-btn');
+
+    function setLabel(btn, open) {
+      var show = btn.querySelector('[data-addons-show]');
+      var hide = btn.querySelector('[data-addons-hide]');
+      if (show) show.hidden = open;
+      if (hide) hide.hidden = !open;
+    }
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var box = this.parentElement.querySelector('.plan-addons');
+        var wasHidden = !box || box.style.display === 'none' || box.style.display === '';
+
+        document.querySelectorAll('.plan-addons').forEach(function (d) { d.style.display = 'none'; });
+        btns.forEach(function (b) { setLabel(b, false); });
+
+        if (wasHidden && box) {
+          box.style.display = 'block';
+          setLabel(this, true);
         }
       });
     });
