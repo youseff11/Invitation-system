@@ -1563,8 +1563,10 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
   .home-cta-in { padding: 32px 18px; border-radius: 20px; }
   .fx-glow--a, .fx-glow--b { width: 70vw; height: 70vw; }
 }
+/* الأرقام التلاتة بيدخلوا في ٣٧٥px لو ضيّقنا المسافات — أحسن من إخفاء واحد */
 @media (max-width: 520px) {
-  .hero-trust li:last-child { display: none; }
+  .hero-trust { gap: 4px; }
+  .hero-trust li { padding-inline: 6px; }
 }
 
 /* احترام إعداد «تقليل الحركة» في النظام: كل حاجة بتقف، والمحتوى بيفضل ظاهر */
@@ -1661,6 +1663,9 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 @media (max-width: 760px) {
   .steps {
     --step-dot: 48px;
+    /* الخيط أوضح شوية هنا: القطع اللي بين الدواير قصيرة، فلو باهت
+       بيبان كأن فيه معيّنات سايبة من غير خط. */
+    --step-line: color-mix(in srgb, var(--accent) 60%, transparent);
     grid-template-columns: 1fr; gap: 0;
   }
   .steps::before {
@@ -1670,11 +1675,13 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
                                 var(--step-line) 92%, transparent);
   }
   .step {
-    text-align: start; padding-block: 13px;
+    text-align: start; padding-block: 19px;   /* مساحة كافية تخلّي الخيط يبان */
     padding-inline-start: calc(var(--step-dot) + 16px); padding-inline-end: 0;
   }
   .step-number {
-    position: absolute; top: 10px; inset-inline-start: 0; margin: 0; font-size: 16px;
+    position: absolute; top: 12px; inset-inline-start: 0; margin: 0; font-size: 16px;
+    box-shadow: 0 0 0 3px var(--step-punch),
+                0 8px 18px -14px color-mix(in srgb, var(--accent) 80%, transparent);
   }
   .step h3 { font-size: 18px; margin-bottom: 3px; }
   .step p { max-width: none; margin-inline: 0; font-size: 13.5px; }
@@ -1682,4 +1689,38 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
     top: auto; bottom: -3.5px; margin-top: 0;
     inset-inline-start: calc(var(--step-dot) / 2 - 3.5px); margin-inline-start: 0;
   }
+}
+
+
+/* ================================================================
+   الهيرو على التليفون — تظبيط قص الصورة
+   الصورة متصمّمة والشمال بتاعها فاضي عشان الكلام يتحط فوقه في الديسكتوب.
+   على التليفون الكلام بينزل تحت الصورة، فالفراغ ده كان بيفضل باين
+   والموبايل والظرف مزنوقين على اليمين.
+   الموضوع في الصورة (الموبايل + الظرف + الورد) بيبدأ من ٤٥٪ من عرضها
+   وبيكمّل لآخرها. الكارت المربّع مع ‎background-position: 100%‎ بيوري
+   الجزء من ٤٤٪ لـ ١٠٠٪ — يعني الموضوع بيبقى في نص الكادر بالظبط
+   والفراغ بيتقص كله.
+   ================================================================ */
+@media (max-width: 780px) {
+  .hero-art {
+    aspect-ratio: 1 / 0.95;
+    background-size: cover;
+    background-position: 100% center;
+  }
+  /* الذوبان السفلي أنعم مع الكادر الأطول */
+  .hero-art::after { height: 20%; }
+}
+
+/* التليفون بالعرض: نرجع للنسبة العريضة عشان الصورة ما تاخدش الشاشة كلها */
+@media (max-width: 780px) and (orientation: landscape) {
+  .hero-art {
+    aspect-ratio: 1672 / 941;
+    background-position: center;
+  }
+}
+
+/* شاشات صغيرة جداً: نقص شوية من الطول عشان الأزرار تفضل قريبة */
+@media (max-width: 400px) {
+  .hero-art { aspect-ratio: 1 / 0.9; }
 }
