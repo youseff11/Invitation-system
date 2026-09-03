@@ -1361,8 +1361,8 @@ html[lang="en"] .feature-en { display: inline; }
 .orn svg .orn-fill, .orn-diamond .orn-fill { fill: var(--accent); stroke: none; }
 
 .orn--crown {
-  display: block; width: clamp(120px, 13vw, 178px); aspect-ratio: 132 / 34;
-  margin: 0 auto 16px; opacity: .95;
+  display: block; width: clamp(132px, 14vw, 196px); aspect-ratio: 180 / 34;
+  margin: 0 auto 14px; opacity: .95;
 }
 .orn-diamond { width: 34px; height: 18px; flex: none; }
 .hero-rule .orn-diamond { animation: orn-twinkle 4.5s ease-in-out infinite; }
@@ -1383,18 +1383,12 @@ html[lang="en"] .feature-en { display: inline; }
   --orn-rule: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 15"><g fill="none" stroke="black" stroke-width="1.1" stroke-linecap="round"><path d="M2 7.5h34M96 7.5h34"/><path d="M40 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/><path d="M76 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/></g><path fill="black" d="M66 1.2c1 3.4 3.3 5.3 7 6.3-3.7 1-6 2.9-7 6.3-1-3.4-3.3-5.3-7-6.3 3.7-1 6-2.9 7-6.3Z"/><circle fill="black" cx="37.5" cy="7.5" r="1.1"/><circle fill="black" cx="94.5" cy="7.5" r="1.1"/></svg>');
 }
 
-/* زخرفة ركن ناعمة على كروت المميزات والباقات.
-   من غير overflow:hidden عن قصد — شارة «الأكثر طلباً» بتطلع بره الكارت
-   وكانت بتتقص. الوهج محبوس جوّه الكارت بمقاسه هو. */
+/* هالة الركن اتشالت: كانت بتبان كمربّع فاتح في الركن مش كوهج —
+   ‎inset-inline-end‎ في RTL بيروح شمال، فمركز التدرّج كان بيتقلب،
+   و‎border-radius: inherit‎ على مربّع ١٣٠px بيسيب حواف مستقيمة باينة.
+   الهوفر دلوقتي بيقول حاجة مفهومة: الكارت بيرتفع، إطاره بيتحوّل دهب،
+   وظله بيغمق — يعني «الكارت ده قابل للاختيار». */
 .feature-card, .plan { position: relative; }
-.feature-card::before, .plan::before {
-  content: ""; position: absolute; top: 0; inset-inline-end: 0;
-  width: 130px; height: 130px; border-radius: inherit; pointer-events: none;
-  background: radial-gradient(circle at 100% 0%,
-              color-mix(in srgb, var(--accent) 16%, transparent), transparent 72%);
-  opacity: 0; transition: opacity .28s ease;
-}
-.feature-card:hover::before, .plan:hover::before { opacity: 1; }
 
 /* ---------------------------------------------------------- 5) الهيرو */
 .hero-copy-in { position: relative; z-index: 2; }
@@ -1518,15 +1512,27 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
   transform: translateY(-6px);
   box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--accent) 65%, rgba(23, 19, 15, .55));
 }
-.feature-icon { transition: transform .28s cubic-bezier(.22, .8, .3, 1), background-color .28s ease; }
+.feature-icon {
+  transition: transform .28s cubic-bezier(.22, .8, .3, 1),
+              background-color .28s ease, color .28s ease, border-color .28s ease;
+}
+/* الأيقونة بتتملي دهب ورمزها يبقى أبيض — إشارة واضحة إن الكارت نشط */
 .feature-card:hover .feature-icon {
   transform: translateY(-2px) scale(1.06);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--accent); color: #fff;
+  border-color: var(--accent);
 }
 
 .plan { transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease; }
-.plan:hover { transform: translateY(-5px); box-shadow: 0 26px 46px -32px color-mix(in srgb, var(--accent) 65%, rgba(23,19,15,.6)); }
+.plan:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  box-shadow: 0 26px 46px -32px color-mix(in srgb, var(--accent) 65%, rgba(23,19,15,.6));
+}
 .plan--featured { box-shadow: 0 22px 46px -30px color-mix(in srgb, var(--accent) 70%, transparent); }
+.plan--featured:hover { border-color: var(--accent); }
+/* الزرار الأساسي جوّه الكارت بينوّر مع الكارت — بيوضّح الفعل المتاح */
+.plan:hover .btn--gold { filter: brightness(1.06); box-shadow: 0 14px 28px -14px color-mix(in srgb, var(--accent) 90%, transparent); }
 
 /* الخطوات: الرقم بقى دايرة مليانة عند المرور */
 .step::before { transition: background-color .25s ease, color .25s ease, transform .25s ease; }
@@ -1560,7 +1566,7 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 
 /* ---------------------------------------------------------- 9) الموبايل والحركة المخفّضة */
 @media (max-width: 780px) {
-  .orn--crown { width: clamp(96px, 34vw, 140px); margin-bottom: 10px; }
+  .orn--crown { width: clamp(112px, 40vw, 168px); margin-bottom: 8px; }
   .section-head::after { width: 104px; height: 12px; margin-top: 11px; }
   .hero-trust { gap: 8px; margin-top: 16px; }
   .hero-trust li { padding-inline: 8px; }
