@@ -553,7 +553,7 @@
     if (shootBox && !reduce) {
       var timer = null;
       function shoot() {
-        if (doc.hidden) return;
+        if (doc.hidden || shootBox.classList.contains("fx-idle")) return;
         var el = doc.createElement("span");
         el.className = "fx-shoot";
         el.style.top = (Math.random() * 42 + 4).toFixed(1) + "%";
@@ -569,6 +569,27 @@
       schedule();
       doc.addEventListener("visibilitychange", function () {
         if (doc.hidden) clearTimeout(timer); else schedule();
+      });
+    }
+
+    /* ---- إيقاف مؤثرات الهيرو وهي مش على الشاشة ----
+       النجوم بتفضل شغالة (وبتعيد رسم طبقتها كل فريم) حتى وهي مخفية.
+       بنوقفها أول ما الهيرو يخرج، وبنوقفها كمان لو التاب اتخفى. */
+    var hero = doc.querySelector(".hero");
+    if (hero && !reduce && "IntersectionObserver" in window) {
+      var fxHosts = hero.querySelectorAll("[data-fx-stars], [data-fx-shooting]");
+      var setIdle = function (idle) {
+        Array.prototype.forEach.call(fxHosts, function (el) {
+          el.classList.toggle("fx-idle", idle);
+        });
+      };
+      var onScreen = true;
+      new IntersectionObserver(function (entries) {
+        onScreen = entries[0].isIntersecting;
+        setIdle(!onScreen || doc.hidden);
+      }, { threshold: 0 }).observe(hero);
+      doc.addEventListener("visibilitychange", function () {
+        setIdle(!onScreen || doc.hidden);
       });
     }
 

@@ -103,9 +103,9 @@ msgstr "Start designing"
 msgid "قوالب مختارة بعناية"
 msgstr "Carefully curated templates"
 
-#: templates/public/home.html:53
-msgid "كل قالب قابل للتعديل بالكامل — الألوان والخطوط والأقسام والنصوص."
-msgstr "Every template is fully editable — colours, fonts, sections and text."
+#: templates/public/home.html
+msgid "تصاميم أنيقة، لتبدأ منها حكاية يومكم المميز."
+msgstr "Elegant designs to begin the story of your special day."
 
 #: templates/public/home.html:65
 msgid "معاينة"
@@ -186,3 +186,95 @@ msgstr "Send request"
 
 #~ msgid "اطلب دعوتك الآن"
 #~ msgstr "Order yours now"
+
+#: templates/public/home.html
+msgid "دعوة إلكترونية أنيقة داخل هاتف محاط بالورود"
+msgstr "An elegant digital invitation on a phone surrounded by flowers"
+
+#: templates/public/home.html
+msgid "شوف الباقات"
+msgstr "View plans"
+
+#: templates/public/home.html
+msgid "+٥٠"
+msgstr "50+"
+
+#: templates/public/home.html
+msgid "قالب جاهز"
+msgstr "ready-made templates"
+
+#: templates/public/home.html
+msgid "٢٤ ساعة"
+msgstr "24 hours"
+
+#: templates/public/home.html
+msgid "متوسط التسليم"
+msgstr "average delivery"
+
+#: templates/public/home.html
+msgid "١٠٠٪"
+msgstr "100%"
+
+#: templates/public/home.html
+msgid "قابل للتعديل"
+msgstr "editable"
+
+#: templates/public/home.html
+msgid "تجربة قالب"
+msgstr "Preview template"
+
+#: templates/public/home.html
+msgid "إضافات اختيارية"
+msgstr "Optional add-ons"
+
+#: templates/public/home.html
+msgid "عرض الإضافات المتاحة"
+msgstr "Show available add-ons"
+
+#: templates/public/home.html
+msgid "إخفاء الإضافات"
+msgstr "Hide add-ons"
+
+#: templates/public/home.html
+msgid "لا يوجد إضافات متاحة"
+msgstr "No add-ons available"
+
+#: templates/public/home.html
+msgid "كلّمنا على واتساب"
+msgstr "Message us on WhatsApp"
+
+#: templates/public/home.html
+msgid "ابعتلنا الباقة والموعد وأي تفاصيل، ونرجعلك بمعاينة قبل النشر."
+msgstr "Send us your plan, date and any details, and we'll come back with a preview before publishing."
+
+#: templates/public/home.html
+msgid "افتح المحادثة"
+msgstr "Open the chat"
+
+#: templates/public/home.html
+msgid "مساعدة"
+msgstr "Help"
+
+#: templates/public/home.html
+msgid "الأسئلة الشائعة"
+msgstr "Frequently asked questions"
+
+#: templates/public/home.html
+msgid "خطوتك التالية"
+msgstr "Your next step"
+
+#: templates/public/home.html
+msgid "هل أنت مستعد لتصميم قالبك الآن؟"
+msgstr "Ready to design your invitation?"
+
+#: templates/public/home.html
+msgid "تواصل معي لنبدأ دعوة تليق بمناسبتك."
+msgstr "Get in touch and let's start an invitation worthy of your occasion."
+
+#: templates/public/home.html
+msgid "تواصل معي"
+msgstr "Get in touch"
+
+#: templates/public/home.html
+msgid "روابط التواصل"
+msgstr "Social links"

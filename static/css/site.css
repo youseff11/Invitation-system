@@ -1258,6 +1258,8 @@ html[lang="en"] .feature-en { display: inline; }
 .fx-sky {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   overflow: hidden; contain: strict;
+  /* طبقة تركيب مستقلة: السكرول مابيعيدش رسمها */
+  transform: translateZ(0); backface-visibility: hidden;
 }
 .hero, .section, .home-cta, .foot { position: relative; z-index: 1; }
 .section--features { background: transparent; }
@@ -1266,45 +1268,49 @@ html[lang="en"] .feature-en { display: inline; }
 .home-cta { background: color-mix(in srgb, var(--surface-2) 88%, transparent); }
 .foot { background: color-mix(in srgb, var(--surface) 92%, transparent); }
 
-/* وهج ذهبي واسع وناعم — بيدّي عمق للخلفية من غير أي حِمل على الأداء */
+/* وهج ذهبي واسع وناعم.
+   من غير ‎filter: blur()‎ عن قصد: بلور على عنصر بحجم ٤٤vw بيتعاد رسمه مع
+   كل فريم سكرول وده أغلى حاجة كانت في الصفحة. التدرّج الشعاعي لوحده
+   بيدّي نفس النعومة ببلاش. ومن غير أنيميشن كمان — عنصر بالحجم ده وهو
+   بيتحرّك بيفضل يعيد الرسم طول الوقت. */
 .fx-glow {
   position: absolute; border-radius: 50%; pointer-events: none;
-  filter: blur(90px); opacity: .5;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
-  animation: fx-breathe 14s ease-in-out infinite;
+  background: radial-gradient(closest-side circle,
+              color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+              color-mix(in srgb, var(--accent) 22%, transparent) 42%,
+              transparent 78%);
 }
-.fx-glow--a { width: 44vw; height: 44vw; top: -10vw; inset-inline-start: -8vw; opacity: .14; }
-.fx-glow--b { width: 38vw; height: 38vw; bottom: -12vw; inset-inline-end: -10vw; opacity: .11; animation-delay: -7s; }
-[data-theme="dark"] .fx-glow--a { opacity: .13; }
-[data-theme="dark"] .fx-glow--b { opacity: .1; }
-@keyframes fx-breathe {
-  0%, 100% { transform: scale(1);    opacity: var(--o, .14); }
-  50%      { transform: scale(1.14); opacity: calc(var(--o, .14) * 1.5); }
-}
+.fx-glow--a { width: 52vw; height: 52vw; top: -14vw; inset-inline-start: -12vw; opacity: .5; }
+.fx-glow--b { width: 46vw; height: 46vw; bottom: -16vw; inset-inline-end: -14vw; opacity: .38; }
+[data-theme="dark"] .fx-glow--a { opacity: .42; }
+[data-theme="dark"] .fx-glow--b { opacity: .34; }
 
 /* ---------------------------------------------------------- 2) النجوم اللي بتقع
    كل نجمة span واحد بيتولّد من site.js بمكان وحجم وسرعة عشوائية.
    الحركة كلها transform + opacity، يعني على كارت الشاشة ومفيش reflow. */
 .fx-stars, .hero-sparks {
   position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  contain: strict; transform: translateZ(0);
 }
 .hero-sparks { z-index: 1; }
+/* الهالة تدرّج مش ‎box-shadow‎: الظل المموّه بيتعاد رسمه مع كل حركة.
+   ومن غير ‎will-change‎ على كل نجمة — ٤٨ نجمة كانت بتعمل ٤٨ طبقة على
+   كارت الشاشة؛ الحاويات فوق هي اللي بقت طبقة واحدة تكفي. */
 .fx-star {
   position: absolute; top: -6%;
   width: var(--s, 3px); height: var(--s, 3px);
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  background: radial-gradient(circle,
+              var(--accent) 0%,
+              color-mix(in srgb, var(--accent) 60%, transparent) 45%,
+              transparent 72%);
   opacity: 0;
   animation: fx-fall var(--dur, 11s) linear var(--delay, 0s) infinite;
-  will-change: transform, opacity;
 }
+/* الأنيميشن بيقف لما الهيرو يخرج من الشاشة أو التاب يتخفي (site.js) */
+.fx-idle .fx-star, .fx-idle .fx-shoot { animation-play-state: paused; }
 /* نجمة رباعية الأشعة — بتتحط على جزء من النجوم بس عشان الشكل ما يبقاش مكرر */
-.fx-star--spark {
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-}
+.fx-star--spark { border-radius: 0; background: none; }
 .fx-star--spark::before,
 .fx-star--spark::after {
   content: ""; position: absolute; inset-inline-start: 50%; top: 50%;
@@ -1478,9 +1484,9 @@ html[lang="en"] .feature-en { display: inline; }
 
 /* ---------------------------------------------------------- 7) ظهور تدريجي بالسكرول */
 html.js [data-reveal] {
-  opacity: 0; transform: translateY(22px);
-  transition: opacity .7s cubic-bezier(.22, .8, .3, 1),
-              transform .7s cubic-bezier(.22, .8, .3, 1);
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .5s cubic-bezier(.22, .8, .3, 1),
+              transform .5s cubic-bezier(.22, .8, .3, 1);
   transition-delay: var(--reveal-delay, 0s);
 }
 html.js [data-reveal].is-in { opacity: 1; transform: none; }
@@ -1504,7 +1510,8 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 .tpl-card:hover .tpl-cover::after { opacity: 1; }
 
 .feature-card {
-  backdrop-filter: blur(2px);
+  /* من غير ‎backdrop-filter‎: بيجبر المتصفح يقرا ويموّه اللي ورا كل كارت
+     من تاني مع كل فريم سكرول، ومكانش بيبان منه حاجة أصلاً فوق خلفية سادة. */
   transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease;
 }
 .feature-card:hover {
@@ -1533,8 +1540,7 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
   position: relative; padding: 44px clamp(18px, 4vw, 52px);
   border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
   border-radius: 26px; margin-inline: auto;
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  backdrop-filter: blur(3px);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
 }
 /* إطار داخلي رفيع — بيدي إحساس بكارت دعوة مطبوع */
 .home-cta-in::before {
@@ -1723,4 +1729,25 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 /* شاشات صغيرة جداً: نقص شوية من الطول عشان الأزرار تفضل قريبة */
 @media (max-width: 400px) {
   .hero-art { aspect-ratio: 1 / 0.9; }
+}
+
+
+/* ================================================================
+   سلاسة السكرول — الخلاصة
+   الطبقة الثابتة اللي ورا الصفحة أغلى حاجة على التليفون: بتفضل مرسومة
+   طول الوقت والأقسام الشبه شفافة فوقها بتخلي المتصفح يخلط الألوان مع
+   كل فريم. على التليفون بنقفلها خالص — نجوم الهيرو لوحدها كفاية،
+   وهي بتقف أصلاً أول ما الهيرو يخرج من الشاشة.
+   ================================================================ */
+@media (max-width: 900px) {
+  .fx-sky { display: none; }
+  /* من غير الطبقة اللي وراهم، الأقسام ترجع سادة — بلاش خلط ألوان ببلاش */
+  .section--alt, .section--faq, .home-cta { background: var(--surface-2); }
+  .foot { background: var(--surface); }
+  .home-cta-in { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+}
+
+/* الأجهزة اللي بتقول إنها ضعيفة في الرسم: مفيش مؤثرات خلفية خالص */
+@media (max-width: 900px) and (prefers-reduced-data: reduce) {
+  .hero-sparks, .hero-shooting { display: none; }
 }

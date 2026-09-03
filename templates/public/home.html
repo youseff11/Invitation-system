@@ -3,7 +3,8 @@
 {% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
 {% block content %}
 
-
+{% comment %} طبقة المؤثرات: نجوم بتقع + وهج ذهبي خفيف — بتتولّد من site.js وبتقف لو
+   المستخدم مفعّل «تقليل الحركة». عنصر مزخرف بحت، مالوش دور دلالي. {% endcomment %}
 <div class="fx-sky" aria-hidden="true">
   <span class="fx-glow fx-glow--a"></span>
   <span class="fx-glow fx-glow--b"></span>
@@ -13,9 +14,9 @@
 <section class="hero" id="main">
   <div class="hero-art">
     <span class="sr-only">{% translate "دعوة إلكترونية أنيقة داخل هاتف محاط بالورود" %}</span>
-    <!-- {# نجوم بتقع فوق صورة الهيرو + شهاب بيعدّي كل شوية. -->
-       <!-- جوّه ‎.hero-art‎ عن قصد: على التليفون الكلام بينزل تحت الصورة، -->
-       <!-- فكده المؤثرات تفضل على الصورة بس ومتعديش على النص. #} -->
+    {% comment %} نجوم بتقع فوق صورة الهيرو + شهاب بيعدّي كل شوية.
+       جوّه ‎.hero-art‎ عن قصد: على التليفون الكلام بينزل تحت الصورة،
+       فكده المؤثرات تفضل على الصورة بس ومتعديش على النص. {% endcomment %}
     <div class="hero-sparks" data-fx-stars data-fx-count="30" aria-hidden="true"></div>
     <div class="hero-shooting" data-fx-shooting aria-hidden="true"></div>
   </div>
@@ -53,9 +54,9 @@
         </a>
       </div>
       <ul class="hero-trust" aria-hidden="true">
-        <li><b>+٥٠</b><span>{% translate "قالب جاهز" %}</span></li>
-        <li><b>٢٤ ساعة</b><span>{% translate "متوسط التسليم" %}</span></li>
-        <li><b>١٠٠٪</b><span>{% translate "قابل للتعديل" %}</span></li>
+        <li><b>{% translate "+٥٠" %}</b><span>{% translate "قالب جاهز" %}</span></li>
+        <li><b>{% translate "٢٤ ساعة" %}</b><span>{% translate "متوسط التسليم" %}</span></li>
+        <li><b>{% translate "١٠٠٪" %}</b><span>{% translate "قابل للتعديل" %}</span></li>
       </ul>
     </div>
   </div>
@@ -66,7 +67,7 @@
     <div class="section-head" data-reveal>
       <p class="eyebrow">{% translate "المعرض" %}</p>
       <h2>{% translate "قوالب مختارة بعناية" %}</h2>
-      <p>{% translate "كل قالب قابل للتعديل بالكامل — الألوان والخطوط والأقسام والنصوص." %}</p>
+      <p>{% translate "تصاميم أنيقة، لتبدأ منها حكاية يومكم المميز." %}</p>
     </div>
     <div class="grid grid--4">
       {% for t in templates %}
