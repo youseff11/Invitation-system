@@ -16,6 +16,9 @@
     }
     document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
+  /* علامة إن الجافاسكربت شغّال — الـCSS بيخبّي عناصر الظهور التدريجي
+     تحت html.js بس، فمن غير جافاسكربت الصفحة بتفضل ظاهرة بالكامل. */
+  document.documentElement.classList.add("js");
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">

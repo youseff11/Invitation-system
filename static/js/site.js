@@ -499,4 +499,100 @@
     if (planSel) planSel.addEventListener("change", refresh);
     refresh();
   })();
+
+  /* ------------------------------------------------ مؤثرات الصفحة الرئيسية
+     نجوم بتقع + شهاب + ظهور تدريجي بالسكرول.
+     كله بيقف لو المستخدم مفعّل «تقليل الحركة»، وبيقف كمان لما التاب يبقى
+     مخفي عشان ما ياكلش بطارية على الموبايل. */
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* ---- النجوم ---- */
+    var fields = doc.querySelectorAll("[data-fx-stars]");
+    if (fields.length && !reduce) {
+      /* مسافة السقوط = ارتفاع الحاوية نفسها، عشان النجمة تخفت وهي بتخرج
+         من تحت مش تختفي فجأة عند حافة القص. */
+      function sizeFields() {
+        fields.forEach(function (f) {
+          var h = f.getAttribute("data-fx-scale") === "page"
+                ? window.innerHeight
+                : (f.offsetHeight || window.innerHeight);
+          f.style.setProperty("--fall", (h + 70) + "px");
+        });
+      }
+      sizeFields();
+      var rz;
+      window.addEventListener("resize", function () {
+        clearTimeout(rz); rz = setTimeout(sizeFields, 200);
+      }, { passive: true });
+
+      fields.forEach(function (field) {
+        var count = parseInt(field.getAttribute("data-fx-count"), 10) || 20;
+        /* على الشاشات الصغيرة نص العدد — أداء أحسن وشكل أهدى */
+        if (window.innerWidth < 700) count = Math.round(count * 0.55);
+        var frag = doc.createDocumentFragment();
+        for (var i = 0; i < count; i++) {
+          var star = doc.createElement("span");
+          star.className = "fx-star" + (i % 4 === 0 ? " fx-star--spark" : "");
+          var size = (Math.random() * 3 + 1.6).toFixed(1);      /* 1.6 → 4.6px */
+          var dur = (Math.random() * 9 + 9).toFixed(1);         /* 9 → 18s */
+          var delay = (-Math.random() * 18).toFixed(1);         /* تبدأ متفرقة مش سوا */
+          var drift = Math.round((Math.random() - 0.5) * 120);  /* ميل يمين/شمال */
+          star.style.cssText =
+            "inset-inline-start:" + (Math.random() * 100).toFixed(2) + "%;" +
+            "--s:" + size + "px;--dur:" + dur + "s;--delay:" + delay + "s;" +
+            "--drift:" + drift + "px;--peak:" + (Math.random() * 0.45 + 0.4).toFixed(2) + ";";
+          frag.appendChild(star);
+        }
+        field.appendChild(frag);
+      });
+    }
+
+    /* ---- الشهاب: بيعدّي كل 6-14 ثانية من مكان عشوائي فوق ---- */
+    var shootBox = doc.querySelector("[data-fx-shooting]");
+    if (shootBox && !reduce) {
+      var timer = null;
+      function shoot() {
+        if (doc.hidden) return;
+        var el = doc.createElement("span");
+        el.className = "fx-shoot";
+        el.style.top = (Math.random() * 42 + 4).toFixed(1) + "%";
+        el.style.insetInlineEnd = (Math.random() * 34 - 6).toFixed(1) + "%";
+        shootBox.appendChild(el);
+        setTimeout(function () { el.remove(); }, 1700);
+      }
+      function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(function () { shoot(); schedule(); },
+                           Math.random() * 8000 + 6000);
+      }
+      schedule();
+      doc.addEventListener("visibilitychange", function () {
+        if (doc.hidden) clearTimeout(timer); else schedule();
+      });
+    }
+
+    /* ---- الظهور التدريجي ---- */
+    var items = doc.querySelectorAll("[data-reveal]");
+    if (!items.length) return;
+    if (reduce || !("IntersectionObserver" in window)) {
+      items.forEach(function (el) { el.classList.add("is-in"); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        if (el.hasAttribute("data-reveal-stagger")) {
+          /* ترتيب العنصر جوّه أبوه بيحدد التأخير — الكروت بتظهر ورا بعض */
+          var idx = Array.prototype.indexOf.call(el.parentNode.children, el);
+          el.style.setProperty("--reveal-delay", Math.min(idx, 8) * 70 + "ms");
+        }
+        el.classList.add("is-in");
+        io.unobserve(el);
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    items.forEach(function (el) { io.observe(el); });
+  })();
+
 })();

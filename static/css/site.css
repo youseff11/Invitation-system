@@ -1241,3 +1241,337 @@ html[lang="en"] .feature-en { display: inline; }
 }
 
 .client-followup-qr { background: #fff; padding: 4px; border-radius: 6px; object-fit: contain; }
+
+
+/* ================================================================
+   الصفحة الرئيسية — الطبقة الاحترافية
+   مؤثرات الخلفية (نجوم بتقع + وهج ذهبي)، زخارف، وأزرار مظبوطة.
+   الملف ده متضاف في الآخر عن قصد: أي قاعدة هنا بتغلب اللي فوق من
+   غير !important، فسهل ترجع لأي حاجة بحذف البلوك ده لوحده.
+   مقاسات كروت القوالب (.tpl-card / .tpl-cover) ما اتلمستش خالص.
+   ================================================================ */
+
+/* ---------------------------------------------------------- 1) طبقات الرسم
+   طبقة المؤثرات ثابتة ورا المحتوى. الأقسام بقت position:relative عشان
+   تتحط فوقها في ترتيب الرسم، وخلفياتها بقت شبه شفافة عشان النجوم تبان
+   من وراها بهدوء من غير ما النص يتأثر. */
+.fx-sky {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden; contain: strict;
+}
+.hero, .section, .home-cta, .foot { position: relative; z-index: 1; }
+.section--features { background: transparent; }
+.section--alt,
+.section--faq { background: color-mix(in srgb, var(--surface-2) 90%, transparent); }
+.home-cta { background: color-mix(in srgb, var(--surface-2) 88%, transparent); }
+.foot { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+
+/* وهج ذهبي واسع وناعم — بيدّي عمق للخلفية من غير أي حِمل على الأداء */
+.fx-glow {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  filter: blur(90px); opacity: .5;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
+  animation: fx-breathe 14s ease-in-out infinite;
+}
+.fx-glow--a { width: 44vw; height: 44vw; top: -10vw; inset-inline-start: -8vw; opacity: .14; }
+.fx-glow--b { width: 38vw; height: 38vw; bottom: -12vw; inset-inline-end: -10vw; opacity: .11; animation-delay: -7s; }
+[data-theme="dark"] .fx-glow--a { opacity: .13; }
+[data-theme="dark"] .fx-glow--b { opacity: .1; }
+@keyframes fx-breathe {
+  0%, 100% { transform: scale(1);    opacity: var(--o, .14); }
+  50%      { transform: scale(1.14); opacity: calc(var(--o, .14) * 1.5); }
+}
+
+/* ---------------------------------------------------------- 2) النجوم اللي بتقع
+   كل نجمة span واحد بيتولّد من site.js بمكان وحجم وسرعة عشوائية.
+   الحركة كلها transform + opacity، يعني على كارت الشاشة ومفيش reflow. */
+.fx-stars, .hero-sparks {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+.hero-sparks { z-index: 1; }
+.fx-star {
+  position: absolute; top: -6%;
+  width: var(--s, 3px); height: var(--s, 3px);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  opacity: 0;
+  animation: fx-fall var(--dur, 11s) linear var(--delay, 0s) infinite;
+  will-change: transform, opacity;
+}
+/* نجمة رباعية الأشعة — بتتحط على جزء من النجوم بس عشان الشكل ما يبقاش مكرر */
+.fx-star--spark {
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.fx-star--spark::before,
+.fx-star--spark::after {
+  content: ""; position: absolute; inset-inline-start: 50%; top: 50%;
+  background: var(--accent); border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+.fx-star--spark::before { width: 100%; height: 1px; }
+.fx-star--spark::after  { width: 1px; height: 100%; }
+
+@keyframes fx-fall {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--peak, .75); }
+  85%  { opacity: var(--peak, .75); }
+  100% { transform: translate3d(var(--drift, 22px), var(--fall, 110vh), 0) rotate(220deg); opacity: 0; }
+}
+/* في الأقسام (طبقة الصفحة) المسافة أقصر شوية عشان الحركة تفضل هادية */
+.fx-sky .fx-star { --peak: .5; }
+[data-theme="dark"] .fx-star { --peak: .85; }
+
+/* ---------------------------------------------------------- 3) الشهاب */
+.hero-shooting { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.fx-shoot {
+  position: absolute; width: 120px; height: 1px; opacity: 0;
+  background: linear-gradient(to left, color-mix(in srgb, var(--accent) 92%, transparent), transparent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent));
+  transform: rotate(18deg);
+  animation: fx-shoot 1.5s cubic-bezier(.3, .1, .2, 1) forwards;
+}
+.fx-shoot::after {
+  content: ""; position: absolute; inset-inline-end: -2px; top: -1.5px;
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 9px 2px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+@keyframes fx-shoot {
+  0%   { transform: translate3d(0, 0, 0) rotate(18deg) scaleX(.2); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translate3d(-320px, 105px, 0) rotate(18deg) scaleX(1); opacity: 0; }
+}
+
+/* ---------------------------------------------------------- 4) الزخارف
+   بديل القلوب: معيّن رباعي الأشعة + تاج نباتي فوق العنوان + فاصل
+   متكرر تحت عناوين الأقسام (CSS mask عشان ياخد لون --accent لوحده). */
+.orn svg, .orn-diamond { display: block; width: 100%; height: 100%; }
+.orn svg path, .orn svg circle, .orn-diamond path {
+  fill: none; stroke: var(--accent); stroke-width: 1.2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.orn svg .orn-fill, .orn-diamond .orn-fill { fill: var(--accent); stroke: none; }
+
+.orn--crown {
+  display: block; width: clamp(120px, 13vw, 178px); aspect-ratio: 132 / 34;
+  margin: 0 auto 16px; opacity: .95;
+}
+.orn-diamond { width: 34px; height: 18px; flex: none; }
+.hero-rule .orn-diamond { animation: orn-twinkle 4.5s ease-in-out infinite; }
+@keyframes orn-twinkle {
+  0%, 100% { opacity: .95; transform: scale(1); }
+  50%      { opacity: .6;  transform: scale(.9); }
+}
+
+/* فاصل زخرفي تحت كل عنوان قسم — شكل واحد متكرر بيربط الصفحة بصرياً */
+.section-head { position: relative; }
+.section-head::after {
+  content: ""; display: block; width: 132px; height: 15px;
+  margin: 14px auto 0; background-color: var(--accent); opacity: .8;
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
+}
+:root {
+  --orn-rule: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 15"><g fill="none" stroke="black" stroke-width="1.1" stroke-linecap="round"><path d="M2 7.5h34M96 7.5h34"/><path d="M40 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/><path d="M76 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/></g><path fill="black" d="M66 1.2c1 3.4 3.3 5.3 7 6.3-3.7 1-6 2.9-7 6.3-1-3.4-3.3-5.3-7-6.3 3.7-1 6-2.9 7-6.3Z"/><circle fill="black" cx="37.5" cy="7.5" r="1.1"/><circle fill="black" cx="94.5" cy="7.5" r="1.1"/></svg>');
+}
+
+/* زخرفة ركن ناعمة على كروت المميزات والباقات.
+   من غير overflow:hidden عن قصد — شارة «الأكثر طلباً» بتطلع بره الكارت
+   وكانت بتتقص. الوهج محبوس جوّه الكارت بمقاسه هو. */
+.feature-card, .plan { position: relative; }
+.feature-card::before, .plan::before {
+  content: ""; position: absolute; top: 0; inset-inline-end: 0;
+  width: 130px; height: 130px; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at 100% 0%,
+              color-mix(in srgb, var(--accent) 16%, transparent), transparent 72%);
+  opacity: 0; transition: opacity .28s ease;
+}
+.feature-card:hover::before, .plan:hover::before { opacity: 1; }
+
+/* ---------------------------------------------------------- 5) الهيرو */
+.hero-copy-in { position: relative; z-index: 2; }
+.hero-sub { margin-bottom: 0; }
+
+/* شريط أرقام صغير تحت الأزرار — بيدّي إحساس بالثقة من غير زحمة */
+.hero-trust {
+  list-style: none; margin: 26px auto 0; padding: 0;
+  display: flex; justify-content: center; align-items: stretch;
+  gap: clamp(10px, 2vw, 26px); flex-wrap: wrap; pointer-events: none;
+}
+.hero-trust li {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding-inline: clamp(8px, 1.4vw, 18px);
+  border-inline-end: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.hero-trust li:last-child { border-inline-end: 0; }
+.hero-trust b {
+  font-family: "Amiri", Georgia, serif; color: var(--accent);
+  font-size: clamp(15px, 1.5vw, 21px); line-height: 1.2; font-weight: 500;
+}
+.hero-trust span { font-size: clamp(10px, .95vw, 12.5px); color: var(--muted); line-height: 1.3; }
+
+/* ---------------------------------------------------------- 6) الأزرار
+   شكل واحد متّسق: ارتفاع ثابت، حواف كاملة الاستدارة، ظل ذهبي خفيف،
+   ولمعة بتعدّي عند المرور. الحركة بقت أهدأ (2px بدل النطة القديمة). */
+/* ملحوظة: المقاسات ما اتغيّرتش عن قصد — نفس الـ.btn مستعمل في لوحة
+   التحكم والمحرر، وأي تغيير في الـpadding كان هيحرّك تخطيطات كتير.
+   اللي اتغيّر: اللون والظل والحركة بس. */
+.btn {
+  position: relative;
+  font-weight: 500; letter-spacing: normal; line-height: 1.2;
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease,
+              border-color .2s ease, color .2s ease, filter .2s ease;
+}
+.btn:active { transform: translateY(0) scale(.985); }
+
+.btn--gold {
+  background: linear-gradient(135deg,
+              color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+              var(--accent) 52%,
+              color-mix(in srgb, var(--accent) 82%, #000) 100%);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+.btn--gold:hover {
+  filter: none; transform: translateY(-2px);
+  box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+.btn--outline {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent); background: transparent;
+}
+.btn--outline:hover {
+  background: var(--accent-soft); border-color: var(--accent); transform: translateY(-2px);
+  box-shadow: 0 12px 26px -18px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.btn--ghost {
+  border-color: var(--line); color: var(--muted);
+}
+.btn--ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* حجم كبير للهيرو بس */
+.btn--lg { padding: 14px 32px; min-height: 52px; font-size: 15.5px; }
+
+/* اللمعة: شريحة مايلة بتعدّي على الزرار مرة عند المرور.
+   الـoverflow هنا مش على .btn كله عشان ما يقصّش حاجة في صفحات تانية. */
+.btn--shine { overflow: hidden; isolation: isolate; }
+.btn--shine::after {
+  content: ""; position: absolute; top: -60%; inset-inline-start: -75%;
+  width: 45%; height: 220%; z-index: -1; pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, .42), transparent);
+  transform: rotate(22deg) translateX(0);
+  transition: transform .75s cubic-bezier(.22, .8, .3, 1);
+}
+.btn--shine:hover::after { transform: rotate(22deg) translateX(320%); }
+
+.btn-arrow { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
+             stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+             transition: transform .22s ease; }
+.btn:hover .btn-arrow { transform: translateX(4px); }
+/* السهم بيلف في العربي (RTL) عشان يشاور ناحية القراية */
+[dir="rtl"] .btn-arrow { transform: scaleX(-1); }
+[dir="rtl"] .btn:hover .btn-arrow { transform: scaleX(-1) translateX(4px); }
+
+/* ---------------------------------------------------------- 7) ظهور تدريجي بالسكرول */
+html.js [data-reveal] {
+  opacity: 0; transform: translateY(22px);
+  transition: opacity .7s cubic-bezier(.22, .8, .3, 1),
+              transform .7s cubic-bezier(.22, .8, .3, 1);
+  transition-delay: var(--reveal-delay, 0s);
+}
+html.js [data-reveal].is-in { opacity: 1; transform: none; }
+/* أمان: من غير جافاسكربت الكلاس js مش بيتحط، فالمحتوى بيفضل ظاهر عادي */
+
+/* ---------------------------------------------------------- 8) لمسات على الأقسام
+   ملحوظة: مقاس كارت القالب زي ما هو — التعديل على الظل والحدود بس. */
+.tpl-card {
+  transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease;
+}
+.tpl-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 26px 46px -30px color-mix(in srgb, var(--accent) 70%, rgba(23, 19, 15, .6));
+}
+.tpl-cover { position: relative; }
+.tpl-cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, .28), transparent 46%);
+  opacity: 0; transition: opacity .24s ease;
+}
+.tpl-card:hover .tpl-cover::after { opacity: 1; }
+
+.feature-card {
+  backdrop-filter: blur(2px);
+  transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease;
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--accent) 65%, rgba(23, 19, 15, .55));
+}
+.feature-icon { transition: transform .28s cubic-bezier(.22, .8, .3, 1), background-color .28s ease; }
+.feature-card:hover .feature-icon {
+  transform: translateY(-2px) scale(1.06);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.plan { transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease; }
+.plan:hover { transform: translateY(-5px); box-shadow: 0 26px 46px -32px color-mix(in srgb, var(--accent) 65%, rgba(23,19,15,.6)); }
+.plan--featured { box-shadow: 0 22px 46px -30px color-mix(in srgb, var(--accent) 70%, transparent); }
+
+/* الخطوات: الرقم بقى دايرة مليانة عند المرور */
+.step::before { transition: background-color .25s ease, color .25s ease, transform .25s ease; }
+.step:hover::before { background: var(--accent); color: #fff; transform: scale(1.06); }
+
+.faq-item { transition: border-color .2s ease, box-shadow .2s ease; }
+.faq-item[open], .faq-item:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+/* قسم الدعوة الأخير: إطار زخرفي خفيف حوالين الكتلة */
+.home-cta-in {
+  position: relative; padding: 44px clamp(18px, 4vw, 52px);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius: 26px; margin-inline: auto;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(3px);
+}
+/* إطار داخلي رفيع — بيدي إحساس بكارت دعوة مطبوع */
+.home-cta-in::before {
+  content: ""; position: absolute; inset: 9px; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 19px;
+}
+/* زخرفة صغيرة قاعدة في نص الحد العلوي، بتقطع الخط بهدوء */
+.home-cta-in::after {
+  content: ""; position: absolute; top: -8px; inset-inline-start: 50%;
+  transform: translateX(50%); width: 74px; height: 16px; pointer-events: none;
+  background-color: var(--accent);
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
+}
+[dir="ltr"] .home-cta-in::after { transform: translateX(-50%); }
+
+/* ---------------------------------------------------------- 9) الموبايل والحركة المخفّضة */
+@media (max-width: 780px) {
+  .orn--crown { width: clamp(96px, 34vw, 140px); margin-bottom: 10px; }
+  .section-head::after { width: 104px; height: 12px; margin-top: 11px; }
+  .hero-trust { gap: 8px; margin-top: 16px; }
+  .hero-trust li { padding-inline: 8px; }
+  .btn--lg { padding: 12px 24px; min-height: 48px; font-size: 14.5px; }
+  .hero-actions { gap: 9px; margin-top: 20px; }
+  .home-cta-in { padding: 32px 18px; border-radius: 20px; }
+  .fx-glow--a, .fx-glow--b { width: 70vw; height: 70vw; }
+}
+@media (max-width: 520px) {
+  .hero-trust li:last-child { display: none; }
+}
+
+/* احترام إعداد «تقليل الحركة» في النظام: كل حاجة بتقف، والمحتوى بيفضل ظاهر */
+@media (prefers-reduced-motion: reduce) {
+  .fx-sky, .hero-sparks, .hero-shooting { display: none; }
+  html.js [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .btn, .tpl-card, .feature-card, .plan { transition: none; }
+  .btn:hover, .tpl-card:hover, .feature-card:hover, .plan:hover { transform: none; }
+  .orn-diamond, .fx-glow { animation: none; }
+}
