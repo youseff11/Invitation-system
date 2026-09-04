@@ -23,6 +23,19 @@ ALLOWED_TAGS = {
     "textarea", "select", "option", "button",
     # SVG inline للزخارف والأيقونات؛ السمات المسموحة أدناه لا تشمل href خارجي.
     "svg", "g", "path", "line", "circle", "rect", "polyline", "polygon",
+    # بقية عناصر SVG: القص والأقنعة والتدرّجات والنصوص. من غيرها كان أي
+    # كود SVG جاهز فيه ‎<clipPath>‎ أو ‎<linearGradient>‎ بيتشال بالسكوت
+    # ويطلع الشكل مكسور والمصمّم مش عارف السبب.
+    # الأسماء بحروف صغيرة عن قصد: ‎HTMLParser‎ بيصغّرها، والمتصفح بيرجّع
+    # ‎clippath‎ لـ‎clipPath‎ تلقائياً وهو بيبني الـDOM (جدول تصحيح SVG
+    # في مواصفة HTML). ‎foreignObject‎ **مستبعد**: بيفتح باب HTML جوّه SVG.
+    "defs", "clippath", "mask", "use", "symbol", "marker",
+    "ellipse", "text", "tspan", "textpath",
+    "lineargradient", "radialgradient", "stop", "pattern", "image",
+    "title", "desc",
+    # الرسم بالكانفس — الأساس لأي حاجة زي كارت الخدش. موجود في كل
+    # المتصفحات ومش محتاج أي مكتبة؛ كل اللي كان ناقص إننا مانشيلوش.
+    "canvas",
 }
 
 # وسوم يُحذف محتواها بالكامل لا الوسم فقط. عناصر العرض والنماذج لم تعد
@@ -40,9 +53,28 @@ VOID_TAGS = {
 # السحب بالماوس جوّه قسم مستورد بيضيع أول ما تحفظ.
 _MOVE_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
+# ‎data-*‎ عموماً مسموحة: دي الطريقة الوحيدة اللي بيها كود المصمّم
+# يربط الجافاسكربت بعناصره (‎[data-scratch]‎ مثلاً). السمات دي خاملة —
+# مابتنفّذش حاجة. اللي بنحجزه بس أسماء المنصة نفسها، عشان كود في قسم
+# مايقدرش يوهم المحرر إن عنده بلوك أو عنصر قابل للتحرير.
+_RESERVED_DATA = {"data-block", "data-block-type", "data-editable"}
+_RESERVED_DATA_PREFIX = ("data-lb-",)
+
+
+def _data_attr_ok(name: str) -> bool:
+    if not name.startswith("data-") or len(name) < 6:
+        return False
+    if name in _RESERVED_DATA or name.startswith(_RESERVED_DATA_PREFIX):
+        return False
+    return _DATA_NAME_RE.match(name) is not None
+
+
+_DATA_NAME_RE = re.compile(r"^data-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
+_ARIA_NAME_RE = re.compile(r"^aria-[a-z]{1,32}$")
+
 ALLOWED_ATTRS = {
     "*": {"class", "id", "title", "dir", "lang", "style", "data-move",
-          "role", "aria-hidden", "aria-label"},
+          "role", "aria-hidden", "aria-label", "tabindex", "hidden"},
     "a": {"href", "target", "rel", "download"},
     "img": {"src", "alt", "width", "height", "loading", "decoding"},
     "video": {"src", "poster", "width", "height", "controls", "autoplay",
@@ -60,17 +92,58 @@ ALLOWED_ATTRS = {
     "select": {"name", "required", "multiple"},
     "option": {"value", "selected", "disabled"},
     "button": {"type", "name", "value", "disabled"},
-    "svg": {"viewBox", "preserveAspectRatio", "width", "height", "fill",
-            "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin"},
-    "path": {"d", "fill", "stroke", "stroke-width", "opacity"},
-    "line": {"x1", "x2", "y1", "y2", "stroke", "stroke-width"},
-    "circle": {"cx", "cy", "r", "fill", "stroke", "stroke-width"},
-    "rect": {"x", "y", "width", "height", "rx", "ry", "fill", "stroke", "stroke-width"},
-    "polyline": {"points", "fill", "stroke", "stroke-width"},
-    "polygon": {"points", "fill", "stroke", "stroke-width"},
+    # سمات الرسم المشتركة بين كل عناصر SVG — بتتضاف لكل وسم SVG تحت.
+    "canvas": {"width", "height"},
+    "svg": {"xmlns", "viewbox", "preserveaspectratio", "width", "height",
+            "x", "y", "overflow"},
+    "path": {"d", "pathlength"},
+    "line": {"x1", "x2", "y1", "y2"},
+    "circle": {"cx", "cy", "r"},
+    "ellipse": {"cx", "cy", "rx", "ry"},
+    "rect": {"x", "y", "width", "height", "rx", "ry"},
+    "polyline": {"points"},
+    "polygon": {"points"},
+    "clippath": {"clippathunits"},
+    "mask": {"maskunits", "maskcontentunits", "x", "y", "width", "height"},
+    "use": {"href", "x", "y", "width", "height"},
+    "symbol": {"viewbox", "preserveaspectratio", "x", "y", "width", "height"},
+    "marker": {"viewbox", "refx", "refy", "markerwidth", "markerheight",
+               "orient", "markerunits", "preserveaspectratio"},
+    "lineargradient": {"x1", "y1", "x2", "y2", "gradientunits",
+                       "gradienttransform", "spreadmethod", "href"},
+    "radialgradient": {"cx", "cy", "r", "fx", "fy", "gradientunits",
+                       "gradienttransform", "spreadmethod", "href"},
+    "stop": {"offset", "stop-color", "stop-opacity"},
+    "pattern": {"x", "y", "width", "height", "patternunits",
+                "patterncontentunits", "patterntransform", "viewbox", "href"},
+    "image": {"href", "x", "y", "width", "height", "preserveaspectratio"},
+    "text": {"x", "y", "dx", "dy", "text-anchor", "dominant-baseline",
+             "font-size", "font-family", "font-weight", "letter-spacing",
+             "textlength", "lengthadjust", "writing-mode"},
+    "tspan": {"x", "y", "dx", "dy", "text-anchor", "font-size", "font-weight"},
+    "textpath": {"href", "startoffset", "method", "spacing"},
     "time": {"datetime"},
     "td": {"colspan", "rowspan"},
     "th": {"colspan", "rowspan", "scope"},
+}
+
+# وسوم SVG كلها بتاخد نفس سمات الرسم (fill / transform / clip-path …).
+# بنجمّعها مرة واحدة بدل ما نكرّرها في كل وسم.
+_SVG_TAGS = {
+    "svg", "g", "path", "line", "circle", "rect", "polyline", "polygon",
+    "defs", "clippath", "mask", "use", "symbol", "marker", "ellipse",
+    "text", "tspan", "textpath", "lineargradient", "radialgradient",
+    "stop", "pattern", "image", "title", "desc",
+}
+_SVG_COMMON_ATTRS = {
+    "fill", "fill-opacity", "fill-rule",
+    "stroke", "stroke-width", "stroke-opacity", "stroke-linecap",
+    "stroke-linejoin", "stroke-dasharray", "stroke-dashoffset",
+    "stroke-miterlimit",
+    "opacity", "transform", "transform-origin",
+    "clip-path", "clip-rule", "mask", "filter",
+    "color", "display", "visibility", "pointer-events",
+    "vector-effect", "paint-order", "shape-rendering", "overflow",
 }
 
 _URL_SCHEME_RE = re.compile(r"^\s*(javascript|vbscript|data|file)\s*:", re.I)
@@ -97,10 +170,29 @@ ALLOWED_CSS_PROPS = {
     "border-bottom", "border-inline-start", "border-inline-end",
     "min-width", "max-height", "text-transform", "white-space",
     "word-break", "vertical-align", "list-style", "cursor", "font-variant",
-    # ‎position‎ و‎inset‎ و‎z-index‎ **مش** موجودين هنا عن قصد: دي وسيلة
-    # الهروب من حدود القسم لتغطية الصفحة كلها. اللي محتاجهم يكتبهم في
-    # خانة «ستايل القسم» — هناك الحصر بيربطهم بالقسم نفسه.
+    # خصائص التفاعل — من غيرها مافيش كارت خدش يشتغل: الإصبع بيسحب
+    # الصفحة بدل ما يخدش، والنص بيتحدّد وانت بتمسح.
+    "touch-action", "pointer-events", "user-select", "-webkit-user-select",
+    "-webkit-touch-callout", "-webkit-tap-highlight-color",
+    "overscroll-behavior", "caret-color",
+    # طبقات ورسم
+    "position", "top", "right", "bottom", "left", "inset",
+    "inset-inline", "inset-block", "z-index",
+    "isolation", "mix-blend-mode", "clip-path", "mask", "mask-image",
+    "-webkit-mask", "-webkit-mask-image", "visibility", "will-change",
+    "box-sizing", "contain", "image-rendering", "resize",
+    "flex-grow", "flex-shrink", "flex-basis", "align-content",
+    "place-items", "place-content", "outline", "outline-offset",
+    "background-clip", "-webkit-background-clip", "-webkit-text-fill-color",
+    # ملحوظة أمان: ‎position:fixed‎ بيتحوّل لـ‎absolute‎ في ‎_clean_style‎،
+    # ونفس الشيء لـ‎sticky‎ — نفس السياسة الموجودة في ‎cssscope.py‎ —
+    # وحاوية الكود (‎.lb-extra-html‎) عندها ‎position:relative‎ و
+    # ‎contain:layout‎، يعني المطلق بيتحبس جوّه القسم مش على الصفحة.
 }
+
+# قيم ‎position‎ اللي بتهرب من القسم وتغطّي الشاشة كلها
+_ESCAPING_POSITIONS = {"fixed", "sticky"}
+_MAX_Z_INDEX = 999
 _CSS_DANGER_RE = re.compile(r"(expression|javascript:|@import|behavior)", re.I)
 
 # url() مسموحة **بس** لو بتشاور على ملف مخزّن عندنا. الرابط الخارجي في
@@ -129,8 +221,17 @@ def _clean_style(value: str) -> str:
             continue
         if "url(" in val.lower() and not _url_ok(val):
             continue
+        # ‎fixed‎/‎sticky‎ بيطلعوا بره القسم ويفضلوا معلّقين فوق باقي
+        # الدعوة — بنرجّعهم ‎absolute‎ جوّه القسم، زي ‎cssscope.py‎ بالظبط.
+        if prop == "position" and val.split()[0].lower() in _ESCAPING_POSITIONS:
+            val = "absolute"
+        if prop == "z-index":
+            try:
+                val = str(min(int(float(val)), _MAX_Z_INDEX))
+            except (TypeError, ValueError):
+                continue
         parts.append(f"{prop}:{val}")
-    return ";".join(parts[:20])
+    return ";".join(parts[:40])
 
 
 def _clean_url(value: str) -> str | None:
@@ -152,6 +253,8 @@ class _Cleaner(HTMLParser):
     # -- helpers ----------------------------------------------------------
     def _attrs(self, tag: str, attrs) -> str:
         allowed = ALLOWED_ATTRS["*"] | ALLOWED_ATTRS.get(tag, set())
+        if tag in _SVG_TAGS:
+            allowed = allowed | _SVG_COMMON_ATTRS
         parts = []
         for name, value in attrs:
             name = (name or "").lower()
@@ -166,10 +269,17 @@ class _Cleaner(HTMLParser):
                 "data-lb-map-width", "data-lb-map-height",
             }
 
-            if name.startswith("on") or (name not in allowed and not tilda_layout_attr):
+            custom_data = _data_attr_ok(name)
+            # ‎aria-*‎ كلها سمات وصف خاملة — بتفيد قارئ الشاشة ومابتنفّذش حاجة
+            aria_attr = bool(_ARIA_NAME_RE.match(name))
+
+            if name.startswith("on") or (
+                name not in allowed and not tilda_layout_attr
+                and not custom_data and not aria_attr
+            ):
                 continue
 
-            if name in {"href", "src"}:
+            if name in {"href", "src", "xlink:href"}:
                 cleaned = _clean_url(value)
                 if cleaned is None:
                     continue
@@ -209,10 +319,17 @@ class _Cleaner(HTMLParser):
             self.stack.append(tag)
 
     def handle_startendtag(self, tag, attrs):
+        """وسم مقفول على نفسه: ‎<path … />‎.
+
+        لازم نقفله صراحةً. ‎<path>‎ مش عنصر فاضي في HTML، فلو طلع من
+        غير قفلة المتصفح بيفضل فاتحه ويحطّ اللي بعده جوّاه — يعني
+        ‎<ellipse/><text/>‎ بيبقى النص جوّه الشكل ومايبانش خالص.
+        """
         tag = tag.lower()
         if self.skip_depth or tag not in ALLOWED_TAGS:
             return
-        self.out.append(f"<{tag}{self._attrs(tag, attrs)}>")
+        opened = f"<{tag}{self._attrs(tag, attrs)}>"
+        self.out.append(opened if tag in VOID_TAGS else opened + f"</{tag}>")
 
     def handle_endtag(self, tag):
         tag = tag.lower()

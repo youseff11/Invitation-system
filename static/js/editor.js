@@ -3553,6 +3553,14 @@
          وكل ‎[data-slot]‎ عليه ‎contenteditable‎ دايماً فمانعمّمش الشرط.) */
       if (slot === "code" && e.target && e.target.closest &&
           e.target.closest("[contenteditable]")) return;
+      /* الكانفس سطح رسم: الضغطة عليه شغل كود المصمّم نفسه (خدش،
+         رسم بالإصبع، توقيع). من غير الشرط ده الضغطة الواحدة كانت
+         بتعمل الاتنين مع بعض — الشكل بيتخربش وبيتحرك في نفس اللحظة.
+         التحديد بالضغط لسه شغال، والتحريك من أسهم «الموضع» في اللوحة.
+         ‎[data-no-drag]‎ عشان أي عنصر تفاعلي تاني في الكود (سلايدر،
+         مقبض) يقدر يطلب نفس المعاملة. */
+      if (e.target && e.target.closest &&
+          e.target.closest("canvas, [data-no-drag]")) return;
       if (e.button !== 0) return;
       var block = findBlock(blockId);
       if (!block || block.locked) return;

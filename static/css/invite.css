@@ -1880,3 +1880,39 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   min-height: 0 !important;
   box-sizing: border-box !important;
 }
+
+
+/* ================================================================
+   كود متقدّم: كانفس ورسم تفاعلي
+   ‎.lb-extra-html‎ عرضه ‎max-content‎ عشان الكروت الصغيرة تفضل متوسّطة.
+   لكن أي رسم بيتمدّ على عرض القسم (كارت خدش، رسم بالإصبع) لازم ياخد
+   العرض كله — و‎canvas‎ من غير عرض محدَّد بيرجع ٣٠٠px الافتراضية،
+   فالحاوية بتتقلّص عليها و‎getBoundingClientRect()‎ بترجّع مقاس غلط.
+   ================================================================ */
+.lb-extra-html:has(canvas),
+.lb-extra-html:has(.lb-full),
+.lb-extra-html.lb-full { width: 100%; }
+
+/* الكانفس عنصر سطري بطبيعته، فبيسيب فراغ تحته وبيبوّظ حساب الارتفاع */
+.lb-extra-html canvas,
+.lb-custom canvas,
+.lb-intro-extra canvas { display: block; max-width: 100%; }
+
+/* الرسم بالإصبع لازم ياخد اللمسة قبل ما الصفحة تسحب.
+   المصمّم يقدر يكتب ‎touch-action‎ بنفسه ودي بتغلبها؛ دي بس القيمة
+   المعقولة الافتراضية لأي كانفس جوّه كود متقدّم. */
+.lb-extra-html canvas,
+.lb-intro-extra canvas {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* الكانفس بياخد اللمسة في كل الأوضاع — المحرر والمعاينة والدعوة
+   المنشورة. سحب العنصر جوّه المحرر بيتوقف من ‎bindSlotDrag‎ في
+   ‎editor.js‎ لما تكون الضغطة على كانفس، عشان الضغطة الواحدة تعمل
+   حاجة واحدة: تخربش. */
+.lb-extra-html canvas,
+.lb-custom canvas,
+.lb-intro-extra canvas { pointer-events: auto; }
