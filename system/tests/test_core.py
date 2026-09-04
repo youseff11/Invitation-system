@@ -3648,7 +3648,8 @@ class DocumentTranslationTests(BaseAppTest):
 
     # ---- التخزين
     def test_a_fresh_document_has_an_empty_table(self):
-        self.assertEqual(B.normalize_document({})["i18n"], {"en": {}})
+        # اللغتين موجودتين: الدعوة العربية بتملا ‎en‎ والإنجليزية بتملا ‎ar‎
+        self.assertEqual(B.normalize_document({})["i18n"], {"ar": {}, "en": {}})
 
     def test_junk_is_thrown_away(self):
         doc = B.normalize_document({"i18n": {"en": {

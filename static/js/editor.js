@@ -2808,6 +2808,8 @@
      («كل نص عربي») — العربي مابيقبلش نفس الكلمة في الاتنين. */
   var LANG_NAME = { ar: "العربية", en: "الإنجليزية" };
   var LANG_ADJ = { ar: "عربي", en: "إنجليزي" };
+  var LANG_DIR = { ar: "rtl", en: "ltr" };
+  var LANG_PLACEHOLDER = { ar: "بالعربي…", en: "English…" };
 
   function i18nTable() {
     var alt = altLang();
@@ -2830,6 +2832,19 @@
     });
 
     (SCHEMA.settings_fields || []).forEach(function (s) {
+      if (s.translate_units) {
+        var src = state.doc.settings[s.key];
+        if (typeof src !== "string" || !src) return;
+        var box = new DOMParser().parseFromString(
+          "<div>" + src + "</div>", "text/html").body.firstChild;
+        Array.prototype.forEach.call(box.querySelectorAll("[data-move]"),
+          function (n) {
+            if (n.innerHTML.indexOf("<") > -1) return;
+            push("settings." + s.key + "#" + n.getAttribute("data-move"),
+                 "نص", (n.textContent || "").trim(), "إعدادات الدعوة");
+          });
+        return;
+      }
       if (s.translate === false || s.editor_hidden || !I18N_TEXT[s.type]) return;
       push("settings." + s.key, s.label, state.doc.settings[s.key], "إعدادات الدعوة");
     });
@@ -2840,9 +2855,12 @@
       var group = block.label || spec.label;
       var props = block.props || {};
       spec.props.forEach(function (f) {
-        if (f.translate === false) return;      // كود مش كلام
         var v = props[f.key];
-        if (f.type === "html") {
+        /* القسم المستورد وخانة «كود متقدّم»: الكلام جوّه الكود نفسه.
+           الفحص ده قبل حاجز ‎translate‎ عن قصد — الحقل مايتترجمش
+           كقيمة واحدة، بس وحدات النص اللي جوّاه تتترجم. لازم يفضل
+           مطابق لـ‎translatable_entries‎ في blocks.py. */
+        if (f.type === "html" || f.translate_units) {
           /* القسم المستورد كلامه جوّه الكود. بنقرا وحدات النص اللي
              المحرر معلّمها بـ‎data-move‎ ونعرض كل واحدة لوحدها —
              العنصر اللي جواه وسوم تانية بنسيبه، عشان الاستبدال
@@ -2858,6 +2876,7 @@
             });
           return;
         }
+        if (f.translate === false) return;      // كود مش كلام
         if (I18N_TEXT[f.type]) {
           push(block.id + "." + f.key, f.label, v, group);
         } else if (f.type === "list" && Array.isArray(v)) {
@@ -2940,14 +2959,15 @@
         var lab = el("label");
         lab.appendChild(el("span", null, r.label));
         fld.appendChild(lab);
-        // النص العربي معروض مش قابل للتعديل — تعديله مكانه تبويبه الأصلي
+        // نص اللغة الأساسية معروض مش قابل للتعديل — تعديله مكانه تبويبه
         var src = el("p", "ed-i18n-src", r.value);
-        src.setAttribute("dir", "rtl");
+        src.setAttribute("dir", LANG_DIR[baseLang()]);
         fld.appendChild(src);
 
         var input = el(r.value.length > 60 ? "textarea" : "input", "ed-input");
-        input.setAttribute("dir", "ltr");
-        input.setAttribute("placeholder", "English…");
+        // الاتجاه والـplaceholder بيتبعوا اللغة المطلوبة، مش إنجليزي دايماً
+        input.setAttribute("dir", LANG_DIR[altLang()]);
+        input.setAttribute("placeholder", LANG_PLACEHOLDER[altLang()]);
         if (input.tagName === "TEXTAREA") input.rows = 3;
         input.value = table[r.key] || "";
         input.addEventListener("input", function () {

@@ -80,6 +80,7 @@ def field(
     add_label: str = "إضافة عنصر",
     media_kind: str = "image",
     translate: bool = True,
+    translate_units: bool = False,
     editor_hidden: bool = False,
 ) -> dict:
     """تعريف حقل واحد داخل المحرر.
@@ -87,6 +88,11 @@ def field(
     ``translate=False`` بيشيل الحقل من جدول الترجمة. بيتحط على الحقول
     اللي محتواها كود مش كلام يشوفه الضيف — CSS مثلاً. كلام القسم
     المستورد نفسه بيتسحب من جوّه الـHTML، مش من الحقل ده.
+
+    ``translate_units=True`` للحقول اللي محتواها كود مخلوط (‎<style>‎
+    وHTML و‎<script>‎ مع بعض) بس جوّاه كلام الضيف: مابناخدش قيمة الحقل
+    كلها، بنسحب وحدات النص اللي المحرر معلّمها بـ‎data-move‎ بس.
+    ‎customtext‎ بيتخطّى ‎<script>‎ و‎<style>‎ فالكود مابيتلمسش.
     """
     if ftype not in FIELD_TYPES:
         raise ValueError(f"نوع حقل غير معروف: {ftype}")
@@ -100,6 +106,8 @@ def field(
     }
     if not translate:
         spec["translate"] = False
+    if translate_units:
+        spec["translate_units"] = True
     if editor_hidden:
         spec["editor_hidden"] = True
     if help_text:
@@ -310,7 +318,8 @@ OVERLAY_KINDS = [
 # الاسم ‎code‎ مش ‎html‎ عن قصد: ``renderer`` بيعرف القسم المستورد من وجود
 # مفتاح ‎html‎ بالذات، فلو سمّيناه كده كان هيعتبر كل قسم مستورد.
 SECTION_CODE_FIELD = field(
-    "code", "الكود", "textarea", "", group="كود متقدّم", translate=False,
+    "code", "الكود", "textarea", "", group="كود متقدّم",
+    translate=False, translate_units=True,
     help_text="الصق الكود كله هنا زي ما هو: <style> وHTML و<script>. "
               "الستايل بيتحصر على القسم ده وحده، والكود بيطلع في مربع "
               "واحد محبوس جوّه حدود القسم وبيتسحب بالماوس كقطعة واحدة. "
@@ -1365,7 +1374,7 @@ SETTINGS_FIELDS = [
     # ‎intro_custom_css‎ مش ‎intro_css‎ لأن ‎intro_css‎ اسم محجوز في ناتج
     # ‎render_document‎ (ستايل مواضع عناصر الافتتاحية المحسوب).
     field("intro_code", "كود الافتتاحية", "textarea", "",
-          group="كود متقدّم", translate=False,
+          group="كود متقدّم", translate=False, translate_units=True,
           help_text="الصق الكود كله هنا زي ما هو: <style> وHTML و"
                     "<script>. الستايل بيتحصر على الشاشة الافتتاحية "
                     "وحدها، والكود محبوس جوّه حدودها. جوّه <script> "
@@ -1797,7 +1806,9 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
 #   settings.intro_text    → إعدادات المستند
 #   hero-ab12cd.kicker     → حقل نصي جوّه بلوك
 #   agenda-x.items.0.title → عنصر جوّه حقل قائمة
-I18N_LANGS = ("en",)
+# اللغتين الاتنين: دعوة عربية جدولها ‎en‎، ودعوة إنجليزية جدولها ‎ar‎.
+# لو سيبنا ‎en‎ لوحدها، ‎_clean_i18n‎ بترمي الترجمة العربية عند الحفظ.
+I18N_LANGS = ("ar", "en")
 TRANSLATABLE_TYPES = {"text", "textarea"}
 MAX_I18N_ENTRIES = 600
 MAX_I18N_VALUE = 2000
@@ -1861,7 +1872,14 @@ def translatable_entries(doc: dict, data: dict | None = None) -> list[dict]:
 
     settings = doc.get("settings") if isinstance(doc.get("settings"), dict) else {}
     for spec in SETTINGS_FIELDS:
-        if spec["type"] not in TRANSLATABLE_TYPES:
+        if spec.get("translate_units"):
+            for move, text in customtext.text_units(settings.get(spec["key"]) or ""):
+                row = _entry(f"settings.{spec['key']}#{move}", "نص", text,
+                             "إعدادات الدعوة")
+                if row:
+                    rows.append(row)
+            continue
+        if spec["type"] not in TRANSLATABLE_TYPES or spec.get("translate") is False:
             continue
         row = _entry(f"settings.{spec['key']}", spec["label"],
                      settings.get(spec["key"]), "إعدادات الدعوة")
@@ -1879,17 +1897,19 @@ def translatable_entries(doc: dict, data: dict | None = None) -> list[dict]:
         props = block.get("props") if isinstance(block.get("props"), dict) else {}
 
         for fspec in spec["props"]:
-            if fspec.get("translate") is False:
-                continue                      # كود مش كلام يشوفه الضيف
             value = props.get(fspec["key"])
-            if fspec["type"] == "html":
-                # القسم المستورد: الكلام جوّه الكود نفسه، فبنسحب وحدات
-                # النص اللي المحرر معلّمها ونعرضها واحدة واحدة.
+            # القسم المستورد وخانة «كود متقدّم»: الكلام عايش جوّه الكود
+            # نفسه، فبنسحب وحدات النص اللي المحرر معلّمها ونعرضها واحدة
+            # واحدة. الفحص ده قبل حاجز ‎translate‎ عن قصد — الحقل نفسه
+            # مايتترجمش كقيمة واحدة، بس كلامه جوّاه يتترجم.
+            if fspec["type"] == "html" or fspec.get("translate_units"):
                 for move, text in customtext.text_units(value or ""):
                     row = _entry(f"{bid}.{fspec['key']}#{move}", "نص", text, group)
                     if row:
                         rows.append(row)
                 continue
+            if fspec.get("translate") is False:
+                continue                      # كود مش كلام يشوفه الضيف
             if fspec["type"] in TRANSLATABLE_TYPES:
                 row = _entry(f"{bid}.{fspec['key']}", fspec["label"], value, group)
                 if row:
@@ -1962,7 +1982,13 @@ def apply_i18n(doc: dict, lang: str | None = None) -> dict:
     for key, value in table.items():
         parts = key.split(".")
         if parts[0] == "settings" and len(parts) == 2:
-            if parts[1] in settings:
+            prop, sep, move = parts[1].partition("#")
+            if sep:
+                # وحدة نص جوّه كود الافتتاحية
+                if isinstance(settings.get(prop), str):
+                    pending.setdefault("__settings__", {}).setdefault(
+                        prop, {})[move] = value
+            elif parts[1] in settings:
                 settings[parts[1]] = value
             continue
         if parts[0] == "data":
@@ -1992,6 +2018,11 @@ def apply_i18n(doc: dict, lang: str | None = None) -> dict:
                 item[parts[3]] = value
 
     for bid, fields in pending.items():
+        if bid == "__settings__":
+            for prop, mapping in fields.items():
+                settings[prop] = customtext.replace_texts(
+                    settings.get(prop) or "", mapping)
+            continue
         block = next((b for b in out.get("blocks") or []
                       if b.get("id") == bid), None)
         if not block:
