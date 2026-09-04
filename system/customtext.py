@@ -28,6 +28,18 @@ SKIP_TAGS = {"script", "style", "template", "noscript"}
 
 MAX_UNIT_CHARS = 600
 
+# ‎<br>‎ مسموح جوّه وحدة النص. الجملة اللي المصمّم كاتبها على سطرين
+# («A beautiful beginning<br>of our forever») جملة واحدة بيقراها الضيف،
+# فكان غلط نستبعدها من الترجمة عشان فيها فاصل سطر. بتتعرض للمترجم
+# كسطرين، وبترجع ‎<br>‎ وقت الاستبدال.
+LINE_BREAK_TAGS = {"br"}
+
+
+def _text_to_html(text: str) -> str:
+    """نص المترجم -> HTML: تهريب كامل، والسطور بتبقى ‎<br>‎."""
+    lines = str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    return "<br>".join(escape(line) for line in lines)
+
 
 class _Collector(HTMLParser):
     """يجمع وحدات النص: عنصر له ``data-move`` ومحتواه نص صافي.
@@ -50,6 +62,10 @@ class _Collector(HTMLParser):
         if tag in SKIP_TAGS:
             self._skip += 1
             return
+        if tag in LINE_BREAK_TAGS:
+            if self._move is not None and not self._skip:
+                self._buf.append("\n")
+            return
         if tag in VOID_TAGS:
             if self._move is not None:
                 self._dirty = True
@@ -68,6 +84,10 @@ class _Collector(HTMLParser):
             self._depth = len(self._stack)
 
     def handle_startendtag(self, tag, attrs):
+        if tag in LINE_BREAK_TAGS:
+            if self._move is not None and not self._skip:
+                self._buf.append("\n")
+            return
         if self._move is not None:
             self._dirty = True
 
@@ -75,12 +95,14 @@ class _Collector(HTMLParser):
         if tag in SKIP_TAGS:
             self._skip = max(0, self._skip - 1)
             return
-        if tag in VOID_TAGS:
+        if tag in LINE_BREAK_TAGS or tag in VOID_TAGS:
             return
         if self._stack:
             self._stack.pop()
         if self._move is not None and len(self._stack) < self._depth:
-            text = "".join(self._buf).strip()
+            text = "\n".join(
+                line.strip() for line in "".join(self._buf).split("\n")
+            ).strip()
             if text and not self._dirty and len(text) <= MAX_UNIT_CHARS:
                 self.units.append((self._move, text))
             self._move = None
@@ -124,30 +146,39 @@ class _Replacer(HTMLParser):
 
     # ---- إعادة كتابة الوسوم كما وردت
     def handle_starttag(self, tag, attrs):
-        raw = self.get_starttag_text() or ""
-        self.out.append(raw)
+        if self._move is not None:
+            # جوّه عنصر اتستبدل: بنبلع وسومه (زي ‎<br>‎) — النص الجديد
+            # اتكتب كامل بسطوره، ولو سيبنا القديمة كانت هتتكرر معاه.
+            if tag not in VOID_TAGS:
+                self._stack.append(tag)
+            return
+        self.out.append(self.get_starttag_text() or "")
         if tag in VOID_TAGS:
             return
         self._stack.append(tag)
-        if self._move is not None:
-            return
         move = dict(attrs).get("data-move")
         if move and move in self.mapping:
             self._move = move
             self._depth = len(self._stack)
-            self.out.append(escape(self.mapping[move]))
+            self.out.append(_text_to_html(self.mapping[move]))
 
     def handle_startendtag(self, tag, attrs):
+        if self._move is not None:
+            return
         self.out.append(self.get_starttag_text() or "")
 
     def handle_endtag(self, tag):
         if tag in VOID_TAGS:
-            self.out.append(f"</{tag}>")
+            if self._move is None:
+                self.out.append(f"</{tag}>")
             return
         if self._stack:
             self._stack.pop()
-        if self._move is not None and len(self._stack) < self._depth:
-            self._move = None
+        if self._move is not None:
+            if len(self._stack) < self._depth:
+                self._move = None         # قفلة العنصر نفسه بتتكتب
+            else:
+                return                    # قفلة وسم جوّاه — بتتبلع
         self.out.append(f"</{tag}>")
 
     def handle_data(self, data):
@@ -164,7 +195,8 @@ class _Replacer(HTMLParser):
             self.out.append(f"&#{name};")
 
     def handle_comment(self, data):
-        self.out.append(f"<!--{data}-->")
+        if self._move is None:
+            self.out.append(f"<!--{data}-->")
 
     def handle_decl(self, decl):
         self.out.append(f"<!{decl}>")

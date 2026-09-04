@@ -1701,7 +1701,9 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 /* بيظهر بس لما يكون فيه نسخة إنجليزية مكتوبة. مكانه مقابل زر
    الموسيقى (اللي في ‎inset-inline-end‎) عشان ما يركبوش على بعض. */
 .lb-lang {
-  position: fixed; z-index: 25;
+  /* فوق الشاشة الافتتاحية (‎z-index: 90‎) عشان الضيف يقدر يبدّل اللغة
+     من أول لحظة، قبل ما يفتح الدعوة أصلاً. */
+  position: fixed; z-index: 95;
   inset-block-start: 16px; inset-inline-start: 16px;
   min-inline-size: 42px; block-size: 42px;
   padding-inline: 12px;
@@ -1715,8 +1717,17 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 }
 .lb-lang:hover { transform: translateY(-1px); background: var(--accent-10); }
 .lb-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-/* الافتتاحية بتغطّي الشاشة كلها — الزرار تحتها مش هيتشاف ولا هيتضغط */
-.lb-intro:not(.is-open) ~ .lb-lang { display: none; }
+/* الزرار بيفضل ظاهر فوق الافتتاحية كمان: الضيف اللي بيقرا إنجليزي
+   لازم يلاقي التبديل من أول شاشة، مش بعد ما يفتح الدعوة.
+   مستمع «اضغط في أي حتة» متربط على ‎.lb-intro‎ نفسها، والزرار أخوها
+   مش ابنها — فالضغط عليه مابيفتحش الدعوة بالغلط. */
+.lb-intro:not(.is-open) ~ .lb-lang {
+  /* خلفية الافتتاحية ممكن تكون صورة أو فيديو — نضبّب اللي ورا الزرار
+     عشان يفضل مقروء فوق أي حاجة. */
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
 @media (max-width: 480px) {
   .lb-lang { inset-block-start: 12px; inset-inline-start: 12px; block-size: 38px; }
 }

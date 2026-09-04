@@ -2789,6 +2789,23 @@
      فيه اختبار بيتأكد إن التنين متفقين، لأن أي فرق معناه ترجمة
      مكتوبة ومش ظاهرة والمستخدم مش هيعرف ليه. */
   var I18N_TEXT = { text: 1, textarea: 1 };
+
+  /* نص وحدة واحدة من عنصر معلّم بـ‎data-move‎، أو ‎null‎ لو جوّاه وسوم
+     حقيقية. ‎<br>‎ مسموح وبيتحوّل لسطر جديد — الجملة المكتوبة على
+     سطرين جملة واحدة بيقراها الضيف. لازم يفضل مطابق لـ‎customtext.py‎. */
+  function i18nUnitText(node) {
+    var kids = node.children;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].tagName !== "BR") return null;
+    }
+    var out = "";
+    Array.prototype.forEach.call(node.childNodes, function (n) {
+      if (n.nodeType === 3) out += n.textContent;
+      else if (n.nodeType === 1 && n.tagName === "BR") out += "\n";
+    });
+    return out.split("\n").map(function (l) { return l.trim(); })
+              .join("\n").trim();
+  }
   var I18N_DATA = [
     ["name_one", "الاسم الأول"],
     ["name_two", "الاسم الثاني"],
@@ -2839,9 +2856,10 @@
           "<div>" + src + "</div>", "text/html").body.firstChild;
         Array.prototype.forEach.call(box.querySelectorAll("[data-move]"),
           function (n) {
-            if (n.innerHTML.indexOf("<") > -1) return;
+            var text = i18nUnitText(n);
+            if (text === null) return;
             push("settings." + s.key + "#" + n.getAttribute("data-move"),
-                 "نص", (n.textContent || "").trim(), "إعدادات الدعوة");
+                 "نص", text, "إعدادات الدعوة");
           });
         return;
       }
@@ -2870,9 +2888,10 @@
             "<div>" + v + "</div>", "text/html").body.firstChild;
           Array.prototype.forEach.call(root.querySelectorAll("[data-move]"),
             function (n) {
-              if (n.innerHTML.indexOf("<") > -1) return;
+              var text = i18nUnitText(n);
+              if (text === null) return;
               push(block.id + "." + f.key + "#" + n.getAttribute("data-move"),
-                   "نص", (n.textContent || "").trim(), group);
+                   "نص", text, group);
             });
           return;
         }
@@ -2964,7 +2983,8 @@
         src.setAttribute("dir", LANG_DIR[baseLang()]);
         fld.appendChild(src);
 
-        var input = el(r.value.length > 60 ? "textarea" : "input", "ed-input");
+        var multiline = r.value.length > 60 || r.value.indexOf("\n") > -1;
+        var input = el(multiline ? "textarea" : "input", "ed-input");
         // الاتجاه والـplaceholder بيتبعوا اللغة المطلوبة، مش إنجليزي دايماً
         input.setAttribute("dir", LANG_DIR[altLang()]);
         input.setAttribute("placeholder", LANG_PLACEHOLDER[altLang()]);
