@@ -74,9 +74,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   الرابط يفضل موجود عشان المشاركة والفتح المباشر يشتغلوا بنفس اللغة،
   والجافاسكربت بيحمّل النسخة المطلوبة داخل الصفحة بدون إعادة تحميل لو أمكن.
 {% endcomment %}
-{% if render.has_en %}
+{% if render.has_alt %}
+{% comment %}
+  الزرار بيوري اللغة التانية أياً كانت لغة الدعوة الأساسية — دعوة
+  عربية بتوري «EN»، ودعوة إنجليزية بتوري «ع».
+{% endcomment %}
 <a class="lb-lang" data-lang-toggle
-   href="?{% if render.lang == 'en' %}lang=ar{% else %}lang=en{% endif %}"
+   href="?lang={% if render.lang == 'en' %}ar{% else %}en{% endif %}"
    hreflang="{% if render.lang == 'en' %}ar{% else %}en{% endif %}"
    aria-label="{% if render.lang == 'en' %}اعرض بالعربية{% else %}View in English{% endif %}">
   {% if render.lang == 'en' %}ع{% else %}EN{% endif %}

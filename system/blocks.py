@@ -1213,6 +1213,13 @@ THEME_FIELDS = [
     field("font_body_en", "خط النصوص — النسخة الإنجليزية", "font", "",
           group="الخطوط", options=FONT_CHOICES,
           help_text="سيبه فاضي عشان يفضل نفس الخط العربي."),
+    # والعكس: دعوة أساسها إنجليزي، نسختها العربية محتاجة خط عربي.
+    field("font_heading_ar", "خط العناوين — النسخة العربية", "font", "",
+          group="الخطوط", options=FONT_CHOICES,
+          help_text="سيبه فاضي عشان يفضل نفس الخط الأساسي."),
+    field("font_body_ar", "خط النصوص — النسخة العربية", "font", "",
+          group="الخطوط", options=FONT_CHOICES,
+          help_text="سيبه فاضي عشان يفضل نفس الخط الأساسي."),
     field("font_scale", "مقياس الخطوط", "range", 1.0, group="الخطوط",
           minimum=0.8, maximum=1.4, step=0.05),
     field("letter_spacing", "تباعد الحروف", "range", 0, group="الخطوط",
@@ -1249,6 +1256,10 @@ THEME_FIELDS = [
           help_text="الصورة تفضل مكانها والدعوة تعدّي فوقها. بعض متصفحات "
                "الموبايل بتتجاهلها وبتعاملها كخلفية عادية."),
 
+    field("base_lang", "لغة الدعوة الأساسية", "select", "ar", group="عام", options=[
+        opt("ar", "عربي"), opt("en", "إنجليزي"),
+    ], help_text="اللغة اللي كاتب بيها الدعوة نفسها. تبويب «الترجمة» "
+                 "بيطلبك اللغة التانية تلقائياً."),
     field("direction", "اتجاه الكتابة", "select", "rtl", group="عام", options=[
         opt("rtl", "من اليمين لليسار"), opt("ltr", "من اليسار لليمين"),
     ]),
@@ -1902,16 +1913,37 @@ def translatable_entries(doc: dict, data: dict | None = None) -> list[dict]:
     return rows
 
 
-def translation_table(doc: dict, lang: str = "en") -> dict:
+LANGUAGES = ("ar", "en")
+
+
+def base_language(doc: dict) -> str:
+    """اللغة اللي الدعوة نفسها مكتوبة بيها.
+
+    الافتراضي عربي عشان كل الدعوات القديمة تفضل شغّالة زي ما هي —
+    اللي فيها ‎i18n.en‎ بتلاقي لغتها التانية إنجليزي زي الأول بالظبط.
+    """
+    lang = ((doc.get("theme") or {}).get("base_lang") or "ar").lower()
+    return lang if lang in LANGUAGES else "ar"
+
+
+def alt_language(doc: dict) -> str:
+    """اللغة التانية — اللي تبويب «الترجمة» بيتكتب فيها."""
+    return "en" if base_language(doc) == "ar" else "ar"
+
+
+def translation_table(doc: dict, lang: str | None = None) -> dict:
+    """جدول الترجمة للغة المطلوبة، والافتراضي اللغة التانية للمستند."""
+    if lang is None:
+        lang = alt_language(doc)
     return (doc.get("i18n") or {}).get(lang) or {}
 
 
-def has_translation(doc: dict, lang: str = "en") -> bool:
+def has_translation(doc: dict, lang: str | None = None) -> bool:
     """فيه نسخة مكتوبة فعلاً؟ ده اللي بيقرر ظهور زرار اللغة للضيف."""
     return bool(translation_table(doc, lang))
 
 
-def apply_i18n(doc: dict, lang: str) -> dict:
+def apply_i18n(doc: dict, lang: str | None = None) -> dict:
     """نسخة من المستند بنصوص اللغة المطلوبة.
 
     أي مفتاح مش مترجم بيفضل بقيمته العربية — نص ناقص أحسن من فراغ.
@@ -1970,7 +2002,7 @@ def apply_i18n(doc: dict, lang: str) -> dict:
     return out
 
 
-def apply_i18n_data(data: dict, doc: dict, lang: str) -> dict:
+def apply_i18n_data(data: dict, doc: dict, lang: str | None = None) -> dict:
     """نفس الحكاية لبيانات المناسبة — الأسماء والقاعة والعنوان."""
     table = translation_table(doc, lang)
     if not table:

@@ -2797,10 +2797,23 @@
     ["address", "العنوان"],
   ];
 
+  /* لغة الدعوة الأساسية واللغة التانية — نفس منطق ‎blocks.py‎ بالظبط.
+     الافتراضي عربي عشان الدعوات القديمة تفضل زي ما هي. */
+  function baseLang() {
+    var v = ((state.doc.theme || {}).base_lang || "ar").toLowerCase();
+    return v === "en" ? "en" : "ar";
+  }
+  function altLang() { return baseLang() === "ar" ? "en" : "ar"; }
+  /* اسمين لكل لغة: واحد اسم («النسخة العربية») وواحد صفة
+     («كل نص عربي») — العربي مابيقبلش نفس الكلمة في الاتنين. */
+  var LANG_NAME = { ar: "العربية", en: "الإنجليزية" };
+  var LANG_ADJ = { ar: "عربي", en: "إنجليزي" };
+
   function i18nTable() {
+    var alt = altLang();
     if (!state.doc.i18n) state.doc.i18n = {};
-    if (!state.doc.i18n.en) state.doc.i18n.en = {};
-    return state.doc.i18n.en;
+    if (!state.doc.i18n[alt]) state.doc.i18n[alt] = {};
+    return state.doc.i18n[alt];
   }
 
   /** كل النصوص اللي ينفع تترجم — بنفس ترتيب ظهورها في الدعوة. */
@@ -2870,6 +2883,19 @@
     var countEl = $("[data-i18n-count]", pane);
     if (!host) return;
     host.replaceChildren();
+
+    /* عناوين اللوحة بتتكتب من لغة الدعوة نفسها: دعوة عربية بتطلب
+       النسخة الإنجليزية، ودعوة إنجليزية بتطلب النسخة العربية. */
+    var altName = LANG_NAME[altLang()];
+    var kicker = $(".ed-kicker", pane);
+    if (kicker) kicker.textContent = "النسخة " + altName;
+    var intro = $("[data-i18n-intro]", pane);
+    if (intro) {
+      intro.textContent =
+        "اكتب مقابل كل نص " + LANG_ADJ[baseLang()] + " نسخته " + altName + ". اللي تسيبه " +
+        "فاضي بيفضل ظاهر بلغة الدعوة الأساسية. زرار اللغة مابيظهرش للضيف " +
+        "غير لما تكتب سطر واحد على الأقل.";
+    }
 
     var rows = i18nRows();
     var table = i18nTable();
@@ -2944,11 +2970,13 @@
     /* معاينة النسخة الإنجليزية جوّه المحرر. المعاينة بتتبعت للسيرفر
        أصلاً مع كل تعديل، فبنبعت معاها اللغة بس — نفس الكود اللي
        بيشوفه الضيف، مش محاكاة ليه. */
+    var showingAlt = state.previewLang === altLang();
     var peek = el("button", "ed-btn ed-btn--sm ed-btn--block",
-      state.previewLang === "en" ? "رجّع المعاينة عربي" : "عاين بالإنجليزي");
+      showingAlt ? "رجّع المعاينة " + LANG_ADJ[baseLang()]
+                 : "عاين بالنسخة " + altName);
     peek.type = "button";
     peek.addEventListener("click", function () {
-      state.previewLang = state.previewLang === "en" ? "ar" : "en";
+      state.previewLang = showingAlt ? baseLang() : altLang();
       renderI18nPane();
       requestPreview();
     });
@@ -2959,13 +2987,14 @@
       clear.dataset.bound = "1";
       clear.addEventListener("click", function () {
         if (!Object.keys(i18nTable()).length) return;
-        if (!window.confirm("امسح النسخة الإنجليزية كلها؟")) return;
+        var name = LANG_NAME[altLang()];
+        if (!window.confirm("امسح النسخة " + name + " كلها؟")) return;
         snapshot();
-        state.doc.i18n.en = {};
+        state.doc.i18n[altLang()] = {};
         markDirty();
         renderI18nPane();
         requestPreview();
-        toast("اتمسحت النسخة الإنجليزية — Ctrl+Z للتراجع", "ok");
+        toast("اتمسحت النسخة " + name + " — Ctrl+Z للتراجع", "ok");
       });
     }
     syncCollapseTool();
@@ -3043,7 +3072,7 @@
             method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
-      body: JSON.stringify({ document: state.doc, lang: state.previewLang || "ar" })
+      body: JSON.stringify({ document: state.doc, lang: state.previewLang || baseLang() })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {

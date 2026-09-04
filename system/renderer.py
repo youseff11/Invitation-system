@@ -961,25 +961,37 @@ def render_document(
 
     # ترجمة آلية ولا استدعاء لأي خدمة برّه. أي مفتاح مش مترجم بيفضل
     # عربي: نص ناقص أحسن من فراغ في وش الضيف.
-    has_en = blocks_engine.has_translation(doc, "en")
-    lang = "en" if (lang == "en" and has_en) else "ar"
+    # اللغة الأساسية هي اللي الدعوة مكتوبة بيها (‎theme.base_lang‎)،
+    # والتانية هي اللي تبويب «الترجمة» بيتكتب فيها. الاتنين شغّالين في
+    # الاتجاهين: دعوة عربية ليها نسخة إنجليزي، ودعوة إنجليزية ليها
+    # نسخة عربي — مفيش لغة مميّزة على التانية.
+    base_lang = blocks_engine.base_language(doc)
+    alt_lang = blocks_engine.alt_language(doc)
+    has_alt = blocks_engine.has_translation(doc, alt_lang)
+    lang = alt_lang if (lang == alt_lang and has_alt) else base_lang
 
     theme = doc["theme"]
     doc_settings = doc["settings"]
     data = build_data_context(invitation)
 
-    if lang == "en":
-        doc = blocks_engine.apply_i18n(doc, "en")
+    if lang == alt_lang:
+        doc = blocks_engine.apply_i18n(doc, alt_lang)
         theme = doc["theme"]
         doc_settings = doc["settings"]
-        data = blocks_engine.apply_i18n_data(data, doc, "en")
-        # الإنجليزي بيتقرا من الشمال، والخطوط العربية محارفها اللاتينية
-        # ناقصة — فبناخد خطوط النسخة الإنجليزية لو المصمّم حدّدها.
-        theme["direction"] = "ltr"
-        if theme.get("font_heading_en"):
-            theme["font_heading"] = theme["font_heading_en"]
-        if theme.get("font_body_en"):
-            theme["font_body"] = theme["font_body_en"]
+        data = blocks_engine.apply_i18n_data(data, doc, alt_lang)
+        # اتجاه اللغة التانية بيتحدّد منها هي: العربي يمين‑شمال
+        # والإنجليزي شمال‑يمين. اتجاه المصمّم بيفضل للغة الأساسية.
+        theme["direction"] = "rtl" if lang == "ar" else "ltr"
+
+    # الخطوط بتتاخد حسب اللغة المعروضة فعلاً — الخطوط العربية محارفها
+    # اللاتينية ناقصة والعكس. لو المصمّم مالاش خانة اللغة دي، بيفضل
+    # الخط الأساسي زي ما هو.
+    heading = theme.get(f"font_heading_{lang}")
+    body = theme.get(f"font_body_{lang}")
+    if heading:
+        theme["font_heading"] = heading
+    if body:
+        theme["font_body"] = body
 
     if invitation is not None and request is not None:
         data["public_url"] = request.build_absolute_uri(invitation.get_absolute_url())
@@ -1136,7 +1148,11 @@ def render_document(
         "block_count": len(doc["blocks"]),
         # القالب بيقرر ظهور زرار اللغة من دول: مفيش نسخة = مفيش زرار.
         "lang": lang,
-        "has_en": has_en,
+        # ‎has_en‎ اتساب لتوافق أي قالب قديم بيسأل عنه.
+        "has_en": has_alt,
+        "has_alt": has_alt,
+        "base_lang": base_lang,
+        "alt_lang": alt_lang,
         "runtime_scripts": runtime_scripts or [],
         "runtime_countdown_date": _countdown_date_from_document(doc),
         "runtime_root_attrs": runtime_attrs,
@@ -1152,6 +1168,7 @@ _PREVIEW_KEYS = (
     "runtime_scripts", "runtime_root_attrs", "runtime_is_spa",
 
     "theme", "settings", "countdown_iso", "block_count", "lang", "has_en",
+    "has_alt", "base_lang", "alt_lang",
 
 )
 
@@ -1225,7 +1242,7 @@ def _restore_preview(payload: dict) -> dict:
     return result
 
 
-def get_template_preview(template, *, lang: str = "ar") -> dict:
+def get_template_preview(template, *, lang: str = "") -> dict:
     """يعيد الرندر المحفوظ للقالب أو يبنيه مرة واحدة عند أول استخدام."""
     signature = _preview_signature(
         template.document, getattr(template, "runtime_scripts", []),

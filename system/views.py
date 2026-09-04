@@ -185,7 +185,14 @@ def _lang(request) -> str:
     باراميتر في الرابط مش كوكي: كده الرابط اللي الضيف يبعته لحد تاني
     يفتح بنفس اللغة، والميتا والعنوان بيتبنوا على السيرفر صح.
     """
-    return "en" if (request.GET.get("lang") or "").lower().startswith("en") else "ar"
+    asked = (request.GET.get("lang") or "").lower()
+    if asked.startswith("en"):
+        return "en"
+    if asked.startswith("ar"):
+        return "ar"
+    # مفيش طلب صريح: سيبها فاضية والعارض يرجّع لغة الدعوة الأساسية،
+    # سواء كانت عربي أو إنجليزي.
+    return ""
 
 
 def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):
@@ -1323,7 +1330,9 @@ def template_api_preview(request, pk):
     body = _json_body(request)
     result = _template_editor_result(
         template, body.get("document") or {}, request,
-        editable=True, lang="en" if body.get("lang") == "en" else "ar",
+        # اللغة بتتمرّر زي ما هي؛ ‎render_document‎ بيرجّع للغة الدعوة
+        # الأساسية لو الطلب مش مفهوم أو مفيش ترجمة.
+        editable=True, lang=(body.get("lang") or ""),
     )
     intro_html = render_to_string("invitations/_intro.html", {
         "render": result, "editable": True, "guest": None,
@@ -1367,7 +1376,7 @@ def template_api_save(request, pk):
     template.preview_render = {}
     template.save(update_fields=["document", "preview_render", "updated_at"])
     try:
-        get_template_preview(template, lang="ar")
+        get_template_preview(template)
     except Exception:
         pass
     return JsonResponse({
@@ -1513,7 +1522,7 @@ def api_preview(request, pk):
         runtime_root_attrs=getattr(invitation.template, "runtime_root_attrs", {}),
         # المحرر بيعاين اللغة اللي المصمّم واقف عليها في تبويب الترجمة
 
-        lang="en" if body.get("lang") == "en" else "ar",
+        lang=(body.get("lang") or ""),
     )
     doc_settings = result["settings"]
     # الافتتاحية أخت لـ.lb-stage مش جواه، والمحرر بيبدّل الـstage بس.
@@ -2048,7 +2057,7 @@ def api_save_as_template(request, pk):
         created_by=request.user,
     )
     try:
-        get_template_preview(template, lang="ar")
+        get_template_preview(template)
     except Exception:
         pass
     return JsonResponse({
