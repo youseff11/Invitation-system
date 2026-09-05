@@ -2848,7 +2848,7 @@
   var I18N_STYLE_SPECS = [
     { key: "font", label: "خط النسخة المترجَمة", type: "font",
       help: "سيبه فاضي عشان ياخد خط الدعوة." },
-    { key: "size", label: "حجم الخط", type: "range", minimum: 0, maximum: 160,
+    { key: "size", label: "حجم الخط", type: "range", min: 0, max: 160,
       step: 1, unit: "px", help: "صفر = نفس حجم النص الأصلي." }
   ];
 
@@ -3042,6 +3042,7 @@
 
         var multiline = r.value.length > 60 || r.value.indexOf("\n") > -1;
         var input = el(multiline ? "textarea" : "input", "ed-input");
+        var styleGear = buildI18nStyleGear(r.key);
         // الاتجاه والـplaceholder بيتبعوا اللغة المطلوبة، مش إنجليزي دايماً
         input.setAttribute("dir", LANG_DIR[altLang()]);
         input.setAttribute("placeholder", LANG_PLACEHOLDER[altLang()]);
