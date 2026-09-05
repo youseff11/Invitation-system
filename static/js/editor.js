@@ -3073,13 +3073,16 @@
     /* معاينة النسخة الإنجليزية جوّه المحرر. المعاينة بتتبعت للسيرفر
        أصلاً مع كل تعديل، فبنبعت معاها اللغة بس — نفس الكود اللي
        بيشوفه الضيف، مش محاكاة ليه. */
-    var showingAlt = state.previewLang === altLang();
+    var shownLang = state.previewLang || state.previewLangRendered || baseLang();
+    var showingAlt = shownLang === altLang();
     var peek = el("button", "ed-btn ed-btn--sm ed-btn--block",
       showingAlt ? "رجّع المعاينة " + LANG_ADJ[baseLang()]
                  : "عاين بالنسخة " + altName);
     peek.type = "button";
     peek.addEventListener("click", function () {
       state.previewLang = showingAlt ? baseLang() : altLang();
+      // اختيار صريح من المحرر: نخلّي ‎previewLangNow‎ ماتاخدش لغة الإطار
+      state.previewLangRendered = state.previewLang;
       renderI18nPane();
       requestPreview();
     });
@@ -3163,6 +3166,29 @@
     window.setTimeout(restore, 40);
   }
 
+  /* اللغة اللي المعاينة معروضة بيها **فعلاً**.
+
+     الضيف عنده زرار لغة جوّه المعاينة نفسها. لو المصمّم بدّل منه
+     وبعدين غيّر أي حاجة (خط مثلاً)، كنا بنبعت اللغة الأساسية للسيرفر
+     فالمعاينة بترجع للغة التانية لوحدها — وده اللي كان شكله «القالب
+     بيقلب لغة وانا بغيّر خط»، وكمان كان بيخفي التعديل اللي لسه اتعمل.
+
+     ‎previewLangRendered‎ بتفرّق بين الحالتين: لو اللغة اللي في الإطار
+     مختلفة عن آخر لغة إحنا رسمناها، يبقى المستخدم بدّلها من جوّه —
+     بناخدها. غير كده اختيار المحرر (زرار «عاين بالنسخة …») هو اللي يكسب. */
+  function previewLangNow() {
+    var fdoc = frameDoc();
+    var shown = fdoc && fdoc.documentElement &&
+                fdoc.documentElement.getAttribute("lang");
+    if ((shown === "ar" || shown === "en") &&
+        shown !== state.previewLangRendered) {
+      state.previewLang = shown;
+    }
+    var lang = state.previewLang || baseLang();
+    state.previewLangRendered = lang;
+    return lang;
+  }
+
   var requestPreview = debounce(function () {
     if (!previewReady) return;
     var editorScroll = captureEditorScroll();
@@ -3176,7 +3202,7 @@
             method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
-      body: JSON.stringify({ document: state.doc, lang: state.previewLang || baseLang() })
+      body: JSON.stringify({ document: state.doc, lang: previewLangNow() })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
