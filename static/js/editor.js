@@ -6191,6 +6191,25 @@
 
     /* «الافتتاحية» — بترجّع الشاشة الافتتاحية في المعاينة عشان تعاينها
        وتعدّلها. زر «التالي» جوّاها بيدخّلك الدعوة. */
+    /* «فتح الدعوة» بيفتح **لغة الأساس** دايماً. المصمّم اللي شغال على
+       النسخة المترجَمة (قلب المعاينة للغة التانية وظبط خطوطها) كان
+       بيدوس على الزر ويلاقي النص الأصلي بخطه الأصلي — وده مفهوم إنه
+       «الترجمة بتشتغل في المحرر ومابتشتغلش في المعاينة». بنمرّر اللغة
+       المعروضة في المعاينة مع الرابط، فاللي بيفتح هو اللي كان شايفه. */
+    if (refs.publicLink) {
+      refs.publicLink.addEventListener("click", function () {
+        var lang = previewLangNow();
+        if (!lang) return;
+        var href = String(refs.publicLink.getAttribute("href") || "");
+        var hash = href.indexOf("#") > -1 ? href.slice(href.indexOf("#")) : "";
+        var base = href.split("#")[0]
+          .replace(/([?&])lang=[^&]*&?/g, "$1")
+          .replace(/[?&]$/, "");
+        refs.publicLink.href =
+          base + (base.indexOf("?") > -1 ? "&" : "?") + "lang=" + lang + hash;
+      });
+    }
+
     var introBtn = $("[data-show-intro]");
     if (introBtn) {
       introBtn.addEventListener("click", function () {
