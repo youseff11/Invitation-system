@@ -1006,3 +1006,8 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-i18n-row > .ed-input { flex: 1 1 auto; min-inline-size: 0; }
 .ed-i18n-row > textarea.ed-input { align-self: stretch; }
 .ed-i18n-row > .ed-font-gear { align-self: flex-start; }
+/* ترس عليه تنسيق محفوظ — يبان من غير ما تفتح كل صف */
+.ed-i18n-row > .ed-font-gear.is-set {
+  border-color: var(--e-accent);
+  background: var(--e-line-soft);
+}

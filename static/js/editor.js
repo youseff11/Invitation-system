@@ -2852,36 +2852,51 @@
       step: 1, unit: "px", help: "صفر = نفس حجم النص الأصلي." }
   ];
 
-  /** ترس التنسيق لصف ترجمة واحد. */
+  /** ترس التنسيق لصف ترجمة واحد.
+
+     محتوى اللوحة **بيتبني عند أول فتح بس**. قايمة الخطوط فيها كل خطوط
+     المكتبة وكل ‎<option>‎ بياخد ‎font-family‎ بتاعته، وجدول الترجمة فيه
+     عشرات الصفوف — فبناء اللوحات كلها مقدّماً كان بيعلّق المحرر تماماً،
+     وبيتعاد مع كل تعديل لأن ‎renderI18nPane‎ بتعيد بناء الجدول. */
   function buildI18nStyleGear(key) {
     var gear = el("button", "ed-font-gear", "⚙");
     gear.type = "button";
     gear.title = "خط وحجم النص المترجَم — النص الأصلي مايتأثرش";
     gear.setAttribute("aria-label", "تنسيق النص المترجَم");
+    // علامة إن النص ده متظبّط خطه — تبان من غير ما تفتح كل ترس
+    if (i18nStyleTable()[key]) gear.classList.add("is-set");
+
     var panel = el("div", "ed-inline-font-panel");
     panel.hidden = true;
+    var built = false;
 
-    I18N_STYLE_SPECS.forEach(function (spec) {
-      panel.appendChild(buildField(spec,
-        function () {
-          var row = i18nStyleTable()[key];
-          return row ? row[spec.key] : (spec.type === "range" ? 0 : "");
-        },
-        function (v) {
-          var table = i18nStyleTable();
-          var row = table[key] || {};
-          var empty = v === "" || v === null || v === undefined ||
-                      (spec.type === "range" && !Number(v));
-          if (empty) delete row[spec.key]; else row[spec.key] = v;
-          if (Object.keys(row).length) table[key] = row; else delete table[key];
-          markDirty();
-          requestPreview();
-        }));
-    });
+    function buildOnce() {
+      if (built) return;
+      built = true;
+      I18N_STYLE_SPECS.forEach(function (spec) {
+        panel.appendChild(buildField(spec,
+          function () {
+            var row = i18nStyleTable()[key];
+            return row ? row[spec.key] : (spec.type === "range" ? 0 : "");
+          },
+          function (v) {
+            var table = i18nStyleTable();
+            var row = table[key] || {};
+            var empty = v === "" || v === null || v === undefined ||
+                        (spec.type === "range" && !Number(v));
+            if (empty) delete row[spec.key]; else row[spec.key] = v;
+            if (Object.keys(row).length) table[key] = row; else delete table[key];
+            gear.classList.toggle("is-set", !!table[key]);
+            markDirty();
+            requestPreview();
+          }));
+      });
+    }
 
     gear.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
+      buildOnce();
       panel.hidden = !panel.hidden;
       gear.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
     });

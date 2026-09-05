@@ -730,7 +730,13 @@ def _num(value: object, low: float, high: float) -> float | None:
     return num
 
 
-_I18N_MOVE_RE = re.compile(r"^(?:el|ce)-\d{1,4}$")
+# نفس اللي المنقّي بيقبله في ‎data-move‎ (‎sanitize._MOVE_RE‎).
+# **مش** ‎ce-N‎/‎el-N‎ بس: ترقيم المحرر بيطلع بالشكل ده، لكن المصمّم
+# بيسمّي عناصره بإيده كمان (‎couple-message-v2‎، ‎opening-groom‎) —
+# ولو ضيّقنا التحقق على الترقيم الآلي، كل تنسيق على عنصر مسمّى
+# بالإيد بيتشال بالسكوت والمصمّم بيغيّر الخط ومايحصلش حاجة.
+# آمن جوّه محدِّد سمة: حروف وأرقام وشرطة وشرطة سفلية بس.
+_I18N_MOVE_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
