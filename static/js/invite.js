@@ -529,7 +529,9 @@
     function startAuto() {
       var secs = parseFloat(intro.getAttribute("data-intro-auto") || "0");
       if (timer) clearTimeout(timer);
-      if (secs > 0) timer = setTimeout(open, secs * 1000);
+      // في المحرر مافيش عدّاد: كان بيقفل الافتتاحية وحده بعد ثوان
+      // والمصمّم لسه بيعدّل فيها. الوقت ده بيتعاين في المعاينة.
+      if (secs > 0 && !editable) timer = setTimeout(open, secs * 1000);
     }
     // لو الفيديو مستني ضغطة، العدّاد التلقائي يستنى معاه — وإلا
     // الدعوة بتفتح لوحدها والضيف لسه ما شافش الافتتاحية
@@ -612,6 +614,7 @@
         }
       }
       video.addEventListener("ended", function () {
+        if (editable) return;             // نفس سبب العدّاد فوق
         if (!intro.getAttribute("data-intro-auto")) open();
       });
 
@@ -621,8 +624,22 @@
     if (btn) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
+        /* في المحرر الضغطة الواحدة بتفضل للتحديد والسحب والتعديل.
+           لو فتحت الافتتاحية مافيش طريقة ترجّعها غير إعادة تحميل
+           المحرر، فالخروج منها بقى بضغطتين على الزر نفسه. */
+        if (editable) return;
         open();
       });
+      if (editable) {
+        btn.addEventListener("dblclick", function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          open();
+        });
+        if (!btn.getAttribute("title")) {
+          btn.setAttribute("title", "دوس مرتين لتخطّي الافتتاحية");
+        }
+      }
     }
 
     /* لمسة في أي مكان = نفس اللي بيعمله الزر.
@@ -634,20 +651,30 @@
        بتشغّل الفيديو المستني، واللمسة اللي بعدها بتفتح الدعوة. الزرار
        نفسه فاضل مكانه كدلالة بصرية لمن لا يعرف أن الشاشة قابلة للمس.
 
-       جوّه المحرر بس بنستثني عناصر الافتتاحية القابلة للتحرير — من
-       غير كده أي ضغطة على نص عشان تعدّله كانت هتقفل الافتتاحية. */
+       جوّه المحرر الضغطة مابتقفلش الافتتاحية خالص: كانت أي لمسة على
+       الشاشة بتتخطّاها، فمافيش فرصة تعدّل حاجة فيها أصلاً. هناك
+       المخرج ضغطتين على زر البدء (فوق)، والضغطة الواحدة بتفضل
+       للتحديد والتحرير والسحب. */
     intro.addEventListener("click", function (e) {
-      if (editable && e.target && e.target.closest) {
+      if (editable) {
         /* الكود اللي المصمّم كتبه في «كود متقدّم» محتوى حي — زراره
            المفروض يشتغل في المحرر زي ما هيشتغل عند الضيف، عشان يقدر
            يجرّب التسلسل كله من غير ما يفتح الدعوة. الضغطة على المربع
            نفسه (مش على حاجة جوّاه) بتفضل للتحديد والسحب.
            السحب مش بيوصل هنا أصلاً: ‎bindIntroDrag‎ بيلغي الـclick
            بعد أي سحب في مرحلة الالتقاط. */
-        var codeBox = e.target.closest(".lb-intro-extra");
-        var insideCode = codeBox && e.target !== codeBox;
-        if (!insideCode &&
-            e.target.closest("[data-intro-item],[data-intro-move]")) return;
+        if (e.target && e.target.closest) {
+          var codeBox = e.target.closest(".lb-intro-extra");
+          var insideCode = codeBox && e.target !== codeBox;
+          if (!insideCode &&
+              e.target.closest("[data-intro-item],[data-intro-move]")) return;
+        }
+        /* الفيديو المستني بيفضل بيشتغل باللمس عشان المصمّم يعاين
+           الافتتاحية زي ما الضيف هيشوفها — ده مابيقفلش حاجة. */
+        if (intro.classList.contains("is-awaiting-play") && startManualVideo) {
+          startManualVideo();
+        }
+        return;
       }
       if (intro.classList.contains("is-awaiting-play")) {
         if (startManualVideo) startManualVideo();
@@ -655,6 +682,21 @@
       }
       open();
     });
+
+    /* لازم يفضل في مخرج حتى لو مافيش زر بدء أصلاً: الزر اختياري،
+       وفي الافتتاحيات المكتوبة كلها بـ«كود متقدّم» بيبقى زر المصمّم
+       نفسه جوّه الكود ومالوش ‎data-intro-open‎. فالضغطتين في أي حتة
+       بتتخطّى الافتتاحية.
+
+       الضغطتين على نص قابل للكتابة مابتوصلش هنا: المحرر مستمع
+       للـ‎dblclick‎ على مستوى المستند في **مرحلة الالتقاط** وبيوقف
+       الحدث أول ما يفتح النص للكتابة — يعني الأولوية للتحرير. */
+    if (editable) {
+      intro.addEventListener("dblclick", function () { open(); });
+      if (!intro.getAttribute("title")) {
+        intro.setAttribute("title", "دوس مرتين لتخطّي الافتتاحية");
+      }
+    }
     if (!editable) intro.style.cursor = "pointer";
   }
 

@@ -1554,20 +1554,27 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
    الآباء كمان — فكارت واحد جوّه ٣ حاويات كان بيوريك ٣ إطارات متداخلة
    مرة واحدة. ‎:has()‎ بتسيب الإطار للعنصر **الأعمق** اللي الماوس
    عليه بس، والحاوية نفسها (‎.lb-extra-html‎) مالهاش إطار أصلاً. */
+/* كود الشاشة الافتتاحية (‎.lb-intro-extra‎) بياخد نفس المعاملة بالظبط:
+   عناصره بتتّرقّم وتتحدّد وتتسحب زي عناصر مربع «كود متقدّم». */
 .lb-doc--editing .lb-extra-html:hover,
 .lb-doc--editing .lb-extra-html.lb-dragging,
-.lb-doc--editing .lb-extra-html [data-move]:hover:has([data-move]:hover) {
+.lb-doc--editing .lb-extra-html [data-move]:hover:has([data-move]:hover),
+.lb-doc--editing .lb-intro-extra:hover,
+.lb-doc--editing .lb-intro-extra.lb-dragging,
+.lb-doc--editing .lb-intro-extra [data-move]:hover:has([data-move]:hover) {
   outline: none !important;
 }
 /* ‎!important‎ لأن وحدة النص بياخد ‎style="outline:none"‎ من المحرر
    نفسه (عشان مؤشّر الكتابة مايرسمش إطار المتصفح) — والـinline بيكسب
    أي قاعدة من غيرها. */
-.lb-doc--editing .lb-extra-html [data-move]:hover:not(:has([data-move]:hover)) {
+.lb-doc--editing .lb-extra-html [data-move]:hover:not(:has([data-move]:hover)),
+.lb-doc--editing .lb-intro-extra [data-move]:hover:not(:has([data-move]:hover)) {
   outline: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent) !important;
   outline-offset: 3px;
   cursor: grab;
 }
-.lb-doc--editing .lb-extra-html [data-move].lb-dragging {
+.lb-doc--editing .lb-extra-html [data-move].lb-dragging,
+.lb-doc--editing .lb-intro-extra [data-move].lb-dragging {
   outline: 1px solid var(--accent) !important;
   outline-offset: 3px;
   cursor: grabbing;

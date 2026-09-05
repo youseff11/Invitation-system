@@ -1399,6 +1399,12 @@ SETTINGS_FIELDS = [
     field("intro_item_positions", "مواضع عناصر الافتتاحية", "text", "", group="الافتتاحية",
           translate=False, editor_hidden=True),
 
+    # إزاحات العناصر اللي جوّه ‎intro_code‎ (‎ce-N‎) — نفس شكل
+    # ‎block.layout‎ بالظبط بس JSON في خانة، لأن الافتتاحية مش بلوك.
+    # ‎renderer.intro_layout_css‎ بيحوّلها لقواعد محصورة بـ‎.lb-intro‎.
+    field("intro_code_layout", "إزاحات عناصر كود الافتتاحية", "text", "",
+          group="الافتتاحية", translate=False, editor_hidden=True),
+
     field("auto_scroll", "تمرير تلقائي", "toggle", False, group="التمرير",
           help_text="الدعوة بتنزل لوحدها بالراحة زي العرض. بتقف فوراً أول "
                "ما الضيف يلمس الشاشة أو يمرّر بنفسه، وفيه زر إيقاف ظاهر."),

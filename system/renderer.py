@@ -690,6 +690,44 @@ def layout_css(blocks: list[dict]) -> str:
     return mark_safe("".join(rules))
 
 
+def intro_layout_css(settings: dict) -> str:
+    """إزاحات عناصر كود الشاشة الافتتاحية (‎ce-N‎).
+
+    الافتتاحية مش بلوك — مالهاش ‎id‎ نحصر بيه القاعدة زي الأقسام —
+    فالحصر هنا بـ‎.lb-intro‎ نفسها. الجدول متخزّن JSON في
+    ‎settings.intro_code_layout‎ بنفس شكل ‎block.layout‎ بالظبط.
+
+    الوحدة بكسل زي عناصر مربع «كود متقدّم»: الكود متوسّط وعلى مقاسه،
+    فالبكسل بيتطابق بين إطار الموبايل في المحرر وعرض الشاشة عند الضيف.
+    """
+    raw = settings.get("intro_code_layout")
+    if not raw or not isinstance(raw, str):
+        return ""
+    try:
+        table = json.loads(raw)
+    except (ValueError, TypeError):
+        return ""
+    if not isinstance(table, dict):
+        return ""
+    rules: list[str] = []
+    for slot, pos in table.items():
+        if not isinstance(slot, str) or not _EL_SLOT.match(slot):
+            continue
+        if not isinstance(pos, dict):
+            continue
+        try:
+            dx = float(pos.get("dx") or 0)
+            dy = float(pos.get("dy") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not dx and not dy:
+            continue
+        rules.append(
+            f'.lb-intro [data-move="{slot}"]{{--dx:{dx}px;--dy:{dy}px}}'
+        )
+    return "".join(rules)
+
+
 # --------------------------------------------------------------------------
 # تنسيق كل نص لوحده — الترس اللي جنب الحقل في المحرر
 # --------------------------------------------------------------------------
@@ -1204,6 +1242,8 @@ def render_document(
         # في الصفحة الحية.
         "layout_css": mark_safe(
             layout_css(doc["blocks"]) + text_style_css(doc["blocks"], theme)
+            # عناصر كود الافتتاحية: نفس الجدول بس محصور بـ‎.lb-intro‎
+            + intro_layout_css(doc_settings)
             # تنسيق النصوص المترجَمة آخر حاجة عشان يغلب تنسيق النص الأصلي
             + (i18n_style_css(doc, lang, theme) if lang == alt_lang else "")
         ),
@@ -1246,7 +1286,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-09-05-i18n-base-lang-code-text-font-v18"
+_PREVIEW_RENDER_REVISION = "2026-09-05-intro-code-elements-v19"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

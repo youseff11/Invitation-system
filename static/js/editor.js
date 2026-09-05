@@ -77,7 +77,64 @@
 
   function hasFeature(key) { return !key || FEATURES.indexOf(key) !== -1; }
   function blockSpec(type) { return SCHEMA.blocks[type]; }
+  /* ── الافتتاحية كأنها قسم ──────────────────────────────────────────
+     كود الافتتاحية (‎settings.intro_code‎) بيتعرض في ‎.lb-intro-extra‎،
+     وهي **مش** جوّه ‎[data-block]‎ — فكل ميكانيكا العناصر (ترقيم ‎ce-N‎،
+     الاختيار، لوحة «العنصر المحدَّد»، السحب) كانت بتتخطّاها وتشتغل على
+     أقسام الدعوة بس. النتيجة اللي شافها المصمّم: مافيش عنصر في
+     الافتتاحية يتحدّد ولا يتحرّك — وكمان مافيش وحدات نص تتترجم، لأن
+     استخراج الوحدات بيمشي على ‎data-move‎ واللي عمره ما اتكتب هناك.
+
+     الحل: بلوك **وهمي** واحد بمعرّف ثابت بيتصرّف زي أي قسم فيه مربع
+     كود. خانة كوده هي ‎settings.intro_code‎ (‎codeOwnerOf‎ بيعرفها
+     أصلاً)، وجدول إزاحاته JSON في ‎settings.intro_code_layout‎. مابيتحطّش
+     في ‎state.doc.blocks‎ عشان مايتعرضش كقسم في القايمة ولا يتحفظ كبلوك. */
+  var INTRO_BLOCK_ID = "__intro";
+  var introBlockCache = null;
+  var introLayoutRaw = null;
+
+  function introBlock() {
+    var s = state.doc && state.doc.settings;
+    if (!s) return null;
+    if (!introBlockCache) {
+      introBlockCache = {
+        id: INTRO_BLOCK_ID, type: "custom_html", label: "الافتتاحية",
+        props: { code: "" }, layout: {}
+      };
+      introLayoutRaw = null;
+    }
+    introBlockCache.props.code =
+      typeof s.intro_code === "string" ? s.intro_code : "";
+    /* التراجع (Ctrl+Z) بيرجّع نص الإعدادات المحفوظ. لو الكاش اتبنى من
+       نص مختلف بنعيد قراءته — وإلا الإزاحة اللي اتراجعنا عنها تفضل
+       حيّة في الذاكرة وترجع تتكتب مع أول حفظ. */
+    var raw = typeof s.intro_code_layout === "string" ? s.intro_code_layout : "";
+    if (introLayoutRaw !== raw) {
+      var parsed = null;
+      try { parsed = JSON.parse(raw || "{}"); } catch (e) { parsed = null; }
+      introBlockCache.layout =
+        (parsed && typeof parsed === "object") ? parsed : {};
+      introLayoutRaw = raw;
+    }
+    // ‎pruneLayout‎ بتمسح الجدول كله لما يفضى — بنرجّعه فاضي مش undefined
+    if (!introBlockCache.layout) introBlockCache.layout = {};
+    return introBlockCache;
+  }
+
+  /** يحفظ جدول إزاحات الافتتاحية في الإعدادات بعد أي سحب أو تحريك. */
+  function introLayoutSave() {
+    var s = state.doc && state.doc.settings;
+    if (!s || !introBlockCache) return;
+    var table = introBlockCache.layout || {};
+    var raw = Object.keys(table).length ? JSON.stringify(table) : "";
+    s.intro_code_layout = raw;
+    introLayoutRaw = raw;
+    syncFieldByKey("intro_code_layout", raw);
+    markDirty();
+  }
+
   function findBlock(id) {
+    if (id === INTRO_BLOCK_ID) return introBlock();
     for (var i = 0; i < state.doc.blocks.length; i++) {
       if (state.doc.blocks[i].id === id) return state.doc.blocks[i];
     }
@@ -1481,6 +1538,46 @@
     renderInspector();
   }
 
+  /* لوحة خصائص عنصر جوّه الشاشة الافتتاحية.
+
+     الافتتاحية مش قسم: مالهاش اسم في القايمة ولا حدود تتسحب ولا تتحفظ
+     كمفضلة، وحقولها (النص، الزر، الفيديو، الكود) عايشة في تبويب
+     «إعدادات». اللي ناقص كان لوحة **العنصر** — فبنعرض رأس مختصر
+     وقايمة الطبقات ولوحة «العنصر المحدَّد» زي ما هي بالظبط. */
+  function renderIntroInspector(box, block, openGroups) {
+    var head = el("div", "ed-section-head");
+    var title = el("div");
+    title.appendChild(el("p", "ed-kicker", "الشاشة الافتتاحية"));
+    title.appendChild(el("strong", null, "عناصر الافتتاحية"));
+    head.appendChild(title);
+
+    var layersBtn = el("button", "ed-btn ed-btn--sm ed-layers-btn", "☷ الطبقات");
+    layersBtn.type = "button";
+    layersBtn.title = "اختيار أي عنصر داخل كود الافتتاحية من قائمة الطبقات";
+    layersBtn.setAttribute("aria-expanded", state.layersOpen ? "true" : "false");
+    layersBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      state.layersOpen = !state.layersOpen;
+      renderInspector();
+    });
+    head.appendChild(layersBtn);
+
+    var back = el("button", "ed-btn ed-btn--sm", "الأقسام ↩");
+    back.type = "button";
+    back.addEventListener("click", function () { switchTab("blocks"); });
+    head.appendChild(back);
+    box.appendChild(head);
+
+    box.appendChild(el("p", "ed-hint",
+      "اضغط على أي عنصر في الافتتاحية داخل المعاينة عشان تتحكّم فيه من "
+      + "هنا، واسحبه لتحريكه. باقي إعدادات الافتتاحية في تبويب «إعدادات»."));
+
+    box.appendChild(buildLayersGroup(block));
+    box.appendChild(buildElementGroup(block));
+    restoreInspectorGroups(openGroups);
+  }
+
   function renderInspector() {
     var box = refs.inspector;
     if (!box) return;
@@ -1491,6 +1588,10 @@
     if (!block) {
       box.appendChild(el("p", "ed-empty",
         "اختر قسماً من القائمة أو اضغط عليه داخل المعاينة لتعديله."));
+      return;
+    }
+    if (state.selected === INTRO_BLOCK_ID) {
+      renderIntroInspector(box, block, openGroups);
       return;
     }
     var spec = blockSpec(block.type);
@@ -1855,6 +1956,7 @@
     if (!root) return false;
     snapshot();
     if (block.layout) delete block.layout[state.selEl];
+    if (block.id === INTRO_BLOCK_ID) introLayoutSave();
     n.remove();
     state.selEl = null;
     commitStructure(block, root);
@@ -1926,12 +2028,17 @@
 
     if (!state.layersOpen) return wrap;
     var fdoc = frameDoc();
-    var section = fdoc && fdoc.querySelector('[data-block="' + block.id + '"]');
+    var isIntro = block.id === INTRO_BLOCK_ID;
+    var section = fdoc && (isIntro
+      ? fdoc.querySelector(".lb-intro")
+      : fdoc.querySelector('[data-block="' + block.id + '"]'));
     // القسم ممكن يكون فيه الاتنين: قالب مستورد + مربع «كود متقدّم»
     var nodes = [];
-    (section ? $$(".lb-custom, .lb-extra-html", section) : []).forEach(function (root) {
+    (section ? $$(".lb-custom, .lb-extra-html, .lb-intro-extra", section) : [])
+        .forEach(function (root) {
       $$("[data-move]", root).forEach(function (node) {
-        if (node.closest("[data-block]") !== section) return;
+        // الافتتاحية برّه الأقسام خالص، فالفحص ده مالوش معنى هناك
+        if (!isIntro && node.closest("[data-block]") !== section) return;
         // Tilda يضع data-move على الحاوية وعلى العنصر الداخلي معاً.
         // نعرض العنصر المرئي الحقيقي فقط: نص، صورة، فيديو، iframe،
         // أو حاوية شكل لا تحتوي واحداً من هذه العناصر.
@@ -2460,6 +2567,7 @@
         p2.dy = Math.round(((p2.dy || 0) + d[2] * stepY) * 100) / 100;
         applySlotOffset(node, p2.dx, p2.dy);
         markDirty();
+        if (block.id === INTRO_BLOCK_ID) introLayoutSave();
         renderInspector();
       });
       nudge.appendChild(btn);
@@ -2471,6 +2579,7 @@
       if (block.layout) delete block.layout[state.selEl];
       applySlotOffset(node, 0, 0);
       markDirty();
+      if (block.id === INTRO_BLOCK_ID) introLayoutSave();
       renderInspector();
     });
     nudge.appendChild(reset);
@@ -3955,6 +4064,8 @@
         pos.dy = Math.round(((pos.dy || 0) + dir[1] * stepY) * 100) / 100;
         applySlotOffset(node, pos.dx, pos.dy);
         markDirty();
+        // جدول الافتتاحية في الإعدادات مش في البلوك — يتسلسل بعد كل نقلة
+        if (block.id === INTRO_BLOCK_ID) introLayoutSave();
         renderInspector();
         requestPreview();
       }
@@ -4870,11 +4981,17 @@
     fdoc.querySelectorAll(".lb-extra-html").forEach(function (root) {
       roots.push(root);
     });
+    /* وكود الشاشة الافتتاحية معاهم: هو مربع كود زيهم بالظبط، اللي
+       بيفرّقه إنه مش جوّه قسم — فبياخد البلوك الوهمي. */
+    fdoc.querySelectorAll(".lb-intro-extra").forEach(function (root) {
+      roots.push(root);
+    });
 
     roots.forEach(function (root) {
-      var sec = root.closest("[data-block]");
-      if (!sec) return;
-      var blockId = sec.getAttribute("data-block");
+      var isIntro = root.classList.contains("lb-intro-extra");
+      var sec = isIntro ? null : root.closest("[data-block]");
+      if (!isIntro && !sec) return;
+      var blockId = isIntro ? INTRO_BLOCK_ID : sec.getAttribute("data-block");
       var block = findBlock(blockId);
       if (!block || !block.props) return;
       var codeRoot = isCodeRoot(root);
@@ -5007,11 +5124,15 @@
 
         bindSlotDrag(n, blockId, n.getAttribute("data-move"), function () {
           writeBack(n);
+          // جدول الافتتاحية عايش في الإعدادات مش في البلوك — لازم يتسلسل
+          if (isIntro) introLayoutSave();
         });
       });
 
       // أول ما نضيف data-move لازم نحفظها، وإلا هتضيع مع أول حفظ
       if (!nodes.length && !dropped.length) return;
+      // ترقيم قديم اتشال ⇐ إزاحته اتمسحت من الجدول، فلازم تتسلسل
+      if (isIntro && dropped.length) introLayoutSave();
       if (codeRoot) codeWriteMoveAttrs(root, nodes.concat(dropped));
       else writeBack();
     });
@@ -5022,6 +5143,11 @@
   function selectedElNode() {
     var fdoc = frameDoc();
     if (!fdoc || !state.selected || !state.selEl) return null;
+    // الافتتاحية مالهاش ‎data-block‎ — بنحصر بـ‎.lb-intro‎ بدالها
+    if (state.selected === INTRO_BLOCK_ID) {
+      return fdoc.querySelector('.lb-intro [data-move="' +
+                                state.selEl + '"]');
+    }
     return fdoc.querySelector('[data-block="' + state.selected + '"] ' +
                               '[data-move="' + state.selEl + '"]');
   }
