@@ -2835,6 +2835,59 @@
     return state.doc.i18n[alt];
   }
 
+  /* تنسيق كل نص مترجَم لوحده. الخط اللي يليق بالعربي مش بالضرورة يليق
+     باللاتيني، فالترس اللي جنب الخانة بيغيّر خط النسخة المترجَمة بس —
+     النص الأصلي بيفضل بخطه زي ما هو. */
+  function i18nStyleTable() {
+    var alt = altLang();
+    if (!state.doc.i18n_style) state.doc.i18n_style = {};
+    if (!state.doc.i18n_style[alt]) state.doc.i18n_style[alt] = {};
+    return state.doc.i18n_style[alt];
+  }
+
+  var I18N_STYLE_SPECS = [
+    { key: "font", label: "خط النسخة المترجَمة", type: "font",
+      help: "سيبه فاضي عشان ياخد خط الدعوة." },
+    { key: "size", label: "حجم الخط", type: "range", minimum: 0, maximum: 160,
+      step: 1, unit: "px", help: "صفر = نفس حجم النص الأصلي." }
+  ];
+
+  /** ترس التنسيق لصف ترجمة واحد. */
+  function buildI18nStyleGear(key) {
+    var gear = el("button", "ed-font-gear", "⚙");
+    gear.type = "button";
+    gear.title = "خط وحجم النص المترجَم — النص الأصلي مايتأثرش";
+    gear.setAttribute("aria-label", "تنسيق النص المترجَم");
+    var panel = el("div", "ed-inline-font-panel");
+    panel.hidden = true;
+
+    I18N_STYLE_SPECS.forEach(function (spec) {
+      panel.appendChild(buildField(spec,
+        function () {
+          var row = i18nStyleTable()[key];
+          return row ? row[spec.key] : (spec.type === "range" ? 0 : "");
+        },
+        function (v) {
+          var table = i18nStyleTable();
+          var row = table[key] || {};
+          var empty = v === "" || v === null || v === undefined ||
+                      (spec.type === "range" && !Number(v));
+          if (empty) delete row[spec.key]; else row[spec.key] = v;
+          if (Object.keys(row).length) table[key] = row; else delete table[key];
+          markDirty();
+          requestPreview();
+        }));
+    });
+
+    gear.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      panel.hidden = !panel.hidden;
+      gear.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+    });
+    return { gear: gear, panel: panel };
+  }
+
   /** كل النصوص اللي ينفع تترجم — بنفس ترتيب ظهورها في الدعوة. */
   function i18nRows() {
     var rows = [];
@@ -2946,6 +2999,10 @@
     Object.keys(table).forEach(function (k) {
       if (!live[k]) delete table[k];
     });
+    var styles = i18nStyleTable();
+    Object.keys(styles).forEach(function (k) {
+      if (!live[k]) delete styles[k];
+    });
 
     var done = Object.keys(table).length;
     if (countEl) {
@@ -2999,7 +3056,12 @@
           renderI18nPane();
           requestPreview();
         });
-        fld.appendChild(input);
+        // الخانة والترس جنب بعض في سطر واحد، والّلوحة تحتهم
+        var row = el("div", "ed-i18n-row");
+        row.appendChild(input);
+        row.appendChild(styleGear.gear);
+        fld.appendChild(row);
+        fld.appendChild(styleGear.panel);
         body.appendChild(fld);
       });
 
@@ -3031,6 +3093,7 @@
         if (!window.confirm("امسح النسخة " + name + " كلها؟")) return;
         snapshot();
         state.doc.i18n[altLang()] = {};
+        if (state.doc.i18n_style) state.doc.i18n_style[altLang()] = {};
         markDirty();
         renderI18nPane();
         requestPreview();

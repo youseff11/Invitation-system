@@ -730,6 +730,69 @@ def _num(value: object, low: float, high: float) -> float | None:
     return num
 
 
+_I18N_MOVE_RE = re.compile(r"^(?:el|ce)-\d{1,4}$")
+
+
+def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
+    """تنسيق النصوص المترجَمة — بيتولّد وقت عرض اللغة التانية بس.
+
+    الخط اللي يليق بالعربي مش بالضرورة يليق باللاتيني، فالمصمّم بيقدر
+    يظبّط خط وحجم كل نص مترجَم لوحده. **النص الأصلي مابيتلمسش**:
+    القواعد دي مابتتطبعش أصلاً وإحنا بنعرض اللغة الأساسية.
+
+    شكل المفتاح هو نفسه مفتاح جدول الترجمة:
+      ``<بلوك>.<حقل>#<وحدة>``  ← عنصر جوّه كود القسم
+      ``<بلوك>.<حقل>``         ← حقل نص عادي (‎data-ts‎ في قالب البلوك)
+      ``settings.<حقل>#<وحدة>`` ← عنصر جوّه كود الافتتاحية
+    """
+    from .templatetags.invite import _fluid
+
+    table = blocks_engine.translation_styles(doc, lang)
+    if not table:
+        return ""
+
+    ref = (theme or {}).get("max_width")
+    rules: list[str] = []
+    for key, style in table.items():
+        decls: list[str] = []
+        font = _safe_intro_font(style.get("font"))
+        if font:
+            decls.append(f"font-family:{font}")
+        size = _num(style.get("size"), 1, 160)
+        if size:
+            decls.append(f"font-size:{_fluid(size, ref=ref)}")
+        if not decls:
+            continue
+
+        owner, _, rest = key.partition(".")
+        prop, sep, move = rest.partition("#")
+        if sep:
+            if not _I18N_MOVE_RE.match(move):
+                continue
+            target = f'[data-move="{move}"]'
+        else:
+            if not _SAFE_ID.match(prop):
+                continue
+            target = f'[data-ts="{prop}"]'
+
+        if owner == "settings":
+            scope = ".lb-intro"
+        elif _SAFE_ID.match(owner):
+            scope = f"#{owner}"
+        else:
+            continue
+
+        # ‎!important‎ عشان يغلب الستايل اللي جوّه كود القسم نفسه —
+        # المصمّم كاتب ‎font-family‎ في ‎<style>‎ بتاعه وده اختياره
+        # الصريح للغة دي.
+        body = ";".join(d + " !important" for d in decls)
+        rules.append(f"{scope} {target}{{{body}}}")
+
+    # آمن بحكم البناء: المعرّفات متحققة بـ‎_SAFE_ID‎/‎_I18N_MOVE_RE‎،
+    # والخط من قايمة مقفولة، والمقاس رقم داخل حدود.
+    return "".join(rules)
+
+
 def text_style_css(blocks: list[dict], theme: dict | None = None) -> str:
     """قواعد تنسيق النصوص لكل الأقسام.
 
@@ -1135,6 +1198,8 @@ def render_document(
         # في الصفحة الحية.
         "layout_css": mark_safe(
             layout_css(doc["blocks"]) + text_style_css(doc["blocks"], theme)
+            # تنسيق النصوص المترجَمة آخر حاجة عشان يغلب تنسيق النص الأصلي
+            + (i18n_style_css(doc, lang, theme) if lang == alt_lang else "")
         ),
         # ستايل الأقسام المستوردة، نسخة واحدة بدل نسخة لكل قسم
         "shared_css": mark_safe(shared_css),
@@ -1175,7 +1240,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-09-02-rsvp-pass-wishes-v17"
+_PREVIEW_RENDER_REVISION = "2026-09-05-i18n-base-lang-code-text-font-v18"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

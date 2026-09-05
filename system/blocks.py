@@ -1791,6 +1791,7 @@ def normalize_document(raw: Any, *, allowed_features: set[str] | None = None) ->
 
     out["blocks"] = blocks
     out["i18n"] = _clean_i18n(doc.get("i18n"))
+    out["i18n_style"] = _clean_i18n_style(doc.get("i18n_style"))
     return out
 
 
@@ -1848,6 +1849,58 @@ def _clean_i18n(raw: Any) -> dict:
             clean[key.strip()[:200]] = value[:MAX_I18N_VALUE]
         out[lang] = clean
     return out
+
+
+# تنسيق النص المترجَم لكل مفتاح على حدة.
+#
+# ليه أصلاً: الخط اللي يليق بالعربي مش بالضرورة يليق باللاتيني والعكس —
+# «أميري» محارفه اللاتينية ضعيفة، و«Cormorant» مالوش عربي أصلاً. خانات
+# ‎font_heading_ar/en‎ في التصميم بتحل ده على مستوى الدعوة كلها، لكن
+# المصمّم ساعات محتاج يظبّط سطر واحد بعينه.
+#
+# **النص الأصلي مابيتأثرش خالص**: القواعد دي بتتولّد وقت عرض اللغة
+# التانية بس، وبتتلزق على العنصر اللي فيه النص المترجَم.
+MAX_I18N_STYLE_ENTRIES = 600
+
+
+def _clean_i18n_style(raw: Any) -> dict:
+    """‎{لغة: {مفتاح النص: {font, size}}}‎ — قيم آمنة ومحدودة العدد.
+
+    الخط بيتفحص وقت العرض (‎renderer._safe_intro_font‎) مش هنا: مكتبة
+    الخطوط بتتغيّر، والفحص وقت العرض بيمنع خط اتشال إنه يوصل للصفحة.
+    """
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    src = raw if isinstance(raw, dict) else {}
+    for lang in I18N_LANGS:
+        table = src.get(lang) if isinstance(src.get(lang), dict) else {}
+        clean: dict[str, dict[str, Any]] = {}
+        for key, style in list(table.items())[:MAX_I18N_STYLE_ENTRIES]:
+            if not isinstance(key, str) or not key.strip():
+                continue
+            if not isinstance(style, dict):
+                continue
+            entry: dict[str, Any] = {}
+            font = style.get("font")
+            if isinstance(font, str) and font.strip():
+                entry["font"] = font.strip()[:200]
+            try:
+                size = float(style.get("size") or 0)
+            except (TypeError, ValueError):
+                size = 0
+            # صفر = «زي الأصل» — مابنخزّنش قيمة مالهاش لازمة
+            if size == size and 1 <= size <= 160:
+                entry["size"] = round(size, 2)
+            if entry:
+                clean[key.strip()[:200]] = entry
+        out[lang] = clean
+    return out
+
+
+def translation_styles(doc: dict, lang: str | None = None) -> dict:
+    """تنسيق النصوص المترجَمة للغة المطلوبة (الافتراضي: اللغة التانية)."""
+    if lang is None:
+        lang = alt_language(doc)
+    return (doc.get("i18n_style") or {}).get(lang) or {}
 
 
 def _entry(key: str, label: str, value: Any, group: str) -> dict | None:

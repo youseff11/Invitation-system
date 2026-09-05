@@ -996,3 +996,13 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
 .ed-layer-item:hover .ed-layer-remove,
 .ed-layer-item.is-active .ed-layer-remove { opacity: 1; }
 .ed-layer-remove:hover { border-color: var(--e-danger); color: var(--e-danger); background: color-mix(in srgb, var(--e-danger) 10%, transparent); }
+
+
+/* ---- صف الترجمة: الخانة والترس جنب بعض
+   الترس بيغيّر خط النص المترجَم بس — النص الأصلي بيفضل بخطه. */
+.ed-i18n-row {
+  display: flex; align-items: stretch; gap: 6px;
+}
+.ed-i18n-row > .ed-input { flex: 1 1 auto; min-inline-size: 0; }
+.ed-i18n-row > textarea.ed-input { align-self: stretch; }
+.ed-i18n-row > .ed-font-gear { align-self: flex-start; }
