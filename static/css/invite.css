@@ -1301,7 +1301,23 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   padding: 30px;
   transition: opacity .6s ease, visibility .6s;
 }
-.lb-intro.is-open { opacity: 0; visibility: hidden; }
+.lb-intro.is-open { opacity: 0; visibility: hidden; pointer-events: none; }
+/* الافتتاحية بعد ما تتخطّى لازم تخرج من طريق الضغط تماماً.
+
+   ‎visibility:hidden‎ **بتتورَّث** — لكن أي ابن بيعلن ‎visibility:visible‎
+   بيكسر الوراثة ويرجع قابل للضغط. وده بالظبط اللي بيحصل مع كود
+   المصمّم: غلاف زي ‎#farhaRomanticOpening‎ بـ‎position:fixed;inset:0‎
+   و‎z-index:999999‎ و‎visibility:visible‎ بيفضل مغطّي الشاشة كلها وهو
+   **مش باين** (‎opacity:0‎ على الأب بتخفي كل الشجرة)، فيبلع كل ضغطة
+   على الدعوة: مافيش عنصر يتحدّد ولا يتحرّك بعد تخطّي الافتتاحية.
+   مقيس حي: ‎elementFromPoint‎ في نص الشاشة كان بيرجّع ‎span‎ جوّه
+   الافتتاحية بدل القسم اللي تحتها.
+
+   ‎pointer-events‎ بتتورَّث كمان، فالقاعدة على الأب بتكفي في الحالة
+   العادية — والقاعدة اللي بعدها بـ‎!important‎ عشان الاستثناءات اللي
+   بنكتبها إحنا (زي ‎.lb-intro-extra canvas{pointer-events:auto}‎) أو
+   اللي المصمّم كاتبها. */
+.lb-intro.is-open * { pointer-events: none !important; }
 .lb-intro-inner {
   display: flex; flex-direction: column; align-items: center; gap: 18px;
   color: var(--intro-color, var(--text));

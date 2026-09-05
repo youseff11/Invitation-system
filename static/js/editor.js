@@ -4792,13 +4792,31 @@
       var target = walkCodePath(holder, item.path, item.node);
       if (!target) return null;
       var clean = cleanEditedNode(item.node);
-      // الخصائص: بنحط اللي في المعاينة ونشيل اللي اتشال
-      Array.prototype.slice.call(target.attributes).forEach(function (attr) {
-        if (!clean.hasAttribute(attr.name)) target.removeAttribute(attr.name);
-      });
-      Array.prototype.slice.call(clean.attributes).forEach(function (attr) {
-        target.setAttribute(attr.name, attr.value);
-      });
+      /* ‎attrs‎ = اكتب الخصائص دي بس. ضروري لترسيب الترقيم:
+         سكربت المصمّم بيغيّر ‎class‎ و‎style‎ للعناصر وهو شغال (ظهور
+         تدريجي، حركة دخول…). لو نسخنا **كل** الخصائص وقت الترقيم كنا
+         بنخبّط لقطة من نص الأنيميشن في الكود المحفوظ، والكود يبقى
+         مختلف عن الأصل ⇒ ‎markDirty‎ ⇒ حفظ ⇒ إعادة عرض ⇒ الأنيميشن
+         يشتغل من الأول بحالة جديدة ⇒ ترقيم تاني… لفة لا نهائية
+         بتهنّج المحرر. الترقيم محتاج ‎data-move‎ لوحدها. */
+      var only = item.attrs || null;
+      if (only) {
+        for (var k = 0; k < only.length; k++) {
+          if (clean.hasAttribute(only[k])) {
+            target.setAttribute(only[k], clean.getAttribute(only[k]));
+          } else {
+            target.removeAttribute(only[k]);
+          }
+        }
+      } else {
+        // الخصائص: بنحط اللي في المعاينة ونشيل اللي اتشال
+        Array.prototype.slice.call(target.attributes).forEach(function (attr) {
+          if (!clean.hasAttribute(attr.name)) target.removeAttribute(attr.name);
+        });
+        Array.prototype.slice.call(clean.attributes).forEach(function (attr) {
+          target.setAttribute(attr.name, attr.value);
+        });
+      }
       if (item.html) target.innerHTML = clean.innerHTML;
     }
     return holder.innerHTML;
@@ -4856,7 +4874,9 @@
     for (var i = 0; i < nodes.length; i++) {
       var path = codeNodePath(nodes[i], box);
       if (!path) return;                       // مسار ضايع — مانكتبش
-      items.push({ path: path, node: nodes[i], html: false });
+      // ‎data-move‎ بس — شوف التعليق في ‎syncCodeNodes‎
+      items.push({ path: path, node: nodes[i], html: false,
+                   attrs: ["data-move"] });
     }
     if (!items.length) return;
     var html = syncCodeNodes(source, items);
@@ -5043,6 +5063,13 @@
       if (codeRoot) {
         root.querySelectorAll("[data-move]").forEach(function (n) {
           if (nodes.indexOf(n) > -1) return;
+          /* عنصر مالوش حجم في اللحظة دي = يا مخفي يا في نص أنيميشن
+             دخول (بيبدأ ‎opacity:0‎ أو ‎scale(0)‎). مانحكمش عليه:
+             ‎codeMovables‎ بتفلتر بالحجم، فلو شلنا ترقيمه دلوقتي هيرجع
+             يتّرقّم أول ما يظهر ⇒ الكود يتكتب ⇒ حفظ ⇒ إعادة عرض ⇒
+             الأنيميشن من الأول ⇒ لفة لا نهائية بتهنّج المحرر. */
+          var box = n.getBoundingClientRect();
+          if (box.width <= 6 || box.height <= 6) return;
           var slot = n.getAttribute("data-move");
           n.removeAttribute("data-move");
           n.removeAttribute("data-lb-text");
