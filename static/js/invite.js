@@ -15,6 +15,68 @@
   function $$(sel, ctx) { return Array.prototype.slice.call((ctx || doc).querySelectorAll(sel)); }
   function pad(n) { return n < 10 ? "0" + n : String(n); }
 
+  // ---------------------------------------------------------- كود الأقسام
+  /* جذور كود المصمّم: «كود متقدّم» في قسم، وكود الافتتاحية، والقسم
+     المستورد. أي حماية أو إعادة تشغيل بتتطبّق على التلاتة مع بعض. */
+  var CODE_ROOTS = ".lb-extra-html, .lb-intro-extra, .lb-custom";
+
+  /** حالة بتفضل عايشة لكود الأقسام حتى لو المحتوى اتعاد بناؤه. */
+  window.farha = window.farha || {};
+  if (!window.farha.state) window.farha.state = {};
+
+  /* حماية من إعادة التحميل غير المقصودة.
+
+     زرار جوّه ‎<form>‎ من غير ‎type‎ بياخد ‎type="submit"‎ افتراضياً —
+     دي قاعدة HTML مش حاجة من فرحة. المنقّي بيشيل ‎action‎، فالإرسال
+     بيروح لنفس الصفحة ⇒ **إعادة تحميل كاملة**: التغييرات اللي عملها
+     جافاسكربت القسم بتبان جزء من الثانية وبعدين الصفحة ترجع من الأول،
+     واللي بيبان للمصمّم إن «فرحة بتعيد بناء القسم».
+
+     مقيس حي على دعوة منشورة: زرار من غير ‎type‎ جوّه ‎<form>‎ طلع
+     ‎button.type === "submit"‎، والضغطة سجّلت ‎beforeunload‎، والعنوان
+     بقى ‎.../preview/?‎ والصفحة اتحمّلت من الأول (و‎?lang‎ اتشال معاها).
+
+     الكود اللي **عايز** يبعت فعلاً بيكتب ‎action‎ صريح — وساعتها
+     بنسيبه يشتغل زي ما هو. */
+  function guardCodeRoots(scope) {
+    $$(CODE_ROOTS, scope || doc).forEach(function (codeRoot) {
+      if (codeRoot.dataset.lbGuarded === "1") return;
+      codeRoot.dataset.lbGuarded = "1";
+
+      $$("button", codeRoot).forEach(function (btn) {
+        if (!btn.hasAttribute("type")) btn.setAttribute("type", "button");
+      });
+
+      $$("form", codeRoot).forEach(function (form) {
+        if (form.getAttribute("action")) return;
+        form.addEventListener("submit", function (e) { e.preventDefault(); });
+      });
+
+      /* ‎<a href="">‎ بيروح لنفس الصفحة (إعادة تحميل)، و‎href="#"‎
+         بينطّ لفوق. الاتنين بيقطعوا التفاعل. */
+      $$("a", codeRoot).forEach(function (link) {
+        var href = (link.getAttribute("href") || "").trim();
+        if (href && href !== "#") return;
+        link.addEventListener("click", function (e) { e.preventDefault(); });
+      });
+    });
+  }
+
+  /* سكربتات الأقسام اللي جت من ‎DOMParser‎ **مابتتنفّذش**: المتصفح
+     بيعلّمها «اشتغلت خلاص». من غير الخطوة دي، أول ما الضيف يبدّل
+     اللغة كل كود الأقسام بيموت — الأزرار والحركات بتبطّل خالص.
+     بنستنسخها كوسوم جديدة عشان تتنفّذ، و‎document.currentScript‎ يفضل
+     مظبوط فـ‎root‎ اللي في ‎wrap_js‎ يلاقي قسمه. */
+  function runSectionScripts(scope) {
+    $$("script[data-lb-section-script]", scope || doc).forEach(function (old) {
+      if (!old.parentNode) return;
+      var fresh = doc.createElement("script");
+      fresh.setAttribute("data-lb-section-script", "1");
+      fresh.textContent = old.textContent;
+      old.parentNode.replaceChild(fresh, old);
+    });
+  }
+
   // ---------------------------------------------------------- العد التنازلي
   function initCountdowns() {
     var nodes = $$("[data-countdown]");
@@ -887,6 +949,15 @@
           initRsvp();
           initAnimations();
           initLanguageToggle();
+          /* المحتوى اتبدّل بعقدة جديدة: لازم كود الأقسام يشتغل تاني
+             (سكربتات ‎DOMParser‎ خاملة) وتترجع حمايته. والحدث ده هو
+             المكان اللي كود المصمّم يعيد فيه تطبيق حالته من
+             ‎window.farha.state‎ — الحالة نفسها مابتتمسحش. */
+          guardCodeRoots(next);
+          runSectionScripts(next);
+          doc.dispatchEvent(new CustomEvent("lb:content-swapped", {
+            detail: { lang: nextLang || "", root: next }
+          }));
 
           if (introState === "gone" || introState === "open") {
             var activeIntro = $(".lb-intro");
@@ -1055,6 +1126,7 @@
     // شاشة التحميل لها مسار مستقل وتبدأ قبل باقي التهيئة.
     revealWhenReady();
     var initializers = [
+      [guardCodeRoots, "code-guards"],
       [initCountdowns, "countdown"],
       [initImportedCountdowns, "imported-countdown"],
       [initAnimations, "animations"],
