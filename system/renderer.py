@@ -690,6 +690,33 @@ def layout_css(blocks: list[dict]) -> str:
     return mark_safe("".join(rules))
 
 
+_BRANDING_SOCIALS = ("show_whatsapp", "show_facebook", "show_instagram")
+
+
+def _branding_empty(props: dict, style: dict) -> bool:
+    """قسم التوقيع مافيهوش أي حاجة تتعرض؟
+
+    اللوجو أو الكلام أو أيقونة سوشيال أو «كود متقدّم» أو نص فوق القسم
+    أو زخرفة = محتوى. الخلفية واللون لوحدهم **مش** محتوى: قسم مالوش
+    غير لون بيبان للضيف شريط فاضي، وده اللي بنشيله.
+    """
+    if str(props.get("logo") or "").strip():
+        return False
+    if str(props.get("text") or "").strip():
+        return False
+    if any(props.get(key) for key in _BRANDING_SOCIALS):
+        return False
+    if str(props.get("code") or "").strip():
+        return False
+    if props.get("text_overlays"):
+        return False
+    for key in ("divider_top", "divider_bottom"):
+        value = str(style.get(key) or "").strip()
+        if value and value != "none":
+            return False
+    return True
+
+
 def intro_layout_css(settings: dict) -> str:
     """إزاحات عناصر كود الشاشة الافتتاحية (‎ce-N‎).
 
@@ -1148,6 +1175,16 @@ def render_document(
             continue  # القسم مخفي يدوياً
 
         resolved_props = _resolve_props(block, data)
+
+        # قسم التوقيع «صُممت هذه الدعوة عبر فرحة» لما المصمّم يفضّيه:
+        # من غير الشرط ده الـ‎<section>‎ بيتعرض بحشوه وخلفيته — شريط
+        # ملوّن فاضي تحت الدعوة، مالوش أي محتوى. بنشيله من الناتج خالص
+        # عند الضيف. في المحرر بيفضل ظاهر عشان المصمّم يقدر يختاره
+        # ويرجّع محتواه.
+        if (block["type"] == "branding" and not editable
+                and _branding_empty(resolved_props, block.get("style") or {})):
+            continue
+
         if runtime_scripts and isinstance(resolved_props.get("html"), str):
             resolved_props["html"] = _unwrap_runtime_allrecords(resolved_props["html"])
             # أصلح النسخ القديمة التي حُفظت قبل محاذاة iframe الخريطة.
@@ -1286,7 +1323,7 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-09-05-intro-code-elements-v19"
+_PREVIEW_RENDER_REVISION = "2026-09-06-drop-empty-branding-v20"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
