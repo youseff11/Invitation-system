@@ -1248,7 +1248,12 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
    بلونها على أرضية الشريط بدل الدايرة الملوّنة القديمة. */
 .lb-cta-links { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 /* الشريط بيغطّي آخر الصفحة — بنزوّد مسافة تحت عشان التوقيع ما يختفيش */
-.lb-doc:has(.lb-cta) .lb-stage { padding-block-end: 74px; }
+/* ‎margin‎ مش ‎padding‎: المسرح ليه لون وصورة خلفية، فالحشو بيتلوّن —
+   ولما «توقيع المنصة» يتقفل بيفضل شريط ملوّن فاضي ٧٤px تحت آخر قسم،
+   والمصمّم شايفه «قسم» مالوش أي محتوى. الهامش بيدّي نفس المسافة اللي
+   بتمنع الشريط الثابت إنه يغطّي آخر الصفحة، من غير ما يترسم.
+   مقيس حي: ‎stage.bottom − آخر قسم = 74px‎ بلون ‎rgb(255,239,214)‎. */
+.lb-doc:has(.lb-cta) .lb-stage { margin-block-end: 74px; }
 /* أزرار التحكم فوق الشريط بمسافة آمنة، مع احترام شريط إيماءات الهاتف */
 .lb-doc:has(.lb-cta) .lb-music,
 .lb-doc:has(.lb-cta) .lb-autoscroll {
