@@ -283,8 +283,13 @@
     batch.forEach(primeVideo);
   }
 
-  function queueMedia(v) {
+  /* ‎keepPlaying‎: الفيديو ده مالوش مراقب يشغّله بعدين (فيديو المصمّم في
+     «كود متقدّم» أو في قسم مستورد) — فالتجهيز بالنسبة له هو التشغيل نفسه
+     ومابنوقفهوش. فيديو قسم «فيديو» عنده ‎IntersectionObserver‎ هو اللي
+     بيقرّر، فبيتوقف بعد التجهيز لحد ما يوصل للشاشة. */
+  function queueMedia(v, keepPlaying) {
     if (!v || v.dataset.lbPrimed === "1") return;
+    if (keepPlaying) v.dataset.lbWanted = "1";
     if (mediaQueue.indexOf(v) < 0) mediaQueue.push(v);
     if (mediaBound) return;
     mediaBound = true;
@@ -314,7 +319,7 @@
       video.style.visibility = "visible";
       var p = video.play();
       if (p && p.catch) p.catch(function () {});
-      queueMedia(video);
+      queueMedia(video, true);
     });
 
     /* فيديو مكتوب بإيد المصمّم في «كود متقدّم» (قسم أو افتتاحية):
@@ -324,7 +329,7 @@
       if (video.dataset.lbMediaBound === "1") return;
       video.dataset.lbMediaBound = "1";
       video.playsInline = true;
-      queueMedia(video);
+      queueMedia(video, true);
     });
   }
 
