@@ -25,6 +25,15 @@
   }
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
   function readJSON(id, fallback) {
+    /* الحمولات التقيلة (السكيما والمفضلة) بتوصل من ملفين ‎.js‎ مستقلين
+       بيتخزّنوا في المتصفح بدل ما تتضمّن في الصفحة — بيحطّوا نفسهم في
+       ‎window.__EDITOR_BLOBS‎. سكربتاتهم ‎defer‎ ومكتوبة قبل الملف ده،
+       فبيتنفّذوا قبله مضمون. الباقي لسه بيتقرا من الصفحة زي ما هو. */
+    var blobs = window.__EDITOR_BLOBS;
+    if (blobs && Object.prototype.hasOwnProperty.call(blobs, id)) {
+      var value = blobs[id];
+      if (value != null) return value;
+    }
     var node = doc.getElementById(id);
     if (!node) return fallback;
     try { return JSON.parse(node.textContent); } catch (e) { return fallback; }

@@ -26,6 +26,13 @@ urlpatterns = [
     path("dashboard/templates/<int:pk>/preview-frame/", views.template_editor_frame,
          name="template_editor_frame"),
 
+    # حمولتا المحرر التقيلتان في ملفين مستقلين — البصمة في الاسم هي اللي
+    # بتبطّل كاش المتصفح، فالملف نفسه بيتخزّن للأبد
+    path("dashboard/editor/schema.<slug:stamp>.js", views.editor_schema_js,
+         name="editor_schema_js"),
+    path("dashboard/editor/favorites.<slug:stamp>.js", views.editor_favorites_js,
+         name="editor_favorites_js"),
+
         path("dashboard/fonts/", views.dashboard_fonts, name="dashboard_fonts"),
     path("dashboard/fonts/api/create/", views.font_api_create, name="font_api_create"),
     path("dashboard/favorites/api/create/", views.favorite_api_create, name="favorite_api_create"),

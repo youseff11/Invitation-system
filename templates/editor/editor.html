@@ -432,16 +432,28 @@
 ملاحظة: تعليقات {# #} في Django تعمل على سطر واحد فقط،
 لذلك تُستخدم {% comment %} لأي تعليق متعدد الأسطر.
 {% endcomment %}
-{{ schema_json|json_script:"editor-schema" }}
 {{ document_json|json_script:"editor-document" }}
 {{ meta_json|json_script:"editor-meta" }}
 {{ features_json|json_script:"editor-features" }}
 {{ fonts_json|json_script:"editor-fonts" }}
-{{ favorites_json|json_script:"editor-favorites" }}
 {{ assets_json|json_script:"editor-assets" }}
 {{ music_json|json_script:"editor-music" }}
 {{ intros_json|json_script:"editor-intros" }}
 
+{% comment %}
+  السكيما (٥٦٥ كيلو) والمفضلة (٧٧٤ كيلو) كانوا مضمّنين فوق مع الباقي —
+  يعني ٨٠٪ من حجم الصفحة بيتبعت من الأول في كل فتحة رغم إنهم
+  مابيتغيّروش. دلوقتي ملفين اسمهم فيه بصمة محتواهم، فالمتصفح بيخزّنهم
+  والفتحة التانية مابتنزّلهمش خالص.
+
+  ‎defer‎ **مقصودة ومهمة**: سكربتات ‎defer‎ بتتنفّذ بالترتيب المكتوب وقبل
+  ‎DOMContentLoaded‎، يعني الاتنين دول بيحطّوا بياناتهم في
+  ‎window.__EDITOR_BLOBS‎ **قبل** أول سطر في ‎editor.js‎. مافيش لحظة
+  المحرر فيها مفتوح وبياناته لسه بتحمّل — وده اللي كان بيحصل في محاولة
+  ٢ سبتمبر اللي اتلغت.
+{% endcomment %}
+<script src="{{ schema_url }}" defer></script>
+<script src="{{ favorites_url }}" defer></script>
 <script src="{% static 'js/editor.js' %}?v={{ ASSET_V }}" defer></script>
 </body>
 </html>

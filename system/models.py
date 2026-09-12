@@ -297,6 +297,42 @@ class Asset(TimeStampedModel):
 
 
 # --------------------------------------------------------------------------
+class DocumentMediaKey(models.Model):
+    """مفتاح وسائط واحد مذكور في مستند قالب أو دعوة.
+
+    فهرس مقلوب لسؤال «الصورة دي مستخدمة ولا لأ؟». من غيره الإجابة كانت
+    بتتطلب مسح كل مستندات القوالب والدعوات على كل فتحة للمحرر — **١٦.٤
+    ثانية مقيسة على السيرفر**. بيتحدّث وقت الحفظ بس، بإشارة في
+    ``system/signals.py``، فمافيش كاش يقدم ولا نتيجة قديمة.
+
+    ``key`` هو المجلد السداسي من مسار الأصل
+    (``assets/YYYY/MM/<12 hex>/…``) — شوف ``system/mediakeys.py`` لسبب
+    اختياره بدل اسم الملف.
+    """
+
+    key = models.CharField("مفتاح الأصل", max_length=12, db_index=True)
+    template = models.ForeignKey(Template, on_delete=models.CASCADE,
+                                 null=True, blank=True, related_name="media_keys")
+    invitation = models.ForeignKey("Invitation", on_delete=models.CASCADE,
+                                   null=True, blank=True, related_name="media_keys")
+
+    class Meta:
+        verbose_name = "مفتاح وسائط"
+        verbose_name_plural = "مفاتيح الوسائط"
+        # الأسامي مكتوبة صراحةً عشان تطابق الهجرة بالحرف — من غيرها
+        # ‎makemigrations‎ بيولّد اسم من عنده وبيفضل شايف فرق كل مرة.
+        indexes = [
+            models.Index(fields=["template", "key"],
+                         name="system_docu_templat_9c1a3f_idx"),
+            models.Index(fields=["invitation", "key"],
+                         name="system_docu_invitat_4b7e2d_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.key
+
+
+# --------------------------------------------------------------------------
 class Invitation(TimeStampedModel):
     STATUS_CHOICES = [
         ("draft", "مسودة"),

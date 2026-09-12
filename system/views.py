@@ -21,7 +21,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, Max, Q, Sum
 from django.http import (
     Http404, HttpResponse, HttpResponseBadRequest, JsonResponse,
     StreamingHttpResponse,
@@ -45,7 +45,8 @@ from .forms import (
 
 )
 from .models import (
-        Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
+        Asset, CustomFont, Customer, DocumentMediaKey, FavoriteBlock, Guest, Invitation,
+    IntroVideo, MusicTrack, Order,
     OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template, FAQ,
 
 )
@@ -54,8 +55,9 @@ from .renderer import get_template_preview, render_document
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from django.db.models.fields.files import FieldFile
 
-from . import guestexport, guestimport, images, templateimport, video
+from . import guestexport, guestimport, images, mediakeys, templateimport, video
 
 logger = logging.getLogger(__name__)
 
@@ -212,10 +214,17 @@ def _share_image(request, *candidates) -> dict:
     """
     for source in candidates:
         url, width, height = "", 0, 0
-        if hasattr(source, "url"):                 # ImageFieldFile
-            if not source:
+        # ‎isinstance‎ مش ‎hasattr(source, "url")‎: ‎FieldFile.url‎ خاصية
+        # بترمي ‎ValueError‎ لو الحقل فاضي، و‎hasattr‎ بيمسك
+        # ‎AttributeError‎ بس — فالاستثناء كان بيطلع لبرّه ويكسر الصفحة
+        # لأي قالب من غير غلاف.
+        if isinstance(source, FieldFile):
+            if not source:                          # حقل فاضي
                 continue
-            url = source.url
+            try:
+                url = source.url
+            except ValueError:
+                continue
             try:
                 width, height = int(source.width), int(source.height)
             except Exception:
@@ -738,7 +747,11 @@ def dashboard(request):
         "stats": stats,
         "recent_orders": Order.objects.select_related("customer", "plan")[:6],
         "recent_rsvps": RSVPResponse.objects.select_related("invitation")[:8],
-        "recent_invitations": Invitation.objects.select_related("customer", "template")[:6],
+        # نفس سبب ‎_TEMPLATE_HEAVY_FIELDS‎: الجدول ده بيعرض أسماء بس،
+        # فمالوش لازمة يحمّل مستند ٦ دعوات ومستندات قوالبها
+        "recent_invitations": Invitation.objects.select_related("customer", "template").defer(
+            "document", *(f"template__{field}" for field in _TEMPLATE_HEAVY_FIELDS)
+        )[:6],
     })
 
 
@@ -752,7 +765,14 @@ def dashboard_invitations(request):
     # الافتراضي بيضيع فالقايمة كانت بتطلع من الأقدم للأحدث. ‎-id‎
     # كسّار تعادل: دعوتين اتعملوا في نفس الثانية يفضل ترتيبهم ثابت
     # بدل ما يتبدّل مع كل فتحة للصفحة.
-    qs = Invitation.objects.select_related("customer", "template", "plan").annotate(
+    # الصفحة دي بتعرض أسماء وأرقام بس — لكنها كانت بتحمّل **مستند** كل
+    # دعوة ومعاه مستند القالب المربوط بيها والمعاينة المخزّنة بتاعته.
+    # مقيس على السيرفر: **٢٥.٦ ثانية** عشان تطلّع صفحة ٤ كيلوبايت. نفس
+    # العلاج المستعمل في الرئيسية وصفحة القوالب (‎_TEMPLATE_HEAVY_FIELDS‎).
+    qs = Invitation.objects.select_related("customer", "template", "plan").defer(
+        "document",
+        *(f"template__{field}" for field in _TEMPLATE_HEAVY_FIELDS),
+    ).annotate(
         rsvp_total=Count("rsvps", distinct=True),
         guest_total=Count("guests", distinct=True),
     ).order_by("-created_at", "-id")
@@ -1235,6 +1255,90 @@ def _favorites_json():
     return [_favorite_payload(item) for item in FavoriteBlock.objects.all()]
 
 
+# ==========================================================================
+# حمولتا المحرر التقيلتان: السكيما والمفضلة
+# ==========================================================================
+# مقيس على السيرفر: صفحة المحرر ١.٦–١.٧٦ ميجا، منها **السكيما ٥٦٥ كيلو
+# والمفضلة ٧٧٤ كيلو** — يعني ٨٠٪ من الحمولة. والاتنين بيتبعتوا من الأول
+# في كل فتحة رغم إنهم مابيتغيّروش بين الفتحة والتانية.
+#
+# الحل: كل واحدة بقت ملف ‎.js‎ مستقل اسمه فيه بصمة محتواه، بيتخزّن في
+# المتصفح للأبد (الاسم بيتغيّر لو المحتوى اتغيّر). أول فتحة زي ما هي،
+# واللي بعدها الصفحة ~٢٦٠ كيلو.
+#
+# **ليه ملف ‎<script defer>‎ مش ‎fetch‎:** المحاولة السابقة (٢ سبتمبر)
+# كانت بتنزّل دول بعد فتح الصفحة، والنتيجة إن المحرر كان بيفتح والعناصر
+# مش محمّلة وتفضل بتحمّل. سكربتات ‎defer‎ بتتنفّذ **بالترتيب وقبل**
+# ‎editor.js‎، فالبيانات موجودة كاملة قبل أول سطر في المحرر — مافيش حالة
+# «فاضي وبيحمّل» أصلاً.
+
+_EDITOR_BLOB_CACHE: dict = {}
+
+
+def _blob_script(name: str, payload: str) -> HttpResponse:
+    """يغلّف حمولة JSON في سكربت بيحطّها في ``window.__EDITOR_BLOBS``."""
+    body = (
+        "window.__EDITOR_BLOBS=window.__EDITOR_BLOBS||{};"
+        f"window.__EDITOR_BLOBS[{json.dumps(name)}]={payload};"
+    )
+    response = HttpResponse(body, content_type="application/javascript; charset=utf-8")
+    # ‎private‎ مش ‎public‎: المفضلة بيانات فريق العمل، ماينفعش تتخزّن في
+    # أي وسيط مشترك. البصمة في الاسم هي اللي بتبطّل الكاش.
+    response["Cache-Control"] = "private, max-age=31536000, immutable"
+    return response
+
+
+def _editor_schema_blob() -> tuple[str, str]:
+    """(البصمة، الحمولة) للسكيما. بتتحسب مرة واحدة لكل عملية تشغيل.
+
+    السكيما مشتقّة من الكود نفسه، فمابتتغيّرش غير مع نشر جديد — والبصمة
+    من محتواها فبتتغيّر لوحدها ساعتها.
+    """
+    cached = _EDITOR_BLOB_CACHE.get("schema")
+    if cached:
+        return cached
+    payload = json.dumps(blocks_engine.editor_schema(), ensure_ascii=False, default=str)
+    stamp = hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+    cached = (stamp, payload)
+    _EDITOR_BLOB_CACHE["schema"] = cached
+    return cached
+
+
+def _favorites_stamp() -> str:
+    """بصمة مكتبة المفضلة — استعلام تجميع رخيص، مش قراءة المحتوى.
+
+    العدد + آخر تعديل بيمسكوا الإضافة والحذف والتعديل مع بعض.
+    """
+    agg = FavoriteBlock.objects.aggregate(n=Count("id"), t=Max("updated_at"))
+    raw = f"{agg['n']}-{agg['t'].isoformat() if agg['t'] else '0'}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+@login_required
+@require_GET
+def editor_schema_js(request, stamp):
+    _staff_required(request)
+    _, payload = _editor_schema_blob()
+    return _blob_script("editor-schema", payload)
+
+
+@login_required
+@require_GET
+def editor_favorites_js(request, stamp):
+    _staff_required(request)
+    payload = json.dumps(_favorites_json(), ensure_ascii=False, default=str)
+    return _blob_script("editor-favorites", payload)
+
+
+def _editor_blob_urls() -> dict:
+    """روابط الحمولتين بالبصمة — بتتحط في سياق صفحة المحرر."""
+    schema_stamp, _ = _editor_schema_blob()
+    return {
+        "schema_url": reverse("editor_schema_js", args=[schema_stamp]),
+        "favorites_url": reverse("editor_favorites_js", args=[_favorites_stamp()]),
+    }
+
+
 def _font_payload(font):
     return {
         "id": font.pk,
@@ -1314,7 +1418,8 @@ def template_editor(request, pk):
         "invitation": proxy,
         "form": None,
         "template_mode": True,
-        "schema_json": blocks_engine.editor_schema(),
+        # السكيما والمفضلة بقوا ملفين مستقلين بيتخزّنوا في المتصفح
+        **_editor_blob_urls(),
         "document_json": template.get_document(),
         "assets_json": [
             {"id": a.pk, "url": a.url, "thumb": a.thumb_url,
@@ -1324,7 +1429,6 @@ def template_editor(request, pk):
         ],
         "features_json": sorted(blocks_engine.feature_keys()),
         "fonts_json": _font_library_json(),
-        "favorites_json": _favorites_json(),
         "intros_json": [
             {"id": v.pk, "name": v.name, "url": v.url,
              "poster": v.poster_url, "seconds": v.seconds, "note": v.note}
@@ -1480,7 +1584,8 @@ def invitation_editor(request, pk):
         "invitation": invitation,
         "client_followup_url": request.build_absolute_uri(invitation.get_client_followup_url()),
         "form": settings_form,
-        "schema_json": blocks_engine.editor_schema(),
+        # السكيما والمفضلة بقوا ملفين مستقلين بيتخزّنوا في المتصفح
+        **_editor_blob_urls(),
         "document_json": document,
         "assets_json": [
             # ‎source‎ = الأصل قبل أي قص. نافذة القص بتعرضه وبتقص منه —
@@ -1495,7 +1600,6 @@ def invitation_editor(request, pk):
         ],
         "features_json": sorted(invitation.allowed_features),
         "fonts_json": _font_library_json(),
-        "favorites_json": _favorites_json(),
         # معرض الافتتاحيات — بيظهر في مُنتقي الفيديو جوه المحرر
 
         "intros_json": [
@@ -1903,12 +2007,45 @@ def _asset_needles(asset):
 
 
 def _asset_usage_map(assets):
-    """Return usage flags while scanning every saved document only once.
+    """هل كل أصل من دول مستخدم في أي مستند؟ — من الفهرس المقلوب.
 
-    The old implementation tested every asset needle against every document,
-    which becomes extremely slow for imported templates with large bundles.
-    A single compiled regex preserves the same substring semantics but reduces
-    the work to one pass per document.
+    قبل كده كانت الدالة دي بتمسح **كل** مستندات القوالب والدعوات على كل
+    فتحة للمحرر: **١٦.٤ ثانية مقيسة على السيرفر** (بينما رسم المستند كله
+    ١.١ ثانية). دلوقتي بقى استعلام ``IN`` مفهرس على جدول بيتحدّث وقت
+    الحفظ — شوف ``system/mediakeys.py``.
+
+    الأصول القديمة اللي مسارها مش على شكل ``assets/YYYY/MM/<hex>/``
+    مالهاش مفتاح، فبترجع للمسحة القديمة. دي حالة نادرة وعددها صغير،
+    وسيبناها عن قصد: الإجابة الغلط هنا معناها صورة مستخدمة تتحذف.
+    """
+    usage = {asset.pk: False for asset in assets}
+    if not usage:
+        return usage
+
+    key_to_assets: dict[str, set] = {}
+    keyless = []
+    for asset in assets:
+        keys = mediakeys.keys_of_asset(asset)
+        if not keys:
+            keyless.append(asset)
+            continue
+        for key in keys:
+            key_to_assets.setdefault(key, set()).add(asset.pk)
+
+    for key in mediakeys.used_keys(key_to_assets):
+        for asset_pk in key_to_assets.get(key, ()):
+            usage[asset_pk] = True
+
+    if keyless:
+        usage.update(_asset_usage_scan(keyless))
+    return usage
+
+
+def _asset_usage_scan(assets):
+    """المسحة القديمة: تقرا كل المستندات وتدوّر على مسارات الأصول جوّاها.
+
+    غالية جداً (ثواني) فمابتتندهش من رسم صفحة — بس للأصول اللي مالهاش
+    مفتاح في الفهرس.
     """
     usage = {asset.pk: False for asset in assets}
     if not usage:
