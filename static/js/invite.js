@@ -231,7 +231,76 @@
     nodes.forEach(function (n) { io.observe(n); });
   }
 
-    // ---------------------------------------------------------- فيديوهات القوالب المستوردة
+  // ---------------------------------------------------------- فكّ قفل الوسائط
+  /* أهم فرق بين الموبايل والديسكتوب: **وضع توفير الطاقة في iOS بيلغي
+     التشغيل التلقائي بالكامل** — حتى الفيديو الصامت `playsinline`، اللي
+     بيشتغل عادي في كل الحالات التانية. النتيجة اللي الضيف بيشوفها:
+     الافتتاحية بتتفتح عادي (دي لمسة منه)، وأول فيديو بعدها بيفضل صورة
+     ساكنة لحد ما يدوس عليه بإيده.
+
+     الرفض ده **على مستوى العنصر مش الصفحة**: أول ما عنصر `<video>` يشتغل
+     مرة واحدة جوّه مكدس نداء لمسة حقيقية، WebKit بيفكّه وبيسمح له يشتغل
+     برمجياً بعد كده في أي وقت — حتى والتوفير شغال.
+
+     فبدل ما نستنّى الفيديو يوصل للشاشة (وساعتها اللمسة راحت من زمان)،
+     بنسجّل كل فيديو معتمد على التشغيل التلقائي في طابور، وأول لمسة حقيقية
+     على الصفحة — وأهمها لمسة «افتح الدعوة» على الشاشة الافتتاحية، وهي
+     مضمونة الحصول قبل أي فيديو بيوصل للنظر — بنشغّله ونوقفه فوراً عشان
+     ياخد الإذن ويكمّل بعد كده لوحده.
+
+     نفس الحيلة المستعملة في مسار «الفيديو بصوت» تحت في ‎initVideo‎؛ دي
+     نسخة عامة منها لكل الفيديوهات الصامتة. */
+
+  var mediaQueue = [];
+  var mediaBound = false;
+
+  /** يشغّل العنصر ويوقفه فوراً — الهدف الإذن مش المشاهدة. */
+  function primeVideo(v) {
+    if (!v || v.dataset.lbPrimed === "1") return;
+    try {
+      v.muted = true;                 // الإذن بياخده الصامت من غير إزعاج
+      v.playsInline = true;
+      /* التوفير بيخلّي ‎preload‎ فعلياً ‎none‎، فالعنصر ممكن يكون فاضي
+         تماماً لحظة اللمسة. ‎load()‎ جوّه نفس اللمسة بيبدأ التحميل
+         والإذن بيتسجّل وقت نداء ‎play()‎ مش وقت بداية التشغيل. */
+      if (v.readyState === 0) { try { v.load(); } catch (ignore) {} }
+      var p = v.play();
+      var park = function () {
+        v.dataset.lbPrimed = "1";
+        // لو العنصر ظاهر فعلاً في الشاشة سيبه شغال — ده مش تجهيز، ده عرض
+        if (v.dataset.lbWanted === "1") return;
+        try { v.pause(); v.currentTime = 0; } catch (ignore) {}
+      };
+      if (p && p.then) p.then(park, function () { queueMedia(v); });
+      else park();
+    } catch (e) { queueMedia(v); }
+  }
+
+  function flushMedia() {
+    if (!mediaQueue.length) return;
+    var batch = mediaQueue;
+    mediaQueue = [];
+    batch.forEach(primeVideo);
+  }
+
+  function queueMedia(v) {
+    if (!v || v.dataset.lbPrimed === "1") return;
+    if (mediaQueue.indexOf(v) < 0) mediaQueue.push(v);
+    if (mediaBound) return;
+    mediaBound = true;
+    /* مرحلة الالتقاط عشان نسبق أي مستمع بيوقف الحدث (لمسة فتح الدعوة
+       بتعمل ‎stopPropagation‎ على الزر). وأكتر من نوع حدث لأن Safari
+       بيعترف بالتفعيل في ‎touchend/click‎ أكتر من ‎pointerdown‎ — واللي
+       بيفشل بيرجع للطابور ويتجرّب في اللمسة اللي بعدها. */
+    ["pointerdown", "pointerup", "touchend", "click", "keydown"].forEach(function (ev) {
+      doc.addEventListener(ev, flushMedia, { capture: true, passive: true });
+    });
+    // الافتتاحية ممكن تتفتح من الزر أو من لمسة في أي مكان — الإشارة دي
+    // بتتبعت جوّه نفس الـhandler فالتفعيل لسه ساري
+    doc.addEventListener("lb:intro-open", flushMedia);
+  }
+
+  // ---------------------------------------------------------- فيديوهات القوالب المستوردة
   // القالب المستورد قد يحتوي <video> خاماً بدون data-video؛ بعض القوالب
   // تعتمد على JavaScript الأصلي لاستدعاء play(). نفعّل الفيديو الصامت
   // بأمان من Runtime المنصة، بدون تشغيل أي JavaScript مستورد.
@@ -243,14 +312,19 @@
       video.playsInline = true;
       video.preload = "auto";
       video.style.visibility = "visible";
-      var tryPlay = function () {
-        var p = video.play();
-        if (p && p.catch) p.catch(function () {});
-      };
-      tryPlay();
-      ["pointerdown", "touchstart", "keydown", "scroll"].forEach(function (eventName) {
-        doc.addEventListener(eventName, tryPlay, { once: true, passive: true });
-      });
+      var p = video.play();
+      if (p && p.catch) p.catch(function () {});
+      queueMedia(video);
+    });
+
+    /* فيديو مكتوب بإيد المصمّم في «كود متقدّم» (قسم أو افتتاحية):
+       مابنلمسش اللي معمول للتشغيل باليد — بس اللي طالب ‎autoplay‎ صراحةً
+       هو اللي بياخد نفس المعاملة، لأنه هو اللي التوفير بيرفضه. */
+    $$(".lb-extra-html video[autoplay], .lb-intro-extra video[autoplay]").forEach(function (video) {
+      if (video.dataset.lbMediaBound === "1") return;
+      video.dataset.lbMediaBound = "1";
+      video.playsInline = true;
+      queueMedia(video);
     });
   }
 
@@ -388,7 +462,12 @@
         v.disablePictureInPicture = true;
         v.preload = poster ? "none" : "metadata";
         if (poster) v.poster = poster;
-        if (autoplay && !withSound) { v.muted = true; v.autoplay = true; v.preload = "auto"; }
+        if (autoplay && !withSound) {
+          v.muted = true; v.autoplay = true; v.preload = "auto";
+          /* التوفير في iOS بيرفض حتى ده. بنحجزه في طابور فكّ القفل عشان
+             لمسة فتح الدعوة تدّيه الإذن قبل ما يوصل للشاشة أصلاً. */
+          queueMedia(v);
+        }
         // النسبة الحقيقية مابتتعرفش غير من الملف — بنبلّغ بيها الحاوية
         // عشان «زي ما هو» تاخد شكلها من غير قفزة في التخطيط
         v.addEventListener("loadedmetadata", function () {
@@ -404,18 +483,32 @@
            فبنرجّع الشريط بدل ما نسيبه مقفول على فيديو واقف. */
         var tryPlay = function () {
           var p = v.play();
-          if (p && p.catch) p.catch(function () { v.controls = true; });
+          if (!p || !p.catch) return;
+          p.catch(function () {
+            /* الرفض مش نهاية المطاف: بنرجّعه لطابور فكّ القفل فأي لمسة
+               جاية بتشغّله. والشريط بيرجع **متأخر** بس لو فضل واقف —
+               قبل كده كان بيبان من أول رفضة، وده كان بيخلّي الضيف في
+               وضع التوفير يفتكر إن الفيديو محتاج ضغطة بإيده. */
+            v.dataset.lbPrimed = "";
+            queueMedia(v);
+            window.setTimeout(function () {
+              if (v.paused && v.dataset.lbWanted === "1") v.controls = true;
+            }, 1500);
+          });
         };
 
         /* مانشغّلش كل فيديوهات الدعوة مع بعض — بيهنّج الموبايل وبياكل
            داتا الضيف، والصوت بيتلخبط لو أكتر من واحد شغال. بيبدأ لما
            القسم يوصل للشاشة ويقف لما يعدّي. */
         var watch = function () {
-          if (typeof IntersectionObserver !== "function") { tryPlay(); return; }
+          if (typeof IntersectionObserver !== "function") {
+            v.dataset.lbWanted = "1"; tryPlay(); return;
+          }
           new IntersectionObserver(function (entries) {
             entries.forEach(function (en) {
-              if (en.isIntersecting) tryPlay();
-              else if (!v.paused) v.pause();
+              // العلامة دي بتمنع تجهيز فكّ القفل إنه يوقف فيديو ظاهر فعلاً
+              if (en.isIntersecting) { v.dataset.lbWanted = "1"; tryPlay(); }
+              else { v.dataset.lbWanted = ""; if (!v.paused) v.pause(); }
             });
           }, { threshold: 0.35 }).observe(v);
         };
