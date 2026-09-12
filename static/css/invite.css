@@ -1745,6 +1745,10 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 }
 .lb-lang:hover { transform: translateY(-1px); background: var(--accent-10); }
 .lb-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* اللغة التانية بتتجاب في الخلفية بعد التحميل، فالضغطة بتبقى فورية.
+   بس لو الشبكة بطيئة الضيف لازم يشوف إن ضغطته اتسجّلت — من غير ده كان
+   بيدوس تاني وتالت ويفتكر إن الزرار مش شغّال. */
+.lb-lang[aria-busy="true"] { opacity: .55; pointer-events: none; cursor: progress; }
 /* الزرار بيفضل ظاهر فوق الافتتاحية كمان: الضيف اللي بيقرا إنجليزي
    لازم يلاقي التبديل من أول شاشة، مش بعد ما يفتح الدعوة.
    مستمع «اضغط في أي حتة» متربط على ‎.lb-intro‎ نفسها، والزرار أخوها

@@ -993,10 +993,111 @@
   }
 
   // ---------------------------------------------------------- تبديل اللغة بدون إعادة تحميل
+  /* تنسيق الصفحة اللي عايش في ‎<head>‎ وبيتغيّر مع اللغة.
+
+     تبديل اللغة بيستبدل ‎[data-invite-language-content]‎ وبس — عقدة جوّه
+     ‎<body>‎. والرأس فيه ‎layout_css‎ اللي جوّاه **تنسيق كل نص مترجَم
+     لوحده** (الخط والحجم من ترس النص)، وهو أصلاً مابيتولّدش غير وقت عرض
+     اللغة التانية. فالنتيجة كانت: الضيف يدوس على زرار اللغة، النص يتبدّل،
+     والتنسيق يفضل بتاع اللغة اللي كانت معروضة — يعني الخط اللي المصمّم
+     اختاره للترجمة مايبانش خالص.
+
+     **مقيس حي على قالب floral المنشور:** فتح ‎?lang=ar‎ من السيرفر على
+     طول = ٥٢٠٩ بايت تنسيق في الرأس و٤٦ قاعدة ‎!important‎ وفيها قاعدة
+     ‎couple-bride-name-v2‎. نفس اللغة بس بعد الضغط على زرار التبديل من
+     ‎?lang=en‎ = ٣٦٥٢ بايت و٢٩ قاعدة والقاعدة دي **مش موجودة**.
+
+     وده كان بيبان «مشكلة موبايل» لأن المصمّم بيفتح الرابط بالـ‎?lang=‎
+     على الكمبيوتر، والضيف على التليفون بيدوس الزرار. */
+  var LANG_HEAD_STYLES = [
+    "data-font-faces", "data-lb-layout-css",
+    "data-imported-css", "data-zero-block-css",
+  ];
+
+  function syncLanguageHead(parsed) {
+    LANG_HEAD_STYLES.forEach(function (key) {
+      var nextNode = parsed.querySelector("head style[" + key + "]");
+      var nextText = nextNode ? nextNode.textContent : "";
+      var currentNode = doc.querySelector("head style[" + key + "]");
+      // مانلمسش اللي ما اتغيّرش: إعادة كتابة ‎@font-face‎ بتعمل رمشة
+      if (currentNode && (currentNode.textContent || "") === nextText) return;
+      if (!nextText) { if (currentNode) currentNode.remove(); return; }
+      if (currentNode) { currentNode.textContent = nextText; return; }
+      var node = doc.createElement("style");
+      node.setAttribute(key, "");
+      node.textContent = nextText;
+      doc.head.appendChild(node);
+    });
+
+    /* متغيّرات الثيم عايشة في ‎style‎ على ‎<body>‎، ومنها **خط العناوين
+       وخط المتن وفيه زوج لكل لغة** (‎font_heading_<lang>‎). */
+    var nextBody = parsed.body;
+    if (!nextBody) return;
+    var nextStyle = nextBody.getAttribute("style") || "";
+    if ((doc.body.getAttribute("style") || "") === nextStyle) return;
+    // ‎overflow‎ مش من الثيم — الافتتاحية هي اللي بتحطّه وقفله لازم يفضل
+    var overflow = doc.body.style.overflow;
+    doc.body.setAttribute("style", nextStyle);
+    if (overflow) doc.body.style.overflow = overflow;
+  }
+
+  /* صفحة اللغة التانية متخزّنة **كنص** مش كمستند محلّل.
+
+     مقيس على قالب ‎floral‎ المنشور: الجلب من السيرفر **٧٢٤ms** و٨٨
+     كيلوبايت، وتحليل الـHTML **٢ms** بس. يعني التبديل كله انتظار شبكة —
+     ومن هنا «بيعلّق» على الموبايل. فبنجيب الصفحة التانية بهدوء بعد ما
+     الصفحة تخلص تحميل، والضغطة بقت تبديل فوري من الذاكرة.
+
+     النص مش المستند: مستند محلّل بياخد ميجات في ذاكرة تليفون ضعيف،
+     والتحليل بـ٢ms مايستاهلش. وكمان الاستبدال بينقل العقد **برّه**
+     المستند المحلّل، فتخزينه كان هيبوّظ أي تبديل تاني. */
+  var langHtml = {};
+  var langPending = {};
+
+  function fetchLangHtml(url) {
+    if (langHtml[url]) return Promise.resolve(langHtml[url]);
+    if (langPending[url]) return langPending[url];
+    var job = fetch(url, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      credentials: "same-origin"
+    })
+      .then(function (response) {
+        if (!response.ok) throw new Error("language request failed");
+        return response.text();
+      })
+      .then(function (markup) {
+        if (markup.indexOf("data-invite-language-content") < 0) {
+          throw new Error("translated content missing");
+        }
+        langHtml[url] = markup;
+        delete langPending[url];
+        return markup;
+      })
+      .catch(function (err) {
+        delete langPending[url];
+        throw err;
+      });
+    langPending[url] = job;
+    return job;
+  }
+
+  /** يجيب اللغة التانية في الخلفية عشان الضغطة تبقى فورية. */
+  function prefetchLang(url) {
+    if (!url || !window.fetch || !window.DOMParser) return;
+    var conn = navigator.connection || {};
+    // موفّر البيانات أو شبكة ضعيفة: مانحمّلش ٨٨ كيلو مالوش لازمة
+    if (conn.saveData) return;
+    if (/(^|-)2g$/.test(String(conn.effectiveType || ""))) return;
+    var start = function () { fetchLangHtml(url).catch(function () {}); };
+    if (window.requestIdleCallback) window.requestIdleCallback(start, { timeout: 4000 });
+    else window.setTimeout(start, 1500);
+  }
+
   function initLanguageToggle() {
     var link = $("[data-lang-toggle]");
     if (!link || link.dataset.lbLangBound) return;
     link.dataset.lbLangBound = "1";
+    prefetchLang(link.href);
 
     link.addEventListener("click", function (e) {
       e.preventDefault();
@@ -1017,15 +1118,32 @@
       link.dataset.loading = "1";
       link.setAttribute("aria-busy", "true");
 
-      fetch(link.href, {
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        credentials: "same-origin"
-      })
-        .then(function (response) {
-          if (!response.ok) throw new Error("language request failed");
-          return response.text();
-        })
+      /* الضغطة **لازم** تنتهي بنتيجة. قبل كده الشبكة لو بطيئة أو بايظة
+         كان الـ‎catch‎ بيسيب الصفحة زي ما هي من غير أي رسالة، فالضيف
+         يفضل يدوس ومفيش حاجة بتحصل — وده «مش بيتقلب من التليفون».
+         دلوقتي بعد ثانيتين ونص بننتقل بالرابط عادي: أبطأ، بس مضمون. */
+      var handled = false;     // بدأنا التبديل في الصفحة
+      var navigating = false;  // قررنا ننتقل بالرابط بدالها
+      var goTo = function () {
+        if (navigating) return;
+        navigating = true;
+        window.location.href = link.href;
+      };
+      var giveUp = window.setTimeout(function () {
+        if (handled) return;
+        goTo();
+      }, 2500);
+      var finish = function () {
+        window.clearTimeout(giveUp);
+        link.dataset.loading = "";
+        link.removeAttribute("aria-busy");
+      };
+
+      fetchLangHtml(link.href)
         .then(function (markup) {
+          if (navigating) return;
+          handled = true;
+          window.clearTimeout(giveUp);
           var parsed = new DOMParser().parseFromString(markup, "text/html");
           var next = parsed.querySelector("[data-invite-language-content]");
           if (!next) throw new Error("translated content missing");
@@ -1043,10 +1161,14 @@
             if (currentDescription) currentDescription.setAttribute("content", description.getAttribute("content") || "");
           }
 
-          var nextLink = next.querySelector("[data-lang-toggle]");
-          var nextUrl = nextLink ? nextLink.href : link.href;
+          // الرأس الأول عشان المحتوى الجديد ينزل بتنسيقه من أول رسمة
+          syncLanguageHead(parsed);
           current.replaceWith(next);
-          try { window.history.replaceState({}, "", nextUrl); } catch (err) {}
+          /* ‎link.href‎ هو الرابط اللي جبنا منه فعلاً. قبل كده كان بياخد
+             رابط زرار التبديل **الجديد** — وده بيوديك للغة **التانية**،
+             فشريط العنوان كان بيقول ‎?lang=en‎ والصفحة عربي: أي ريفريش أو
+             مشاركة للرابط بترجّع اللغة الغلط. */
+          try { window.history.replaceState({}, "", link.href); } catch (err) {}
 
           var newIntro = $(".lb-intro");
           if (introState === "gone" && newIntro) {
@@ -1060,7 +1182,7 @@
           initIntro();
           initRsvp();
           initAnimations();
-          initLanguageToggle();
+          initLanguageToggle();   // بيجيب اللغة اللي رايحين لها بعد كده كمان
           /* المحتوى اتبدّل بعقدة جديدة: لازم كود الأقسام يشتغل تاني
              (سكربتات ‎DOMParser‎ خاملة) وتترجع حمايته. والحدث ده هو
              المكان اللي كود المصمّم يعيد فيه تطبيق حالته من
@@ -1079,13 +1201,14 @@
           window.requestAnimationFrame(function () {
             window.scrollTo(scrollX, scrollY);
           });
+          finish();
         })
         .catch(function () {
-          // لا نغيّر الصفحة لو فشل الطلب — الزر يفضل قابلاً لإعادة المحاولة.
-        })
-        .then(function () {
-          link.dataset.loading = "";
-          link.removeAttribute("aria-busy");
+          /* فشل الطلب، أو الرد ناقص، أو التبديل نفسه رمى نص الطريق:
+             ننتقل بالرابط. إعادة تحميل كاملة أبطأ بس بتخرج الضيف من أي
+             حالة نص‑نص — والمهم إن الضغطة ماتضيعش. */
+          window.clearTimeout(giveUp);
+          goTo();
         });
     });
   }
