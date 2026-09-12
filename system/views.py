@@ -195,6 +195,44 @@ def _lang(request) -> str:
     return ""
 
 
+def _share_image(request, *candidates) -> dict:
+    """صورة معاينة الرابط (``og:image``) كرابط **مطلق** ومعاها مقاسها.
+
+    فيسبوك وماسنجر وميتا بيزنس بيسيبوا الصفحة اللي مالهاش ``og:image``
+    من غير صورة خالص — مابيدوّروش على صورة جوّه الصفحة زي ما بيعمل
+    واتساب. وده اللي كان بيخلّي **نفس اللينك** يطلّع صورة على واتساب
+    ومايطلّعش على ميتا: معاينة القالب ماكانتش بتبعت ``og:image`` أصلاً.
+
+    والرابط لازم يكون مطلق: ``/media/…`` النسبي بيتقبل على واتساب
+    وبيتترمي على فيسبوك.
+
+    بياخد أول مصدر فيه قيمة — حقل صورة (``ImageFieldFile``) أو نص.
+    المقاس بيتبعت لأن ميتا بيرسم إطار المعاينة قبل ما ينزّل الصورة،
+    ومن غير ``og:image:width/height`` بيطلع بإطار غلط في أول مشاركة.
+    """
+    for source in candidates:
+        url, width, height = "", 0, 0
+        if hasattr(source, "url"):                 # ImageFieldFile
+            if not source:
+                continue
+            url = source.url
+            try:
+                width, height = int(source.width), int(source.height)
+            except Exception:
+                # ملف ناقص أو تخزين بعيد: الصورة تمشي من غير مقاس
+                width = height = 0
+        else:
+            url = (source or "").strip()
+        if not url:
+            continue
+        return {
+            "url": request.build_absolute_uri(url),
+            "width": width,
+            "height": height,
+        }
+    return {"url": "", "width": 0, "height": 0}
+
+
 def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):
     """يبني صفحة الدعوة كاملة من المستند."""
     result = render_document(
@@ -236,7 +274,14 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         "noindex": noindex or invitation.status != "published",
         "page_title": title,
         "page_description": description,
-        "share_image": doc_settings.get("share_image") or "",
+        # لو المصمّم ما حطّش صورة مشاركة، غلاف القالب أحسن من لا شيء —
+        # الدعوة المنشورة من غير صورة بتتبعت على فيسبوك كلينك عريان
+        "share_image": _share_image(
+            request,
+            doc_settings.get("share_image"),
+            getattr(getattr(invitation, "template", None), "cover_image", None),
+            getattr(getattr(invitation, "template", None), "cover_url", ""),
+        ),
         "canonical_url": request.build_absolute_uri(invitation.get_absolute_url()),
         "music_config": music,
                 "scroll_config": _scroll_config(doc_settings, editable=editable),
@@ -343,10 +388,14 @@ def template_demo(request, slug):
         "defer_template_runtime": bool(result.get("runtime_scripts")),
         "noindex": True,
 
-        "page_title": f"معاينة قالب {template.name}",
-        "page_description": template.description,
-        "share_image": "",
-        "canonical_url": "",
+        "page_title": f"معاينة قالب {template.display_name}",
+        # الوصف الفاضي بيخلّي معاينة اللينك سطر واحد — الاسم أحسن من فراغ
+        "page_description": (
+            template.display_description
+            or f"شوف قالب {template.display_name} من {settings.SITE_NAME}"
+        ),
+        "share_image": _share_image(request, template.cover_image, template.cover_url),
+        "canonical_url": request.build_absolute_uri(),
         "music_config": {
             "url": result["settings"].get("music_url") or "",
             "autoplay": bool(result["settings"].get("music_autoplay")),
@@ -1233,7 +1282,7 @@ def _template_editor_frame(request, template, document, *, editable=True):
         "noindex": True,
         "page_title": f"محرر قالب {template.name}",
         "page_description": template.description,
-        "share_image": template.cover_src,
+        "share_image": _share_image(request, template.cover_image, template.cover_url),
         "canonical_url": "",
         "music_config": {
             "url": result["settings"].get("music_url") or "",
