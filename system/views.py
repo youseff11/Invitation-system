@@ -1499,6 +1499,11 @@ def template_api_preview(request, pk):
         # إزاحات النصوص + تنسيق كل نص لوحده. المحرر بيكتبها في رأس
         # الإطار بعد كل تحديث، لأن applyPreview بتبدّل المسرح بس.
         "layoutCss": str(result.get("layout_css") or ""),
+        # اللغة اللي **اتعرضت فعلاً** — مش اللي المحرر طلبها. السيرفر
+        # بيرجع للغة الأساسية لو مفيش ترجمة، والمحرر لازم يعرف ده عشان
+        # يكتبها على ‎<html lang>‎ بتاع الإطار. من غيرها ‎previewLangNow‎
+        # بتفضل تقرا لغة قديمة وتلغي اختيار المصمّم (شوف translation-notes).
+        "lang": str(result.get("lang") or ""),
         # ومواضع عناصر Tilda وارتفاعات الأقسام والستايل المشترك —
         # دول كانوا بيتكتبوا مرة واحدة وقت تحميل الإطار، فالمحرر كان
         # بيفضل على مواضع أول تحميل والصفحة الحية على الجديدة.
@@ -1692,6 +1697,8 @@ def api_preview(request, pk):
         # إزاحات النصوص + تنسيق كل نص لوحده — تتكتب في رأس الإطار
         # بعد كل تحديث معاينة (applyPreview بتبدّل المسرح بس).
         "layoutCss": str(result.get("layout_css") or ""),
+        # اللغة اللي اتعرضت فعلاً — زي ‎template_api_preview‎ بالظبط
+        "lang": str(result.get("lang") or ""),
         # ومواضع عناصر Tilda وارتفاعات الأقسام والستايل المشترك.
         "zeroCss": str(result.get("zero_css") or ""),
         "sharedCss": str(result.get("shared_css") or ""),

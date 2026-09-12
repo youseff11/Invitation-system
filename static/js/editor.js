@@ -2994,8 +2994,17 @@
       I18N_STYLE_SPECS.forEach(function (spec) {
         panel.appendChild(buildField(spec,
           function () {
-            var row = i18nStyleTable()[key];
-            return row ? row[spec.key] : (spec.type === "range" ? 0 : "");
+            /* الصف ممكن يكون موجود وفيه الخط بس من غير حجم — ساعتها
+               ‎row[spec.key]‎ بترجّع ‎undefined‎، واللوحة كانت بتكتب
+               «undefinedpx» والمزلاج بيقف في نص المدى (٨٠) كأن في حجم
+               متظبّط. لمسة واحدة على المزلاج بعدها بتحط حجم المستخدم
+               ماطلبهوش. الفاضي = «زي الأصل» = صفر. */
+            var row = i18nStyleTable()[key] || {};
+            var value = row[spec.key];
+            if (value === undefined || value === null || value === "") {
+              return spec.type === "range" ? 0 : "";
+            }
+            return value;
           },
           function (v) {
             var table = i18nStyleTable();
@@ -3213,9 +3222,10 @@
                  : "عاين بالنسخة " + altName);
     peek.type = "button";
     peek.addEventListener("click", function () {
+      /* الاختيار بس — **من غير** ما نلمس ‎previewLangRendered‎: دي بتوصف
+         اللي الإطار معروض بيه فعلاً، و‎applyPreview‎ هي اللي بتحدّثها لما
+         الرد يوصل. كتابتها هنا كانت بتلغي الاختيار ده بعينه. */
       state.previewLang = showingAlt ? baseLang() : altLang();
-      // اختيار صريح من المحرر: نخلّي ‎previewLangNow‎ ماتاخدش لغة الإطار
-      state.previewLangRendered = state.previewLang;
       renderI18nPane();
       requestPreview();
     });
@@ -3313,13 +3323,22 @@
     var fdoc = frameDoc();
     var shown = fdoc && fdoc.documentElement &&
                 fdoc.documentElement.getAttribute("lang");
+    /* ‎previewLangRendered‎ = اللغة اللي الإطار **معروض بيها دلوقتي**،
+       و‎applyPreview‎ لوحدها هي اللي بتحدّثها من رد السيرفر. فلو الإطار
+       بيقول حاجة تانية، يبقى الضيف بدّل من الزرار اللي جوّه — بناخدها.
+
+       قبل كده كانت بتتكتب هنا **وقت الطلب**، والزرار بتاع «عاين
+       بالنسخة» كان بيكتبها كمان — فالمقارنة كانت بتقارن الاختيار
+       الجديد باللغة القديمة اللي لسه في الإطار، وتستنتج غلط إن
+       المستخدم بدّل من جوّه، **وتلغي اختياره**. النتيجة المقيسة: زرار
+       «عاين بالنسخة العربية» بيبعت ‎lang:"en"‎ والمعاينة مابتتغيّرش
+       خالص — والمصمّم بيفتكر إن خط الترجمة هو اللي ضاع. */
     if ((shown === "ar" || shown === "en") &&
         shown !== state.previewLangRendered) {
       state.previewLang = shown;
+      state.previewLangRendered = shown;
     }
-    var lang = state.previewLang || baseLang();
-    state.previewLangRendered = lang;
-    return lang;
+    return state.previewLang || baseLang();
   }
 
   var requestPreview = debounce(function () {
@@ -3618,6 +3637,16 @@
         (keptStageClasses ? " " + keptStageClasses : "") +
         (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
         (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
+    }
+
+    /* اللغة اللي السيرفر عرضها فعلاً بتتكتب على ‎<html lang>‎ بتاع الإطار.
+       من غير كده السمة دي بتفضل على قيمة أول تحميل للأبد، و‎previewLangNow‎
+       بتقراها وتفتكر إن المصمّم بدّل اللغة من جوّه الإطار فبتلغي اختياره —
+       وزرار «عاين بالنسخة» مكنش بيشتغل خالص. */
+    if (data.lang === "ar" || data.lang === "en") {
+      fdoc.documentElement.setAttribute("lang", data.lang);
+      state.previewLangRendered = data.lang;
+      state.previewLang = data.lang;
     }
 
     // الخط قد يتغير من إعدادات الافتتاحية، لذلك نطبقه في الحالتين.
