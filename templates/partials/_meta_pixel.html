@@ -13,6 +13,21 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
 fbq('init', '1510217587797836');
 fbq('track', 'PageView');
 </script>
+{% if not no_contact %}
+<script>
+/* حدث Contact: بيتسجّل لما الزائر يدوس على أي رابط واتساب أو اتصال في
+   صفحات الموقع. مش شغال في صفحات الدعوات (no_contact) لأن روابط الواتساب
+   هناك بتاعة مشاركة الدعوة مش تواصل معانا. */
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href]');
+  if (!a || typeof fbq !== 'function') return;
+  var h = a.getAttribute('href') || '';
+  var ch = /wa\.me|api\.whatsapp\.com|^whatsapp:/i.test(h) ? 'whatsapp'
+         : /^tel:/i.test(h) ? 'phone' : /^mailto:/i.test(h) ? 'email' : '';
+  if (ch) fbq('track', 'Contact', {content_name: ch});
+}, true);
+</script>
+{% endif %}
 <noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=1510217587797836&ev=PageView&noscript=1"
 /></noscript>
