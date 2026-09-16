@@ -76,6 +76,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 {# مواضع عناصر Tilda Zero: محسوبة على السيرفر عشان الصفحة تبدأ مظبوطة #}
 {# من أول رسمة بدل ما تستنى runtime القالب يحمّل ويحطها inline. #}
 {% if render.zero_css %}<style data-zero-block-css>{{ render.zero_css }}</style>{% endif %}
+{% if not editable %}{% include 'partials/_meta_pixel.html' %}{% endif %}
 </head>
 <body class="lb-doc{% if editable %} lb-doc--editing{% endif %}" style="{{ render.css_vars }}" data-invite-root data-ready="1">
 

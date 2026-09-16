@@ -54,6 +54,7 @@
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="{% static 'css/site.css' %}?v={{ ASSET_V }}">
 {% block head %}{% endblock %}
+{% block meta_pixel %}{% include 'partials/_meta_pixel.html' %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
 {% block chrome %}{% endblock %}

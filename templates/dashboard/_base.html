@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% block body_class %}dash-body{% endblock %}
+{# لوحة التحكم مالهاش تتبّع Meta Pixel #}
+{% block meta_pixel %}{% endblock %}
 
 {# نفس ترويسة الموقع بالظبط — نفس الملف المشترك، مش نسخة تانية #}
 {% block chrome %}{% include 'partials/nav.html' with dash=True %}{% endblock %}
