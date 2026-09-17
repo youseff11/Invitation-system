@@ -392,10 +392,13 @@
     var btn = e.target.closest("[data-copy]");
     if (!btn) return;
     var text = btn.getAttribute("data-copy");
+    /* الزرار اللي جواه أيقونة بيحدّد النص اللي يتغيّر بـdata-copy-label —
+       من غير كده كنا هنكتب فوق محتوى الزرار كله ونمسح الأيقونة. */
+    var label = btn.querySelector("[data-copy-label]") || btn;
     var done = function () {
-      var old = btn.textContent;
-      btn.textContent = "✓ اتنسخ";
-      setTimeout(function () { btn.textContent = old; }, 1600);
+      var old = label.textContent;
+      label.textContent = "✓ اتنسخ";
+      setTimeout(function () { label.textContent = old; }, 1600);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function () { window.prompt("انسخ الرابط:", text); });
@@ -403,6 +406,103 @@
       window.prompt("انسخ الرابط:", text);
     }
   });
+
+  /* ------------------------------------------------ قائمة روابط الصف
+     القائمة بتتحط بالجافاسكربت بـposition: fixed مش absolute: جدول
+     اللوحة جوه حاوية بتمرير أفقي، وأي قائمة absolute جواها بتتقص عند
+     حافة الحاوية بدل ما تطلع فوقها. */
+  var SHEET_AT = 560;                 /* تحت كده القائمة بتبقى شيت من تحت */
+  var veil = null;
+
+  function setVeil(on) {
+    if (on && !veil) {
+      veil = doc.createElement("div");
+      veil.className = "rowmenu-veil";
+      doc.body.appendChild(veil);
+    } else if (!on && veil) {
+      veil.remove();
+      veil = null;
+    }
+  }
+
+  function closeRowMenus(keep) {
+    doc.querySelectorAll("[data-rowmenu-pop]").forEach(function (pop) {
+      if (pop === keep || pop.hidden) return;
+      pop.hidden = true;
+      pop.classList.remove("is-sheet");
+      var btn = pop.parentNode.querySelector("[data-rowmenu-btn]");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    });
+    setVeil(false);
+  }
+
+  function placeRowMenu(pop, btn) {
+    pop.hidden = false;
+    pop.style.visibility = "hidden";
+
+    /* على التليفون القائمة بتطلع من تحت زي الشيت: أسهل للإبهام، ومش
+       بتغطي الكارت اللي المستخدم واقف عليه */
+    var sheet = window.innerWidth <= SHEET_AT;
+    pop.classList.toggle("is-sheet", sheet);
+    if (sheet) {
+      pop.style.top = "auto";
+      pop.style.left = "12px";
+      pop.style.right = "12px";
+      pop.style.bottom = "12px";
+      pop.style.visibility = "";
+      setVeil(true);
+      return;
+    }
+
+    pop.style.right = "";
+    pop.style.bottom = "";
+    var r = btn.getBoundingClientRect();
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    var gap = 6, edge = 10;
+
+    /* تحت الزرار لو فيه مكان، وفوقه لو الصفحة خلصت */
+    var top = r.bottom + gap;
+    if (top + h > window.innerHeight - edge) {
+      top = Math.max(edge, r.top - h - gap);
+    }
+    /* في صفحة RTL القائمة بتتحاذى مع الحافة اليمنى للزرار */
+    var left = r.right - w;
+    if (left + w > window.innerWidth - edge) left = window.innerWidth - edge - w;
+    if (left < edge) left = edge;
+
+    pop.style.top = top + "px";
+    pop.style.left = left + "px";
+    pop.style.visibility = "";
+  }
+
+  doc.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-rowmenu-btn]");
+    if (btn) {
+      var pop = btn.parentNode.querySelector("[data-rowmenu-pop]");
+      var wasOpen = pop && !pop.hidden;
+      closeRowMenus();
+      if (pop && !wasOpen) {
+        placeRowMenu(pop, btn);
+        btn.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+    var inside = e.target.closest("[data-rowmenu-pop]");
+    if (!inside) { closeRowMenus(); return; }
+    /* ضغطة نسخ: نسيب القائمة لحظة عشان المستخدم يشوف «✓ اتنسخ» */
+    if (e.target.closest("[data-copy]")) setTimeout(closeRowMenus, 1100);
+    else closeRowMenus();
+  });
+
+  doc.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" || e.key === "Esc") closeRowMenus();
+  });
+  window.addEventListener("resize", function () { closeRowMenus(); });
+  /* capture عشان نلتقط تمرير الحاوية نفسها مش الصفحة بس. الشيت
+     مالوش علاقة بالتمرير — مثبّت في قاع الشاشة أصلاً. */
+  window.addEventListener("scroll", function () {
+    if (window.innerWidth > SHEET_AT) closeRowMenus();
+  }, true);
 
   /* ------------------------------------------------ تسجيل دخول الضيوف */
   function csrf() {

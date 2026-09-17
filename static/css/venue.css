@@ -83,6 +83,13 @@
 /* ---------------------------------------------------- الماسح */
 .venue-scanner { margin-bottom: 26px; }
 
+/* شاشة الباب أعرض من شاشة لوحة التحكم، فنسبة 4/3 بتطلّع مربّع كاميرا
+   طوله نص الشاشة. بنضيّق النسبة ونحطّ سقف للطول. */
+.venue-scanner .checkin-stage { aspect-ratio: 16 / 10; max-height: 430px; }
+@media (max-width: 860px) {
+  .venue-scanner .checkin-stage { aspect-ratio: 4 / 3; max-height: none; }
+}
+
 .venue-support { font-size: 13px; margin: 10px 0 0; }
 
 .venue-manual { margin-top: 10px; }
@@ -233,6 +240,18 @@
   .venue-row-state { grid-column: 2; grid-row: 1; justify-self: end; }
   .venue-row-count { grid-column: 1; grid-row: 2; }
   .venue-row-actions { grid-column: 2; grid-row: 2; justify-self: end; }
+}
+
+/* تليفون: العنوان والفلاتر والبحث كل واحد على سطره — الأصابع محتاجة
+   مساحة، والقاعة بتدوّر وهي ماسكة الموبايل بإيد واحدة */
+@media (max-width: 560px) {
+  .venue { padding: 20px 14px 48px; }
+  .venue-list { padding: 13px; }
+  .venue-list-head h2 { flex: 1 1 100%; margin-inline-end: 0; }
+  .venue-filters { flex: 1 1 100%; }
+  .venue-tab { flex: 1; padding: 9px 8px; }
+  .venue-search { flex: 1 1 100%; }
+  .venue-row-actions .btn { padding: 8px 14px; }
 }
 
 /* ---------------------------------------------------- الذيل */

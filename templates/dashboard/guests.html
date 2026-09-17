@@ -40,7 +40,7 @@
 <div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(260px,1fr);align-items:start">
   <div>
     <h2 style="font-size:18px">قائمة الضيوف</h2>
-    <div class="table-wrap" style="margin-bottom:24px">
+    <div class="table-wrap table-cards" style="margin-bottom:24px">
       <table class="guests-table">
         <thead><tr>
           <th>الكود</th><th>النوع</th><th>الضيف</th><th>الدخول</th>
@@ -49,19 +49,19 @@
         <tbody>
           {% for g in guests %}
           <tr>
-            <td><code class="pass-code">{{ g.pass_code }}</code></td>
-            <td>{{ g.get_source_display }}</td>
-            <td>
+            <td data-label="الكود"><code class="pass-code">{{ g.pass_code }}</code></td>
+            <td data-label="النوع">{{ g.get_source_display }}</td>
+            <td class="cell--title">
               {{ g.name }}
               {% if g.phone %}<br><span class="muted" style="font-size:12px">{{ g.phone }}</span>{% endif %}
               {% if g.rsvp_status %}<br><span class="pill pill--{{ g.rsvp_status }}">{{ g.latest_rsvp.get_status_display }}</span>{% endif %}
             </td>
-            <td class="nums">
+            <td class="nums" data-label="الدخول">
               <b>{{ g.entries_used }} / {{ g.entries_allowed }}</b>
               <span class="muted">المتبقي: {{ g.entries_left }}</span>
             </td>
-            <td><span class="pass-state pass-state--{{ g.pass_status }}">{{ g.pass_status_label }}</span></td>
-            <td>
+            <td data-label="الحالة"><span class="pass-state pass-state--{{ g.pass_status }}">{{ g.pass_status_label }}</span></td>
+            <td class="cell--wide" data-label="الرابط الفردي">
               <div class="guest-link">
                 <button class="btn btn--ghost btn--sm" type="button"
                         data-copy="{{ request.scheme }}://{{ request.get_host }}{{ g.get_absolute_url }}">نسخ</button>
@@ -73,7 +73,7 @@
                    href="{{ g.get_absolute_url }}">فتح</a>
               </div>
             </td>
-            {% if pass_enabled %}<td>
+            {% if pass_enabled %}<td class="cell--wide" data-label="QR">
               <div class="guest-link">
                 <a class="btn btn--gold btn--sm"
                    href="{% url 'guest_qr_png' invitation.slug g.token %}" download>تحميل</a>
@@ -82,25 +82,25 @@
               </div>
             </td>{% endif %}
           </tr>
-          {% empty %}<tr><td colspan="{% if pass_enabled %}7{% else %}6{% endif %}" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
+          {% empty %}<tr class="is-empty"><td colspan="{% if pass_enabled %}7{% else %}6{% endif %}" class="empty">لا يوجد ضيوف مسجّلون.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>
 
     <h2 style="font-size:18px">تأكيدات الحضور</h2>
-    <div class="table-wrap">
+    <div class="table-wrap table-cards">
       <table>
         <thead><tr><th>الاسم</th><th>الحالة</th><th>مرافقون</th><th>الرسالة</th><th>التاريخ</th></tr></thead>
         <tbody>
           {% for r in rsvps %}
           <tr>
-            <td>{{ r.name }}</td>
-            <td><span class="pill pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
-            <td>{{ r.companions }}</td>
-            <td style="white-space:normal;max-width:280px">{{ r.message|default:'—' }}</td>
-            <td>{{ r.created_at|date:'Y/m/d H:i' }}</td>
+            <td class="cell--title">{{ r.name }}</td>
+            <td data-label="الحالة"><span class="pill pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
+            <td data-label="مرافقون">{{ r.companions }}</td>
+            <td class="cell--wide" data-label="الرسالة" style="white-space:normal;max-width:280px">{{ r.message|default:'—' }}</td>
+            <td data-label="التاريخ">{{ r.created_at|date:'Y/m/d H:i' }}</td>
           </tr>
-          {% empty %}<tr><td colspan="5" class="empty">لا توجد ردود بعد.</td></tr>{% endfor %}
+          {% empty %}<tr class="is-empty"><td colspan="5" class="empty">لا توجد ردود بعد.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

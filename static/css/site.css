@@ -568,6 +568,130 @@ tbody tr:hover { background: var(--surface-2); }
 
 .empty { text-align: center; padding: 54px 20px; color: var(--muted); }
 
+/* ---------------------------------------------------------- إجراءات الصف
+   الصف الواحد فيه إجراءين أساسيين (المحرر · الضيوف) وتلات روابط لكل
+   واحد فيهم «فتح» و«نسخ». الستة دول في صف الجدول بيكسروا العرض،
+   فالروابط اتلمّت في قائمة واحدة. */
+.row-actions {
+  display: flex; gap: 6px; align-items: center;
+  justify-content: flex-end; flex-wrap: nowrap;
+}
+.cell--actions { text-align: end; }
+.th-actions { text-align: end; }
+/* عمود الاسم: العنوان فوق والرابط الصغير تحته — على الشاشتين */
+.cell--title strong { display: block; }
+.cell--title small { display: block; margin-top: 2px; }
+
+.rowmenu { position: relative; display: inline-flex; }
+.rowmenu-caret { font-size: 10px; opacity: .75; }
+.rowmenu-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+
+/* القائمة ‎position: fixed‎ ومكانها بيتحسب بالجافاسكربت عن قصد: جدول
+   اللوحة جوه حاوية ‎overflow-x: auto‎، وأي قائمة ‎absolute‎ جواها
+   بتتقص عند حافة الحاوية. */
+.rowmenu-pop {
+  position: fixed; z-index: 90; min-width: 226px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; box-shadow: var(--shadow);
+  padding: 8px; text-align: start;
+}
+.rowmenu-pop[hidden] { display: none; }
+.rowmenu-title {
+  margin: 8px 10px 4px; font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.rowmenu-title:first-child { margin-top: 2px; }
+.rowmenu-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 9px 11px; border: 0; border-radius: 9px;
+  background: none; color: var(--text); font: inherit; font-size: 13.5px;
+  text-align: start; text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.rowmenu-item:hover { background: var(--accent-soft); color: var(--accent); }
+.rowmenu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.rowmenu-ico { font-style: normal; font-size: 12px; color: var(--muted); }
+.rowmenu-item:hover .rowmenu-ico { color: var(--accent); }
+
+/* على التليفون القائمة بتبقى شيت من تحت — أقرب للإبهام، وورا ستارة
+   عشان يبان إن الشاشة مشغولة بيها */
+.rowmenu-pop.is-sheet {
+  min-width: 0; padding: 10px; border-radius: 20px;
+  box-shadow: 0 -18px 50px -20px rgba(0, 0, 0, .6);
+}
+.rowmenu-pop.is-sheet .rowmenu-item { padding: 13px 13px; font-size: 14.5px; }
+.rowmenu-pop.is-sheet .rowmenu-title { margin: 10px 12px 4px; }
+.rowmenu-veil {
+  position: fixed; inset: 0; z-index: 89;
+  background: rgba(0, 0, 0, .45); backdrop-filter: blur(2px);
+}
+
+/* ---------------------------------------------------------- جدول → كروت
+   على الموبايل الجدول بيتحوّل كروت بدل التمرير الأفقي: كل صف كارت،
+   وكل خانة بتاخد عنوانها من ‎data-label‎ بدل ترويسة الجدول. */
+@media (max-width: 920px) {
+  .table-cards { background: none; border: 0; border-radius: 0; overflow: visible; }
+  .table-cards table { display: block; }
+  .table-cards thead { display: none; }
+  .table-cards tbody { display: grid; gap: 12px; }
+  .table-cards tr {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 14px; padding: 15px 16px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  }
+  .table-cards tbody tr:hover { background: var(--surface); }
+  /* العنوان فوق والقيمة تحته: لو حطّينا الاتنين على سطر واحد، قيمة
+     الخانة بتلزق في عنوان الخانة اللي جنبها والقراءة بتتلخبط */
+  .table-cards td {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 3px; padding: 0; border: 0; white-space: normal; min-width: 0;
+  }
+  .table-cards td::before {
+    content: attr(data-label); flex: none;
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* الاسم فوق والإجراءات تحت مهما كان ترتيب الأعمدة في الجدول */
+  .table-cards .cell--title {
+    grid-column: 1 / -1; order: -1; display: block;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .table-cards .cell--title::before { content: none; }
+  .table-cards .cell--title strong { display: block; font-size: 15.5px; }
+  .table-cards .cell--title small { display: block; font-size: 12px; direction: ltr; text-align: start; }
+
+  .table-cards .cell--actions {
+    grid-column: 1 / -1; order: 99;
+    padding-top: 11px; border-top: 1px solid var(--line);
+  }
+  .table-cards .cell--actions::before { content: none; }
+  /* خانة عريضة بتاخد سطر كامل بس محتفظة بعنوانها */
+  .table-cards .cell--wide { grid-column: 1 / -1; }
+  .table-cards .row-actions { flex-wrap: wrap; justify-content: stretch; width: 100%; }
+  .table-cards .row-actions > * { flex: 1 1 96px; }
+  .table-cards .rowmenu-btn { width: 100%; }
+
+  /* صف «مفيش نتايج» مش كارت — سطر واحد في النص */
+  .table-cards tr.is-empty { display: block; padding: 0; }
+  .table-cards tr.is-empty td { display: block; }
+  .table-cards tr.is-empty td::before { content: none; }
+}
+
+/* تابلت: تلات أعمدة بدل اتنين — الكارت بعرض ٩٠٠px بعمودين بيبقى
+   فاضي من نصه، والأزرار بتفضل بحجمها الطبيعي مش ممدودة */
+@media (min-width: 620px) and (max-width: 920px) {
+  .table-cards tr { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .table-cards .row-actions { justify-content: flex-end; width: auto; }
+  .table-cards .row-actions > * { flex: 0 0 auto; }
+  .table-cards .rowmenu-btn { width: auto; }
+}
+
+/* العمودين بيفضلوا عمودين حتى على أضيق تليفون — ستّ خانات في تلات
+   صفوف أقصر بكتير من ستّ صفوف، والقيم هنا كلها قصيرة */
+@media (max-width: 420px) {
+  .table-cards tr { padding: 14px; gap: 9px 10px; }
+}
+
 /* ---------------------------------------------------------- التذييل */
 .foot { border-top: 1px solid var(--line); padding: 34px 0; text-align: center; color: var(--muted); font-size: 13px; }
 
