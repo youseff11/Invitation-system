@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}بوابة القاعة — {{ invitation.title }}{% endblock %}
+{% block description %}بوابة استقبال الضيوف{% endblock %}
+{% block body_class %}venue-page{% endblock %}
+
+{# الصفحة دي بيفتحها الاستقبال على الباب، مش عميل ولا زائر: #}
+{# مفيش ترويسة موقع ولا زر واتساب ولا تتبّع. شاشة شغل بس. #}
+{% block meta_pixel %}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{% static 'css/venue.css' %}?v={{ ASSET_V }}">
+{% endblock %}
+
+{% block content %}
+<main class="venue" data-venue
+     data-state-url="{{ state_url }}"
+     data-mark-url="{{ mark_url }}">
+
+  <header class="venue-head">
+    <p class="venue-kicker">بوابة القاعة</p>
+    <h1>
+      {% if invitation.name_one %}{{ invitation.name_one }}{% if invitation.name_two %} <span>و</span> {{ invitation.name_two }}{% endif %}{% else %}{{ invitation.title }}{% endif %}
+    </h1>
+    <p class="venue-sub">
+      {% if invitation.venue %}{{ invitation.venue }}{% endif %}
+      {% if invitation.venue and event_at %} · {% endif %}
+      {% if event_at %}{{ event_at|date:"l j F Y — g:i a" }}{% endif %}
+    </p>
+  </header>
+
+  <section class="venue-stats" aria-label="ملخص الدخول">
+    <article class="venue-stat venue-stat--ok">
+      <span class="venue-stat-label">دخلوا</span>
+      <strong data-venue-arrived>{{ stats.arrived }}</strong>
+    </article>
+    <article class="venue-stat">
+      <span class="venue-stat-label">لسه ما جمش</span>
+      <strong data-venue-waiting>{{ stats.waiting }}</strong>
+    </article>
+    <article class="venue-stat">
+      <span class="venue-stat-label">إجمالي المدعوين</span>
+      <strong data-venue-guests>{{ stats.guests }}</strong>
+    </article>
+    <article class="venue-stat">
+      <span class="venue-stat-label">دخلات اتسجّلت</span>
+      <strong><span data-venue-used>{{ stats.used }}</span> <small>من <span data-venue-allowed>{{ stats.allowed }}</span></small></strong>
+    </article>
+  </section>
+
+  {# نفس بنية شاشة الاستقبال بالظبط — الجافاسكربت المشترك في site.js #}
+  {# بيتعلّق على data-checkin-page، فالماسح هنا بيشتغل من غير كود جديد. #}
+  <section class="checkin venue-scanner" data-checkin-page
+           data-scan-url="{{ scan_url }}">
+    <div class="checkin-main">
+      <div class="checkin-stage">
+        <video data-scan-video playsinline muted></video>
+        <div class="checkin-frame" aria-hidden="true"></div>
+        <p class="checkin-idle" data-scan-idle>اضغط «تشغيل الكاميرا» وبعدين وجّهها على كود الضيف</p>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn--gold" type="button" data-scan-start>تشغيل الكاميرا</button>
+        <button class="btn btn--ghost" type="button" data-scan-stop hidden>إيقاف</button>
+      </div>
+
+      <p class="muted venue-support" data-scan-support></p>
+
+      <form class="toolbar venue-manual" data-manual-form>
+        <input type="text" name="token" placeholder="أو اكتب كود التصريح (زي FRH-XXXXXX)"
+               autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn btn--ghost btn--sm" type="submit">تسجيل</button>
+      </form>
+    </div>
+
+    <aside class="checkin-side">
+      <div class="stat venue-scan-stat">
+        <b data-arrived>{{ stats.used }}</b>
+        <span>دخلة اتسجّلت من <span data-total>{{ stats.allowed }}</span></span>
+      </div>
+      <div class="checkin-result" data-scan-result>
+        <p class="muted">النتيجة هتظهر هنا بعد كل مسح.</p>
+      </div>
+      <h3 class="venue-log-title">آخر اللي دخلوا</h3>
+      <ul class="checkin-log" data-scan-log></ul>
+    </aside>
+  </section>
+
+  <section class="venue-list" aria-labelledby="venue-list-title">
+    <div class="venue-list-head">
+      <h2 id="venue-list-title">كشف الضيوف</h2>
+      <div class="venue-filters" role="tablist">
+        <button class="venue-tab is-on" type="button" data-venue-filter="all">الكل</button>
+        <button class="venue-tab" type="button" data-venue-filter="in">دخلوا</button>
+        <button class="venue-tab" type="button" data-venue-filter="out">لسه</button>
+      </div>
+      <input class="venue-search" type="search" data-venue-search
+             placeholder="دوّر بالاسم أو الكود…" autocomplete="off">
+    </div>
+
+    <div class="venue-rows" data-venue-rows>
+      {# الصفوف بتتبني من الجافاسكربت بعد أول تحديث — دي النسخة الأولى #}
+      {# من السيرفر عشان الصفحة ماتطلعش فاضية لو الجافاسكربت اتأخّر. #}
+      {% for row in rows %}
+      <article class="venue-row{% if row.checked_in %} is-in{% endif %}"
+               data-venue-row data-name="{{ row.name }}" data-code="{{ row.code }}"
+               data-state="{% if row.checked_in %}in{% else %}out{% endif %}">
+        <div class="venue-row-main">
+          <strong>{{ row.name }}</strong>
+          <span class="venue-row-meta">
+            <code>{{ row.code }}</code>{% if row.group %} · {{ row.group }}{% endif %}
+          </span>
+        </div>
+        <div class="venue-row-count">{{ row.used }} / {{ row.allowed }}</div>
+        <div class="venue-row-state">
+          {% if row.checked_in %}<span class="venue-badge venue-badge--in">دخل {{ row.at }}</span>
+          {% else %}<span class="venue-badge">لسه</span>{% endif %}
+        </div>
+        <div class="venue-row-actions">
+          {% if row.left %}<button class="btn btn--gold btn--sm" type="button"
+                  data-venue-mark="{{ row.id }}" data-action="in">دخول</button>{% endif %}
+          {% if row.used %}<button class="btn btn--ghost btn--sm" type="button"
+                  data-venue-mark="{{ row.id }}" data-action="undo">تراجع</button>{% endif %}
+        </div>
+      </article>
+      {% empty %}
+      <p class="venue-empty">لسه مفيش ضيوف مسجّلين في الدعوة دي.</p>
+      {% endfor %}
+    </div>
+    <p class="venue-empty" data-venue-none hidden>مفيش ضيف مطابق.</p>
+  </section>
+
+  <footer class="venue-foot">
+    <p>الصفحة بتتحدّث لوحدها كل شوية — سيبها مفتوحة على الباب.</p>
+    <button class="btn btn--ghost btn--sm" type="button"
+            data-copy="{{ venue_url }}">نسخ رابط الصفحة</button>
+  </footer>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/venue.js' %}?v={{ ASSET_V }}" defer></script>
+{% endblock %}

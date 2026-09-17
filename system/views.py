@@ -559,6 +559,9 @@ def invitation_client_followup(request, slug, token):
     response = render(request, "public/client_followup.html", {
         "invitation": invitation,
         "followup_url": request.build_absolute_uri(invitation.get_client_followup_url()),
+        # رابط القاعة بيتعرض هنا كمان عشان العروسين يبعتوه بنفسهم —
+        # بس لما يكون فيه ضيوف وتصاريح، وإلا الرابط مالوش لازمة
+        "venue_url": request.build_absolute_uri(invitation.get_venue_url()),
         "has_rsvp": has_rsvp,
         "has_qr": has_qr,
         "has_guestbook": has_guestbook,
@@ -2407,23 +2410,21 @@ def checkin_scanner(request, pk):
     })
 
 
-@login_required
-@require_POST
-def checkin_scan(request, pk):
-    """يستقبل الرمز من الماسح ويسجّل الوصول.
+def _scan_entry(invitation, raw: str) -> tuple[dict, int]:
+    """يسجّل دخلة بالرمز الممسوح. يرجّع (الحمولة، كود الحالة).
+
+    مشتركة بين شاشة الاستقبال في لوحة التحكم وبوابة القاعة العامة —
+    المنطق واحد، اللي بيفرق هو مين مسموح له يوصل للنقطة.
 
     إعادة المسح مش بتنجح بصمت — بترجّع تحذير إن الرمز اتسجّل قبل كده،
     عشان الاستقبال ياخد باله لو حد بيمرّر نفس الدعوة لأكتر من شخص.
     """
-    _staff_required(request)
-    invitation = get_object_or_404(Invitation, pk=pk)
-
-    token = (request.POST.get("token") or "").strip()
+    token = (raw or "").strip()
     # الماسح بيرجّع الرابط كامل — نطلّع منه الرمز
     if "/g/" in token:
         token = token.rstrip("/").rsplit("/g/", 1)[-1].split("/")[0].split("?")[0]
     if not (8 <= len(token) <= 64):
-        return JsonResponse({"ok": False, "error": "رمز غير صالح."}, status=400)
+        return {"ok": False, "error": "رمز غير صالح."}, 400
 
     # الكود القصير بيتقبل كمان — الاستقبال بيكتبه بالإيد لو الـQR
     # مارضيش يتمسح (شاشة مكسورة، إضاءة وحشة، ورق مكرمش)
@@ -2431,15 +2432,12 @@ def checkin_scan(request, pk):
     if guest is None:
         guest = invitation.guests.filter(pass_code__iexact=token).first()
     if guest is None:
-        return JsonResponse(
-            {"ok": False, "error": "الرمز ده مش من ضيوف الدعوة دي."}, status=404)
+        return {"ok": False, "error": "الرمز ده مش من ضيوف الدعوة دي."}, 404
 
-    """التصريح بيتعدّ بالدخلات مش بمرة واحدة.
-
-    الضيف اللي معاه ٣ دخلات بيدخل هو واتنين معاه، وكل مسحة بتستهلك
-    واحدة. لما تخلص الحالة بتبقى «مستخدم» والمسحة الجاية بترجّع تحذير
-    بدل ما تعدّي حد زيادة بصمت.
-    """
+    # التصريح بيتعدّ بالدخلات مش بمرة واحدة. الضيف اللي معاه ٣ دخلات
+    # بيدخل هو واتنين معاه، وكل مسحة بتستهلك واحدة. لما تخلص الحالة
+    # بتبقى «مستخدم» والمسحة الجاية بترجّع تحذير بدل ما تعدّي حد زيادة
+    # بصمت.
     allowed = guest.entries_allowed
     consumed = guest.consume_entry()
     when = timezone.localtime(guest.checked_in_at) if guest.checked_in_at else None
@@ -2452,11 +2450,14 @@ def checkin_scan(request, pk):
         error = ""
 
     rsvp = guest.latest_rsvp
-    return JsonResponse({
+    totals = invitation.guests.aggregate(
+        used=Sum("entries_used"), total=Sum("entries_allowed"))
+    return {
         "ok": True,
         # already = مسحة زيادة بعد ما التصريح خلص
         "already": not consumed,
         "error": error,
+        "id": guest.pk,
         "name": guest.name,
         "code": guest.pass_code,
         "group": guest.group_name,
@@ -2467,9 +2468,164 @@ def checkin_scan(request, pk):
         "status": guest.pass_status,
         "rsvp": rsvp.get_status_display() if rsvp else "",
         "at": when.strftime("%H:%M") if when else "",
-        "arrived": invitation.guests.aggregate(n=Sum("entries_used"))["n"] or 0,
-        "total": invitation.guests.aggregate(n=Sum("entries_allowed"))["n"] or 0,
+        "arrived": totals["used"] or 0,
+        "total": totals["total"] or 0,
+    }, 200
+
+
+@login_required
+@require_POST
+def checkin_scan(request, pk):
+    """يستقبل الرمز من الماسح ويسجّل الوصول."""
+    _staff_required(request)
+    invitation = get_object_or_404(Invitation, pk=pk)
+    payload, status = _scan_entry(invitation, request.POST.get("token"))
+    return JsonResponse(payload, status=status)
+
+
+# ==========================================================================
+# بوابة القاعة — رابط عام بالرمز، من غير حساب ولا كلمة سر
+# ==========================================================================
+def _venue_or_404(slug, token):
+    """يرجّع الدعوة لو رمز القاعة مظبوط. الرمز هو بيانات الاعتماد الوحيدة."""
+    token = (token or "").strip()
+    if not (20 <= len(token) <= 64):
+        raise Http404("رابط القاعة غير صالح.")
+    return get_object_or_404(
+        Invitation.objects.select_related("plan"),
+        slug=slug, venue_token=token,
+    )
+
+
+def _venue_row(guest) -> dict:
+    """صف الضيف زي ما القاعة بتشوفه — من غير أي بيانات مش محتاجينها."""
+    when = timezone.localtime(guest.checked_in_at) if guest.checked_in_at else None
+    return {
+        "id": guest.pk,
+        "name": guest.name,
+        "code": guest.pass_code,
+        "group": guest.group_name,
+        "allowed": guest.entries_allowed,
+        "used": guest.entries_used,
+        "left": guest.entries_left,
+        "status": guest.pass_status,
+        "checked_in": bool(guest.checked_in),
+        "at": when.strftime("%H:%M") if when else "",
+    }
+
+
+def _venue_stats(guests) -> dict:
+    """بيتحسب من القايمة اللي في الإيد — مش استعلام تاني على الداتابيز."""
+    arrived = sum(1 for g in guests if g.checked_in)
+    return {
+        "guests": len(guests),
+        "arrived": arrived,
+        "waiting": len(guests) - arrived,
+        "allowed": sum(g.entries_allowed for g in guests),
+        "used": sum(g.entries_used for g in guests),
+    }
+
+
+def _venue_payload(invitation) -> dict:
+    guests = list(invitation.guests.all())
+    return {"ok": True, "rows": [_venue_row(g) for g in guests],
+            "stats": _venue_stats(guests)}
+
+
+@require_GET
+@never_cache
+@ensure_csrf_cookie
+def invitation_venue(request, slug, token):
+    """بوابة القاعة — الرابط اللي بيتبعت للقاعة/الاستقبال.
+
+    مفيش حساب ولا كلمة سر: اللي معاه الرابط بيمسح أكواد الضيوف، ويشوف
+    مين دخل ومين لسه. صلاحيته على ضيوف الدعوة دي بس — مالوش أي وصول
+    للمحرر ولا للوحة التحكم ولا لبيانات العميل.
+
+    ``ensure_csrf_cookie`` مقصودة: الماسح بيبعت POST والكوكي دي هي
+    مصدر التوكن في الجافاسكربت المشترك.
+    """
+    invitation = _venue_or_404(slug, token)
+    guests = list(invitation.guests.all())
+
+    response = render(request, "public/venue.html", {
+        "invitation": invitation,
+        "rows": [_venue_row(g) for g in guests],
+        "stats": _venue_stats(guests),
+        "venue_url": request.build_absolute_uri(invitation.get_venue_url()),
+        "scan_url": reverse("invitation_venue_scan",
+                            kwargs={"slug": invitation.slug,
+                                    "token": invitation.venue_token}),
+        "state_url": reverse("invitation_venue_state",
+                             kwargs={"slug": invitation.slug,
+                                     "token": invitation.venue_token}),
+        "mark_url": reverse("invitation_venue_mark",
+                            kwargs={"slug": invitation.slug,
+                                    "token": invitation.venue_token}),
+        "event_at": (timezone.localtime(invitation.event_date)
+                     if invitation.event_date else None),
     })
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@require_GET
+@never_cache
+def invitation_venue_state(request, slug, token):
+    """كشف الضيوف الحيّ — الصفحة بتسحبه كل شوية.
+
+    لأن الباب ممكن يكون عليه أكتر من تليفون بيمسحوا في نفس الوقت،
+    والكشف لازم يبقى واحد عند الكل.
+    """
+    invitation = _venue_or_404(slug, token)
+    return JsonResponse(_venue_payload(invitation))
+
+
+@require_POST
+def invitation_venue_scan(request, slug, token):
+    """نفس مسح الاستقبال — بس الصلاحية من رمز الرابط مش من حساب."""
+    invitation = _venue_or_404(slug, token)
+    payload, status = _scan_entry(invitation, request.POST.get("token"))
+    return JsonResponse(payload, status=status)
+
+
+@require_POST
+def invitation_venue_mark(request, slug, token):
+    """تسجيل يدوي من الكشف — الـQR مارضيش يتمسح أو الضيف نسي تليفونه.
+
+    ``action=undo`` بترجّع دخلة واحدة: غلطة على الباب لازم يكون ليها
+    طريق رجوع، وإلا القاعة هتفضل تعدّي الناس من غير تسجيل عشان
+    ماتلخبطش العدّاد.
+    """
+    invitation = _venue_or_404(slug, token)
+    try:
+        guest_pk = int(request.POST.get("guest") or 0)
+    except (TypeError, ValueError):
+        raise Http404("ضيف غير معروف.")
+    guest = get_object_or_404(Guest, invitation=invitation, pk=guest_pk)
+
+    action = (request.POST.get("action") or "in").strip()
+    if action == "undo":
+        if guest.entries_used > 0:
+            guest.entries_used -= 1
+        if guest.entries_used == 0:
+            guest.checked_in = False
+            guest.checked_in_at = None
+        guest.save(update_fields=["entries_used", "checked_in",
+                                  "checked_in_at", "updated_at"])
+        error = ""
+    elif guest.entries_allowed <= 0:
+        error = "الضيف ده مالوش تصريح دخول."
+    elif not guest.consume_entry():
+        error = f"التصريح خلص — اتسجّل {guest.entries_used} من {guest.entries_allowed}."
+    else:
+        error = ""
+
+    payload = _venue_payload(invitation)
+    payload["error"] = error
+    payload["guest"] = _venue_row(guest)
+    return JsonResponse(payload)
 
 
 # ==========================================================================

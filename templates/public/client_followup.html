@@ -51,6 +51,27 @@
     {% endif %}
   </section>
 
+  {% if has_qr %}
+  <section class="client-followup-section client-followup-venue" aria-labelledby="venue-title">
+    <div class="client-followup-section-head">
+      <div><p class="client-followup-kicker">القاعة</p><h2 id="venue-title">رابط بوابة الدخول</h2></div>
+    </div>
+    <p class="client-followup-venue-note">
+      ابعتوا الرابط ده للقاعة أو لمنظّم الحفل. هيفتحه على تليفونه على الباب،
+      يمسح كود كل ضيف، ويشوف مين دخل ومين لسه — من غير ما يدخل على حسابكم
+      ولا يقدر يعدّل في الدعوة.
+    </p>
+    <div class="client-followup-venue-row">
+      <input class="client-followup-venue-input" type="text" value="{{ venue_url }}" readonly
+             onfocus="this.select()" dir="ltr" aria-label="رابط بوابة القاعة">
+      <button class="btn btn--gold btn--sm" type="button" data-copy="{{ venue_url }}">نسخ الرابط</button>
+      <a class="btn btn--ghost btn--sm" href="{{ venue_url }}" target="_blank" rel="noopener">فتح</a>
+      <a class="btn btn--ghost btn--sm" target="_blank" rel="noopener"
+         href="https://wa.me/?text={{ venue_url|urlencode }}">واتساب</a>
+    </div>
+  </section>
+  {% endif %}
+
   {% if has_rsvp %}
   <section class="client-followup-section" aria-labelledby="rsvp-title">
     <div class="client-followup-section-head">

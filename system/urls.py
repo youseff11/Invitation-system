@@ -97,6 +97,15 @@ urlpatterns = [
     path("i/<slug:slug>/rsvp/", views.invitation_rsvp, name="invitation_rsvp"),
     path("i/<slug:slug>/client/<str:token>/", views.invitation_client_followup,
          name="invitation_client_followup"),
+    # بوابة القاعة — الرمز هو بيانات الاعتماد، مفيش تسجيل دخول
+    path("i/<slug:slug>/venue/<str:token>/", views.invitation_venue,
+         name="invitation_venue"),
+    path("i/<slug:slug>/venue/<str:token>/state/", views.invitation_venue_state,
+         name="invitation_venue_state"),
+    path("i/<slug:slug>/venue/<str:token>/scan/", views.invitation_venue_scan,
+         name="invitation_venue_scan"),
+    path("i/<slug:slug>/venue/<str:token>/mark/", views.invitation_venue_mark,
+         name="invitation_venue_mark"),
     # الرابط الشخصي للضيف — الرمز هو بيانات الاعتماد
     path("i/<slug:slug>/g/<str:token>/", views.invitation_guest, name="invitation_guest"),
     path("i/<slug:slug>/qr.svg", views.invitation_qr, name="invitation_qr"),

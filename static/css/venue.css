@@ -1,0 +1,250 @@
+/* ================================================================
+   بوابة القاعة — شاشة الباب
+   ================================================================
+   الصفحة دي بتتفتح على تليفون في إضاءة قاعة، وواحد واقف بيمسك
+   الموبايل بإيد والكشف بالتانية. فالقياسات هنا أكبر من باقي الموقع
+   عن قصد: الأزرار تتضرب بالإبهام، والحالة تتقري من بعيد.
+   الملف ده بيتحمّل في الصفحة دي بس — مش في site.css.
+   ================================================================ */
+
+.venue-page { background: var(--bg); }
+
+.venue {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 26px 16px 60px;
+}
+
+/* ---------------------------------------------------- الترويسة */
+.venue-head { text-align: center; margin-bottom: 22px; }
+
+.venue-kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: .22em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.venue-head h1 {
+  margin: 0;
+  font-size: clamp(24px, 5vw, 34px);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.venue-head h1 span { color: var(--accent); font-weight: 400; }
+
+.venue-sub {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------- العدّادات */
+.venue-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.venue-stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  text-align: center;
+}
+
+.venue-stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.venue-stat strong {
+  font-size: clamp(22px, 5vw, 30px);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.venue-stat strong small { font-size: 13px; color: var(--muted); font-weight: 400; }
+
+.venue-stat--ok { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.venue-stat--ok strong { color: var(--ok); }
+
+@media (max-width: 620px) {
+  .venue-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------------------------------------------------- الماسح */
+.venue-scanner { margin-bottom: 26px; }
+
+.venue-support { font-size: 13px; margin: 10px 0 0; }
+
+.venue-manual { margin-top: 10px; }
+.venue-manual input {
+  flex: 1;
+  min-width: 200px;
+  /* الكود بيتكتب إنجليزي جوه صفحة عربية — من غير السطرين دول */
+  /* الشرطة بتقفز لأول الخانة */
+  direction: ltr;
+  text-align: left;
+}
+
+.venue-scan-stat { margin-bottom: 14px; }
+
+.venue-log-title { font-size: 14px; margin: 18px 0 8px; color: var(--text); }
+
+/* ---------------------------------------------------- الكشف */
+.venue-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.venue-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.venue-list-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-inline-end: auto;
+}
+
+.venue-filters {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.venue-tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.venue-tab.is-on { background: var(--accent-soft); color: var(--accent); }
+
+.venue-search {
+  flex: 1 1 200px;
+  min-width: 160px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.venue-search:focus { outline: none; border-color: var(--accent); }
+
+.venue-rows { display: flex; flex-direction: column; gap: 8px; }
+
+.venue-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.venue-row.is-in {
+  border-color: color-mix(in srgb, var(--ok) 40%, var(--line));
+  background: color-mix(in srgb, var(--ok) 6%, var(--bg));
+}
+
+.venue-row-main { min-width: 0; }
+.venue-row-main strong {
+  display: block;
+  font-size: 15px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-row-meta { font-size: 12px; color: var(--muted); }
+.venue-row-meta code {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.venue-row-count {
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.venue-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.venue-badge--in {
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  color: var(--ok);
+}
+
+.venue-row-actions { display: flex; gap: 6px; }
+
+.venue-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 26px 0;
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .venue-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 8px;
+  }
+  .venue-row-state { grid-column: 2; grid-row: 1; justify-self: end; }
+  .venue-row-count { grid-column: 1; grid-row: 2; }
+  .venue-row-actions { grid-column: 2; grid-row: 2; justify-self: end; }
+}
+
+/* ---------------------------------------------------- الذيل */
+.venue-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.venue-foot p { margin: 0; }

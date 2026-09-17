@@ -34,7 +34,9 @@
           <a class="btn btn--gold btn--sm" href="{% url 'invitation_editor' i.pk %}">المحرر</a>
           <a class="btn btn--ghost btn--sm" href="{% url 'guests' i.pk %}">الضيوف</a>
           <a class="btn btn--gold btn--sm" href="{{ i.get_client_followup_url }}" target="_blank" rel="noopener">متابعة العميل</a>
-          <button class="btn btn--ghost btn--sm" type="button" data-copy="{{ request.scheme }}://{{ request.get_host }}{{ i.get_client_followup_url }}" title="نسخ رابط متابعة العميل">نسخ الرابط</button>
+          <button class="btn btn--ghost btn--sm" type="button" data-copy="{{ request.scheme }}://{{ request.get_host }}{{ i.get_client_followup_url }}" title="نسخ رابط متابعة العميل">نسخ رابط العميل</button>
+          <a class="btn btn--gold btn--sm" href="{{ i.get_venue_url }}" target="_blank" rel="noopener">القاعة</a>
+          <button class="btn btn--ghost btn--sm" type="button" data-copy="{{ request.scheme }}://{{ request.get_host }}{{ i.get_venue_url }}" title="نسخ رابط بوابة القاعة — ابعته للقاعة">نسخ رابط القاعة</button>
           <a class="btn btn--ghost btn--sm" href="{{ i.get_absolute_url }}" target="_blank" rel="noopener">↗</a>
         </td>
       </tr>

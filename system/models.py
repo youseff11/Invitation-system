@@ -30,6 +30,15 @@ def _new_client_token() -> str:
     return secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:40]
 
 
+def _new_venue_token() -> str:
+    """رمز عشوائي طويل لرابط بوابة القاعة.
+
+    منفصل عن رمز العميل عن قصد: الرابطين بيروحوا لناس مختلفة، ولازم
+    نقدر نغيّر واحد من غير ما نكسر التاني.
+    """
+    return secrets.token_urlsafe(32).replace("-", "").replace("_", "")[:40]
+
+
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -353,6 +362,12 @@ class Invitation(TimeStampedModel):
         "رمز رابط العميل", max_length=40, unique=True, default=_new_client_token,
         editable=False, db_index=True,
     )
+    # رابط القاعة: صلاحيته على الضيوف بس — يمسح، يسجّل دخول، ويشوف
+    # مين دخل ومين لسه. مالوش أي وصول للمحرر ولا لبيانات العميل.
+    venue_token = models.CharField(
+        "رمز رابط القاعة", max_length=40, unique=True, default=_new_venue_token,
+        editable=False, db_index=True,
+    )
 
     status = models.CharField("الحالة", max_length=20,
                               choices=STATUS_CHOICES, default="draft", db_index=True)
@@ -391,6 +406,8 @@ class Invitation(TimeStampedModel):
             self.slug = secrets.token_urlsafe(8).replace("-", "").replace("_", "")[:12].lower()
         if not self.client_token:
             self.client_token = _new_client_token()
+        if not self.venue_token:
+            self.venue_token = _new_venue_token()
         if not self.title:
             names = " و ".join(n for n in [self.name_one, self.name_two] if n)
             self.title = names or f"دعوة {self.slug}"
@@ -404,6 +421,12 @@ class Invitation(TimeStampedModel):
     def get_client_followup_url(self) -> str:
         return reverse("invitation_client_followup", kwargs={
             "slug": self.slug, "token": self.client_token,
+        })
+
+    def get_venue_url(self) -> str:
+        """رابط بوابة القاعة — ده اللي بيتبعت للقاعة/الاستقبال."""
+        return reverse("invitation_venue", kwargs={
+            "slug": self.slug, "token": self.venue_token,
         })
 
     def get_document(self) -> dict:

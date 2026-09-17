@@ -5,6 +5,9 @@
   <h1>ضيوف {{ invitation.title }}</h1>
   <div class="toolbar" style="margin:0">
     <a class="btn btn--gold" href="{% url 'checkin' invitation.pk %}">📷 مسح الدخول</a>
+    <a class="btn btn--ghost" href="{{ invitation.get_venue_url }}" target="_blank" rel="noopener">🏛 بوابة القاعة</a>
+    <button class="btn btn--ghost" type="button" title="الرابط ده بيتبعت للقاعة — بيمسح ويسجّل الدخول من غير حساب"
+            data-copy="{{ request.scheme }}://{{ request.get_host }}{{ invitation.get_venue_url }}">نسخ رابط القاعة</button>
     {% if pass_enabled %}<a class="btn btn--ghost" href="{% url 'guest_qr_sheet' invitation.pk %}" target="_blank" rel="noopener">🖨 أكواد QR</a>{% endif %}
     <a class="btn btn--ghost" href="{% url 'guests_export' invitation.pk %}">⤓ إكسل للقاعة</a>
     <a class="btn btn--ghost" href="{% url 'invitation_editor' invitation.pk %}">↩ المحرر</a>

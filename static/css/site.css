@@ -1242,6 +1242,27 @@ html[lang="en"] .feature-en { display: inline; }
 
 .client-followup-qr { background: #fff; padding: 4px; border-radius: 6px; object-fit: contain; }
 
+/* ---- رابط بوابة القاعة جوه صفحة متابعة العميل.
+   العروسين بيبعتوه بنفسهم للقاعة، فلازم يبان زي كارت مستقل مش
+   زي سطر في جدول — ده أول حاجة بيدوّروا عليها يوم الفرح. */
+.client-followup-venue-note {
+  margin: 0; padding: 18px 22px 14px;
+  color: var(--muted); font-size: 13.5px; line-height: 1.8;
+}
+.client-followup-venue-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 0 22px 20px;
+}
+.client-followup-venue-input {
+  flex: 1 1 240px; min-width: 0; padding: 10px 13px; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--muted);
+}
+@media (max-width: 680px) {
+  .client-followup-venue-row { flex-direction: column; align-items: stretch; }
+  .client-followup-venue-row .btn { width: 100%; }
+}
+
 
 /* ================================================================
    الصفحة الرئيسية — الطبقة الاحترافية
