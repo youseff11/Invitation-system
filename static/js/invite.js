@@ -591,6 +591,9 @@
     audio.loop = cfg.loop !== false;
     audio.preload = "none";
     var autoplayOnce = null;
+    // مستمع «الافتتاحية اتفتحت» — متخزّن عشان ‎destroy‎ تشيله لو
+    // المحرر أعاد تهيئة الموسيقى قبل ما الافتتاحية تتفتح
+    var introOpenStart = null;
 
     var btn = doc.createElement("button");
 
@@ -623,19 +626,50 @@
       if (audio.paused) play(); else pause();
     });
 
-    if (cfg.autoplay) {
-
+    /* التشغيل التلقائي: بيشغّل، وبيسيب محاولة تانية عند أول تفاعل
+       لو المتصفح رفض. */
+    function beginAutoplay() {
       play();
       // بعض المتصفحات تسمح بالتشغيل بعد أول تفاعل من المستخدم
-            autoplayOnce = function () {
+      autoplayOnce = function () {
         if (audio.paused) play();
         doc.removeEventListener("click", autoplayOnce);
         doc.removeEventListener("touchstart", autoplayOnce);
         autoplayOnce = null;
       };
-      doc.addEventListener("click", autoplayOnce, { once: true });
-      doc.addEventListener("touchstart", autoplayOnce, { once: true });
+      /* تأخير تكّة واحدة: لما الدالة دي تتنادى من فتح الافتتاحية،
+         إحنا جوّه ضغطة لسه بتصعد للمستند — ولو ربطنا المستمع دلوقتي
+         نفس الضغطة هتصرفه (‎once‎) وتضيّع فرصة الإنقاذ الوحيدة. */
+      setTimeout(function () {
+        if (!autoplayOnce) return;
+        doc.addEventListener("click", autoplayOnce, { once: true });
+        doc.addEventListener("touchstart", autoplayOnce, { once: true });
+      }, 0);
+    }
 
+    if (cfg.autoplay) {
+      /* مع شاشة افتتاحية: الأغنية **مابتبدأش** غير لما الضيف يفتح
+         الدعوة. من غير الشرط ده كروم على أندرويد كان بيشغّلها أول ما
+         اللينك يتفتح — كروم بيدّي «ثقة تشغيل» للمواقع اللي الزائر
+         بيفتحها كتير، فصاحب الموقع بالذات بيلاقيها شغّالة على طول —
+         والضيف يسمع الأغنية والشاشة الافتتاحية لسه مقفولة قدامه.
+         سفاري على الآيفون بيرفض التشغيل أصلاً، عشان كده الفرق بين
+         الجهازين كان باين.
+
+         ‎initIntro.open()‎ بينده ‎__lbMusic.play()‎ جوّه مكدس الضغطة
+         نفسها وبعدها بيبعت ‎lb:intro-open‎، فالتشغيل مسموح على
+         الاتنين. و‎initMusic‎ بيتنفّذ قبل ‎initIntro‎ في قايمة
+         التهيئة، فالمستمع موجود قبل ما الإشارة تتبعت. */
+      var pendingIntro = doc.querySelector(".lb-intro:not(.is-open)");
+      if (pendingIntro) {
+        introOpenStart = function () {
+          introOpenStart = null;
+          beginAutoplay();
+        };
+        doc.addEventListener("lb:intro-open", introOpenStart, { once: true });
+      } else {
+        beginAutoplay();
+      }
     }
     window.__lbMusic = {
       play: play,
@@ -648,6 +682,12 @@
           doc.removeEventListener("click", autoplayOnce);
           doc.removeEventListener("touchstart", autoplayOnce);
           autoplayOnce = null;
+        }
+        // لو المحرر أعاد التهيئة والافتتاحية لسه مقفولة، المستمع
+        // القديم كان هيشغّل نسخة صوت مرمية لما تتفتح
+        if (introOpenStart) {
+          doc.removeEventListener("lb:intro-open", introOpenStart);
+          introOpenStart = null;
         }
         btn.remove();
         window.__lbMusic = null;
