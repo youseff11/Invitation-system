@@ -880,16 +880,43 @@
     var form = $("[data-rsvp-form]");
     if (!form) return;
 
+    /* المحرر بيستبدل عقدة الفورم مع كل تحديث معاينة، فبنربط الجديدة.
+       والحارس ده بيمنع إن العقدة اللي اتربطت خلاص تاخد مستمع تاني. */
+    if (form.dataset.lbBound) return;
+    form.dataset.lbBound = "1";
+
+    /* حالة «اتبعت»: الزر بياخد النص اللي المصمّم كاتبه والفورم بيتقفل.
+       متلمومة في دالة واحدة عشان المعاينة والإرسال الحقيقي يوروا نفس
+       رد الفعل بالظبط — ده أصلاً الغرض من المعاينة. */
+    function markSent(btn) {
+      if (btn) {
+        /* الزر كان بيفضل «جارٍ الإرسال…» حتى بعد ما الرد يتسجّل فعلاً
+           — الضيف يفتكر إن حاجة علّقت ويبعت تاني. */
+        btn.textContent = btn.dataset.sentLabel || "تم الإرسال ✓";
+        btn.classList.add("is-sent");
+      }
+      form.querySelectorAll("input, textarea, button").forEach(function (el) {
+        el.disabled = true;
+      });
+    }
+
     form.addEventListener("submit", function (e) {
+      var btn = form.querySelector('button[type="submit"]');
+
+      /* معاينة قالب من الصفحة الرئيسية، أو المحرر: مفيش دعوة ورا
+         الفورم يتسجّل فيها رد. بنوري نفس شكل الإرسال الناجح — ومعاه
+         سطر صغير إن دي معاينة، عشان اللي بيجرّب ما يفتكرش إنه أكّد
+         حضور في فرح حقيقي. */
       if (form.hasAttribute("data-demo")) {
         e.preventDefault();
-        showMessage("هذه معاينة — لن يُسجَّل الرد.");
+        markSent(btn);
+        showMessage("", true);
+        previewNote();
         return;
       }
       if (!window.fetch) return; // ارجع للإرسال العادي
 
       e.preventDefault();
-      var btn = form.querySelector('button[type="submit"]');
       if (btn) { btn.disabled = true; btn.dataset.old = btn.textContent; btn.textContent = "جارٍ الإرسال…"; }
 
       fetch(form.action, {
@@ -902,16 +929,7 @@
         .then(function (data) {
           if (data && data.ok) {
             showMessage(data.message || "", true);
-            /* الزر كان بيفضل «جارٍ الإرسال…» حتى بعد ما الرد يتسجّل
-               فعلاً — الضيف يفتكر إن حاجة علّقت ويبعت تاني. بنقفله على
-               نص «تم الإرسال» اللي المصمّم كاتبه في المحرر. */
-            if (btn) {
-              btn.textContent = btn.dataset.sentLabel || "تم الإرسال ✓";
-              btn.classList.add("is-sent");
-            }
-            form.querySelectorAll("input, textarea, button").forEach(function (el) {
-              el.disabled = true;
-            });
+            markSent(btn);
             if (data.pass) showPass(data.pass);
           } else {
             showMessage((data && data.error) || "تعذّر الإرسال، حاول مرة أخرى.");
@@ -979,6 +997,18 @@
       wrap.appendChild(row);
 
       wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    /* سطر صغير تحت رسالة النجاح في المعاينة. منفصل عن
+       ‎[data-rsvp-msg]‎ عن قصد: الرسالة دي نص بيتعدّل ويتترجم من
+       المحرر، والسطر ده مالوش دعوة في الدعوة الحقيقية أصلاً. */
+    function previewNote() {
+      if (form.querySelector("[data-rsvp-demo-note]")) return;
+      var note = doc.createElement("p");
+      note.className = "lb-form-note";
+      note.setAttribute("data-rsvp-demo-note", "");
+      note.textContent = "معاينة القالب — الرد مش بيتسجّل.";
+      form.appendChild(note);
     }
 
     function showMessage(text, success) {
@@ -1400,6 +1430,9 @@
 
     // الجديدة مالهاش مستمعين، فبنربطها تاني
     initIntro();
+    // نفس الحكاية مع فورم التأكيد — من غير كده «تم الإرسال» في معاينة
+    // المحرر بتشتغل أول مرة بس
+    initRsvp();
     initLanguageToggle();
     $$(".lb-anim").forEach(function (n) { n.classList.add("is-in"); });
   };

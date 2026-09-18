@@ -1091,6 +1091,15 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   text-align: center;
 }
 .lb-form-msg[hidden] { display: none; }
+/* سطر «دي معاينة» تحت رسالة النجاح — هامس عن قصد: الشكل المفروض يفضل
+   زي الدعوة الحقيقية، والسطر ده توضيح مش تنبيه. */
+.lb-form-note {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 0.74em;
+  text-align: center;
+  opacity: .8;
+}
 .lb-rsvp-closed { margin: 0; color: var(--muted); text-align: center; }
 
 /* ---- رسائل التهنئة تحت فورم التأكيد

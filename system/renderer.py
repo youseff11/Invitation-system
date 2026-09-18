@@ -669,7 +669,12 @@ def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None
                 "invitation_rsvp", kwargs={"slug": invitation.slug}
             )
         else:
+            # مفيش دعوة حقيقية ورا الفورم: معاينة قالب من الصفحة
+            # الرئيسية، أو المحرر. الفورم بيشتغل بالشكل بس — الجافاسكربت
+            # بيوري حالة «تم الإرسال» من غير ما يبعت حاجة، عشان اللي
+            # بيتفرج على القالب يشوف رد الفعل بتاعه زي ما هو.
             extras["rsvp_action"] = "#"
+            extras["rsvp_demo"] = True
 
         # لما الضيف يفتح رابطه الشخصي: نملأ بياناته ونحدّ المرافقين بحصته
         # هو تحديداً، مش بالحد العام بتاع البلوك.
@@ -1392,7 +1397,9 @@ _PREVIEW_KEYS = (
 
 # لازم يتغيّر مع أي تغيير في ناتج العرض، وإلا المعاينات المخزّنة بتترد
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
-_PREVIEW_RENDER_REVISION = "2026-09-06-drop-empty-branding-v20"
+# بيتزوّد كل ما رندر القالب يتغيّر: معاينة القوالب متخزّنة، والتوقيع
+# بيتحسب على المستند بس — فتعديل في قالب البلوك مش هيبطّل الكاش لوحده.
+_PREVIEW_RENDER_REVISION = "2026-09-18-rsvp-demo-sent-v21"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:

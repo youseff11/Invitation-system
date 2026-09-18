@@ -13,7 +13,7 @@
       {% else %}أهلاً {{ guest.name }} 🤍{% endif %}
     </p>
     {% endif %}
-    <form class="lb-form" method="post" action="{{ rsvp_action|default:'#' }}" data-rsvp-form{% if editable %} data-demo="1"{% endif %}>
+    <form class="lb-form" method="post" action="{{ rsvp_action|default:'#' }}" data-rsvp-form{% if rsvp_demo %} data-demo="1"{% endif %}>
       {% if csrf_token %}<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">{% endif %}
       {% if guest %}<input type="hidden" name="guest_token" value="{{ guest.token }}">{% endif %}
       <input type="text" name="website" class="lb-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
