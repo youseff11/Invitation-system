@@ -38,6 +38,26 @@
         <input type="number" name="companions" min="0" max="{{ props.max_companions }}" value="0" inputmode="numeric"></label>{% endif %}{% endif %}
       {% if props.ask_message %}<label class="lb-field">{% if props.message_label %}<span data-ts="message_label">{{ props.message_label }}</span>{% endif %}
         <textarea name="message" rows="3" maxlength="600">{{ guest_answered.message|default:'' }}</textarea></label>{% endif %}
+      {# الأسئلة الإضافية اللي صاحب الدعوة ضافها. جاهزة من ‎renderer‎: #}
+      {# الاسم والاختيارات والإجابة السابقة كلها متحسوبة هناك. #}
+      {% for q in rsvp_questions %}
+      <div class="lb-field lb-q">
+        <span>{{ q.label }}{% if q.required %} <em class="lb-q-req">*</em>{% endif %}</span>
+        {% if q.hint %}<small class="lb-q-hint">{{ q.hint }}</small>{% endif %}
+        {% if q.kind == 'choice' %}
+        <div class="lb-choices">
+          {% for o in q.options %}<label>
+            <input type="{% if q.multiple %}checkbox{% else %}radio{% endif %}"
+                   name="{{ q.name }}" value="{{ o.label }}"{% if o.checked %} checked{% endif %}{% if q.required and not q.multiple and forloop.first %} required{% endif %}><span>{{ o.label }}</span>
+          </label>{% endfor %}
+        </div>
+        {% elif q.kind == 'textarea' %}
+        <textarea name="{{ q.name }}" rows="3" maxlength="600"{% if q.required %} required{% endif %}>{{ q.value }}</textarea>
+        {% else %}
+        <input type="text" name="{{ q.name }}" maxlength="200" value="{{ q.value }}"{% if q.required %} required{% endif %}>
+        {% endif %}
+      </div>
+      {% endfor %}
       {# ‎data-sent-label‎: الجافاسكربت مابيشوفش خصائص البلوك، فالنص #}
       {# بيوصله من هنا — وبيفضل قابل للتعديل والترجمة زي أي نص تاني. #}
       <button type="submit" class="lb-btn lb-btn--solid lb-btn--block" data-ts="submit_label"

@@ -709,6 +709,13 @@ class Guest(TimeStampedModel):
         r = self.latest_rsvp
         return r.status if r else ""
 
+    @property
+    def rsvp_answers(self) -> list:
+        """إجابات الأسئلة الإضافية في آخر رد للضيف — للكشف والتصدير."""
+        r = self.latest_rsvp
+        rows = getattr(r, "answers", None) if r else None
+        return rows if isinstance(rows, list) else []
+
 
 # --------------------------------------------------------------------------
 class RSVPResponse(TimeStampedModel):
@@ -726,6 +733,13 @@ class RSVPResponse(TimeStampedModel):
     companions = models.PositiveIntegerField("عدد المرافقين", default=0,
                                              validators=[MinValueValidator(0)])
     message = models.TextField("رسالة", blank=True)
+    # إجابات الأسئلة الإضافية اللي صاحب الدعوة ضافها لفورم التأكيد:
+    # ‎[{"i": 0, "q": "السؤال", "a": "الإجابة"}]‎
+    #
+    # نص السؤال بيتخزّن مع الإجابة مش رقمه بس، عشان لو السؤال اتشال أو
+    # اتغيّر بعد كده يفضل الرد مفهوم — كشف قديم مكتوب فيه «٣: أيوه»
+    # مالوش أي قيمة.
+    answers = models.JSONField("إجابات إضافية", default=list, blank=True)
     is_approved = models.BooleanField("معتمدة للعرض", default=True)
     ip_hash = models.CharField(max_length=64, blank=True)
 

@@ -590,6 +590,72 @@ def _approved_wishes(invitation, limit) -> list:
 
 
 # --------------------------------------------------------------------------
+# فاصل إجابات السؤال اللي بيقبل أكتر من اختيار. نفس الفاصل مستخدم في
+# ‎views.invitation_rsvp‎ وقت التخزين — لو اتغيّر هنا لازم يتغيّر هناك.
+RSVP_MULTI_SEP = "، "
+
+
+def _rsvp_questions(props: dict, previous=None) -> list[dict]:
+    """أسئلة فورم التأكيد جاهزة للعرض، ومعاها إجابة الضيف السابقة.
+
+    القالب مايقدرش يدوّر في قايمة بمفتاح متغيّر، والاسم اللي بيتبعت
+    للسيرفر (‎q<رقم>‎) لازم يتولّد من مكان واحد — فالتجهيز كله هنا.
+
+    الرقم هو الرابط بين السؤال وإجابته: بنطابق بيه الأول، وبنرجع لنص
+    السؤال لو الترتيب اتغيّر بعد ما الضيف رد.
+    """
+    rows = getattr(previous, "answers", None)
+    by_index: dict[int, str] = {}
+    by_label: dict[str, str] = {}
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            answer = str(row.get("a") or "")
+            if isinstance(row.get("i"), int):
+                by_index[row["i"]] = answer
+            label = str(row.get("q") or "").strip()
+            if label:
+                by_label[label] = answer
+
+    out: list[dict] = []
+    for index, question in enumerate(props.get("questions") or []):
+        if not isinstance(question, dict):
+            continue
+        label = str(question.get("label") or "").strip()
+        if not label:
+            continue                          # سؤال من غير نص مايتعرضش
+        kind = question.get("kind") or "choice"
+        if kind not in {"choice", "text", "textarea"}:
+            kind = "choice"
+        answered = by_index.get(index, by_label.get(label, ""))
+
+        options = []
+        if kind == "choice":
+            picked = {p.strip() for p in answered.split(RSVP_MULTI_SEP.strip()) if p.strip()}
+            for option in question.get("options") or []:
+                if not isinstance(option, dict):
+                    continue
+                text = str(option.get("label") or "").strip()
+                if text:
+                    options.append({"label": text, "checked": text in picked})
+            if not options:
+                continue                      # اختيارات من غير اختيارات
+
+        out.append({
+            "index": index,
+            "name": f"q{index}",
+            "label": label,
+            "kind": kind,
+            "hint": str(question.get("hint") or "").strip(),
+            "required": bool(question.get("required")),
+            "multiple": bool(question.get("multiple")),
+            "options": options,
+            "value": "" if kind == "choice" else answered,
+        })
+    return out
+
+
 def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None) -> dict:
     """بيانات إضافية يحتاجها بلوك معيّن ولا تأتي من المستند."""
     btype = block["type"]
@@ -613,6 +679,9 @@ def _block_extras(block: dict, ctx: dict, invitation, editable: bool, guest=None
                 int(props.get("max_companions") or 0), int(guest.plus_ones_allowed or 0)
             )
             extras["guest_answered"] = guest.latest_rsvp
+
+        extras["rsvp_questions"] = _rsvp_questions(
+            props, extras.get("guest_answered"))
 
         closed = False
         deadline = props.get("deadline")

@@ -1366,6 +1366,24 @@ html[lang="en"] .feature-en { display: inline; }
 
 .client-followup-qr { background: #fff; padding: 4px; border-radius: 6px; object-fit: contain; }
 
+/* إجابات الأسئلة الإضافية تحت رسالة الضيف في لوحة التحكم */
+.rsvp-answer { display: block; margin-top: 7px; font-size: 12.5px; }
+.rsvp-answer b {
+  display: block; color: var(--muted); font-weight: 400;
+  font-size: 11px; letter-spacing: .04em;
+}
+
+/* ---- إجابات الأسئلة الإضافية في كشف الردود.
+   السؤال فوق والإجابة تحته: سطر واحد بنقطتين بيبقى مقروء لسؤال واحد
+   وبيتحوّل عجينة لما يبقوا تلاتة. */
+.client-followup-answers { white-space: normal; max-width: 300px; }
+.client-followup-answer { display: block; margin-bottom: 7px; font-size: 13px; }
+.client-followup-answer:last-child { margin-bottom: 0; }
+.client-followup-answer b {
+  display: block; color: var(--muted); font-weight: 400;
+  font-size: 11.5px; letter-spacing: .04em;
+}
+
 /* ---- رابط بوابة القاعة جوه صفحة متابعة العميل.
    العروسين بيبعتوه بنفسهم للقاعة، فلازم يبان زي كارت مستقل مش
    زي سطر في جدول — ده أول حاجة بيدوّروا عليها يوم الفرح. */

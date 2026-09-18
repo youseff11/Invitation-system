@@ -991,6 +991,49 @@ register(
 # فالجزء الأول كله كتابة والباقي كله إعدادات.
 RSVP_SETTINGS = "⚙ إعدادات RSVP"
 
+# ---- أسئلة إضافية في فورم التأكيد
+# كل فرح بيسأل حاجة مختلفة: «هتيجي بعربية؟»، «وجبة نباتية؟»، «مين
+# معاك؟». بدل حقل جاهز لكل واحدة، صاحب الدعوة بيضيف أسئلته بنفسه
+# ويختار شكل الإجابة.
+#
+# النوع بيتحدد من زرار الإضافة ومابيتغيّرش بعدها (نفس أسلوب عناصر
+# ‎text_overlays‎)، عشان المحرر ما يضطرش يعيد بناء الكارت — والحقول
+# اللي مالهاش لازمة للنوع ده بتتخطّى بـ‎show_kind‎.
+RSVP_QUESTION_KINDS = [
+    opt("choice", "اختيارات"),
+    opt("text", "إجابة قصيرة"),
+    opt("textarea", "إجابة مقالية"),
+]
+
+RSVP_QUESTIONS_FIELD = field(
+    "questions", "أسئلة إضافية", "list", [], group=RSVP_SETTINGS,
+    add_label="إضافة سؤال",
+    help_text="بتتضاف تحت الفورم، وإجاباتها بتظهر في كشف الردود.",
+    fields=[
+        field("kind", "نوع الإجابة", "select", "choice",
+              options=RSVP_QUESTION_KINDS, editor_hidden=True, translate=False),
+        field("label", "السؤال", "text", ""),
+        field("hint", "ملاحظة صغيرة تحت السؤال", "text", ""),
+        # قايمة جوّه قايمة: زرار «＋ إضافة اختيار» بيطلع لوحده من محرر
+        # القوايم — مفيش كود خاص ليه.
+        # ‎add_label‎ من غير «＋» — المحرر بيحطّها قدامها بنفسه
+        _only(field("options", "الاختيارات", "list", [],
+                    add_label="إضافة اختيار",
+                    fields=[field("label", "الاختيار", "text", "")]), "choice"),
+        _only(field("multiple", "يسمح بأكتر من اختيار", "toggle", False), "choice"),
+        field("required", "إجباري", "toggle", False),
+    ],
+)
+RSVP_QUESTIONS_FIELD["add_variants"] = [
+    {"key": "kind", "value": "choice", "label": "＋ سؤال اختيارات",
+     "seed": {"label": "سؤال جديد",
+              "options": [{"label": "اختيار ١"}, {"label": "اختيار ٢"}]}},
+    {"key": "kind", "value": "text", "label": "＋ إجابة قصيرة",
+     "seed": {"label": "سؤال جديد"}},
+    {"key": "kind", "value": "textarea", "label": "＋ إجابة مقالية",
+     "seed": {"label": "سؤال جديد"}},
+]
+
 register(
     "rsvp", "تأكيد الحضور", icon="✓", category="تفاعلي", feature="rsvp", singleton=True,
     description="نموذج يملؤه الضيف لتأكيد حضوره",
@@ -1031,6 +1074,7 @@ register(
         field("max_companions", "أقصى عدد مرافقين", "number", 5,
               group=RSVP_SETTINGS, minimum=0, maximum=20),
         field("ask_message", "السؤال عن رسالة", "toggle", True, group=RSVP_SETTINGS),
+        RSVP_QUESTIONS_FIELD,
         field("show_maybe", "إظهار خيار «غير متأكد»", "toggle", True,
               group=RSVP_SETTINGS),
         # تصريح الدخول (QR) بيتولّد بعد تأكيد الحضور. مش كل فرح بيمسح
@@ -1980,15 +2024,38 @@ def translatable_entries(doc: dict, data: dict | None = None) -> list[dict]:
                     if not isinstance(item, dict):
                         continue
                     for sub in fspec.get("fields") or []:
-                        if sub["type"] not in TRANSLATABLE_TYPES:
+                        if sub["type"] in TRANSLATABLE_TYPES:
+                            row = _entry(
+                                f"{bid}.{fspec['key']}.{i}.{sub['key']}",
+                                f"{fspec['label']} {i + 1} — {sub['label']}",
+                                item.get(sub["key"]), group,
+                            )
+                            if row:
+                                rows.append(row)
                             continue
-                        row = _entry(
-                            f"{bid}.{fspec['key']}.{i}.{sub['key']}",
-                            f"{fspec['label']} {i + 1} — {sub['label']}",
-                            item.get(sub["key"]), group,
-                        )
-                        if row:
-                            rows.append(row)
+                        # قايمة جوّه قايمة — اختيارات سؤال في فورم
+                        # التأكيد مثلاً. كلام بيشوفه الضيف زي أي كلام،
+                        # فلازم يوصل جدول الترجمة هو كمان.
+                        if sub["type"] != "list":
+                            continue
+                        leaves = item.get(sub["key"])
+                        if not isinstance(leaves, list):
+                            continue
+                        for j, leaf in enumerate(leaves[:40]):
+                            if not isinstance(leaf, dict):
+                                continue
+                            for deep in sub.get("fields") or []:
+                                if deep["type"] not in TRANSLATABLE_TYPES:
+                                    continue
+                                row = _entry(
+                                    f"{bid}.{fspec['key']}.{i}."
+                                    f"{sub['key']}.{j}.{deep['key']}",
+                                    f"{fspec['label']} {i + 1} — "
+                                    f"{sub['label']} {j + 1}",
+                                    leaf.get(deep["key"]), group,
+                                )
+                                if row:
+                                    rows.append(row)
     return rows
 
 
@@ -2075,6 +2142,15 @@ def apply_i18n(doc: dict, lang: str | None = None) -> dict:
                 continue
             if isinstance(item, dict) and parts[3] in item:
                 item[parts[3]] = value
+        elif len(parts) == 6 and isinstance(props.get(parts[1]), list):
+            # ‎<block>.<prop>.<i>.<sub>.<j>.<key>‎ — قايمة جوّه قايمة
+            try:
+                item = props[parts[1]][int(parts[2])]
+                leaf = item[parts[3]][int(parts[4])]
+            except (ValueError, IndexError, KeyError, TypeError):
+                continue
+            if isinstance(leaf, dict) and parts[5] in leaf:
+                leaf[parts[5]] = value
 
     for bid, fields in pending.items():
         if bid == "__settings__":

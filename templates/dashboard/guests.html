@@ -97,7 +97,10 @@
             <td class="cell--title">{{ r.name }}</td>
             <td data-label="الحالة"><span class="pill pill--{{ r.status }}">{{ r.get_status_display }}</span></td>
             <td data-label="مرافقون">{{ r.companions }}</td>
-            <td class="cell--wide" data-label="الرسالة" style="white-space:normal;max-width:280px">{{ r.message|default:'—' }}</td>
+            <td class="cell--wide" data-label="الرسالة" style="white-space:normal;max-width:280px">
+              {{ r.message|default:'—' }}
+              {% for a in r.answers %}<span class="rsvp-answer"><b>{{ a.q }}</b>{{ a.a }}</span>{% endfor %}
+            </td>
             <td data-label="التاريخ">{{ r.created_at|date:'Y/m/d H:i' }}</td>
           </tr>
           {% empty %}<tr class="is-empty"><td colspan="5" class="empty">لا توجد ردود بعد.</td></tr>{% endfor %}

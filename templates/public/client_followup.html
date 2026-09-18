@@ -80,7 +80,7 @@
     </div>
     <div class="client-followup-table-wrap">
       <table class="client-followup-table">
-        <thead><tr><th>الاسم</th><th>الحالة</th><th>المرافقون</th><th>التعليق</th><th>التاريخ</th></tr></thead>
+        <thead><tr><th>الاسم</th><th>الحالة</th><th>المرافقون</th><th>التعليق</th>{% if has_answers %}<th>إجابات الأسئلة</th>{% endif %}<th>التاريخ</th></tr></thead>
         <tbody>
           {% for row in rsvp_rows %}
           <tr>
@@ -88,9 +88,13 @@
             <td><span class="client-followup-pill client-followup-pill--{{ row.status_code }}">{{ row.status }}</span></td>
             <td>{{ row.companions }}</td>
             <td class="client-followup-message">{% if row.message %}{{ row.message }}{% else %}—{% endif %}</td>
+            {% if has_answers %}<td class="client-followup-answers">
+              {% for a in row.answers %}<span class="client-followup-answer"><b>{{ a.q }}</b>{{ a.a }}</span>
+              {% empty %}—{% endfor %}
+            </td>{% endif %}
             <td>{{ row.created_at|date:"Y/m/d — g:i a" }}</td>
           </tr>
-          {% empty %}<tr><td colspan="5" class="client-followup-empty">لسه مفيش ردود حضور.</td></tr>{% endfor %}
+          {% empty %}<tr><td colspan="{% if has_answers %}6{% else %}5{% endif %}" class="client-followup-empty">لسه مفيش ردود حضور.</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>

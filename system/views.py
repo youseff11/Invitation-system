@@ -518,14 +518,24 @@ def invitation_client_followup(request, slug, token):
     )
     guests = list(invitation.guests.all()) if has_qr else []
 
+    def _answers(response) -> list:
+        rows = response.answers
+        return [r for r in rows if isinstance(r, dict) and r.get("q")] \
+            if isinstance(rows, list) else []
+
     rsvp_rows = [{
         "name": response.name,
         "status": response.get_status_display(),
         "status_code": response.status,
         "companions": response.companions,
         "message": response.message.strip(),
+        "answers": _answers(response),
         "created_at": response.created_at,
     } for response in rsvps] if has_rsvp else []
+
+    # عمود الأسئلة بيظهر بس لو في أسئلة فعلاً — مافيش داعي لعمود فاضي
+    # في كل دعوة ماحدش ضاف فيها سؤال.
+    has_answers = any(row["answers"] for row in rsvp_rows)
 
     message_rows = [{
         "name": response.name,
@@ -565,6 +575,7 @@ def invitation_client_followup(request, slug, token):
         "has_rsvp": has_rsvp,
         "has_qr": has_qr,
         "has_guestbook": has_guestbook,
+        "has_answers": has_answers,
         "rsvp_rows": rsvp_rows,
         "message_rows": message_rows,
         "qr_rows": qr_rows,
@@ -582,6 +593,57 @@ def invitation_client_followup(request, slug, token):
     response["X-Robots-Tag"] = "noindex, nofollow"
     response["Cache-Control"] = "private, no-store"
     return response
+
+
+MAX_RSVP_ANSWERS = 30
+# نفس الفاصل المستخدم في ‎renderer.RSVP_MULTI_SEP‎ — الاتنين لازم
+# يتغيّروا مع بعض، وإلا الاختيارات المحفوظة مش هتترجع متعلّمة تاني.
+RSVP_MULTI_SEP = "، "
+
+
+def _rsvp_answers(request, rsvp_props: dict) -> list[dict]:
+    """إجابات الأسئلة الإضافية من الفورم.
+
+    الأسئلة نفسها بتتقرا من **مستند الدعوة** مش من المدخلات: اللي
+    بيتبعت من المتصفح هو الإجابة بس، وأي اختيار مش من اختيارات السؤال
+    بيتشال. طلب متلاعب فيه مايقدرش يخترع سؤال ولا يحشر نص مكانه.
+
+    نص السؤال بيتخزّن مع الإجابة (مش رقمه بس) عشان الرد يفضل مفهوم لو
+    السؤال اتشال أو اتغيّر بعدها.
+    """
+    out: list[dict] = []
+    for index, question in enumerate(rsvp_props.get("questions") or []):
+        if not isinstance(question, dict):
+            continue
+        label = str(question.get("label") or "").strip()
+        if not label:
+            continue
+        kind = question.get("kind") or "choice"
+        name = f"q{index}"
+
+        if kind == "choice":
+            allowed = [
+                str(o.get("label") or "").strip()
+                for o in (question.get("options") or [])
+                if isinstance(o, dict) and str(o.get("label") or "").strip()
+            ]
+            if not allowed:
+                continue
+            if question.get("multiple"):
+                picked = [v for v in request.POST.getlist(name) if v in allowed]
+                value = RSVP_MULTI_SEP.join(picked[:20])
+            else:
+                raw = (request.POST.get(name) or "").strip()
+                value = raw if raw in allowed else ""
+        else:
+            limit = 600 if kind == "textarea" else 200
+            value = (request.POST.get(name) or "").strip()[:limit]
+
+        if value:
+            out.append({"i": index, "q": label[:200], "a": value})
+        if len(out) >= MAX_RSVP_ANSWERS:
+            break
+    return out
 
 
 @require_POST
@@ -643,6 +705,7 @@ def invitation_rsvp(request, slug):
         companions = 0
 
     message_text = (request.POST.get("message") or "").strip()[:600]
+    answers = _rsvp_answers(request, rsvp_props)
     ip_hash = _client_hash(request)
 
     # التعرّف على الضيف الأول: لازم يتحدد قبل فحص التكرار، لأن الضيف
@@ -676,13 +739,18 @@ def invitation_rsvp(request, slug):
         previous.companions = companions
         if message_text:
             previous.message = message_text
+        # ماعندناش إجابات جديدة؟ نسيب القديمة. الضيف اللي بيرجع يغيّر
+        # «هحضر» لـ«معتذر» مش مفروض يفقد إجاباته لأنه ما لمسش الأسئلة.
+        if answers:
+            previous.answers = answers
         previous.ip_hash = ip_hash
         previous.save(update_fields=["name", "phone", "status", "companions",
-                                     "message", "ip_hash", "updated_at"])
+                                     "message", "answers", "ip_hash", "updated_at"])
     else:
         RSVPResponse.objects.create(
             invitation=invitation, guest=guest, name=name, phone=phone,
-            status=status, companions=companions, message=message_text, ip_hash=ip_hash,
+            status=status, companions=companions, message=message_text,
+            answers=answers, ip_hash=ip_hash,
         )
 
     success = rsvp_props.get("success_message") or "شكراً لكم — تم تسجيل ردكم."

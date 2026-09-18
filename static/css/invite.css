@@ -1034,6 +1034,11 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   box-shadow: 0 0 0 3px var(--accent-20);
 }
 .lb-field textarea { resize: vertical; }
+/* الأسئلة الإضافية — نفس شكل باقي حقول الفورم، بمسافة أوضح فوقها
+   عشان السؤال يبان لوحده مش امتداد للحقل اللي فوقه. */
+.lb-q { margin-top: 4px; }
+.lb-q-hint { font-size: 0.74em; color: var(--muted); opacity: .85; margin-top: -3px; }
+.lb-q-req { color: var(--accent); font-style: normal; }
 .lb-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .lb-choices label {
   display: inline-flex;
