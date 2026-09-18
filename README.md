@@ -212,3 +212,4 @@ Core/
     ├── css/  invite.css · editor.css · site.css
     └── js/   invite.js  · editor.js  · site.js
 ```
+python manage.py fix_posters --apply

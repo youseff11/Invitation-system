@@ -1173,8 +1173,14 @@ def dashboard_intros(request):
                     clip.seconds = secs or 0
                     # Poster ثابت للموبايل؛ لو ffmpeg غير متاح يظل
                     # fallback المتصفح يعمل عند اختيار الفيديو من المكتبة.
+                    #
+                    # الفريم بيتاخد من ‎upload‎ (قبل الضغط) مش من
+                    # ‎stored‎: الضغط بينزّل الارتفاع لـ٧٢٠p وبيرمّز
+                    # بـCRF ٣٠، فالغلاف كان بيورّث تهويش الضغط وهو
+                    # أصلاً بيتعرض ملء الشاشة قبل ما الفيديو يبدأ.
                     if not clip.poster:
-                        generated_poster = video.make_thumbnail(stored)
+                        generated_poster = (video.make_thumbnail(upload)
+                                            or video.make_thumbnail(stored))
                         if generated_poster:
                             clip.poster = generated_poster
                 except Exception:
@@ -1859,7 +1865,9 @@ def _upload_asset_for_editor(request, *, invitation=None, template=None):
     # المتصفح يرسل أول فريم كصورة JPEG عندما لا يتوفر ffmpeg على السيرفر.
     if kind == "video":
         client_thumb = request.FILES.get("thumb")
-        if client_thumb and client_thumb.size <= 2 * 1024 * 1024:
+        # الحد ٨ ميجا مش ٢: نسخة المتصفح بقت بمقاس الفيديو الأصلي عشان
+        # الغلاف ما يطلعش مبكسل، وفريم ١٩٢٠px بجودة عالية ممكن يعدّي ٢ ميجا.
+        if client_thumb and client_thumb.size <= 8 * 1024 * 1024:
             thumb_type = (getattr(client_thumb, "content_type", "") or "").lower()
             if thumb_type in {"image/jpeg", "image/png", "image/webp"}:
                 try:
@@ -1904,13 +1912,25 @@ def _upload_asset_for_editor(request, *, invitation=None, template=None):
             upload.seek(0)
             stored, seconds = upload, 0.0
 
-        # صورة أول فريم مستقلة للبطاقة — فشلها لا يمنع رفع الفيديو.
-        # نستخدم نسخة المتصفح أولاً؛ ونحاول ffmpeg فقط إذا لم تصل صورة.
-        if thumb is None:
-            try:
-                thumb = video.make_thumbnail(stored)
-            except Exception:
-                thumb = None
+        # صورة أول فريم مستقلة — فشلها لا يمنع رفع الفيديو.
+        #
+        # ffmpeg **الأول** مش الآخر: الصورة دي مش بطاقة مكتبة بس، هي
+        # كمان غلاف (poster) الافتتاحية اللي بيتعرض ملء الشاشة. نسخة
+        # المتصفح مرسومة على canvas بحد ٦٤٠px، يعني فيديو ١٠٨٠×١٩٢٠
+        # بيطلع غلافه ٣٦٠×٦٤٠ وبيتمطّ تلات أضعاف على شاشة التليفون —
+        # وده اللي كان باين مبكسل. ffmpeg بياخد الفريم من الفيديو نفسه
+        # بمقاسه الأصلي، ونسخة المتصفح بتفضل fallback لو ffmpeg مش
+        # متثبّت على الاستضافة.
+        #
+        # والفريم بيتاخد من ‎upload‎ (الملف الأصلي) مش من ‎stored‎:
+        # ‎prepare_for_stream‎ مابتعيدش الترميز دلوقتي، بس لو اتغيّرت
+        # بعدين الغلاف يفضل من غير فقد جودة.
+        try:
+            source_thumb = video.make_thumbnail(upload) or video.make_thumbnail(stored)
+        except Exception:
+            source_thumb = None
+        if source_thumb is not None:
+            thumb = source_thumb
 
     try:
         asset = Asset.objects.create(

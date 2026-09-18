@@ -5578,13 +5578,19 @@
         captureLibraryFrame = function () {
           if (!media.videoWidth || !media.videoHeight) return;
           try {
-            var maxEdge = 640;
+            /* الفريم ده مش صورة في الكارت بس — لو الأصل مالوش غلاف
+               محفوظ، ‎libraryPoster‎ بتاخده وبيتخزّن في
+               ‎settings.intro_poster‎ ويتعرض ملء الشاشة. ٦٤٠px كانت
+               بتطلّع غلاف ٣٦٠×٦٤٠ مبكسل.
+               ١٤٤٠ مش ١٩٢٠ هنا عن قصد: ده data URL بيتحفظ جوّه
+               المستند نفسه، فالحجم بيتحسب مرتين. */
+            var maxEdge = 1440;
             var ratio = Math.min(1, maxEdge / Math.max(media.videoWidth, media.videoHeight));
             var canvas = doc.createElement("canvas");
             canvas.width = Math.max(1, Math.round(media.videoWidth * ratio));
             canvas.height = Math.max(1, Math.round(media.videoHeight * ratio));
             canvas.getContext("2d").drawImage(media, 0, 0, canvas.width, canvas.height);
-            media.poster = canvas.toDataURL("image/jpeg", .82);
+            media.poster = canvas.toDataURL("image/jpeg", .9);
             media.classList.add("ed-video-poster-ready");
           } catch (ignore) {
             // الفيديوهات الخارجية قد تمنع canvas؛ poster المحفوظ يظل مستخدماً إن وُجد.
@@ -5857,13 +5863,18 @@
       function capture() {
         if (!preview.videoWidth || !preview.videoHeight) return;
         try {
-          var maxEdge = 640;
+          /* الصورة دي غلاف (poster) بيتعرض **ملء الشاشة** قبل ما
+             الفيديو يشتغل — مش أيقونة في المكتبة. الحد كان ٦٤٠px،
+             فالفيديو ١٠٨٠×١٩٢٠ غلافه كان بيطلع ٣٦٠×٦٤٠ ويتمطّ تلات
+             أضعاف على تليفون: مبكسل وباين. ١٩٢٠ = مقاس الفيديو نفسه،
+             و‎Math.min(1, …)‎ بتمنع تكبير الفيديو الأصغر من الحد. */
+          var maxEdge = 1920;
           var ratio = Math.min(1, maxEdge / Math.max(preview.videoWidth, preview.videoHeight));
           var canvas = doc.createElement("canvas");
           canvas.width = Math.max(1, Math.round(preview.videoWidth * ratio));
           canvas.height = Math.max(1, Math.round(preview.videoHeight * ratio));
           canvas.getContext("2d").drawImage(preview, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob(function (blob) { finish(blob); }, "image/jpeg", .82);
+          canvas.toBlob(function (blob) { finish(blob); }, "image/jpeg", .92);
         } catch (ignore) {
           finish(null);
         }
