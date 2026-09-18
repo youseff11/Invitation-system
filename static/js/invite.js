@@ -662,11 +662,19 @@
          التهيئة، فالمستمع موجود قبل ما الإشارة تتبعت. */
       var pendingIntro = doc.querySelector(".lb-intro:not(.is-open)");
       if (pendingIntro) {
+        /* إشارتين، اللي يوصل الأول بيشغّل:
+           ‎lb:intro-play‎ — الضيف داس «تشغيل» والافتتاحية صامتة،
+             فالأغنية تبدأ مع الفيديو من أول لحظة.
+           ‎lb:intro-open‎ — الافتتاحية خلصت أو اتفتحت على طول (صورة،
+             فيديو بصوت، أو عدّاد). */
         introOpenStart = function () {
+          doc.removeEventListener("lb:intro-play", introOpenStart);
+          doc.removeEventListener("lb:intro-open", introOpenStart);
           introOpenStart = null;
           beginAutoplay();
         };
-        doc.addEventListener("lb:intro-open", introOpenStart, { once: true });
+        doc.addEventListener("lb:intro-play", introOpenStart);
+        doc.addEventListener("lb:intro-open", introOpenStart);
       } else {
         beginAutoplay();
       }
@@ -686,6 +694,7 @@
         // لو المحرر أعاد التهيئة والافتتاحية لسه مقفولة، المستمع
         // القديم كان هيشغّل نسخة صوت مرمية لما تتفتح
         if (introOpenStart) {
+          doc.removeEventListener("lb:intro-play", introOpenStart);
           doc.removeEventListener("lb:intro-open", introOpenStart);
           introOpenStart = null;
         }
@@ -793,16 +802,31 @@
         intro.classList.add("is-awaiting-play");
         /* نفس الفعل بالظبط سواء الضغطة جت على زر التشغيل أو على أي
            حتة في الشاشة — الزر بقى دلالة بصرية مش الطريق الوحيد. */
+        /* الأغنية بتبدأ مع **ضغطة التشغيل** نفسها، مش لما الافتتاحية
+           تخلص. بس بشرط إن الافتتاحية صامتة — لو ليها صوت، صوتين فوق
+           بعض، فبتستنى لحد ما الفيديو يخلص (‎lb:intro-open‎).
+
+           لازم تتبعت جوّه مكدس الضغطة نفسها عشان سفاري على الآيفون
+           يسمح بتشغيل الصوت. */
+        var announcedPlay = false;
+        var announcePlay = function () {
+          if (announcedPlay) return;
+          announcedPlay = true;
+          doc.dispatchEvent(new CustomEvent("lb:intro-play"));
+        };
+
         startManualVideo = function () {
           if (!intro.classList.contains("is-awaiting-play")) return;
           intro.classList.remove("is-awaiting-play");
           video.muted = !wantsSound;
+          if (video.muted) announcePlay();
           var play = video.play();
 
           if (play && play.catch) {
             play.catch(function () {
               // بعض الأجهزة بترفض الصوت برضو — نجرّب صامت
               video.muted = true;
+              announcePlay();           // بقى صامت، فالأغنية تقدر تشتغل
               var again = video.play();
               if (again && again.catch) {
                 again.catch(function () {
