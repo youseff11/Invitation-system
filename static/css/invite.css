@@ -838,7 +838,12 @@
   text-align: center;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  text-shadow: 0 1px 5px rgba(0, 0, 0, .5);
+  /* الظل كان مفروض على كل نص فوق أي قسم. كان منطقه إن النص الأبيض
+     فوق صورة محتاج تباين — بس على خلفية هادية بيبان كهالة حوالين
+     الحروف، والمصمّم اللي حاطط النص فوق خلفية سادة مش عايزه خالص.
+     بقى اختيار: مفيش ظل إلا لما مفتاح «ظل خلف النص» يتفتح من ترس
+     النص، و‎video_text_style‎ ساعتها بتبعت المتغيّر. */
+  text-shadow: var(--ovl-text-shadow, none);
   pointer-events: none;
 }
 .lb-doc--editing .lb-video-wrap [data-video-text],

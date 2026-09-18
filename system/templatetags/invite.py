@@ -410,6 +410,11 @@ def video_text_style(item):
         style += f";--section-text-size:{_fluid(size)}"
 
     kind = str(item.get("kind") or "text")
+    # الظل اختياري ومقفول افتراضياً. العنصر القديم مالوش المفتاح ده
+    # فبيطلع من غير ظل — وده المقصود: النص فوق خلفية سادة كان بيبان
+    # وكأن حواليه هالة.
+    if kind == "text" and item.get("shadow"):
+        style += ";--ovl-text-shadow:0 1px 5px rgba(0,0,0,.5)"
     if kind == "image":
         radius = _ovl_num(item, "radius", 0.0, 200.0)
         style += f";--ovl-radius:{radius:g}px"

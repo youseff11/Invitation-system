@@ -388,6 +388,13 @@ SECTION_TEXT_OVERLAY_FIELD = field(
         _overlay_style(
             field("size", "الحجم", "range", 0, minimum=0, maximum=160, step=1,
                   unit="px", help_text="صفر = حجم القالب زي ما هو"), "size"),
+        # الظل كان مفروض على كل نص فوق أي قسم. مفيد للنص الأبيض فوق
+        # صورة، وحش للنص فوق خلفية سادة — بيبان كهالة حوالين الحروف.
+        # بقى اختيار مقفول افتراضياً.
+        _overlay_style(
+            field("shadow", "ظل خلف النص", "toggle", False,
+                  help_text="يفيد لما النص فوق صورة ومحتاج يبان."),
+            "zz_extra"),
 
         # ---- صورة
         _only(field("src", "الصورة", "image", ""), "image"),
