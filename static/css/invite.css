@@ -198,6 +198,62 @@
   z-index: -1;
 }
 .lb--bg-fixed::before { background-attachment: fixed; }
+
+/* ---------------------------------------------------------- تثبيت الخلفية على الآيفون
+   سفاري الآيفون (وكل متصفحات iOS لأنها WebKit) بيتجاهل
+   ‎background-attachment: fixed‎ — الخلفية بتتحرك مع الصفحة عادي، وعلى
+   أندرويد بتفضل ثابتة. فعلى iOS بس بنعمل التثبيت بطريقة تانية:
+
+   • القسم: الـ‎::before‎ اللي شايل الصورة بقى ‎position: fixed‎ بمقاس
+     الشاشة، والقسم نفسه عليه ‎clip-path‎ فالصورة ماتبانش غير جوّه حدوده.
+     (‎overflow: hidden‎ مابيقصّش العناصر الـfixed، الـclip-path بيقصّها.)
+   • الدعوة كلها: طبقة ‎::after‎ ثابتة في المسرح ورا الأقسام، والصورة
+     بتيجي في ‎--doc-bg-fixed-img‎ من السيرفر (فاضية لو التثبيت مقفول).
+
+   ‎100lvh‎ = ارتفاع الشاشة وشريط سفاري مستخبي — من غيره بيظهر شريط
+   فاضي تحت الصورة لما الشريط يختفي وانت بتنزل.
+
+   ‎@supports (-webkit-touch-callout: none)‎ متحقق في WebKit على iOS بس،
+   فأندرويد والكمبيوتر فاضلين على ‎background-attachment‎ اللي شغّالة. */
+@supports (-webkit-touch-callout: none) {
+  .lb--bg-fixed {
+    clip-path: inset(0 round var(--block-radius, 0));
+  }
+  .lb--bg-fixed::before {
+    position: fixed;
+    inset: auto;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: 100lvh;
+    background-attachment: scroll;
+  }
+  /* الحركة (‎.lb-anim‎) عاملة ‎will-change: transform‎ على القسم، وده
+     بيخلّي أي ابن ‎fixed‎ يتثبّت في القسم بدل الشاشة — يعني التثبيت
+     يبطل تاني. بعد ما الحركة تخلص الـtransform بيبقى ‎none‎ فبنشيله. */
+  .lb--bg-fixed.lb-anim.is-in { will-change: auto; }
+
+  .lb-stage {
+    background-image: var(--doc-bg-scroll-img, var(--doc-bg-veil, none), var(--doc-bg, none));
+    background-attachment: scroll;
+  }
+  .lb-stage::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: 100lvh;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--doc-bg-fixed-img, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+}
 /* CSS القالب المستورد قد يضع background على .lb-custom أو عناصره،
    لذلك نعيد لون القسم المختار إلى الغلاف الداخلي بأولوية واضحة. */
 .lb--custom-bg,

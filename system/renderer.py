@@ -127,6 +127,18 @@ def theme_css_vars(theme: dict) -> str:
         "--doc-bg-veil": _veil(theme.get("bg_overlay")),
         "--doc-bg-attach": "fixed" if theme.get("bg_fixed") else "scroll",
     }
+    # سفاري الآيفون بيتجاهل ‎background-attachment: fixed‎ خالص وبيعاملها
+    # كخلفية عادية بتتحرك مع الصفحة. الحل هناك طبقة ‎position: fixed‎ ورا
+    # الأقسام (شوف ‎invite.css‎ تحت ‎@supports (-webkit-touch-callout)‎).
+    # الـCSS مايقدرش يسأل «التثبيت شغّال ولا لأ» من قيمة متغيّر، فبنبعت
+    # الصورة جاهزة في مكانها: يا في الطبقة الثابتة، يا في خلفية المسرح.
+    doc_layers = f"{pairs['--doc-bg-veil']}, {pairs['--doc-bg']}"
+    if theme.get("bg_fixed") and pairs["--doc-bg"] != "none":
+        pairs["--doc-bg-fixed-img"] = doc_layers
+        pairs["--doc-bg-scroll-img"] = "none"
+    else:
+        pairs["--doc-bg-fixed-img"] = "none"
+        pairs["--doc-bg-scroll-img"] = doc_layers
     return ";".join(f"{k}:{v}" for k, v in pairs.items())
 
 
