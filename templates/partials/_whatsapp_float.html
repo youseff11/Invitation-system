@@ -16,7 +16,9 @@
    aria-label="{% translate 'تواصل معنا على واتساب' %}"
    title="{% translate 'تواصل معنا على واتساب' %}">
   <i class="wa-icon fa-brands fa-whatsapp" aria-hidden="true"></i>
-  <i class="wa-icon wa-icon--close fa-solid fa-xmark" aria-hidden="true"></i>
+  {# الـ× رسمة SVG مش أيقونة خط: الزر كله عليه خط Brands فأيقونة #}
+  {# ‎fa-xmark‎ كانت بتطلع فاضية. #}
+  <span class="wa-icon--close"><svg class="wa-x" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span>
 </a>
 
 <div class="wa-chat" id="wa-chat" data-wa-chat hidden role="dialog"
@@ -26,12 +28,12 @@
   <header class="wa-chat-head">
     <img class="wa-chat-avatar" src="{% static 'images/logo.jpeg' %}" alt="" width="46" height="46">
     <div class="wa-chat-who">
-      <strong>{% bidb SITE_NAME_AR SITE_NAME_EN %}</strong>
+      <strong>{% bidb "فرحة" "FARHA digital invitations" %}</strong>
       <small>{% bidb "بنرد خلال دقايق" "Answers within minutes" %}</small>
     </div>
     <button type="button" class="wa-chat-close" data-wa-close
             aria-label="{% translate 'إغلاق' %}">
-      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      <svg class="wa-x" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
   </header>
 
@@ -47,7 +49,7 @@
            data-wa-input data-ph-ar="اكتب رسالتك…" data-ph-en="Type a message"
            placeholder="اكتب رسالتك…" aria-label="{% translate 'رسالتك' %}">
     <button type="submit" class="wa-chat-send" aria-label="{% translate 'إرسال' %}">
-      <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3.4 20.4l17.4-7.5a1 1 0 000-1.8L3.4 3.6a1 1 0 00-1.4 1.1L4 11l9 1-9 1-2 6.3a1 1 0 001.4 1.1z" fill="currentColor"/></svg>
     </button>
   </form>
 </div>

@@ -1478,7 +1478,27 @@
     window.setTimeout(reveal, 3000);
   }
 
+  /* احتياطي تثبيت الخلفية على الآيفون. الـCSS (‎invite.css‎) بياخد الصورة
+     من ‎--doc-bg-fixed-img‎ اللي السيرفر بيحسبه. لو الصفحة جاية من سيرفر
+     لسه ماتعملهوش ريلود بعد التحديث (الـCSS الجديد اتنزل والـPython لأ)،
+     المتغيّر ده مش موجود والصورة بترجع تتحرك مع الصفحة وتتمطّ. هنا بنبنيه
+     من المتغيّرات القديمة اللي موجودة دايماً. */
+  function initFixedBackground() {
+    if (!window.CSS || !CSS.supports || !CSS.supports("-webkit-touch-callout", "none")) return;
+    var body = doc.body;
+    if (!body) return;
+    var cs = window.getComputedStyle(body);
+    if (cs.getPropertyValue("--doc-bg-fixed-img").trim()) return;   // السيرفر بعته
+    if (cs.getPropertyValue("--doc-bg-attach").trim() !== "fixed") return;
+    var img = cs.getPropertyValue("--doc-bg").trim();
+    if (!img || img === "none") return;
+    var veil = cs.getPropertyValue("--doc-bg-veil").trim() || "none";
+    body.style.setProperty("--doc-bg-fixed-img", veil + ", " + img);
+    body.style.setProperty("--doc-bg-scroll-img", "none");
+  }
+
   function boot() {
+    try { initFixedBackground(); } catch (e) { /* مش حرج */ }
     // يجب ألا تمنع مشكلة في runtime أو API غير مدعوم على Safari ظهور الدعوة.
     // شاشة التحميل لها مسار مستقل وتبدأ قبل باقي التهيئة.
     revealWhenReady();

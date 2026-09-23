@@ -1078,9 +1078,11 @@ tbody tr:hover { background: var(--surface-2); }
 }
 
 /* الأيقونة بتتقلب «×» والنافذة مفتوحة */
-.wa-float .wa-icon--close { display: none; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 24px; }
-.wa-float.is-open .wa-icon:not(.wa-icon--close) { display: none; }
-.wa-float.is-open .wa-icon--close { display: inline-grid; }
+.wa-float .wa-icon--close { display: none; place-items: center; line-height: 0; }
+.wa-float .wa-icon--close svg { width: 26px; height: 26px; }
+.wa-float.is-open .wa-icon { display: none; }
+.wa-float.is-open .wa-icon--close { display: grid; }
+.wa-x { display: block; }
 
 /* ---- نافذة الشات — شكل محادثة واتساب فوق الزر العائم */
 .wa-chat {
@@ -1206,7 +1208,7 @@ tbody tr:hover { background: var(--surface-2); }
   cursor: pointer;
   transition: background .15s, color .15s;
 }
-[dir="rtl"] .wa-chat-send i { transform: scaleX(-1); }
+[dir="rtl"] .wa-chat-send svg { transform: scaleX(-1); }
 .wa-chat-foot.has-text .wa-chat-send { background: #25d366; color: #fff; }
 .wa-chat-send:focus-visible { outline: 2px solid #25d366; outline-offset: 2px; }
 
@@ -1222,9 +1224,26 @@ tbody tr:hover { background: var(--surface-2); }
 [data-theme="dark"] .wa-chat-body { background-image: none; }
 [data-theme="dark"] .wa-chat-foot input { background: #2a3942; }
 
+/* الموبايل: النافذة بعرض الشاشة (هامش ١٢px من الجنبين) فوق الزر،
+   وارتفاعها بيتظبط لوحده على الشاشات القصيرة ولما الكيبورد يطلع. */
 @media (max-width: 600px) {
-  .wa-chat { inset-block-end: 76px; inset-inline-start: 16px; max-height: calc(100dvh - 100px); }
-  .wa-chat-body { min-height: 220px; }
+  .wa-chat {
+    inset-block-end: calc(76px + env(safe-area-inset-bottom, 0px));
+    inset-inline: 12px;
+    width: auto;
+    max-height: calc(100dvh - 110px);
+    border-radius: 16px;
+  }
+  .wa-chat-head { padding: 12px 14px; gap: 10px; }
+  .wa-chat-avatar { width: 42px; height: 42px; }
+  .wa-chat-who strong { font-size: 15px; }
+  .wa-chat-body { min-height: 0; flex: 1 1 auto; height: 38vh; height: 38dvh; padding: 14px 12px 16px; }
+  .wa-bubble { font-size: 14.5px; max-width: 94%; }
+  .wa-chat-foot { padding: 8px 10px; }
+  .wa-float { inset-block-end: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 600px) and (max-height: 560px) {
+  .wa-chat-body { height: auto; min-height: 90px; }
 }
 
 /* إضافات الباقة — عرض سعر بس، مفيش اختيار ولا مجموع */
