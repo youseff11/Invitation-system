@@ -2218,3 +2218,27 @@ def editor_schema() -> dict:
         "dividers": DIVIDER_CHOICES,
         "layout_max": {"x": LAYOUT_MAX_X, "y": LAYOUT_MAX_Y},
     }
+
+
+def all_features() -> set[str]:
+    """كل مفاتيح المزايا اللي أي قسم أو حقل بيطلبها.
+
+    بتستخدمها الدعوة اللي مالهاش باقة: الباقات بقت اختيارية، والدعوة
+    من غير باقة بتاخد كل المزايا بدل ما أقسامها تتقفل.
+    """
+    found: set[str] = set()
+
+    def scan(fields):
+        for spec in fields or []:
+            if not isinstance(spec, dict):
+                continue
+            if spec.get("feature"):
+                found.add(str(spec["feature"]))
+            scan(spec.get("fields"))
+
+    for block in BLOCK_REGISTRY.values():
+        if block.get("feature"):
+            found.add(str(block["feature"]))
+        scan(block.get("props"))
+    scan(SETTINGS_FIELDS)
+    return found

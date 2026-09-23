@@ -354,7 +354,11 @@ class Invitation(TimeStampedModel):
                                  related_name="invitations")
     template = models.ForeignKey(Template, on_delete=models.PROTECT,
                                  related_name="invitations")
-    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="invitations")
+    # الباقة اختيارية: ممكن تعمل دعوة من غير ما تعلن باقات وأسعار خالص.
+    # الدعوة اللي مالهاش باقة بتاخد كل المزايا (شوف ‎allowed_features‎).
+    # ‎SET_NULL‎ عشان مسح باقة مايتمنعش ولا يمسح الدعوات اللي عليها.
+    plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, related_name="invitations",
+                             null=True, blank=True, verbose_name="الباقة")
 
     title = models.CharField("عنوان داخلي", max_length=180, blank=True)
     slug = models.SlugField("الرابط", unique=True, blank=True, max_length=60)
@@ -447,6 +451,9 @@ class Invitation(TimeStampedModel):
         من غير الجزء التاني، حد يدفع في إضافة «موسيقى» فوق باقة
         مافيهاش موسيقى ما كانش هياخد حاجة — ولا حد كان هيلاحظ.
         """
+        if self.plan is None:
+            # من غير باقة = مفيش قيود: كل الأقسام والمزايا مفتوحة
+            return blocks_engine.all_features()
         features = set(self.plan.feature_set)
         order = getattr(self, "order", None)
         if order is not None:
@@ -901,6 +908,14 @@ class SiteSetting(models.Model):
     facebook_url = models.URLField("رابط صفحة فيسبوك", max_length=300, blank=True)
     instagram_enabled = models.BooleanField("إظهار إنستجرام", default=True)
     instagram_url = models.URLField("رابط إنستجرام", max_length=300, blank=True)
+
+    # ---- الباقات في الصفحة الرئيسية
+    plans_public = models.BooleanField(
+        "إظهار الباقات والأسعار في الموقع", default=True,
+        help_text="اقفله لو مش عايز تعلن أسعارك. قسم الباقات بيختفي من "
+                  "الصفحة الرئيسية ومعاه زرار «شوف الباقات» ولينك "
+                  "«الباقات» في القايمة. الباقات نفسها مابتتمسحش.",
+    )
 
     # ---- استقبال الطلبات
     orders_enabled = models.BooleanField(

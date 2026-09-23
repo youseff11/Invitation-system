@@ -32,7 +32,7 @@
       {% else %}
         <a href="{% url 'home' %}#templates" data-spy="templates">{% bi "القوالب" %}</a>
         <a href="{% url 'home' %}#how"       data-spy="how">{% bi "كيف تعمل" %}</a>
-        <a href="{% url 'home' %}#plans"     data-spy="plans">{% bi "الباقات" %}</a>
+        {% if SITE_CTA.plans_public %}<a href="{% url 'home' %}#plans"     data-spy="plans">{% bi "الباقات" %}</a>{% endif %}
         {% comment %}
           لما نموذج الطلبات مقفول، «اطلب دعوتك» مايوديش لقسم مش موجود —
           بيوصّل على واتساب. ولو مفيش رقم كمان، بيتشال خالص: زرار

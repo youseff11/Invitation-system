@@ -323,6 +323,7 @@ class SiteSettingForm(forms.ModelForm):
         # الترتيب مقصود: الطلبات ورقم الواتساب فوق — دول اللي بيتغيّروا،
         # ونصوص شريط المعاينة تحت.
         fields = [
+            "plans_public",
             "orders_enabled",
             "whatsapp_enabled", "whatsapp_number",
             "whatsapp_float_enabled", "whatsapp_cta_message",

@@ -52,6 +52,7 @@ def _cta():
     cfg = SiteSetting.load()
     return {
         "orders_enabled": cfg.orders_enabled,
+        "plans_public": cfg.plans_public,
         "whatsapp_url": cfg.whatsapp_url,
         "whatsapp_float": cfg.whatsapp_float_ready,
         # نافذة الشات العائمة بتبني الرابط بنفسها من الرسالة اللي الزائر

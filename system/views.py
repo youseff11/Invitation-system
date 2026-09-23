@@ -890,7 +890,9 @@ def invitation_create(request):
 
     if request.method == "POST":
         template = get_object_or_404(Template, pk=request.POST.get("template_id"))
-        plan = get_object_or_404(Plan, pk=request.POST.get("plan_id"))
+        # الباقة اختيارية — «بدون باقة» = كل المزايا مفتوحة
+        plan_id = (request.POST.get("plan_id") or "").strip()
+        plan = get_object_or_404(Plan, pk=plan_id) if plan_id else None
 
         customer_id = request.POST.get("customer_id")
         customer = Customer.objects.filter(pk=customer_id).first() if customer_id else None
@@ -1722,7 +1724,7 @@ def invitation_editor(request, pk):
             "invitationId": invitation.pk,
             "slug": invitation.slug,
             "status": invitation.status,
-            "planName": invitation.plan.name,
+            "planName": invitation.plan.name if invitation.plan else "",
             "templateName": invitation.template.name,
             "publicUrl": request.build_absolute_uri(invitation.get_absolute_url()),
             "clientFollowupUrl": request.build_absolute_uri(invitation.get_client_followup_url()),

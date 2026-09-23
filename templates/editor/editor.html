@@ -38,7 +38,7 @@
     <div class="ed-top-group ed-top-group--grow">
             <span class="ed-title">
         <strong>{{ invitation.title }}</strong>
-        · {{ invitation.template.name }}{% if not template_mode %} · باقة {{ invitation.plan.name }}{% else %} · تعديل قالب{% endif %}
+        · {{ invitation.template.name }}{% if not template_mode %}{% if invitation.plan %} · باقة {{ invitation.plan.name }}{% endif %}{% else %} · تعديل قالب{% endif %}
       </span>
 
     </div>

@@ -55,9 +55,11 @@
           <span>{% bi "ابدأ تصميم دعوتك" %}</span>
           <svg class="btn-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h13m0 0-5-5m5 5-5 5"/></svg>
         </a>
+        {% if SITE_CTA.plans_public %}
         <a class="btn btn--outline btn--lg" href="#plans">
           <span>{% bi "شوف الباقات" %}</span>
         </a>
+        {% endif %}
       </div>
       <ul class="hero-trust" aria-hidden="true">
         <li><b>{% bi "+٥٠" %}</b><span>{% bi "قالب جاهز" %}</span></li>
@@ -123,6 +125,8 @@
 
 
 
+{# الباقات والأسعار بتتخفي من «إعدادات الموقع» لو مش عايز تعلن أسعارك #}
+{% if SITE_CTA.plans_public %}
 <section class="section" id="plans">
   <div class="wrap">
     <div class="section-head" data-reveal>
@@ -174,6 +178,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <section class="section section--alt" id="how">
   <div class="wrap">

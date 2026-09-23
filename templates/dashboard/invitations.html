@@ -35,7 +35,7 @@
           <small class="muted">/i/{{ i.slug }}/</small>
         </td>
         <td data-label="العميل">{{ i.customer.name }}</td>
-        <td data-label="الباقة">{{ i.plan.name }}</td>
+        <td data-label="الباقة">{{ i.plan.name|default:"—" }}</td>
         <td data-label="الحالة"><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
         <td data-label="ضيوف">{{ i.guest_total }}</td>
         <td data-label="ردود">{{ i.rsvp_total }}</td>
