@@ -824,4 +824,109 @@
     items.forEach(function (el) { io.observe(el); });
   })();
 
+
+  /* ------------------------------------------------ نافذة شات واتساب
+     الزر العائم بيفتح نافذة شبه محادثة واتساب بدل ما يرمي الزائر على
+     واتساب على طول. الزائر بيكتب سؤاله ويدوس «إرسال»، فتتفتح المحادثة
+     والرسالة مكتوبة جاهزة. لو ماكتبش حاجة بتتبعت الرسالة الافتراضية
+     من إعدادات الموقع. */
+  (function () {
+    var btn = doc.querySelector("[data-wa-float]");
+    var chat = doc.querySelector("[data-wa-chat]");
+    if (!btn || !chat) return;
+    var form = chat.querySelector("[data-wa-form]");
+    var input = chat.querySelector("[data-wa-input]");
+    var timeEl = chat.querySelector("[data-wa-time]");
+    var base = chat.getAttribute("data-wa-base") || "";
+    var fallbackMsg = chat.getAttribute("data-wa-msg") || "";
+
+    function isEn() {
+      return (doc.documentElement.getAttribute("lang") || "").indexOf("en") === 0;
+    }
+
+    /* اللغة ممكن تتبدّل والنافذة مقفولة، فالنص بيتظبط مع كل فتحة */
+    function syncLang() {
+      if (input) {
+        input.placeholder = input.getAttribute(isEn() ? "data-ph-en" : "data-ph-ar") || "";
+      }
+      if (timeEl) {
+        try {
+          timeEl.textContent = new Date().toLocaleTimeString(isEn() ? "en-US" : "ar-EG",
+            { hour: "numeric", minute: "2-digit" });
+        } catch (e) {
+          var d = new Date();
+          timeEl.textContent = d.getHours() + ":" + ("0" + d.getMinutes()).slice(-2);
+        }
+      }
+    }
+
+    function isOpen() { return !chat.hidden; }
+
+    function open() {
+      syncLang();
+      chat.hidden = false;
+      chat.classList.remove("is-in");
+      void chat.offsetWidth;            // يعيد تشغيل حركة الظهور
+      chat.classList.add("is-in");
+      btn.classList.add("is-open");
+      btn.setAttribute("aria-expanded", "true");
+      /* على الموبايل الفوكس بيطلّع الكيبورد ويغطي نص الشاشة — فبنسيبه
+         للزائر يدوس على الخانة بنفسه. على الكمبيوتر نبدأ في الكتابة على طول. */
+      if (input && window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+        input.focus({ preventScroll: true });
+      }
+    }
+
+    function close(returnFocus) {
+      chat.hidden = true;
+      btn.classList.remove("is-open");
+      btn.setAttribute("aria-expanded", "false");
+      if (returnFocus) btn.focus({ preventScroll: true });
+    }
+
+    btn.addEventListener("click", function (e) {
+      if (!base) return;                 // مفيش رقم؟ اللينك العادي يشتغل
+      e.preventDefault();
+      if (isOpen()) close(false); else open();
+    });
+
+    var closeBtn = chat.querySelector("[data-wa-close]");
+    if (closeBtn) closeBtn.addEventListener("click", function () { close(true); });
+
+    doc.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && isOpen()) close(true);
+    });
+
+    /* ضغطة برّه النافذة والزر بتقفلها — زي أي قايمة منبثقة */
+    doc.addEventListener("pointerdown", function (e) {
+      if (!isOpen()) return;
+      if (chat.contains(e.target) || btn.contains(e.target)) return;
+      close(false);
+    });
+
+    if (input && form) {
+      input.addEventListener("input", function () {
+        form.classList.toggle("has-text", !!input.value.trim());
+      });
+    }
+
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var text = (input && input.value.trim()) || fallbackMsg;
+        var url = base + (text ? "?text=" + encodeURIComponent(text) : "");
+        /* من غير "noopener" في الخيارات: مع الخيار ده ‎window.open‎ بيرجّع
+           ‎null‎ دايماً، فماكناش هنعرف لو النافذة اتمنعت فعلاً. */
+        var win = window.open(url, "_blank");
+        if (win) { try { win.opener = null; } catch (err) {} }
+        /* متصفحات جوّه التطبيقات (فيسبوك/إنستجرام) ساعات بتمنع النوافذ
+           الجديدة — نفتح في نفس الصفحة بدل ما الضغطة تضيع. */
+        if (!win) window.location.href = url;
+        if (input) input.value = "";
+        form.classList.remove("has-text");
+        close(false);
+      });
+    }
+  })();
+
 })();

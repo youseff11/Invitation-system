@@ -1,15 +1,54 @@
-{% load i18n %}
+{% load i18n static bilingual %}
 {% comment %}
   زر واتساب عائم — بيظهر في صفحات الموقع بس، مش في دعوة العميل ولا في
   لوحة التحكم. الرقم والرسالة بيتظبطوا من لوحة التحكم ← إعدادات الموقع،
   و‎whatsapp_float_ready‎ في الموديل هو اللي بيقرر يظهر ولا لأ (مفعّل +
   فيه رقم) — نفس الحكم اللي اللوحة بتعرضه، مش شرط مكرّر هنا.
+
+  الضغطة بتفتح نافذة شات شبه واتساب (اللوجو + رسالة ترحيب + خانة كتابة).
+  الزائر يكتب رسالته ويدوس «إرسال» فتتفتح محادثة واتساب بالرسالة جاهزة.
+  من غير جافاسكربت الزر فاضل لينك ‎wa.me‎ عادي زي الأول.
 {% endcomment %}
 {% if SITE_CTA.whatsapp_float %}
 <a class="wa-float" data-wa-float href="{{ SITE_CTA.whatsapp_url }}"
    target="_blank" rel="noopener"
+   aria-haspopup="dialog" aria-expanded="false" aria-controls="wa-chat"
    aria-label="{% translate 'تواصل معنا على واتساب' %}"
    title="{% translate 'تواصل معنا على واتساب' %}">
   <i class="wa-icon fa-brands fa-whatsapp" aria-hidden="true"></i>
+  <i class="wa-icon wa-icon--close fa-solid fa-xmark" aria-hidden="true"></i>
 </a>
+
+<div class="wa-chat" id="wa-chat" data-wa-chat hidden role="dialog"
+     aria-label="{% translate 'تواصل معنا على واتساب' %}"
+     data-wa-base="{{ SITE_CTA.whatsapp_base }}"
+     data-wa-msg="{{ SITE_CTA.whatsapp_message }}">
+  <header class="wa-chat-head">
+    <img class="wa-chat-avatar" src="{% static 'images/logo.jpeg' %}" alt="" width="46" height="46">
+    <div class="wa-chat-who">
+      <strong>{% bidb SITE_NAME_AR SITE_NAME_EN %}</strong>
+      <small>{% bidb "بنرد خلال دقايق" "Answers within minutes" %}</small>
+    </div>
+    <button type="button" class="wa-chat-close" data-wa-close
+            aria-label="{% translate 'إغلاق' %}">
+      <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+    </button>
+  </header>
+
+  <div class="wa-chat-body">
+    <div class="wa-bubble">
+      <p>{% bidb "مبروك مقدماً ❤️ يسعدنا نساعدك في كل تفاصيل مناسبتك. تحب نساعدك إزاي؟ 😊" "Congratulations ❤️ We'd love to help with all your event needs. How can we help you? 😊" %}</p>
+      <span class="wa-bubble-time"><i class="fa-solid fa-check-double" aria-hidden="true"></i><time data-wa-time></time></span>
+    </div>
+  </div>
+
+  <form class="wa-chat-foot" data-wa-form>
+    <input type="text" name="message" maxlength="500" autocomplete="off"
+           data-wa-input data-ph-ar="اكتب رسالتك…" data-ph-en="Type a message"
+           placeholder="اكتب رسالتك…" aria-label="{% translate 'رسالتك' %}">
+    <button type="submit" class="wa-chat-send" aria-label="{% translate 'إرسال' %}">
+      <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+    </button>
+  </form>
+</div>
 {% endif %}

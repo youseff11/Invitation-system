@@ -54,6 +54,11 @@ def _cta():
         "orders_enabled": cfg.orders_enabled,
         "whatsapp_url": cfg.whatsapp_url,
         "whatsapp_float": cfg.whatsapp_float_ready,
+        # نافذة الشات العائمة بتبني الرابط بنفسها من الرسالة اللي الزائر
+        # كتبها، فمحتاجة الرقم لوحده والرسالة الافتراضية لوحدها.
+        "whatsapp_base": (f"https://wa.me/{cfg.whatsapp_digits}"
+                          if cfg.whatsapp_float_ready else ""),
+        "whatsapp_message": (cfg.whatsapp_cta_message or "").strip(),
     }
 
 
