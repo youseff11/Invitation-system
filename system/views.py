@@ -651,6 +651,12 @@ def invitation_rsvp(request, slug):
 
     invitation = get_object_or_404(Invitation, slug=slug)
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    # لغة الصفحة اللي الضيف بعت منها — الرسائل بترجع بيها. الافتراضي
+    # عربي عشان أي طلب قديم من غير الحقل ده يفضل زي ما هو.
+    lang = "en" if (request.POST.get("lang") or "").lower().startswith("en") else "ar"
+
+    def _t(ar, en):
+        return en if lang == "en" else ar
 
     def fail(msg, status=400):
         if is_ajax:
@@ -659,14 +665,14 @@ def invitation_rsvp(request, slug):
         return redirect("invitation_public", slug=slug)
 
     if not invitation.is_live:
-        return fail("الدعوة غير متاحة حالياً.", 404)
+        return fail(_t("الدعوة غير متاحة حالياً.", "This invitation isn't available right now."), 404)
     # الباقة تحذير فقط؛ إذا أضاف صاحب الدعوة RSVP يظل النموذج يعمل.
 
 
 
     # مصيدة الروبوتات — حقل مخفي يجب أن يبقى فارغاً
     if request.POST.get("website"):
-        return JsonResponse({"ok": True, "message": "تم التسجيل."}) if is_ajax else redirect(
+        return JsonResponse({"ok": True, "message": _t("تم التسجيل.", "Received.")}) if is_ajax else redirect(
             "invitation_public", slug=slug
         )
 
@@ -674,12 +680,13 @@ def invitation_rsvp(request, slug):
     key = f"rsvp:{invitation.pk}:{_client_hash(request)}"
     count = cache.get(key, 0)
     if count >= settings.RSVP_RATE_LIMIT_PER_HOUR:
-        return fail("عدد كبير من المحاولات. حاول بعد قليل.", 429)
+        return fail(_t("عدد كبير من المحاولات. حاول بعد قليل.",
+                       "Too many attempts. Please try again shortly."), 429)
     cache.set(key, count + 1, 3600)
 
     name = (request.POST.get("name") or "").strip()[:120]
     if len(name) < 2:
-        return fail("يرجى كتابة الاسم.")
+        return fail(_t("يرجى كتابة الاسم.", "Please enter your name."))
 
     phone = (request.POST.get("phone") or "").strip()[:40]
     status = request.POST.get("status", "attending")
@@ -699,6 +706,10 @@ def invitation_rsvp(request, slug):
     # معناه «الحقل ظاهر» مش «مقفول».
     if rsvp_props.get("ask_phone") is False:
         phone = ""
+    # سؤال الحضور مقفول من المحرر: الفورم للتهنئة/التسجيل بس، والرد
+    # بيتسجّل «حاضر» مهما جه في الطلب.
+    if rsvp_props.get("ask_status") is False:
+        status = "attending"
     try:
         companions = max(0, min(max_companions, int(request.POST.get("companions") or 0)))
     except (TypeError, ValueError):
@@ -725,7 +736,7 @@ def invitation_rsvp(request, slug):
         name=name, created_at__gte=timezone.now() - timezone.timedelta(minutes=10)
     ).exists()
     if recent:
-        msg = "تم تسجيل ردك بالفعل."
+        msg = _t("تم تسجيل ردك بالفعل.", "Your reply has already been received.")
         return JsonResponse({"ok": True, "message": msg}) if is_ajax else redirect(
             "invitation_public", slug=slug
         )
@@ -753,7 +764,17 @@ def invitation_rsvp(request, slug):
             answers=answers, ip_hash=ip_hash,
         )
 
-    success = rsvp_props.get("success_message") or "شكراً لكم — تم تسجيل ردكم."
+    # رسالة النجاح من النسخة اللي الضيف شايفها: لو الصفحة باللغة التانية
+    # للدعوة والترجمة موجودة، بناخدها من المستند المترجَم.
+    success_props = rsvp_props
+    if (lang == blocks_engine.alt_language(doc)
+            and blocks_engine.has_translation(doc, lang)):
+        for block in blocks_engine.apply_i18n(doc, lang)["blocks"]:
+            if block["type"] == "rsvp":
+                success_props = block.get("props") or {}
+                break
+    success = success_props.get("success_message") or _t(
+        "شكراً لكم — تم تسجيل ردكم.", "Thank you — your reply has been received.")
 
     # ---- تصريح الدخول
     # اللي أكّد حضوره لازم يطلع بتصريح ومعاه QR. لو مالوش سجل ضيف
@@ -1821,6 +1842,10 @@ def api_save(request, pk):
         "slug": invitation.slug,
         "status": invitation.status,
         "publicUrl": request.build_absolute_uri(invitation.get_absolute_url()),
+        # الروابط دي كلها مبنية على الـslug — لو اتغيّر من المحرر لازم
+        # الصفحة تعرض الجديدة من غير ريفريش.
+        "clientFollowupUrl": request.build_absolute_uri(
+            invitation.get_client_followup_url()),
     })
 
 

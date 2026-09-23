@@ -9,13 +9,17 @@
     {% else %}
     {% if guest %}
     <p class="lb-guest-hi">
-      {% if guest_answered %}سجّلنا ردك قبل كده يا {{ guest.name }} — تقدر تعدّله من هنا.
-      {% else %}أهلاً {{ guest.name }} 🤍{% endif %}
+      {% if lang == 'en' %}{% if guest_answered %}We already have your reply, {{ guest.name }} — you can update it here.
+      {% else %}Welcome, {{ guest.name }} 🤍{% endif %}
+      {% else %}{% if guest_answered %}سجّلنا ردك قبل كده يا {{ guest.name }} — تقدر تعدّله من هنا.
+      {% else %}أهلاً {{ guest.name }} 🤍{% endif %}{% endif %}
     </p>
     {% endif %}
     <form class="lb-form" method="post" action="{{ rsvp_action|default:'#' }}" data-rsvp-form{% if rsvp_demo %} data-demo="1"{% endif %}>
       {% if csrf_token %}<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">{% endif %}
       {% if guest %}<input type="hidden" name="guest_token" value="{{ guest.token }}">{% endif %}
+      {# لغة الصفحة: السيرفر بيرد برسائل النجاح والخطأ بنفس اللغة. #}
+      <input type="hidden" name="lang" value="{{ lang|default:'' }}">
       <input type="text" name="website" class="lb-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label class="lb-field">{% if props.name_label %}<span data-ts="name_label">{{ props.name_label }}</span>{% endif %}
         <input type="text" name="name" required maxlength="120" autocomplete="name" value="{{ guest.name|default:'' }}"></label>
@@ -23,15 +27,18 @@
       {# بيتلف بشرط عشان القالب اللي سايبه فاضي ما يطلعش سطر فاضي. #}
       {% if props.ask_phone %}<label class="lb-field">{% if props.phone_label %}<span data-ts="phone_label">{{ props.phone_label }}</span>{% endif %}
         <input type="tel" name="phone" maxlength="40" autocomplete="tel"{% if props.phone_required %} required{% endif %} value="{{ guest.phone|default:'' }}"></label>{% endif %}
-      <div class="lb-field">{% if props.status_label %}<span data-ts="status_label">{{ props.status_label }}</span>{% endif %}
+      {# سؤال الحضور بيتقفل من ترس الإعدادات («السؤال عن الحضور»). #}
+      {# ‎is False‎ عشان المستند القديم اللي مافيهوش المفتاح يفضل بيسأل. #}
+      {% if props.ask_status is False %}<input type="hidden" name="status" value="attending">
+      {% else %}<div class="lb-field">{% if props.status_label %}<span data-ts="status_label">{{ props.status_label }}</span>{% endif %}
         <div class="lb-choices">
           <label><input type="radio" name="status" value="attending"{% if not guest_answered or guest_answered.status == 'attending' %} checked{% endif %}><span data-ts="attending_label">{{ props.attending_label }}</span></label>
           <label><input type="radio" name="status" value="declined"{% if guest_answered.status == 'declined' %} checked{% endif %}><span data-ts="declined_label">{{ props.declined_label }}</span></label>
           {% if props.show_maybe %}<label><input type="radio" name="status" value="maybe"{% if guest_answered.status == 'maybe' %} checked{% endif %}><span data-ts="maybe_label">{{ props.maybe_label }}</span></label>{% endif %}
         </div>
-      </div>
+      </div>{% endif %}
       {% if props.ask_companions %}{% if guest %}{% if guest_max_companions %}<label class="lb-field">
-        <span data-ts="companions_label">{{ props.companions_label }} <small>(حتى {{ guest_max_companions }})</small></span>
+        <span data-ts="companions_label">{{ props.companions_label }} <small>({% if lang == 'en' %}up to{% else %}حتى{% endif %} {{ guest_max_companions }})</small></span>
         <input type="number" name="companions" min="0" max="{{ guest_max_companions }}"
                value="{{ guest_answered.companions|default:0 }}" inputmode="numeric"></label>{% endif %}
       {% else %}<label class="lb-field"><span data-ts="companions_label">{{ props.companions_label }}</span>

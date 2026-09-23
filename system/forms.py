@@ -92,12 +92,16 @@ class OrderForm(forms.ModelForm):
 class InvitationSettingsForm(forms.ModelForm):
     """بيانات المناسبة التي يحرّرها المحرر — تُحفظ عبر واجهة JSON."""
 
+    # نصي مش ‎SlugField‎: مدقق الـslug بيرفض المسافات والحروف الكبيرة قبل
+    # ما ‎clean_slug‎ تلحق تنظّفها، فكتابة «Ahmed Sara» كانت هترجع خطأ.
+    slug = forms.CharField(label="رابط الدعوة", required=False, max_length=120)
+
     class Meta:
         model = Invitation
         fields = [
             "title", "event_type", "name_one", "name_two", "event_date",
             "venue", "address", "map_url", "whatsapp", "status",
-            "expires_at", "password",
+            "expires_at", "password", "slug",
         ]
         widgets = {
             "event_date": forms.DateTimeInput(attrs={"type": "datetime-local"},
@@ -109,8 +113,28 @@ class InvitationSettingsForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name in ("title", "name_one", "name_two", "venue", "address", "map_url",
-                     "whatsapp", "password", "expires_at", "event_date"):
+                     "whatsapp", "password", "expires_at", "event_date", "slug"):
             self.fields[name].required = False
+
+    # رابط الدعوة (‎/i/<slug>/‎) بقى بيتعدّل من المحرر بدل الأدمن.
+    # مسار Django من نوع slug بيقبل حروف لاتينية وأرقام و«-» بس، فبنحوّل
+    # اللي اتكتب لصيغة صالحة. والطلب اللي مافيهوش الحقل (أو فاضي) بيسيب
+    # الرابط الحالي زي ما هو — التحقق من التكرار بيعمله ‎ModelForm‎ لوحده.
+    SLUG_RESERVED = {"rsvp", "client", "venue", "g", "admin", "dashboard"}
+
+    def clean_slug(self):
+        raw = (self.cleaned_data.get("slug") or "").strip()
+        if not raw:
+            return self.instance.slug
+        value = slugify(raw, allow_unicode=False).lower()[:60].strip("-")
+        if len(value) < 3:
+            raise forms.ValidationError(
+                "الرابط لازم يكون ٣ حروف إنجليزي أو أرقام على الأقل.")
+        if value in self.SLUG_RESERVED:
+            raise forms.ValidationError("الرابط ده محجوز، اختار غيره.")
+        if Invitation.objects.filter(slug=value).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("الرابط ده مستخدم في دعوة تانية.")
+        return value
 
 
 class GuestForm(forms.ModelForm):

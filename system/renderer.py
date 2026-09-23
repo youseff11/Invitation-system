@@ -1305,6 +1305,9 @@ def render_document(
             "css_shared": str(block.get("id") or "") in shared_css_ids,
         }
         ctx["guest"] = guest
+        # لغة العرض — النصوص الثابتة في قوالب البلوكات (زي ترحيب الضيف في
+        # فورم التأكيد) بتتكتب بيها بدل ما تفضل عربي في النسخة الإنجليزية.
+        ctx["lang"] = lang
         ctx.update(_block_extras(block, ctx, invitation, editable, guest))
         rendered = render_to_string(f"blocks/{block['type']}.html", ctx, request=request)
         if block["type"] != "video" and ctx["props"].get("text_overlays"):

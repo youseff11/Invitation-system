@@ -6046,12 +6046,23 @@
           setSaveState("error", "فشل الحفظ");
           var errs = res.data && res.data.errors;
           var first = errs && Object.keys(errs)[0];
-          toast(first ? (first + ": " + errs[first][0]) : "تعذّر الحفظ.", "error");
+          var errMsg = first ? errs[first][0] : "";
+          if (errMsg && typeof errMsg === "object") errMsg = errMsg.message || "";
+          if (first === "slug") {
+            /* الرابط اترفض — نرجّع القيمة المحفوظة في الحقل المخفي عشان
+               الحفظ التلقائي الجاي مايفضلش يبعت نفس الرابط الغلط ويفشل. */
+            var hiddenSlug = $('[data-inv-field="slug"]');
+            if (hiddenSlug && META.slug) hiddenSlug.value = META.slug;
+            toast("رابط الدعوة: " + errMsg, "error");
+          } else {
+            toast(first ? (first + ": " + errMsg) : "تعذّر الحفظ.", "error");
+          }
           return false;
         }
         state.dirty = false;
         setSaveState("saved", "محفوظ " + res.data.savedAt);
         if (refs.publicLink) refs.publicLink.href = res.data.publicUrl;
+        syncSlugUi(res.data);
         if (!silent) toast("تم حفظ التعديلات.", "ok");
         return true;
       })
@@ -6061,6 +6072,96 @@
         toast("تعذّر الاتصال بالخادم.", "error");
         return false;
       });
+  }
+
+  // ==========================================================
+  // رابط الدعوة (‎slug‎) — بيتعدّل من تبويب «البيانات»
+  // ==========================================================
+  /* نفس تنظيف السيرفر تقريباً: حروف صغيرة، والمسافات والرموز «-».
+     السيرفر هو الحكم النهائي — ده بس عشان اللي بيكتبه يشوف النتيجة. */
+  function cleanSlug(value) {
+    return String(value || "").toLowerCase().trim()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/-{2,}/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+  }
+
+  /* بعد أي حفظ: كل الروابط المبنية على الـslug تتحدّث في الصفحة. */
+  function syncSlugUi(data) {
+    if (!data || !data.slug) return;
+    META.slug = data.slug;
+    if (data.publicUrl) META.publicUrl = data.publicUrl;
+    if (data.clientFollowupUrl) META.clientFollowupUrl = data.clientFollowupUrl;
+    var hidden = $('[data-inv-field="slug"]');
+    if (hidden) hidden.value = data.slug;
+    var input = $("[data-slug-input]");
+    if (input && document.activeElement !== input) input.value = data.slug;
+    var pub = $("[data-public-url-field]");
+    if (pub && data.publicUrl) pub.value = data.publicUrl;
+    if (data.clientFollowupUrl) {
+      var f = $("[data-followup-url-field]");
+      if (f) f.value = data.clientFollowupUrl;
+      var fc = $("[data-followup-copy]");
+      if (fc) fc.setAttribute("data-copy", data.clientFollowupUrl);
+      var fo = $("[data-followup-open]");
+      if (fo) fo.href = data.clientFollowupUrl;
+    }
+  }
+
+  function copyText(text) {
+    if (!text) return;
+    var done = function () { toast("اتنسخ الرابط.", "ok"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) { /* مفيش */ }
+    ta.remove();
+  }
+
+  function bindSlugField() {
+    var input = $("[data-slug-input]");
+    var hidden = $('[data-inv-field="slug"]');
+    var apply = $("[data-slug-apply]");
+    if (!input || !hidden || !apply) return;
+
+    function commit() {
+      var value = cleanSlug(input.value);
+      input.value = value;
+      if (value.length < 3) {
+        toast("الرابط لازم يكون ٣ حروف إنجليزي أو أرقام على الأقل.", "error");
+        return;
+      }
+      if (value === META.slug) { toast("ده نفس الرابط الحالي.", "ok"); return; }
+      if (!window.confirm("تغيير الرابط لـ «" + value + "»؟\nالرابط القديم هيبطّل يفتح، واللي اتبعت للضيوف لازم يتبعت تاني.")) {
+        return;
+      }
+      hidden.value = value;
+      markDirty();
+      save(true).then(function (ok) {
+        if (ok) toast("اتغيّر رابط الدعوة.", "ok");
+        else input.value = META.slug || "";
+      });
+    }
+
+    apply.addEventListener("click", commit);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+    });
+    // التنظيف وقت الخروج من الحقل — مش مع كل حرف عشان «-» تتكتب عادي
+    input.addEventListener("blur", function () { input.value = cleanSlug(input.value); });
+
+    var copy = $("[data-slug-copy]");
+    if (copy) copy.addEventListener("click", function () {
+      var pub = $("[data-public-url-field]");
+      copyText(pub ? pub.value : META.publicUrl);
+    });
   }
 
   // الحفظ تلقائي بعد سكوت قصير (شوف scheduleAutosave فوق)، وزر «حفظ»
@@ -6277,6 +6378,15 @@
         setPanel(!refs.panel.classList.contains("is-open"));
       });
     }
+
+    // رابط الدعوة + أزرار «نسخ الرابط» العامة (‎data-copy‎ كان مالوش مستمع)
+    bindSlugField();
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest && e.target.closest("[data-copy]");
+      if (!btn) return;
+      e.preventDefault();
+      copyText(btn.getAttribute("data-copy"));
+    });
 
     // حقول بيانات المناسبة
     $$("[data-inv-field]").forEach(function (node) {

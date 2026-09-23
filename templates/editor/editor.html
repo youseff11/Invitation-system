@@ -250,16 +250,34 @@
                 <input class="ed-input" type="datetime-local" data-inv-field="expires_at"
                        value="{{ invitation.expires_at|date:'Y-m-d\\TH:i' }}">
               </div>
+              {# رابط الدعوة بيتعدّل من هنا مباشرة. الحقل المخفي هو اللي بيتبعت #}
+              {# مع الحفظ، والظاهر بيتنقل له بزرار «تغيير» بس — عشان الحفظ #}
+              {# التلقائي ما يغيّرش الرابط مع كل حرف وانت لسه بتكتب. #}
+              <div class="ed-field" data-slug-field>
+                <label><span>رابط الدعوة</span></label>
+                <input type="hidden" data-inv-field="slug" value="{{ invitation.slug }}">
+                <div class="ed-slug-row">
+                  <span class="ed-slug-prefix" dir="ltr">{{ request.get_host }}/i/</span>
+                  <input class="ed-input ed-slug-input" data-slug-input dir="ltr"
+                         maxlength="60" spellcheck="false" autocomplete="off"
+                         value="{{ invitation.slug }}" placeholder="ahmed-sara">
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                  <button class="ed-btn ed-btn--sm ed-btn--primary" type="button" data-slug-apply>تغيير الرابط</button>
+                  <button class="ed-btn ed-btn--sm" type="button" data-slug-copy>نسخ</button>
+                </div>
+                <small>حروف إنجليزي وأرقام و«-» بس. خلي بالك: الرابط القديم هيبطّل يفتح بعد التغيير.</small>
+              </div>
               <div class="ed-field">
                 <label><span>الرابط العام</span></label>
-                <input class="ed-input" readonly value="{{ request.scheme }}://{{ request.get_host }}{{ invitation.get_absolute_url }}">
+                <input class="ed-input" readonly dir="ltr" data-public-url-field value="{{ request.scheme }}://{{ request.get_host }}{{ invitation.get_absolute_url }}">
               </div>
               <div class="ed-field">
                 <label><span>رابط العميل للمتابعة</span></label>
-                <input class="ed-input" readonly value="{{ client_followup_url }}">
+                <input class="ed-input" readonly data-followup-url-field value="{{ client_followup_url }}">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-                  <button class="ed-btn ed-btn--sm" type="button" data-copy="{{ client_followup_url }}">نسخ الرابط</button>
-                  <a class="ed-btn ed-btn--sm" href="{{ client_followup_url }}" target="_blank" rel="noopener">فتح صفحة المتابعة</a>
+                  <button class="ed-btn ed-btn--sm" type="button" data-copy="{{ client_followup_url }}" data-followup-copy>نسخ الرابط</button>
+                  <a class="ed-btn ed-btn--sm" href="{{ client_followup_url }}" target="_blank" rel="noopener" data-followup-open>فتح صفحة المتابعة</a>
                 </div>
                 <small>ابعت الرابط للعميل لمتابعة الحضور والـQR ورسائل التهنئة المضافة للدعوة.</small>
               </div>

@@ -952,11 +952,26 @@
     /* حالة «اتبعت»: الزر بياخد النص اللي المصمّم كاتبه والفورم بيتقفل.
        متلمومة في دالة واحدة عشان المعاينة والإرسال الحقيقي يوروا نفس
        رد الفعل بالظبط — ده أصلاً الغرض من المعاينة. */
+    /* لغة الصفحة وقت الإرسال — مش وقت الربط: زرار اللغة بيبدّل المحتوى
+       من غير ريلود. النصوص الثابتة هنا («جارٍ الإرسال…» وأخواتها) كانت
+       عربي دايماً، فالضيف في النسخة الإنجليزية يشوف زرار عربي. */
+    function isEn() {
+      var holder = form.closest("[lang]");
+      var lang = (holder && holder.getAttribute("lang")) ||
+        doc.documentElement.getAttribute("lang") || "";
+      return lang.toLowerCase().indexOf("en") === 0;
+    }
+    function tr(ar, en) { return isEn() ? en : ar; }
+    var AR_RE = /[\u0600-\u06FF]/;
+
     function markSent(btn) {
       if (btn) {
         /* الزر كان بيفضل «جارٍ الإرسال…» حتى بعد ما الرد يتسجّل فعلاً
            — الضيف يفتكر إن حاجة علّقت ويبعت تاني. */
-        btn.textContent = btn.dataset.sentLabel || "تم الإرسال ✓";
+        var sent = btn.dataset.sentLabel || "";
+        /* نص «بعد الإرسال» مش مترجَم؟ مانطلعش عربي في صفحة إنجليزي. */
+        if (!sent || (isEn() && AR_RE.test(sent))) sent = tr("تم الإرسال ✓", "Sent ✓");
+        btn.textContent = sent;
         btn.classList.add("is-sent");
       }
       form.querySelectorAll("input, textarea, button").forEach(function (el) {
@@ -981,27 +996,34 @@
       if (!window.fetch) return; // ارجع للإرسال العادي
 
       e.preventDefault();
-      if (btn) { btn.disabled = true; btn.dataset.old = btn.textContent; btn.textContent = "جارٍ الإرسال…"; }
+      if (btn) { btn.disabled = true; btn.dataset.old = btn.textContent; btn.textContent = tr("جارٍ الإرسال…", "Sending…"); }
+
+      var body = new FormData(form);
+      body.set("lang", isEn() ? "en" : "ar");
 
       fetch(form.action, {
         method: "POST",
-        body: new FormData(form),
+        body: body,
         headers: { "X-Requested-With": "XMLHttpRequest" },
         credentials: "same-origin"
       })
         .then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
         .then(function (data) {
           if (data && data.ok) {
-            showMessage(data.message || "", true);
+            /* رسالة السيرفر عربي والصفحة إنجليزي (ترجمة ناقصة)؟ نسيب
+               الرسالة المعروضة في الصفحة — دي اتترجمت مع باقي النصوص. */
+            var okMsg = data.message || "";
+            if (isEn() && AR_RE.test(okMsg)) okMsg = "";
+            showMessage(okMsg, true);
             markSent(btn);
             if (data.pass) showPass(data.pass);
           } else {
-            showMessage((data && data.error) || "تعذّر الإرسال، حاول مرة أخرى.");
+            showMessage((data && data.error) || tr("تعذّر الإرسال، حاول مرة أخرى.", "Couldn't send, please try again."), false);
             if (btn) { btn.disabled = false; btn.textContent = btn.dataset.old; }
           }
         })
         .catch(function () {
-          showMessage("تعذّر الاتصال، حاول مرة أخرى.");
+          showMessage(tr("تعذّر الاتصال، حاول مرة أخرى.", "Connection failed, please try again."), false);
           if (btn) { btn.disabled = false; btn.textContent = btn.dataset.old; }
         });
     });
@@ -1022,13 +1044,13 @@
 
       var title = doc.createElement("p");
       title.className = "lb-pass-title";
-      title.textContent = "تصريح دخولك";
+      title.textContent = tr("تصريح دخولك", "Your entry pass");
       wrap.appendChild(title);
 
       var img = doc.createElement("img");
       img.className = "lb-pass-qr";
       img.src = info.qr;
-      img.alt = "رمز الدخول " + (info.code || "");
+      img.alt = tr("رمز الدخول ", "Entry code ") + (info.code || "");
       img.loading = "lazy";
       wrap.appendChild(img);
 
@@ -1039,8 +1061,11 @@
 
       var note = doc.createElement("p");
       note.className = "lb-pass-note";
-      note.textContent = "يكفي " + info.entries +
-        (info.entries === 1 ? " شخص واحد" : " أشخاص") + " — وريّه على الباب.";
+      note.textContent = isEn()
+        ? "Valid for " + info.entries + (info.entries === 1 ? " person" : " people") +
+          " — show it at the door."
+        : "يكفي " + info.entries +
+          (info.entries === 1 ? " شخص واحد" : " أشخاص") + " — وريّه على الباب.";
       wrap.appendChild(note);
 
       var row = doc.createElement("div");
@@ -1049,13 +1074,13 @@
       dl.className = "lb-btn lb-btn--solid";
       dl.href = info.download;
       dl.setAttribute("download", "");
-      dl.textContent = "تحميل الرمز";
+      dl.textContent = tr("تحميل الرمز", "Download code");
       var open = doc.createElement("a");
       open.className = "lb-btn";
       open.href = info.url;
       open.target = "_blank";
       open.rel = "noopener";
-      open.textContent = "فتح التصريح";
+      open.textContent = tr("فتح التصريح", "Open pass");
       row.appendChild(dl);
       row.appendChild(open);
       wrap.appendChild(row);
@@ -1071,7 +1096,7 @@
       var note = doc.createElement("p");
       note.className = "lb-form-note";
       note.setAttribute("data-rsvp-demo-note", "");
-      note.textContent = "معاينة القالب — الرد مش بيتسجّل.";
+      note.textContent = tr("معاينة القالب — الرد مش بيتسجّل.", "Template preview — replies aren't saved.");
       form.appendChild(note);
     }
 
@@ -1079,6 +1104,9 @@
       var msg = form.querySelector("[data-rsvp-msg]");
       if (!msg) return;
       if (text) msg.textContent = text;
+      else if (success !== false && isEn() && AR_RE.test(msg.textContent)) {
+        msg.textContent = "Thank you — your reply has been received.";
+      }
       msg.hidden = false;
       msg.style.background = success === false ? "rgba(180,65,60,.12)" : "";
       msg.style.color = success === false ? "#b4413c" : "";
