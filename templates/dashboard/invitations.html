@@ -35,7 +35,7 @@
 <div class="table-wrap table-cards">
   <table>
     <thead><tr>
-      <th>الدعوة</th><th>العميل</th><th>القالب</th><th>الباقة</th><th>الحالة</th>
+      <th>الدعوة</th><th>العميل</th><th>القالب</th><th>الحالة</th>
       <th>ضيوف</th><th>ردود</th><th>مشاهدات</th><th>اتعملت</th><th class="th-actions">إجراءات</th>
     </tr></thead>
     <tbody>
@@ -47,7 +47,6 @@
         </td>
         <td data-label="العميل">{{ i.customer.name }}</td>
         <td data-label="القالب">{{ i.template.name }}</td>
-        <td data-label="الباقة">{{ i.plan.name|default:"—" }}</td>
         <td data-label="الحالة"><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
         <td data-label="ضيوف">{{ i.guest_total }}</td>
         <td data-label="ردود">{{ i.rsvp_total }}</td>
@@ -96,7 +95,7 @@
         </td>
       </tr>
       {% empty %}
-      <tr class="is-empty"><td colspan="10" class="empty">لا توجد دعوات مطابقة.</td></tr>
+      <tr class="is-empty"><td colspan="9" class="empty">لا توجد دعوات مطابقة.</td></tr>
       {% endfor %}
     </tbody>
   </table>
