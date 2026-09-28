@@ -847,11 +847,86 @@ def dashboard(request):
     })
 
 
+def _duplicate_invitation(src):
+    """نسخة **دعوة** من دعوة موجودة (مش قالب).
+
+    بتاخد نفس العميل والقالب والباقة وبيانات المناسبة والمستند، وبتبدأ
+    مسودة برابط ورموز جديدة ومن غير ضيوف ولا ردود ولا مشاهدات.
+
+    مكتبة الصور/الفيديو بتاعة الدعوة (‎Asset.invitation‎) بتتنسخ صفوف
+    جديدة بتشاور على **نفس الملفات** — من غيرها النسخة كانت هتعرض
+    الصور عادي بس مكتبة المحرر بتاعتها تبان فاضية، ولو الأصل اتحذف
+    صفوف الأصول بتتمسح معاه. ‎_delete_asset_files‎ مابيمسحش ملف لسه
+    صف تاني بيشاور عليه، فالنسختين آمنين من بعض.
+    """
+    import copy
+
+    with transaction.atomic():
+        dup = Invitation.objects.create(
+            customer=src.customer, template=src.template, plan=src.plan,
+            title=f"{src.title} (نسخة)"[:180],
+            status="draft",
+            event_type=src.event_type, name_one=src.name_one, name_two=src.name_two,
+            event_date=src.event_date, venue=src.venue, address=src.address,
+            map_url=src.map_url, whatsapp=src.whatsapp,
+            document=copy.deepcopy(src.document),
+            expires_at=src.expires_at, password=src.password,
+        )
+        Asset.objects.bulk_create([
+            Asset(
+                file=a.file.name, thumb=a.thumb.name or None, source=a.source.name or None,
+                kind=a.kind, original_name=a.original_name,
+                width=a.width, height=a.height, size_bytes=a.size_bytes,
+                invitation=dup, uploaded_by_id=a.uploaded_by_id,
+            )
+            for a in src.assets.all()
+        ])
+        Template.objects.filter(pk=src.template_id).update(usage_count=F("usage_count") + 1)
+    return dup
+
+
+def _delete_invitation(inv):
+    """حذف دعوة بكل ضيوفها وردودها + ملفاتها اللي مابقتش مستخدمة.
+
+    ‎CASCADE‎ بيمسح صفوف الأصول بس مش الملفات نفسها، فبنجمعها قبل الحذف
+    ونمسح الملف بعده **لو** مفيش مستند تاني بيستخدمه ولا صف تاني
+    بيشاور عليه (زي نسخة من نفس الدعوة).
+    """
+    assets = list(inv.assets.all())
+    with transaction.atomic():
+        inv.delete()
+    if assets:
+        usage = _asset_usage_map(assets)
+        for asset in assets:
+            if not usage.get(asset.pk):
+                _delete_asset_files(asset)
+
+
 @login_required
 def dashboard_invitations(request):
     _staff_required(request)
+
+    if request.method == "POST":
+        back = request.get_full_path()
+        if request.POST.get("duplicate"):
+            src = get_object_or_404(
+                Invitation.objects.select_related("customer", "template", "plan"),
+                pk=request.POST.get("duplicate"),
+            )
+            dup = _duplicate_invitation(src)
+            messages.success(request, f"اتعملت نسخة من «{src.title}» كمسودة: «{dup.title}».")
+            return redirect(back)
+        if request.POST.get("delete"):
+            inv = get_object_or_404(Invitation, pk=request.POST.get("delete"))
+            title = inv.title
+            _delete_invitation(inv)
+            messages.success(request, f"اتحذفت الدعوة «{title}».")
+            return redirect(back)
+        return redirect(back)
+
     q = (request.GET.get("q") or "").strip()
     status = request.GET.get("status", "")
+    template_id = (request.GET.get("template") or "").strip()
     # الأحدث فوق. الترتيب مكتوب هنا صراحةً مش متسايب لـ‎Meta.ordering‎:
     # مع ‎annotate‎ بيتحوّل الاستعلام لتجميع (‎GROUP BY‎)، والترتيب
     # الافتراضي بيضيع فالقايمة كانت بتطلع من الأقدم للأحدث. ‎-id‎
@@ -875,10 +950,20 @@ def dashboard_invitations(request):
         )
     if status:
         qs = qs.filter(status=status)
+    if template_id.isdigit():
+        qs = qs.filter(template_id=int(template_id))
+    else:
+        template_id = ""
+    # القوالب اللي عليها دعوات بس، وأسماء بس — من غير المستندات التقيلة
+    template_choices = list(
+        Template.objects.filter(invitations__isnull=False)
+        .values_list("pk", "name").distinct().order_by("name")
+    )
     return render(request, "dashboard/invitations.html", {
         "nav": "invitations",
         "invitations": qs, "q": q, "status": status,
         "status_choices": Invitation.STATUS_CHOICES,
+        "template_id": template_id, "template_choices": template_choices,
     })
 
 

@@ -14,8 +14,19 @@
       <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ label }}</option>
     {% endfor %}
   </select>
+  <select name="template">
+    <option value="">كل القوالب</option>
+    {% for pk, name in template_choices %}
+      <option value="{{ pk }}"{% if template_id == pk|stringformat:"s" %} selected{% endif %}>{{ name }}</option>
+    {% endfor %}
+  </select>
   <button class="btn btn--ghost btn--sm" type="submit">بحث</button>
 </form>
+
+{# فورم واحد للنسخ والحذف — أزرار القائمة بتشاور عليه بـ‎form=‎ عشان #}
+{# القائمة بتتنقل برّه الجدول على الموبايل (شيت). ‎action‎ فاضي = نفس #}
+{# الرابط بالفلاتر، فبعد العملية بترجع لنفس القائمة المفلترة. #}
+<form id="inv-row-action" method="post" hidden>{% csrf_token %}</form>
 
 {# روابط الدعوة الواحدة بقت تلاتة (الدعوة · العميل · القاعة) وكل واحد #}
 {# بيتفتح وبيتنسخ. ستة أزرار في صف الجدول بتكسر العرض، فالروابط كلها #}
@@ -24,8 +35,8 @@
 <div class="table-wrap table-cards">
   <table>
     <thead><tr>
-      <th>الدعوة</th><th>العميل</th><th>الباقة</th><th>الحالة</th>
-      <th>ضيوف</th><th>ردود</th><th>مشاهدات</th><th class="th-actions">إجراءات</th>
+      <th>الدعوة</th><th>العميل</th><th>القالب</th><th>الباقة</th><th>الحالة</th>
+      <th>ضيوف</th><th>ردود</th><th>مشاهدات</th><th>اتعملت</th><th class="th-actions">إجراءات</th>
     </tr></thead>
     <tbody>
       {% for i in invitations %}
@@ -35,11 +46,13 @@
           <small class="muted">/i/{{ i.slug }}/</small>
         </td>
         <td data-label="العميل">{{ i.customer.name }}</td>
+        <td data-label="القالب">{{ i.template.name }}</td>
         <td data-label="الباقة">{{ i.plan.name|default:"—" }}</td>
         <td data-label="الحالة"><span class="pill pill--{{ i.status }}">{{ i.get_status_display }}</span></td>
         <td data-label="ضيوف">{{ i.guest_total }}</td>
         <td data-label="ردود">{{ i.rsvp_total }}</td>
         <td data-label="مشاهدات">{{ i.public_views }}</td>
+        <td data-label="اتعملت"><time datetime="{{ i.created_at|date:'c' }}" title="{{ i.created_at|date:'j F Y — g:i A' }}">{{ i.created_at|date:"j M Y" }}</time></td>
         <td class="cell--actions">
           <div class="row-actions">
             <a class="btn btn--gold btn--sm" href="{% url 'invitation_editor' i.pk %}">المحرر</a>
@@ -68,13 +81,22 @@
                   <span>فتح بوابة القاعة</span><i class="rowmenu-ico" aria-hidden="true">↗</i></a>
                 <button class="rowmenu-item" type="button" data-copy="{{ host }}{{ i.get_venue_url }}">
                   <span data-copy-label>نسخ رابط القاعة</span><i class="rowmenu-ico" aria-hidden="true">⧉</i></button>
+
+                <p class="rowmenu-title">الدعوة نفسها</p>
+                <button class="rowmenu-item" type="submit" form="inv-row-action"
+                        name="duplicate" value="{{ i.pk }}">
+                  <span>عمل نسخة من الدعوة</span><i class="rowmenu-ico" aria-hidden="true">⎘</i></button>
+                <button class="rowmenu-item rowmenu-item--danger" type="submit" form="inv-row-action"
+                        name="delete" value="{{ i.pk }}"
+                        onclick="return confirm('تحذف «{{ i.title|escapejs }}» نهائياً؟{% if i.guest_total %}\nمعاها {{ i.guest_total }} ضيف و{{ i.rsvp_total }} رد.{% endif %}{% if i.status == 'published' %}\nالدعوة منشورة — رابطها هيبطّل يفتح.{% endif %}')">
+                  <span>حذف الدعوة</span><i class="rowmenu-ico" aria-hidden="true">✕</i></button>
               </div>
             </div>
           </div>
         </td>
       </tr>
       {% empty %}
-      <tr class="is-empty"><td colspan="8" class="empty">لا توجد دعوات مطابقة.</td></tr>
+      <tr class="is-empty"><td colspan="10" class="empty">لا توجد دعوات مطابقة.</td></tr>
       {% endfor %}
     </tbody>
   </table>
