@@ -26,7 +26,6 @@
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %}
          playsinline preload="auto"></video>
-  <div class="lb-intro-veil"></div>
       {% comment %}
       الزر كبسولة نصية واضحة بدون علامة تشغيل مثلثة، والـaria-label
 
@@ -54,7 +53,6 @@
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          autoplay {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %} playsinline preload="auto"></video>
-  <div class="lb-intro-veil"></div>
   {% endif %}
 
   {% endif %}
