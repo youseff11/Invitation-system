@@ -695,6 +695,64 @@ tbody tr:hover { background: var(--surface-2); }
   .table-cards tr { padding: 14px; gap: 9px 10px; }
 }
 
+/* ---------------------------------------------------------- جدول الدعوات
+   تسع أعمدة + تلات أزرار: بـ‎nowrap‎ وحشوة ‎14px‎ الجدول كان أعرض من
+   الشاشة حتى على ١٥٠٠px وبيطلّع شريط تمرير أفقي. العلاج:
+   - الشاشة الكبيرة: حشوة أصغر، والنصوص الطويلة (العميل · القالب) تلف
+     على سطرين بدل ما تمط العمود. الأرقام والتاريخ فاضلين سطر واحد.
+   - تحت ‎1180px‎ الجدول بيبقى كروت بدري عن باقي الجداول (‎920px‎)،
+     لأن التسع أعمدة مابتدخلش في عرض تابلت/لابتوب صغير. */
+.inv-table { overflow-x: visible; }
+.inv-table th, .inv-table td { padding: 12px 10px; }
+.inv-table th { letter-spacing: .04em; }
+.inv-table td[data-label="العميل"],
+.inv-table td[data-label="القالب"] { white-space: normal; min-width: 90px; max-width: 180px; }
+.inv-table .cell--title { white-space: normal; min-width: 150px; }
+.inv-table .cell--title small { word-break: break-all; }
+
+@media (min-width: 921px) and (max-width: 1180px) {
+  .table-cards--lg { background: none; border: 0; border-radius: 0; overflow: visible; }
+  .table-cards--lg table { display: block; }
+  .table-cards--lg thead { display: none; }
+  .table-cards--lg tbody { display: grid; gap: 12px; }
+  .table-cards--lg tr {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px 14px; padding: 15px 16px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  }
+  .table-cards--lg tbody tr:hover { background: var(--surface); }
+  .table-cards--lg td {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 3px; padding: 0; border: 0; white-space: normal; min-width: 0; max-width: none;
+  }
+  .table-cards--lg td::before {
+    content: attr(data-label); flex: none;
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .table-cards--lg .cell--title {
+    grid-column: 1 / -1; order: -1; display: block;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .table-cards--lg .cell--title::before { content: none; }
+  .table-cards--lg .cell--title strong { font-size: 15.5px; }
+  .table-cards--lg .cell--title small { font-size: 12px; direction: ltr; text-align: start; }
+  .table-cards--lg .cell--actions {
+    grid-column: 1 / -1; order: 99; align-items: stretch;
+    padding-top: 11px; border-top: 1px solid var(--line);
+  }
+  .table-cards--lg .cell--actions::before { content: none; }
+  .table-cards--lg tr.is-empty { display: block; padding: 0; }
+  .table-cards--lg tr.is-empty td { display: block; }
+  .table-cards--lg tr.is-empty td::before { content: none; }
+}
+/* الكروت على الموبايل/التابلت بتاخد قواعد ‎.table-cards‎ العامة؛ بس
+   نلغي حدود العرض اللي فوق عشان الخانة تاخد عرض الكارت كله */
+@media (max-width: 920px) {
+  .inv-table td[data-label="العميل"],
+  .inv-table td[data-label="القالب"],
+  .inv-table .cell--title { min-width: 0; max-width: none; }
+}
+
 /* ---------------------------------------------------------- التذييل */
 .foot { border-top: 1px solid var(--line); padding: 34px 0; text-align: center; color: var(--muted); font-size: 13px; }
 
