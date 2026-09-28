@@ -5,7 +5,7 @@
   {% if props.heading %}<h2 class="lb-heading" data-ts="heading">{{ props.heading }}</h2>{% endif %}
   {% if props.url %}
   <div data-move="video" class="lb-video-wrap lb-video-wrap--{{ props.aspect|default:'16x9' }}">
-    <div class="lb-video lb-video--{{ props.aspect|default:'16x9' }}" data-video="{{ props.url }}"{% if props.poster %} data-poster="{{ props.poster }}"{% endif %}{% if props.autoplay %} data-autoplay="1"{% endif %}{% if props.sound %} data-sound="1"{% endif %}{% if props.loop %} data-loop="1"{% endif %}{% if not props.controls %} data-no-controls="1"{% endif %}></div>
+    <div class="lb-video lb-video--{{ props.aspect|default:'16x9' }}" data-video="{{ props.url }}"{% if props.poster %} data-poster="{{ props.poster }}"{% endif %}{% if props.autoplay %} data-autoplay="1"{% endif %}{% if props.sound %} data-sound="1"{% endif %}{% if props.loop %} data-loop="1"{% endif %} data-no-controls="1"></div>
     {% for overlay in props.text_overlays %}{% include "blocks/_overlay_item.html" with overlay=overlay index=forloop.counter0 wrap_class="lb-video-text" is_video=True %}{% endfor %}
   </div>
   {% else %}<div class="lb-gempty">ارفع فيديو أو الصق رابطه من المحرر</div>{% endif %}

@@ -496,9 +496,9 @@
                وضع التوفير يفتكر إن الفيديو محتاج ضغطة بإيده. */
             v.dataset.lbPrimed = "";
             queueMedia(v);
-            window.setTimeout(function () {
-              if (v.paused && v.dataset.lbWanted === "1") v.controls = true;
-            }, 1500);
+            /* شريط المتصفح مابيرجعش هنا تاني (قرار تصميم): أي لمسة على
+               الصفحة بتفكّ القفل من الطابور، واللمسة على الفيديو نفسه
+               بتشغّله — شوف مستمع ‎click‎ تحت. */
           });
         };
 
@@ -552,12 +552,15 @@
           }, { once: true });
         } else if (autoplay) {
           watch();
-        } else if (noControls) {
-          /* من غير شريط ومن غير تشغيل تلقائي الفيديو بيبقى صورة ساكنة.
-             الضغطة على الفيديو نفسه بقت هي زر التشغيل/الإيقاف. */
+        }
+        /* الفيديو من غير شريط تحكم دايماً، فاللمسة على الفيديو نفسه هي
+           زر التشغيل/الإيقاف — للتشغيل التلقائي كمان: لو المتصفح رفضه
+           (وضع التوفير) الضيف يلمسه فيشتغل بدل ما يطلع له شريط. */
+        if (noControls) {
           v.style.cursor = "pointer";
           v.addEventListener("click", function () {
-            if (v.paused) tryPlay(); else v.pause();
+            if (v.paused) { v.dataset.lbWanted = "1"; tryPlay(); }
+            else { v.dataset.lbWanted = ""; v.pause(); }
           });
         }
         return;

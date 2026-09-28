@@ -1414,7 +1414,7 @@ _PREVIEW_KEYS = (
 # بالستايل القديم. النسخة دي ضافت تنسيق كل نص لوحده (data-ts).
 # بيتزوّد كل ما رندر القالب يتغيّر: معاينة القوالب متخزّنة، والتوقيع
 # بيتحسب على المستند بس — فتعديل في قالب البلوك مش هيبطّل الكاش لوحده.
-_PREVIEW_RENDER_REVISION = "2026-09-18-rsvp-demo-sent-v21"
+_PREVIEW_RENDER_REVISION = "2026-09-28-video-no-controls-v22"
 
 
 def _preview_signature(document: dict, runtime_scripts=None, runtime_root_attrs=None) -> str:
