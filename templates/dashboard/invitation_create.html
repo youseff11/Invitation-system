@@ -17,6 +17,7 @@
         <label style="display:flex;gap:8px;align-items:center;font-size:14px">
           <input type="radio" name="template_id" value="{{ t.pk }}" required{% if forloop.first %} checked{% endif %}>
           {{ t.name }}
+          {% if not t.is_active %}<span class="pill pill--archived">مخفي</span>{% endif %}
         </label>
       </div>
     </label>

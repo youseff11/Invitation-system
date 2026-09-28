@@ -343,7 +343,14 @@ a { color: inherit; text-decoration: none; }   /* من غير ده الرواب�
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; cursor: pointer;
 }
-.ed-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+/* الـcheckbox المخفي لازم يتحسب مكانه من الـlabel نفسه. من غير
+   ‎position: relative‎ على ‎.ed-toggle‎ كان بيتحسب من ‎<body>‎: بيقعد تحت
+   الشاشة (آخر مفتاح في لوحة التصميم = «تثبيت الخلفية») ويطوّل الصفحة.
+   ولما بتدوس المفتاح المتصفح بيعمل focus للـinput ويمرّر الصفحة كلها
+   عشان يوصله — فالمحرر كله كان بيطلع لفوق ويسيب شاشة سودا تحت. */
+.ed-toggle { position: relative; }
+.ed-toggle input { position: absolute; inset-block-start: 0; inset-inline-start: 0;
+                   width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .ed-switch {
   width: 40px; height: 22px; flex: none;
   background: var(--e-line); border-radius: 999px; position: relative;

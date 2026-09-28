@@ -353,7 +353,8 @@ def template_gallery(request):
         qs = qs.filter(category=category)
     return render(request, "public/gallery.html", {
         "templates": qs,
-        "categories": Template.CATEGORY_CHOICES,
+        # «بدون» مش تصنيف يتفلتر بيه في المعرض العام
+        "categories": [c for c in Template.CATEGORY_CHOICES if c[0] != "none"],
         "active_category": category,
     })
 
@@ -970,7 +971,11 @@ def dashboard_invitations(request):
 @login_required
 def invitation_create(request):
     _staff_required(request)
-    templates = Template.objects.filter(is_active=True)
+    # كل القوالب — حتى المخفية. «الإخفاء» بيشيل القالب من المعرض العام
+    # بس، لكن فريق العمل ممكن يعمل دعوة من قالب مخفي (قالب خاص بعميل مثلاً).
+    # الظاهرة الأول. من غير المستندات: الصفحة بتعرض اسم وغلاف بس.
+    templates = (Template.objects.order_by("-is_active", "sort_order", "-created_at")
+                 .defer(*_TEMPLATE_HEAVY_FIELDS))
     plans = Plan.objects.filter(is_active=True)
 
     if request.method == "POST":

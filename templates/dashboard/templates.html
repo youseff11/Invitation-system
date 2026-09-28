@@ -57,7 +57,7 @@
     <div class="tpl-body">
       <h3>{{ t.name }}</h3>
       <span class="tpl-meta">
-        {{ t.get_category_display }} · {{ t.get_source_display }} ·
+        {% if t.category != "none" %}{{ t.get_category_display }} · {% endif %}{{ t.get_source_display }} ·
         {{ t.document.blocks|length }} قسم · استُخدم {{ t.uses }} مرة
       </span>
       {% if not t.is_active %}<span class="pill pill--archived">مخفي</span>{% endif %}

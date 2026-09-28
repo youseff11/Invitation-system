@@ -134,6 +134,8 @@ class Template(TimeStampedModel):
     """قالب دعوة — مستند blocks كامل قابل للتعديل في المحرر."""
 
     CATEGORY_CHOICES = [
+        # «بدون»: قالب مالوش تصنيف — مابيظهرش كفلتر في معرض القوالب
+        ("none", "بدون"),
         ("wedding", "زفاف"),
         ("engagement", "خطوبة"),
         ("henna", "حنة"),
@@ -151,10 +153,12 @@ class Template(TimeStampedModel):
     ]
 
     name = models.CharField("الاسم", max_length=120)
-    slug = models.SlugField("المعرّف", unique=True, max_length=140)
+    # ‎blank‎: لو اتساب فاضي ‎save()‎ بيولّده من الاسم — من غيرها لوحة
+    # الأدمن كانت بترفض الحفظ بـ«هذا الحقل مطلوب».
+    slug = models.SlugField("المعرّف", unique=True, max_length=140, blank=True)
     category = models.CharField("التصنيف", max_length=30,
                                 choices=CATEGORY_CHOICES, default="wedding")
-    collection = models.CharField("المجموعة", max_length=40, default="Premium")
+    collection = models.CharField("المجموعة", max_length=40, default="Premium", blank=True)
     description = models.TextField("الوصف", blank=True)
 
     # نسخة إنجليزية اختيارية — لو فاضية بيرجع للعربي تلقائياً
