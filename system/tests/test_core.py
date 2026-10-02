@@ -3749,6 +3749,70 @@ class DocumentTranslationTests(BaseAppTest):
 
 
 # ==========================================================================
+class LanguageSwitchInPlaceTests(TestCase):
+    """زرار اللغة بيبدّل النصوص مكانها، مش بيستبدل الصفحة.
+
+    الاستبدال الكامل كان بيعيد تحميل فيديو الغلاف ويصفّر حركة الظهور
+    ويرجّع الشريط — فالضيف يشوف وميض غامق كأنها ريفريش.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.js = (Path(settings.BASE_DIR) / "static/js/invite.js").read_text("utf-8")
+        start = cls.js.index("function initLanguageToggle()")
+        cls.handler = cls.js[start:cls.js.index("// ------", start)]
+
+    def test_in_place_patch_is_tried_before_replacing_the_page(self):
+        patch = self.handler.index("patchLanguageInPlace(current, next)")
+        swap = self.handler.index("current.replaceWith(next)")
+        self.assertLess(patch, swap)
+
+    def test_the_patched_path_keeps_the_page_and_does_not_reinit(self):
+        """العناصر لسه موجودة، فإعادة التهيئة كانت هتكرّر المستمعين والفيديو."""
+        patched = self.handler[
+            self.handler.index("patchLanguageInPlace(current, next)"):
+            self.handler.index("current.replaceWith(next)")]
+        self.assertIn("return;", patched)
+        for reinit in ("initVideo()", "initIntro()", "initRsvp()",
+                       "initAnimations()", "runSectionScripts("):
+            self.assertNotIn(reinit, patched)
+
+    def test_the_designer_hook_still_fires_for_a_patched_swap(self):
+        patched = self.handler[
+            self.handler.index("patchLanguageInPlace(current, next)"):
+            self.handler.index("current.replaceWith(next)")]
+        self.assertIn("lb:content-swapped", patched)
+        self.assertIn("inPlace: true", patched)
+
+    def test_the_fetched_url_is_pinned_before_the_toggle_changes(self):
+        """الزرار نفسه بيتغيّر ‎href‎ بتاعه للغة التانية بعد التبديل."""
+        self.assertIn("var targetUrl = link.href;", self.handler)
+        self.assertIn("fetchLangHtml(targetUrl)", self.handler)
+        self.assertIn('replaceState({}, "", targetUrl)', self.handler)
+        self.assertIn("window.location.href = targetUrl;", self.handler)
+        self.assertNotIn("replaceState({}, \"\", link.href)", self.handler)
+
+    def test_the_next_language_is_prefetched_after_a_patch(self):
+        self.assertIn("prefetchLang(link.href);", self.handler)
+
+    def test_media_and_live_counters_are_never_touched(self):
+        skip = self.js[self.js.index("var LANG_SKIP"):self.js.index("var LANG_ATTRS")]
+        for tag in ("video", "iframe", "canvas", "script", "style",
+                    "[data-video]", "[data-cd]"):
+            self.assertIn(tag, skip)
+
+    def test_a_mismatch_falls_back_to_the_full_swap(self):
+        """أي قسم ظهر أو اختفى بين اللغتين = استبدال كامل، مش ترجمة ناقصة."""
+        self.assertIn("if (i >= a.length) return false;", self.js)
+        self.assertIn("if (!planLanguagePatch(live, fresh, ops, liveIntro)) return false;",
+                      self.js)
+        # الخطة بتتحسب كلها قبل أول تغيير
+        plan = self.js.index("if (!planLanguagePatch(live, fresh, ops, liveIntro))")
+        apply = self.js.index("ops.forEach(function (op) { op(); });")
+        self.assertLess(plan, apply)
+
+
 class TranslationKeyContractTests(BaseAppTest):
     """مفاتيح الجدول بيبنيها الجافاسكربت وبتقراها بايثون.
 

@@ -1166,6 +1166,89 @@
     if (overflow) doc.body.style.overflow = overflow;
   }
 
+  /* تبديل النصوص مكانها — من غير ما نستبدل الصفحة.
+
+     استبدال ‎[data-invite-language-content]‎ كله كان بيعمل كل حاجة من
+     الأول: فيديو الغلاف والافتتاحية بيتطلبوا تاني، الصور تتفك من جديد،
+     وحركة الظهور ترجع لصفر — فالضيف يشوف وميض غامق ويرجع الشريط لفوق
+     كأنها ريفريش. **مقيس حي على دعوة منشورة:** ‎١١٥‎ عقدة اتشالت و‎٢٠٠‎
+     اتضافت وفيديو الهيرو اتطلب تاني، علشان ‎٤٨‎ نص و‎٤‎ سمات مختلفين
+     بس بين اللغتين.
+
+     الصفحتين طالعين من نفس المستند، فالبنية واحدة والنص هو اللي
+     بيختلف. بنمشي على الشجرتين مع بعض ونغيّر النص والسمات اللي فيها
+     كلام بس. أي حاجة مش متطابقة (قسم ظهر أو اختفى لأن نصه فاضي في لغة)
+     بتخلّينا نرجع للاستبدال الكامل زي ما كان — الخطة بتتحسب كلها
+     قبل أي تغيير، فمفيش حالة نص‑نص. */
+  var LANG_SKIP = "script,style,noscript,video,audio,iframe,canvas,svg," +
+                  "[data-video],[data-cd]";   // الجافاسكربت بيملّيهم ويحدّثهم
+  var LANG_ATTRS = ["alt", "title", "placeholder", "aria-label", "href",
+                    "hreflang", "data-done", "lang", "dir", "content"];
+
+  function langKids(node, fromServer, liveIntro) {
+    return Array.prototype.filter.call(node.childNodes, function (n) {
+      if (n.nodeType === 3) return n.data.trim() !== "";
+      if (n.nodeType !== 1) return false;
+      // الافتتاحية بتتشال من الصفحة بعد ما تتفتح، والسيرفر بيبعتها دايماً
+      return !(fromServer && !liveIntro && n.matches(".lb-intro"));
+    });
+  }
+
+  /* نفس النوع، ولو عنصر فلازم يشاركوا كلاس. ده اللي بيفرّق عنصر حقنه
+     كود المصمّم وقت التشغيل (مالوش مقابل في صفحة السيرفر) عن عنصر
+     حقيقي من نفس الوسم. */
+  function langSame(a, b) {
+    if (a.nodeType !== b.nodeType) return false;
+    if (a.nodeType === 3) return true;
+    if (a.tagName !== b.tagName) return false;
+    var cls = Array.prototype.slice.call(a.classList);
+    if (!cls.length && !b.classList.length) return true;
+    return cls.some(function (c) { return b.classList.contains(c); });
+  }
+
+  function planLanguagePatch(live, fresh, ops, liveIntro) {
+    if (live.nodeType === 3) {
+      if (live.data !== fresh.data) ops.push(function () { live.data = fresh.data; });
+      return true;
+    }
+    var skip = live.matches(LANG_SKIP);
+    if (skip !== fresh.matches(LANG_SKIP)) return false;
+    if (skip) return true;
+
+    LANG_ATTRS.forEach(function (name) {
+      var from = live.getAttribute(name), to = fresh.getAttribute(name);
+      if (from === to) return;
+      ops.push(function () {
+        if (to === null) live.removeAttribute(name);
+        else live.setAttribute(name, to);
+      });
+    });
+
+    var a = langKids(live, false, liveIntro);
+    var b = langKids(fresh, true, liveIntro);
+    var i = 0;
+    for (var j = 0; j < b.length; j++) {
+      // عنصر عندنا بس (حقنه كود المصمّم): نعدّيه. نص زيادة: مش هنخمّن
+      while (i < a.length && !langSame(a[i], b[j])) {
+        if (a[i].nodeType === 3) return false;
+        i++;
+      }
+      if (i >= a.length) return false;     // حاجة جت من السيرفر ومالهاش مقابل
+      if (!planLanguagePatch(a[i], b[j], ops, liveIntro)) return false;
+      i++;
+    }
+    return true;
+  }
+
+  /** يطبّق اللغة الجديدة على الصفحة مكانها. ‎false‎ = مش ممكن، استبدل. */
+  function patchLanguageInPlace(live, fresh) {
+    var ops = [];
+    var liveIntro = !!live.querySelector(":scope > .lb-intro");
+    if (!planLanguagePatch(live, fresh, ops, liveIntro)) return false;
+    ops.forEach(function (op) { op(); });
+    return true;
+  }
+
   /* صفحة اللغة التانية متخزّنة **كنص** مش كمستند محلّل.
 
      مقيس على قالب ‎floral‎ المنشور: الجلب من السيرفر **٧٢٤ms** و٨٨
@@ -1236,6 +1319,9 @@
 
       var scrollX = window.scrollX;
       var scrollY = window.scrollY;
+      /* الرابط اللي هنجيب منه. التبديل في المكان بيغيّر ‎href‎ الزرار نفسه
+         للغة التانية، فلازم نثبّت الأصلي قبل ما يتغيّر. */
+      var targetUrl = link.href;
       var intro = $(".lb-intro");
       var introState = intro
         ? (intro.classList.contains("is-open") ? "open" : "closed")
@@ -1252,7 +1338,7 @@
       var goTo = function () {
         if (navigating) return;
         navigating = true;
-        window.location.href = link.href;
+        window.location.href = targetUrl;
       };
       var giveUp = window.setTimeout(function () {
         if (handled) return;
@@ -1264,7 +1350,7 @@
         link.removeAttribute("aria-busy");
       };
 
-      fetchLangHtml(link.href)
+      fetchLangHtml(targetUrl)
         .then(function (markup) {
           if (navigating) return;
           handled = true;
@@ -1288,12 +1374,27 @@
 
           // الرأس الأول عشان المحتوى الجديد ينزل بتنسيقه من أول رسمة
           syncLanguageHead(parsed);
+
+          /* الأول نبدّل النصوص مكانها: العناصر والفيديو والصور والحركة
+             بتفضل زي ما هي، والشريط مايتحرّكش. الأحداث والسكربتات
+             متربطة بالعناصر اللي لسه موجودة فمفيش حاجة تتعاد تهيئتها. */
+          if (patchLanguageInPlace(current, next)) {
+            // ‎targetUrl‎: زرار التبديل بقى بيشاور على اللغة التانية
+            try { window.history.replaceState({}, "", targetUrl); } catch (err) {}
+            prefetchLang(link.href);
+            doc.dispatchEvent(new CustomEvent("lb:content-swapped", {
+              detail: { lang: nextLang || "", root: current, inPlace: true }
+            }));
+            finish();
+            return;
+          }
+
           current.replaceWith(next);
-          /* ‎link.href‎ هو الرابط اللي جبنا منه فعلاً. قبل كده كان بياخد
+          /* ‎targetUrl‎ هو الرابط اللي جبنا منه فعلاً. قبل كده كان بياخد
              رابط زرار التبديل **الجديد** — وده بيوديك للغة **التانية**،
              فشريط العنوان كان بيقول ‎?lang=en‎ والصفحة عربي: أي ريفريش أو
              مشاركة للرابط بترجّع اللغة الغلط. */
-          try { window.history.replaceState({}, "", link.href); } catch (err) {}
+          try { window.history.replaceState({}, "", targetUrl); } catch (err) {}
 
           var newIntro = $(".lb-intro");
           if (introState === "gone" && newIntro) {
