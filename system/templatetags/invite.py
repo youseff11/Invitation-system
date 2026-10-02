@@ -265,6 +265,54 @@ _SCRIPT_BLOCK_RE = re.compile(
 _SCRIPT_SRC_RE = re.compile(r"\bsrc\s*=", re.I)
 
 
+# عنصر الكود الأساسي بيعلن ‎width:100%‎؟
+#
+# مربع الكود (‎.lb-extra-html‎) عرضه ‎max-content‎، فعنصر جوّاه عرضه ‎100%‎
+# معناه «١٠٠٪ من مربع عرضه على قد الكلام». يعني عرض المربع كله بيمشي
+# مع أطول سطر، والجريد والأعمدة اللي جوّاه بتتوزّع عليه: النص الإنجليزي
+# الأطول بيوسّع المربع، فأسماء العروسين تتباعد وأماكنهم تتغيّر عن العربي.
+# قياس حي: عرض المربع ٢٣٨px عربي و٣٦٢px إنجليزي، ومراكز الأعمدة اتزحزحت
+# ٣١px. لما المربع ياخد العرض الكامل المراكز بتتطابق (فرق ‎≤1px‎).
+_CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
+_HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+# ‎@media‎ وأخواتها: قواعدها شرطية، مش إعلان أساسي عن العرض
+_CSS_AT_BLOCK_RE = re.compile(r"@[^{};]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}")
+_CSS_RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}")
+_ROOT_TAG_RE = re.compile(r"<([a-zA-Z][\w-]*)\b([^>]*)>")
+_FULL_WIDTH_RE = re.compile(
+    r"(?:^|;)\s*width\s*:\s*100%\s*(?:!important\s*)?(?:;|$)", re.I)
+_COMPOUND_RE = re.compile(r"^([a-zA-Z][\w-]*)?((?:[.#][\w-]+)*)$")
+
+
+def fills_width(css: str, html: str) -> bool:
+    """أول عنصر في الكود له قاعدة ستايل فيها ‎width:100%‎؟"""
+    root = _ROOT_TAG_RE.search(_HTML_COMMENT_RE.sub("", html or ""))
+    if not root:
+        return False
+    tag, attrs = root.group(1).lower(), root.group(2)
+    class_attr = re.search(r'\bclass\s*=\s*["\']([^"\']*)', attrs, re.I)
+    id_attr = re.search(r'\bid\s*=\s*["\']([^"\']+)', attrs, re.I)
+    classes = set(class_attr.group(1).split()) if class_attr else set()
+    ident = id_attr.group(1) if id_attr else ""
+
+    css = _CSS_AT_BLOCK_RE.sub("", _CSS_COMMENT_RE.sub("", css or ""))
+    for selectors, body in _CSS_RULE_RE.findall(css):
+        if not _FULL_WIDTH_RE.search(body.strip()):
+            continue
+        for selector in selectors.split(","):
+            parts = re.split(r"[\s>+~]+", selector.strip())
+            match = _COMPOUND_RE.match(parts[-1]) if parts else None
+            if not match or not (match.group(1) or match.group(2)):
+                continue
+            if match.group(1) and match.group(1).lower() != tag:
+                continue
+            tokens = re.findall(r"([.#])([\w-]+)", match.group(2))
+            if all((name in classes) if kind == "." else (name == ident)
+                   for kind, name in tokens):
+                return True
+    return False
+
+
 @register.filter(name="split_code")
 def split_code(value):
     """يفصل خانة «الكود» الواحدة لتلات حتت: ستايل، وHTML، وجافاسكربت.
@@ -278,7 +326,7 @@ def split_code(value):
     """
     raw = str(value or "")
     if not raw.strip():
-        return {"css": "", "html": "", "js": ""}
+        return {"css": "", "html": "", "js": "", "fluid": False}
 
     scripts: list[str] = []
 
@@ -293,7 +341,8 @@ def split_code(value):
     css = style_css(raw)
     html = _SCRIPT_BLOCK_RE.sub(take_script, strip_style(raw))
 
-    return {"css": css, "html": html, "js": wrap_js("\n".join(scripts))}
+    return {"css": css, "html": html, "js": wrap_js("\n".join(scripts)),
+            "fluid": fills_width(css, html)}
 
 
 @register.filter(name="wrap_js")

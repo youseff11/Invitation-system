@@ -1329,6 +1329,8 @@ def render_document(
             "classes": block_classes(block, theme),
             "allowed_features": allowed_features or set(),
             "request": request,
+            # مربع الكود بياخد العرض الكامل لما فيه ترجمة (‎_section_code.html‎)
+            "has_alt": has_alt,
             # ستايل القسم اتطبع مرة واحدة في الرأس — مايتكررش هنا
             "css_shared": str(block.get("id") or "") in shared_css_ids,
         }

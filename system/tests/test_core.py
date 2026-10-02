@@ -3749,6 +3749,74 @@ class DocumentTranslationTests(BaseAppTest):
 
 
 # ==========================================================================
+class CodeBoxFullWidthTests(TestCase):
+    """أماكن النصوص ماتتغيّرش بين اللغتين.
+
+    مربع «كود متقدّم» عرضه ‎max-content‎، فعنصر جوّاه ‎width:100%‎ كان بيمشي مع
+    أطول نص: الإنجليزي الأطول يوسّع المربع والأعمدة تتباعد.
+    """
+
+    CARD = "<div class=\"card\"><span data-move=\"a\">اسم</span></div>"
+
+    def _html(self, code, translated):
+        block = B.make_block("text")
+        block["id"] = "code-1"
+        block["props"]["code"] = code
+        raw = {"blocks": [block]}
+        if translated:
+            raw["i18n"] = {"en": {"code-1.code#a": "Name"}}
+        doc = B.normalize_document(raw)
+        return str(render_document(doc, editable=False)["html"])
+
+    # ---- الكشف
+    def test_a_root_class_with_full_width_is_detected(self):
+        self.assertTrue(invite_tags.fills_width(".card{width:100%}", self.CARD))
+
+    def test_the_last_part_of_the_selector_is_what_counts(self):
+        self.assertTrue(invite_tags.fills_width(
+            "#sec .wrap .card { color:red; width: 100% !important; }", self.CARD))
+
+    def test_a_root_without_it_is_left_alone(self):
+        self.assertFalse(invite_tags.fills_width(".card{width:260px}", self.CARD))
+        self.assertFalse(invite_tags.fills_width(".card{max-width:100%}", self.CARD))
+        self.assertFalse(invite_tags.fills_width(".card{min-width:100%}", self.CARD))
+
+    def test_only_the_first_element_matters(self):
+        """عنصر جوّاه عرضه ‎100%‎ مالوش دعوة بعرض المربع نفسه."""
+        self.assertFalse(invite_tags.fills_width(".inner{width:100%}",
+                         "<div class=\"card\"><p class=\"inner\">x</p></div>"))
+
+    def test_another_class_does_not_count(self):
+        self.assertFalse(invite_tags.fills_width(".other{width:100%}", self.CARD))
+
+    def test_a_media_query_is_not_an_unconditional_declaration(self):
+        css = "@media(max-width:300px){.card{width:100%}}"
+        self.assertFalse(invite_tags.fills_width(css, self.CARD))
+
+    def test_a_comment_or_missing_code_is_safe(self):
+        self.assertFalse(invite_tags.fills_width("/* .card{width:100%} */", self.CARD))
+        self.assertFalse(invite_tags.fills_width(".card{width:100%}", ""))
+        self.assertFalse(invite_tags.fills_width("", self.CARD))
+
+    # ---- العرض
+    def test_a_translated_invitation_gets_a_full_width_box(self):
+        html = self._html("<style>.card{width:100%}</style>" + self.CARD, True)
+        self.assertRegex(html, r'class="lb-extra-html lb-full"')
+
+    def test_an_invitation_without_a_translation_is_untouched(self):
+        html = self._html("<style>.card{width:100%}</style>" + self.CARD, False)
+        self.assertIn('class="lb-extra-html"', html)
+        self.assertNotIn("lb-full", html)
+
+    def test_a_fixed_width_card_keeps_hugging_its_content(self):
+        html = self._html("<style>.card{width:260px}</style>" + self.CARD, True)
+        self.assertIn('class="lb-extra-html"', html)
+
+    def test_the_full_width_rule_exists_in_the_stylesheet(self):
+        css = (Path(settings.BASE_DIR) / "static/css/invite.css").read_text("utf-8")
+        self.assertIn(".lb-extra-html.lb-full", css)
+
+
 class LanguageSwitchInPlaceTests(TestCase):
     """زرار اللغة بيبدّل النصوص مكانها، مش بيستبدل الصفحة.
 
