@@ -4338,6 +4338,53 @@ class SectionOverlayElementsTests(TestCase):
         self.assertEqual(invite_tags.overlay_target("#rsvp"), "")
         self.assertEqual(invite_tags.overlay_target(""), "")
 
+    # ---- خط النسخة المترجَمة
+    def _translated_css(self, overlay, style, key="text", block_type="text"):
+        block = B.make_block(block_type)
+        block["id"] = "ovl-1"
+        block["props"]["text_overlays"] = [overlay]
+        doc = B.normalize_document({
+            "blocks": [block],
+            "i18n": {"en": {f"ovl-1.text_overlays.0.{key}": "Hello"}},
+            "i18n_style": {"en": {f"ovl-1.text_overlays.0.{key}": style}},
+        })
+        return render_document(doc, editable=False, lang="en")["layout_css"]
+
+    def test_the_translated_font_reaches_an_added_text(self):
+        """«إضافة نص» + خط للنسخة المترجَمة: القاعدة كانت بتتشال بالسكوت."""
+        css = self._translated_css(
+            {"kind": "text", "text": "أهلاً"}, {"font": "'Cairo', sans-serif"})
+        self.assertIn('[data-section-text-index="0"]', css)
+        self.assertIn("font-family:'Cairo', sans-serif !important", css)
+
+    def test_the_translated_size_matches_how_the_original_scales(self):
+        css = self._translated_css({"kind": "text", "text": "أهلاً"}, {"size": 40})
+        self.assertIn("font-size:clamp(", css)
+
+    def test_the_translated_button_label_gets_its_font_on_the_label(self):
+        css = self._translated_css(
+            {"kind": "button", "label": "احجز"}, {"font": "'Cairo', sans-serif"},
+            key="label")
+        self.assertIn('[data-section-text-index="0"] .lb-ovl-btn', css)
+
+    def test_the_translated_font_only_applies_to_the_other_language(self):
+        block = B.make_block("text")
+        block["id"] = "ovl-1"
+        block["props"]["text_overlays"] = [{"kind": "text", "text": "أهلاً"}]
+        doc = B.normalize_document({
+            "blocks": [block],
+            "i18n": {"en": {"ovl-1.text_overlays.0.text": "Hello"}},
+            "i18n_style": {"en": {"ovl-1.text_overlays.0.text":
+                                  {"font": "'Cairo', sans-serif"}}},
+        })
+        css = render_document(doc, editable=False, lang="ar")["layout_css"]
+        self.assertNotIn("data-section-text-index", css)
+
+    def test_the_translated_font_is_scoped_to_its_own_section(self):
+        css = self._translated_css(
+            {"kind": "text", "text": "أهلاً"}, {"font": "'Cairo', sans-serif"})
+        self.assertIn(':is(#ovl-1,[data-block="ovl-1"]) ', css)
+
     # ---- المحرر
     def test_an_empty_element_shows_its_place_in_the_editor_only(self):
         empty = {"kind": "image", "src": ""}

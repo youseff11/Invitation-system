@@ -889,6 +889,12 @@ def _num(value: object, low: float, high: float) -> float | None:
 # آمن جوّه محدِّد سمة: حروف وأرقام وشرطة وشرطة سفلية بس.
 _I18N_MOVE_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
+# عناصر «إضافة نص» فوق القسم: مفتاح ترجمتها ‎<بلوك>.text_overlays.<رقم>.text‎
+# (أو ‎label‎ لنص الزرار). فيه نقط، فمايطابقش ‎_SAFE_ID‎ — وكان بيتشال
+# بالسكوت: المصمّم يختار خط للنسخة المترجَمة وماتغيّرش حاجة. العنصر
+# بيتعلّم في القالب بـ‎data-section-text-index‎ بنفس الرقم ده.
+_I18N_OVERLAY_RE = re.compile(r"^text_overlays\.(\d{1,3})\.(text|label)$")
+
 
 def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
     """تنسيق النصوص المترجَمة — بيتولّد وقت عرض اللغة التانية بس.
@@ -900,6 +906,7 @@ def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
     شكل المفتاح هو نفسه مفتاح جدول الترجمة:
       ``<بلوك>.<حقل>#<وحدة>``  ← عنصر جوّه كود القسم
       ``<بلوك>.<حقل>``         ← حقل نص عادي (‎data-ts‎ في قالب البلوك)
+      ``<بلوك>.text_overlays.<رقم>.text|label`` ← عنصر «إضافة نص» أو زرار فوق القسم
       ``settings.<حقل>#<وحدة>`` ← عنصر جوّه كود الافتتاحية
     """
     from .templatetags.invite import _fluid
@@ -911,19 +918,14 @@ def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
     ref = (theme or {}).get("max_width")
     rules: list[str] = []
     for key, style in table.items():
-        decls: list[str] = []
-        font = _safe_intro_font(style.get("font"))
-        if font:
-            decls.append(f"font-family:{font}")
-        size = _num(style.get("size"), 1, 160)
-        if size:
-            decls.append(f"font-size:{_fluid(size, ref=ref)}")
-        if not decls:
-            continue
-
         owner, _, rest = key.partition(".")
         prop, sep, move = rest.partition("#")
-        if sep:
+        overlay = _I18N_OVERLAY_RE.match(rest)
+        if overlay:
+            target = f'[data-section-text-index="{int(overlay.group(1))}"]'
+            if overlay.group(2) == "label":
+                target += " .lb-ovl-btn"
+        elif sep:
             if not _I18N_MOVE_RE.match(move):
                 continue
             target = f'[data-move="{move}"]'
@@ -932,10 +934,24 @@ def i18n_style_css(doc: dict, lang: str, theme: dict | None = None) -> str:
                 continue
             target = f'[data-ts="{prop}"]'
 
+        decls: list[str] = []
+        font = _safe_intro_font(style.get("font"))
+        if font:
+            decls.append(f"font-family:{font}")
+        size = _num(style.get("size"), 1, 160)
+        if size:
+            # النص الأصلي فوق القسم بيمشي بـ‎_fluid‎ من غير ‎ref‎
+            # (‎video_text_style‎)، فنفس القيمة لازم تدّي نفس الحجم.
+            decls.append(f"font-size:{_fluid(size, ref=None if overlay else ref)}")
+        if not decls:
+            continue
+
         if owner == "settings":
             scope = ".lb-intro"
         elif _SAFE_ID.match(owner):
-            scope = f"#{owner}"
+            # ‎:is()‎ زي ‎text_style_css‎ بالظبط: قسم تأكيد الحضور id بتاعه
+            # ثابت (‎rsvp‎) مش ‎block.id‎، فالـ‎#id‎ لوحده مايلاقيهوش.
+            scope = f':is(#{owner},[data-block="{owner}"])'
         else:
             continue
 
