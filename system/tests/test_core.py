@@ -3749,6 +3749,88 @@ class DocumentTranslationTests(BaseAppTest):
 
 
 # ==========================================================================
+class TranslatedPreviewKeepsOriginalTests(TestCase):
+    """المعاينة المترجَمة ماتكتبش الترجمة مكان النص الأصلي.
+
+    المصمّم يحرّك كلمة وهو شايف المعاينة بالعربي، فالمحرر كان بيقرا نص
+    العنصر من الشاشة (عربي) ويكتبه في الكود المحفوظ — ولما يرجع للإنجليزي
+    يلاقيها اتحوّلت عربي. الموضع في ‎block.layout‎ مالوش علاقة بالنص.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.js = (Path(settings.BASE_DIR) / "static/js/editor.js").read_text("utf-8")
+
+    def _fn(self, name):
+        start = self.js.index(f"function {name}(")
+        depth, i = 0, self.js.index("{", start)
+        for j in range(i, len(self.js)):
+            depth += {"{": 1, "}": -1}.get(self.js[j], 0)
+            if depth == 0:
+                return self.js[start:j + 1]
+        raise AssertionError(name)
+
+    def test_the_check_compares_the_shown_language_with_the_base_one(self):
+        self.assertIn("previewLangNow() !== baseLang()",
+                      self._fn("translatedPreviewShown"))
+
+    def test_a_translated_drag_copies_attributes_but_never_the_text(self):
+        body = self._fn("codeWriteBack")
+        self.assertIn("keepText: translated", body)
+        # آخر حل (حفظ المربع كله) مش في المعاينة المترجَمة
+        fallback = body[body.index("if (html === null)"):]
+        self.assertLess(fallback.index("if (translated) return;"),
+                        fallback.index("serializeCustom(box)"))
+
+    def test_keep_text_branch_comes_before_the_innerhtml_copy(self):
+        body = self._fn("syncCodeNodes")
+        self.assertLess(body.index("item.keepText"),
+                        body.index("target.innerHTML = clean.innerHTML"))
+        self.assertIn("copyCodeAttrs(target, clean, true)", body)
+
+    def test_copying_attributes_never_touches_text_nodes(self):
+        body = self._fn("copyCodeAttrs")
+        self.assertNotIn("innerHTML", body)
+        self.assertNotIn("textContent", body)
+        self.assertNotIn("data", body.replace("target.attributes", ""))
+        # بنية مختلفة = مانلمسش الفرع
+        self.assertIn("from.length !== to.length", body)
+
+    def test_typing_in_a_translated_preview_is_refused(self):
+        self.assertIn("refuseInTranslation()", self._fn("beginCustomTextEdit"))
+        slot = self.js[self.js.index('node.addEventListener("beforeinput"'):]
+        slot = slot[:slot.index("syncInspectorField(blockId, key")]
+        self.assertIn("e.preventDefault()", slot)
+        self.assertIn("if (translatedPreviewShown()) return;", slot)
+
+    def test_paste_delete_and_insert_are_refused_before_touching_the_dom(self):
+        for name in ("pasteElement", "deleteElement", "insertInto"):
+            with self.subTest(fn=name):
+                body = self._fn(name)
+                self.assertIn("refuseInTranslation()", body)
+                self.assertLess(body.index("refuseInTranslation()"),
+                                body.index("customRoot(") if "customRoot(" in body
+                                else len(body))
+
+    def test_imported_sections_never_save_translated_html(self):
+        for name in ("commitRoot", "delegatedCustomTextWriteBack"):
+            with self.subTest(fn=name):
+                body = self._fn(name)
+                self.assertLess(body.index("translatedPreviewShown()"),
+                                body.index("serializeCustom(root)"))
+        # السحب بيحفظ موضعه في layout ومالوش لازمة بحفظ HTML مترجَم
+        write = self.js[self.js.index("var writeBack = function (node)"):]
+        write = write[:write.index("};")]
+        self.assertLess(write.index("translatedPreviewShown()"),
+                        write.index("serializeCustom(root)"))
+
+    def test_the_toast_explains_why_and_is_not_spammy(self):
+        body = self._fn("refuseInTranslation")
+        self.assertIn("2500", body)
+        self.assertIn("تبويب الترجمة", body)
+
+
 class CodeBoxFullWidthTests(TestCase):
     """أماكن النصوص ماتتغيّرش بين اللغتين.
 

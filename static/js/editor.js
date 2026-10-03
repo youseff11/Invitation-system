@@ -1889,6 +1889,7 @@
   function commitRoot(block, root) {
     if (!root) return;
     if (isCodeRoot(root)) { codeWriteBack(root); return; }
+    if (translatedPreviewShown()) return;
     block.props.html = serializeCustom(root);
     markDirty();
   }
@@ -1924,6 +1925,7 @@
   }
 
   function pasteElement(inside) {
+    if (refuseInTranslation()) return false;
     var n = selectedElNode();
     var block = findBlock(state.selected);
     if (!n || !block || !state.clip) return false;
@@ -1958,6 +1960,7 @@
   }
 
   function deleteElement() {
+    if (refuseInTranslation()) return false;
     var n = selectedElNode();
     var block = findBlock(state.selected);
     if (!n || !block) return false;
@@ -1976,6 +1979,7 @@
 
   /** يضيف عنصر جديد (صورة أو نص) جوّه المحدَّد أو بعده. */
   function insertInto(node, block, elem) {
+    if (refuseInTranslation()) return;
     var root = customRoot(node);
     if (!root) return;
     snapshot();
@@ -2134,6 +2138,7 @@
       if (!root) return;
       // المربع: نزامن العنصر ده لوحده بالمسار بدل ما نحفظ اللقطة كلها
       if (isCodeRoot(root)) { codeWriteBack(root, node); return; }
+      if (refuseInTranslation()) return;
       block.props.html = serializeCustom(root);
       markDirty();
     };
@@ -3341,6 +3346,31 @@
     return state.previewLang || baseLang();
   }
 
+  /* المعاينة معروضة بالنسخة **المترجَمة** دلوقتي؟
+
+     النص اللي على الشاشة في الحالة دي هو الترجمة، مش نص الدعوة. أي كود
+     بيقرا النص من الـDOM ويكتبه في المستند (بعد سحب عنصر، أو تنسيقه من
+     اللوحة، أو الكتابة فيه) كان بيحط الترجمة مكان الأصل: المصمّم يحرّك
+     كلمة وهو شايف المعاينة بالعربي، ويرجع للإنجليزي يلاقيها اتحوّلت
+     عربي. الموضع بيتحفظ في ‎block.layout‎ ومالوش علاقة بالنص، فالسحب
+     والتنسيق يفضلوا شغّالين والنص بس هو اللي مايتلمسش. */
+  function translatedPreviewShown() {
+    return previewLangNow() !== baseLang();
+  }
+
+  var translatedToastAt = 0;
+  /** يمنع تعديل بيغيّر النص نفسه من المعاينة المترجَمة، ويقول ليه. */
+  function refuseInTranslation() {
+    if (!translatedPreviewShown()) return false;
+    var now = Date.now();
+    if (now - translatedToastAt > 2500) {
+      translatedToastAt = now;
+      toast("ده عرض النسخة المترجَمة — الكتابة والإضافة والحذف من عرض اللغة " +
+            "الأساسية، والترجمة من تبويب الترجمة. التحريك شغّال.", "info");
+    }
+    return true;
+  }
+
   var requestPreview = debounce(function () {
     if (!previewReady) return;
     var editorScroll = captureEditorScroll();
@@ -4481,7 +4511,12 @@
       node.addEventListener("blur", function () {
         node.style.boxShadow = "";
       });
+      /* الكتابة من المعاينة المترجَمة كانت بتكتب الترجمة مكان النص الأصلي */
+      node.addEventListener("beforeinput", function (e) {
+        if (refuseInTranslation()) e.preventDefault();
+      });
       node.addEventListener("input", function () {
+        if (translatedPreviewShown()) return;
         block.props[key] = node.textContent;
         markDirty();
         syncInspectorField(blockId, key, node.textContent);
@@ -4648,6 +4683,7 @@
 
     function beginCustomTextEdit(node) {
     if (!node) return;
+    if (refuseInTranslation()) return;
     node.setAttribute("contenteditable", "plaintext-only");
     node.classList.add("lb-el-typing");
     node.focus();
@@ -4689,6 +4725,7 @@
     var block = findBlock(section.getAttribute("data-block"));
     var root = section.querySelector(".lb-custom");
     if (!block || !root || !("html" in block.props)) return;
+    if (translatedPreviewShown()) return;     // الـDOM هنا نصه مترجَم
     block.props.html = serializeCustom(root);
     markDirty();
   }
@@ -4816,6 +4853,22 @@
     return target;
   }
 
+  /** ينقل خصائص أبناء ‎clean‎ على أبناء ‎target‎ بالترتيب من غير نص.
+      بنية مختلفة = مانلمسش الفرع ده (أحسن من نكتب في المكان الغلط). */
+  function copyCodeAttrs(target, clean, childrenOnly) {
+    var from = clean.children, to = target.children;
+    if (from.length !== to.length) return;
+    if (!childrenOnly) {
+      Array.prototype.slice.call(target.attributes).forEach(function (attr) {
+        if (!clean.hasAttribute(attr.name)) target.removeAttribute(attr.name);
+      });
+      Array.prototype.slice.call(clean.attributes).forEach(function (attr) {
+        target.setAttribute(attr.name, attr.value);
+      });
+    }
+    for (var i = 0; i < to.length; i++) copyCodeAttrs(to[i], from[i], false);
+  }
+
   /* يزامن عنصر (أو أكتر) من المعاينة على النص الأصلي **بالمسار**.
      ‎items‎: [{path, node, html}] — ‎html:true‎ يعني ننقل محتواه كمان.
      بيرجّع ‎null‎ لو أي مسار ضاع، فالنداهة تقع على آخر حل بدل ما تكتب
@@ -4855,7 +4908,13 @@
           target.setAttribute(attr.name, attr.value);
         });
       }
-      if (item.html) target.innerHTML = clean.innerHTML;
+      if (item.html && item.keepText) {
+        /* المعاينة مترجَمة: ننقل خصائص الأبناء (ستايل، ترقيم) من غير
+           ما نلمس النص — ‎innerHTML‎ هنا كان هيكتب الترجمة فوق الأصل. */
+        copyCodeAttrs(target, clean, true);
+      } else if (item.html) {
+        target.innerHTML = clean.innerHTML;
+      }
     }
     return holder.innerHTML;
   }
@@ -4890,12 +4949,18 @@
     var owner = codeOwnerOf(box);
     if (!owner) return;
     var source = owner.get();
+    var translated = translatedPreviewShown();
     var path = node && node !== box ? codeNodePath(node, box) : null;
     var html = path
-      ? syncCodeNodes(source, [{ path: path, node: node, html: true }])
+      ? syncCodeNodes(source, [{ path: path, node: node, html: true,
+                                keepText: translated }])
       : null;
-    // آخر حل: نحفظ المربع كله (لو تركيب الـDOM اختلف عن النص الأصلي)
-    if (html === null) html = serializeCustom(box);
+    /* آخر حل: نحفظ المربع كله (لو تركيب الـDOM اختلف عن النص الأصلي).
+       مش في المعاينة المترجَمة — المربع كله هناك نصه مترجَم. */
+    if (html === null) {
+      if (translated) return;
+      html = serializeCustom(box);
+    }
     owner.set(rebuildCode(source, html));
     markDirty();
   }
@@ -5061,6 +5126,8 @@
           codeWriteBack(root, node && node.nodeType === 1 ? node : null);
           return;
         }
+        // السحب بيحفظ موضعه في ‎block.layout‎؛ الـDOM هنا نصه مترجَم
+        if (translatedPreviewShown()) return;
         block.props.html = serializeCustom(root);
         markDirty();
       };
