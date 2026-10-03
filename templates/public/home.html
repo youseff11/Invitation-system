@@ -85,7 +85,8 @@
         </div>
         <div class="tpl-body">
           <h3>{% bidb t.name t.name_en %}</h3>
-          <span class="tpl-meta">{{ t.get_category_display }} · {{ t.collection }}</span>
+          {# «بدون» تصنيف ومن غير مجموعة = مفيش سطر خالص تحت الاسم #}
+          {% if t.category != "none" or t.collection %}<span class="tpl-meta">{% if t.category != "none" %}{{ t.get_category_display }}{% if t.collection %} · {% endif %}{% endif %}{{ t.collection }}</span>{% endif %}
           {% if t.description or t.description_en %}<p class="tpl-desc">{% bidb t.description t.description_en %}</p>{% endif %}
           {# زرار واحد بيفتح معاينة القالب — زرار «اطلبه» اتشال، والطلب #}
           {# مكانه زرار واتساب العايم وقسم التواصل تحت. #}

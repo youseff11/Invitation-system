@@ -24,7 +24,7 @@
         </div>
         <div class="tpl-body">
           <h3>{% bidb t.name t.name_en %}</h3>
-          <span class="tpl-meta">{% if t.category != "none" %}{{ t.get_category_display }}{% if t.collection %} · {% endif %}{% endif %}{{ t.collection }}</span>
+          {% if t.category != "none" or t.collection %}<span class="tpl-meta">{% if t.category != "none" %}{{ t.get_category_display }}{% if t.collection %} · {% endif %}{% endif %}{{ t.collection }}</span>{% endif %}
           {% if t.description or t.description_en %}<p class="muted" style="font-size:13px">{% bidb t.description|truncatechars:80 t.description_en|truncatechars:80 %}</p>{% endif %}
           <div class="tpl-actions">
             <a class="btn btn--ghost btn--sm" href="{% url 'template_demo' t.slug %}" target="_blank" rel="noopener">{% bi "معاينة حية" %}</a>

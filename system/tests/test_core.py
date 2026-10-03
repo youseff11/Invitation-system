@@ -1653,6 +1653,57 @@ class EmptyImportTests(TestCase):
 
 
 # ==========================================================================
+class TemplateCardMetaTests(BaseAppTest):
+    """السطر الصغير تحت اسم القالب: التصنيف · المجموعة.
+
+    قالب من غير تصنيف ومن غير مجموعة مايتكتبش تحته أي حاجة — كان بيطلع
+    «بدون ·» في الصفحة الرئيسية.
+    """
+
+    def _make(self, slug, name, category, collection):
+        return Template.objects.create(
+            name=name, slug=slug, category=category, collection=collection,
+            source="editor", document={"version": 1, "blocks": []})
+
+    def _card(self, url, name):
+        html = self.client.get(url).content.decode()
+        cards = re.findall(r'<article class="tpl-card".*?</article>', html, re.S)
+        card = next(c for c in cards if name in c)
+        meta = re.search(r'<span class="tpl-meta">(.*?)</span>', card, re.S)
+        return card, (meta.group(1).strip() if meta else None)
+
+    def setUp(self):
+        super().setUp()
+        self._make("meta-none", "قالب-بدون", "none", "")
+        self._make("meta-full", "قالب-كامل", "wedding", "Premium")
+        self._make("meta-coll", "قالب-مجموعة", "none", "Gold")
+        self._make("meta-cat", "قالب-تصنيف", "birthday", "")
+
+    def test_no_category_and_no_collection_writes_nothing(self):
+        for url in ("/", "/templates/"):
+            with self.subTest(url=url):
+                card, meta = self._card(url, "قالب-بدون")
+                self.assertIsNone(meta)
+                self.assertNotIn("بدون", card.replace("قالب-بدون", ""))
+                self.assertNotIn("·", card)
+
+    def test_a_category_and_a_collection_are_joined_with_a_dot(self):
+        for url in ("/", "/templates/"):
+            with self.subTest(url=url):
+                self.assertEqual(self._card(url, "قالب-كامل")[1], "زفاف · Premium")
+
+    def test_no_category_but_a_collection_shows_the_collection_alone(self):
+        for url in ("/", "/templates/"):
+            with self.subTest(url=url):
+                self.assertEqual(self._card(url, "قالب-مجموعة")[1], "Gold")
+
+    def test_a_category_alone_has_no_dangling_dot(self):
+        for url in ("/", "/templates/"):
+            with self.subTest(url=url):
+                self.assertEqual(self._card(url, "قالب-تصنيف")[1], "عيد ميلاد")
+
+
+# ==========================================================================
 class TemplateManageTests(BaseAppTest):
     """حذف/إخفاء القوالب من اللوحة — من غيرهم القالب الفاضي مالوش مخرج."""
 
