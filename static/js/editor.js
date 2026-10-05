@@ -77,7 +77,11 @@
         history: [],
     future: [],
     layersOpen: false,
-    sectionBoundsBlock: null
+    sectionBoundsBlock: null,
+    /* بيزيد كل ما ‎state.doc‎ نفسه يتبدّل بنسخة جديدة (تراجع/إعادة). مستمعات
+       المعاينة ماسكة كائنات البلوكات القديمة، فالتبديل الجزئي للأقسام
+       مابيتعتمدش بعد التبديل ده — أول تحديث بيبني المعاينة من الأول. */
+    docEpoch: 0
 
   };
 
@@ -156,23 +160,56 @@
     return -1;
   }
 
+  /* كتابة نص جوّه قسم مستورد بتعمل ‎serializeCustom‎ (نسخ الجذر كله وتنضيفه
+     وتحويله لنص) مع **كل حرف** — على قسم تقيل ده عشرات الملّي ثانية في
+     كل ضغطة. بنجمّعها: آخر حالة كل ٢٠٠ملّي هي اللي بتتكتب في المستند،
+     وأي كود بيقرا المستند بينادي ‎flushCustomWrites‎ الأول عشان ياخد
+     آخر حاجة. ‎key‎ بيمنع التكرار لنفس الجذر. */
+  var CUSTOM_WRITE_WAIT = 200;
+  var customWrites = [];
+  var customWriteTimer = null;
+
+  function deferCustomWrite(key, fn) {
+    var found = false;
+    for (var i = 0; i < customWrites.length; i++) {
+      if (customWrites[i].key === key) { customWrites[i].fn = fn; found = true; break; }
+    }
+    if (!found) customWrites.push({ key: key, fn: fn });
+    clearTimeout(customWriteTimer);
+    customWriteTimer = setTimeout(flushCustomWrites, CUSTOM_WRITE_WAIT);
+  }
+
+  function flushCustomWrites() {
+    clearTimeout(customWriteTimer);
+    customWriteTimer = null;
+    if (!customWrites.length) return;
+    var jobs = customWrites;
+    customWrites = [];
+    jobs.forEach(function (job) { job.fn(); });
+  }
+
   // ---------------------------------------------------------- التاريخ
   function snapshot() {
+    flushCustomWrites();
     state.history.push(JSON.stringify(state.doc));
     if (state.history.length > HISTORY_MAX) state.history.shift();
     state.future.length = 0;
     updateHistoryButtons();
   }
   function undo() {
+    flushCustomWrites();
     if (!state.history.length) return;
     state.future.push(JSON.stringify(state.doc));
     state.doc = JSON.parse(state.history.pop());
+    state.docEpoch++;
     afterHistory();
   }
   function redo() {
+    flushCustomWrites();
     if (!state.future.length) return;
     state.history.push(JSON.stringify(state.doc));
     state.doc = JSON.parse(state.future.pop());
+    state.docEpoch++;
     afterHistory();
   }
   function afterHistory() {
@@ -1020,6 +1057,7 @@
   }
 
   function saveSelectedAsFavorite() {
+    flushCustomWrites();
     var block = state.selected ? findBlock(state.selected) : null;
     if (!block) {
       toast("اختَر قسماً أولاً لحفظه كمفضلة.", "error");
@@ -1684,7 +1722,7 @@
       box.appendChild(buildGroups(
         spec.props,
         function (s) { return block.props[s.key]; },
-        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
+        function (s, v) { commitProp(block, s, v); },
         false
       ));
     }
@@ -1728,7 +1766,7 @@
       box.appendChild(buildGroups(
         advancedProps,
         function (s) { return block.props[s.key]; },
-        function (s, v) { block.props[s.key] = v; markDirty(); requestPreview(); },
+        function (s, v) { commitProp(block, s, v); },
         false
       ));
         }
@@ -2139,8 +2177,10 @@
       // المربع: نزامن العنصر ده لوحده بالمسار بدل ما نحفظ اللقطة كلها
       if (isCodeRoot(root)) { codeWriteBack(root, node); return; }
       if (refuseInTranslation()) return;
-      block.props.html = serializeCustom(root);
-      markDirty();
+      deferCustomWrite(root, function () {
+        block.props.html = serializeCustom(root);
+        markDirty();
+      });
     };
         var tag = node.tagName;
     var imageNode = tag === "IMG" ? node : node.querySelector("img");
@@ -2897,7 +2937,7 @@
     box.appendChild(buildGroups(
       SCHEMA.theme_fields,
       function (s) { return state.doc.theme[s.key]; },
-      function (s, v) { state.doc.theme[s.key] = v; markDirty(); requestPreview(); }
+      function (s, v) { state.doc.theme[s.key] = v; markDirty(); requestPreview(previewWaitFor(s)); }
     ));
     syncCollapseTool();
   }
@@ -3275,7 +3315,7 @@
           if (applyIntroOptionLocally(s.key, v)) return;
           state.previewIntroOnly = true;
         }
-        requestPreview();
+        requestPreview(previewWaitFor(s));
       }
 
     ));
@@ -3371,33 +3411,126 @@
     return true;
   }
 
-  var requestPreview = debounce(function () {
+  /* ── جدولة تحديث المعاينة ────────────────────────────────────────────
+     كل تحديث بيبعت المستند كله للسيرفر ويرندره (على دعوة حقيقية: ١٧١ كيلو
+     والرد بياخد من ١ لـ ١٫٦ ثانية). فالكتابة ماينفعش تستنى الرد — كان كل
+     حرف بيظهر بعد أكتر من ثانية وبعده المعاينة كلها تتبدّل. دلوقتي:
+
+       • النص بيتحط في المعاينة لحظياً (‎livePatchText‎)، من غير سيرفر.
+       • السيرفر بيتنادى بعد ما الكتابة تسكت بس، عشان يطابق باقي التفاصيل.
+       • أي رد وصل وفي كتابة أحدث منه بيتهمل — كان هيمسح اللي اتكتب.
+       • رد قديم وصل بعد رد أحدث بيتهمل برضه. */
+  var PREVIEW_WAIT = 280;          // تعديل عادي (لون، صورة، ترتيب…)
+  var PREVIEW_TYPING_WAIT = 450;   // كتابة ماتعرضتش لحظياً (HTML، سطر فاضي…)
+  var PREVIEW_QUIET_WAIT = 1500;   // رد اتأجّل تطبيقه بسبب كتابة — نعيد بعد وقفة
+  var PREVIEW_RETRY_WAIT = 4000;   // قسم بيتكتب فيه دلوقتي — نحاول تبديله بعدين
+  var previewTimer = null;
+  var previewTimerIsTyping = false;
+  var previewSendId = 0;           // رقم كل طلب اتبعت
+  var previewAppliedId = 0;        // آخر رد اتطبّق — الأقدم منه بيتهمل
+  var liveSeq = 0;                 // بيزيد مع كل كتابة بتحصل في المعاينة/اللوحة
+
+  /** ‎wait‎ بدون قيمة = تعديل عادي. رقم أكبر من ٢٨٠ = كتابة (وقفة أطول). */
+  function requestPreview(wait) {
+    var typing = typeof wait === "number" && wait > PREVIEW_WAIT;
+    // تعديل عادي مستني؟ بنسيبه — الكتابة الهادية مابتأخّرش تعديل لون
+    if (previewTimer && typing && !previewTimerIsTyping) return;
+    clearTimeout(previewTimer);
+    previewTimerIsTyping = typing;
+    previewTimer = setTimeout(sendPreview, typing ? wait : PREVIEW_WAIT);
+  }
+
+  function sendPreview() {
+    previewTimer = null;
     if (!previewReady) return;
+    flushCustomWrites();
     var editorScroll = captureEditorScroll();
-        var fdoc = frameDoc();
+    var fdoc = frameDoc();
     if (!fdoc) return;
     var previewIntroOnly = !!state.previewIntroOnly;
     state.previewIntroOnly = false;
+    var sendId = ++previewSendId;
+    var liveAtSend = liveSeq;
 
     fetch(META.urls.preview, {
-
-            method: "POST",
+      method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
       credentials: "same-origin",
       body: JSON.stringify({ document: state.doc, lang: previewLangNow() })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        
         if (!data || !data.ok) { toast("تعذّر تحديث المعاينة.", "error"); return; }
+        if (sendId < previewAppliedId) return;      // رد قديم وصل متأخر
+        /* اتكتب حاجة بعد ما الطلب اتبعت: الرد فيه النص القديم وتطبيقه
+           كان هيمسح اللي اتكتب. بنهمله ونطلب واحد جديد بعد وقفة الكتابة
+           — عشان أي تعديل تاني كان في الرد ماييجيش ضايع. */
+        if (liveAtSend !== liveSeq) { requestPreview(PREVIEW_QUIET_WAIT); return; }
+        previewAppliedId = sendId;
         applyPreview(data, editorScroll, previewIntroOnly);
-
       })
       .catch(function () {
-        
         toast("تعذّر الاتصال بالخادم لتحديث المعاينة.", "error");
       });
-  }, 280);
+  }
+
+  /* نص اتكتب في خانة باللوحة → يظهر في المعاينة في نفس اللحظة.
+
+     بنلمس بس العقدة النصية البسيطة (‎data-slot‎ من غير وسوم جواها) ومحتواها
+     نص عادي. أي حاجة غير كده — HTML، خانة اتفضّت، عقدة مش موجودة، أو
+     المعاينة معروضة بالترجمة — بترجّع ‎false‎ ويكمّل الطريق العادي عن
+     طريق السيرفر. حتى لو اختلف الرد عن اللي اتعرض، رد السيرفر بعد وقفة
+     الكتابة بيصحّحه. */
+  var NON_TEXT_SLOT = /^(img|video|audio|iframe|input|textarea|select|canvas|svg|picture|source)$/i;
+
+  function livePatchText(blockId, key, value) {
+    if (!previewReady || typeof value !== "string" || !value.trim()) return false;
+    if (/[<>]|&[#\w]+;/.test(value)) return false;
+    if (translatedPreviewShown()) return false;
+    var fdoc = frameDoc();
+    if (!fdoc) return false;
+
+    var blockNode = null;
+    var holders = fdoc.querySelectorAll("[data-block]");
+    for (var i = 0; i < holders.length; i++) {
+      if (holders[i].getAttribute("data-block") === blockId) { blockNode = holders[i]; break; }
+    }
+    if (!blockNode) return false;
+
+    var slots = blockNode.querySelectorAll("[data-slot]");
+    for (var j = 0; j < slots.length; j++) {
+      var node = slots[j];
+      if (node.getAttribute("data-slot") !== key) continue;
+      if (node.closest("[data-block]") !== blockNode) continue;
+      if (NON_TEXT_SLOT.test(node.tagName) || node.childElementCount) return false;
+      if (node.textContent !== value) node.textContent = value;
+      return true;
+    }
+    return false;
+  }
+
+  /** وقفة الانتظار قبل طلب المعاينة: خانة نص = وقفة كتابة، غير كده عادي. */
+  function previewWaitFor(spec) {
+    return spec && (spec.type === "text" || spec.type === "textarea")
+      ? PREVIEW_TYPING_WAIT : undefined;
+  }
+
+  /** تعديل قيمة خاصية قسم من اللوحة، بأسرع طريق لعرضها في المعاينة. */
+  function commitProp(block, spec, value) {
+    block.props[spec.key] = value;
+    markDirty();
+    if (spec.type === "text" || spec.type === "textarea") {
+      var shown = livePatchText(block.id, spec.key, value);
+      liveSeq++;
+      /* اتعرض في المعاينة خلاص — مفيش سبب نبعت المستند للسيرفر ونبدّل
+         المعاينة. بنطلب تحديث بس لو الكتابة ماقدرتش تتعرض محلياً. */
+      if (!shown) requestPreview(PREVIEW_TYPING_WAIT);
+      // فيه طلب كتابة مستني (من حرف ماتعرضش محلياً)؟ نأخّره لحد ما نسكت
+      else if (previewTimer) requestPreview(PREVIEW_QUIET_WAIT);
+      return;
+    }
+    requestPreview();
+  }
 
   /* تحديث الشاشة الافتتاحية داخل المعاينة.
 
@@ -3454,14 +3587,24 @@
     });
   }
 
+  /* آخر افتتاحية اتطبّقت. لو الرد الجديد نفس الـHTML بالظبط والعقدة لسه
+     موجودة، تبديلها بدون سبب كان بيعيد تحميل فيديو/صورة الافتتاحية مع
+     كل تحديث. بترجّع ‎true‎ لو اتبدّلت فعلاً. */
+  var lastIntroHtml = null;
+
   function applyIntro(fdoc, html) {
-    if (html === undefined) return;          // نسخة سيرفر قديمة — ما نلمسش حاجة
+    if (html === undefined) return false;    // نسخة سيرفر قديمة — ما نلمسش حاجة
     var current = fdoc.querySelector(".lb-intro");
     // لا نحذف الافتتاحية عند رد معاينة ناقص؛ الحذف يحصل فقط إذا أُغلقت فعلاً.
     if (!html) {
-      if (current && state.doc && state.doc.settings && state.doc.settings.intro_enabled === false) current.remove();
-      return;
+      if (current && state.doc && state.doc.settings && state.doc.settings.intro_enabled === false) {
+        current.remove();
+        lastIntroHtml = null;
+        return true;
+      }
+      return false;
     }
+    if (current && html === lastIntroHtml) return false;
 
     // لو الضيف/المحرر كان قافلها (is-open)، نفضل قافلينها بعد التحديث
     // عشان ما ترجعش تغطّي المعاينة مع كل حرف بتكتبه
@@ -3469,22 +3612,32 @@
     var holder = fdoc.createElement("div");
     holder.innerHTML = html;
     var fresh = holder.firstElementChild;
-    if (!fresh) return;
+    if (!fresh) return false;
     if (wasOpen) fresh.classList.add("is-open");
 
     if (current) current.replaceWith(fresh);
     else fdoc.body.insertBefore(fresh, fdoc.body.firstChild);
+    lastIntroHtml = html;
+    return true;
   }
 
-    function applyMusic(fdoc, cfg) {
-    if (!fdoc) return;
+  /* إعدادات الموسيقى: لو ماتغيّرتش مانعيدش تهيئة المشغّل (كانت بتتكرر مع
+     كل تحديث). بترجّع ‎true‎ لو اتغيّرت. */
+  var lastMusicJson = null;
+
+  function applyMusic(fdoc, cfg) {
+    if (!fdoc) return false;
     var node = fdoc.getElementById("invite-music");
-    if (!node) return;
-    node.textContent = JSON.stringify(cfg || {});
+    if (!node) return false;
+    var json = JSON.stringify(cfg || {});
+    if (json === lastMusicJson && node.textContent === json) return false;
+    lastMusicJson = json;
+    node.textContent = json;
     var win = fdoc.defaultView;
     if (win && typeof win.__lbRefreshMusic === "function") {
       try { win.__lbRefreshMusic(); } catch (ignore) {}
     }
+    return true;
   }
 
   function applyFontCss(fdoc, css) {
@@ -3499,7 +3652,9 @@
       style.setAttribute("data-font-faces", "");
       (fdoc.head || fdoc.documentElement).appendChild(style);
     }
-    style.textContent = css;
+    /* كتابة نفس النص في وسم ‎<style>‎ بتعيد تحليل الستايل بالكامل (وإعلانات
+       ‎@font-face‎ بتعيد طلب الخط ويلمّح النص) — فمانكتبش لو ماتغيّرش. */
+    if (style.textContent !== css) style.textContent = css;
   }
 
   /* إزاحات النصوص وتنسيق كل نص لوحده بيتولدوا على السيرفر وبيعيشوا في
@@ -3523,7 +3678,7 @@
       style.setAttribute(attr, "");
       (fdoc.head || fdoc.documentElement).appendChild(style);
     }
-    style.textContent = css;
+    if (style.textContent !== css) style.textContent = css;
   }
 
   /* نفس منطق ‎_COUNTDOWN_DATE_RE‎ في ‎renderer.py‎: أي اسم متغيّر، بشرط
@@ -3616,6 +3771,150 @@
     return chain;
   }
 
+  /* ── تبديل أقسام المعاينة بدون وميض ───────────────────────────────────
+     القديم: ‎stage.innerHTML = html‎ — كل الأقسام بتتهدم وتتبني من الأول مع
+     كل تحديث. النتيجة اللي اتقاست على السيرفر الحقيقي: كل قسم فيه حركة
+     بيرجع ‎opacity:0‎ ويظهر بانتقال ٨٠٠ ملّي (الشاشة السودة)، والفيديو
+     والخرايط بيتحمّلوا تاني، وكل المستمعات بتتربط من جديد.
+
+     الجديد: بنحتفظ بآخر ‎HTML‎ جه من السيرفر لكل قسم والعقدة اللي اتبنت
+     منه. الرد الجديد بيتقارن قسم بقسم: اللي ماتغيّرش بيفضل **نفس العقدة**
+     (من غير ما يتلمس)، واللي اتغيّر بس هو اللي بيتبدّل. */
+  var stageCache = null;          // [{id, html, node}] بنفس ترتيب المسرح
+  var stageCacheEpoch = -1;
+  var lastStageHtml = null;       // آخر ‎html‎ اتطبّق بالكامل
+  var lastStageEpoch = -1;
+  var lastRuntimeDate = null;
+
+  /** القسم المتحرّك بيبدأ شفاف وبيظهر بانتقال لما يتحط ‎is-in‎. المحرر
+      بيظهر كل الأقسام فوراً أصلاً (‎__lbRefresh‎)، بس بعد ما العقدة تدخل —
+      فكان الانتقال بيشتغل مع كل تحديث. بنحط ‎is-in‎ قبل دخول العقدة. */
+  function settleAnim(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.classList.contains("lb-anim")) node.classList.add("is-in");
+    Array.prototype.forEach.call(node.querySelectorAll(".lb-anim"), function (n) {
+      n.classList.add("is-in");
+    });
+  }
+
+  /** القالب المستورد بيشغّل سكربتات بتعدّل الـDOM — التبديل الجزئي مش آمن معاه. */
+  function stageHasRuntime(fdoc, stage) {
+    return stage.classList.contains("lb-stage--runtime") ||
+           !!fdoc.__lbRuntimeOriginal ||
+           !!fdoc.querySelector("script[data-lb-template-runtime]");
+  }
+
+  /** نص قابل للكتابة جوّه المعاينة ومعاه التركيز دلوقتي (لو في). */
+  function activeEditableIn(fdoc) {
+    var active = fdoc && fdoc.hasFocus && fdoc.hasFocus() ? fdoc.activeElement : null;
+    return active && active.isContentEditable ? active : null;
+  }
+
+  /** يقسّم ‎html‎ المسرح لأقسامه. ‎null‎ لو الشكل مش المتوقّع (نرجع للتبديل الكامل). */
+  function splitStageHtml(fdoc, html) {
+    var tpl = fdoc.createElement("template");
+    tpl.innerHTML = html;
+    var items = [];
+    var seen = {};
+    var kids = tpl.content.childNodes;
+    for (var i = 0; i < kids.length; i++) {
+      var n = kids[i];
+      if (n.nodeType === 8) continue;                       // تعليق
+      if (n.nodeType === 3) {
+        if (/\S/.test(n.nodeValue)) return null;            // نص سايب برّه الأقسام
+        continue;
+      }
+      if (n.nodeType !== 1) return null;
+      var id = n.getAttribute("data-block");
+      if (!id || seen[id]) return null;
+      seen[id] = true;
+      items.push({ id: id, html: n.outerHTML, node: n });
+    }
+    return items;
+  }
+
+  /** يبدّل أقسام المسرح. بيرجّع ‎{changed, retry}‎. */
+  function swapStage(fdoc, stage, html) {
+    var footer = stage.querySelector(".lb-footer");
+    var items = splitStageHtml(fdoc, html);
+
+    var partial = !!items && !!stageCache && stageCacheEpoch === state.docEpoch &&
+      !stageHasRuntime(fdoc, stage) &&
+      stageCache.every(function (c) { return c.node.parentNode === stage; });
+
+    if (!partial) {
+      if (items) {
+        stage.replaceChildren();
+        items.forEach(function (item) {
+          settleAnim(item.node);
+          stage.appendChild(item.node);
+        });
+        if (footer) stage.appendChild(footer);
+        stageCache = items;
+        stageCacheEpoch = state.docEpoch;
+      } else {
+        stage.innerHTML = html;
+        if (footer && !stage.contains(footer)) stage.appendChild(footer);
+        settleAnim(stage);
+        stageCache = null;
+        stageCacheEpoch = -1;
+      }
+      return { changed: true, retry: false };
+    }
+
+    var typing = activeEditableIn(fdoc);
+    var prevById = {};
+    stageCache.forEach(function (c) { prevById[c.id] = c; });
+
+    var next = [];
+    var keep = [];
+    var changed = false;
+    var retry = false;
+    items.forEach(function (item) {
+      var prev = prevById[item.id];
+      if (prev && prev.html === item.html) {          // ماتغيّرش — نفس العقدة
+        next.push(prev);
+        keep.push(prev.node);
+        return;
+      }
+      if (prev && typing && prev.node.contains(typing)) {
+        /* بيكتب جوّه القسم ده دلوقتي: سحب العقدة من تحت إيده بيقطع الكتابة
+           ويضيّع المؤشر. بنسيبها، والكاش بيفضل على الـHTML القديم عشان
+           المحاولة الجاية تلاقي الفرق وتبدّلها. */
+        next.push(prev);
+        keep.push(prev.node);
+        retry = true;
+        return;
+      }
+      settleAnim(item.node);
+      next.push(item);
+      changed = true;
+    });
+
+    // أقسام اتشالت أو اتبدّلت
+    stageCache.forEach(function (c) {
+      if (keep.indexOf(c.node) < 0 && c.node.parentNode === stage) {
+        stage.removeChild(c.node);
+        changed = true;
+      }
+    });
+
+    /* الترتيب من الآخر للأول. العقدة اللي في مكانها مابتتحرّكش خالص —
+       نقل عقدة فيها فيديو أو iframe بيعيد تحميلها. */
+    var ref = footer && footer.parentNode === stage ? footer : null;
+    for (var i = next.length - 1; i >= 0; i--) {
+      var node = next[i].node;
+      if (node.parentNode !== stage || node.nextSibling !== ref) {
+        stage.insertBefore(node, ref);
+        changed = true;
+      }
+      ref = node;
+    }
+
+    stageCache = next;
+    return { changed: changed, retry: retry };
+  }
+
     function applyPreview(data, editorScroll, introOnly) {
 
     drag = null;
@@ -3649,24 +3948,42 @@
       stageY: stage.scrollTop || 0
     };
 
+    var stageChanged = false;
+    var htmlUnchanged = false;
+    var swapRetry = false;
     if (!introOnly) {
-      // لا نفرّغ stage إلا في تحديث المستند الكامل؛ تغيير إعدادات intro
-      // يستبدل عقدة الافتتاحية فقط حتى لا تظهر شاشة بيضاء.
-      var footer = stage.querySelector(".lb-footer");
       /* «فاضي» حالة شرعية: لما تمسح آخر قسم، السيرفر بيرجّع ‎html‎ فاضية
          وده صح. شرط ‎.trim()‎ هنا كان بيتخطّى التحديث، فالقسم المحذوف
          يفضل باين في المعاينة لحد ما تعمل ريفريش. الحماية من رد ناقص
          موجودة فوق أصلاً: ‎applyPreview‎ مابتتنداش غير بعد ‎data.ok‎. */
-      if (typeof data.html === "string") stage.innerHTML = data.html;
-      if (footer && !stage.contains(footer)) stage.appendChild(footer);
+      if (typeof data.html === "string") {
+        htmlUnchanged = data.html === lastStageHtml && lastStageEpoch === state.docEpoch;
+        if (!htmlUnchanged) {
+          var swapped = swapStage(fdoc, stage, data.html);
+          stageChanged = swapped.changed;
+          swapRetry = swapped.retry;
+          // لو في قسم اتأجّل تبديله (بيكتب فيه) مانعتبرش الرد اتطبّق بالكامل
+          lastStageHtml = swapRetry ? null : data.html;
+          lastStageEpoch = state.docEpoch;
+        }
+      }
 
-      if (fdoc.body) fdoc.body.setAttribute("style", data.cssVars || "");
-      fdoc.documentElement.setAttribute("dir", data.direction || "rtl");
+      /* كل كتابة هنا بتبوّظ حاجة لو القيمة ماتغيّرتش: ‎style‎ على الـbody
+         بيعيد حساب الستايل للصفحة كلها. */
+      var cssVars = data.cssVars || "";
+      if (fdoc.body && fdoc.body.getAttribute("style") !== cssVars) {
+        fdoc.body.setAttribute("style", cssVars);
+      }
+      var direction = data.direction || "rtl";
+      if (fdoc.documentElement.getAttribute("dir") !== direction) {
+        fdoc.documentElement.setAttribute("dir", direction);
+      }
 
-      stage.className = "lb-stage" +
+      var stageClass = "lb-stage" +
         (keptStageClasses ? " " + keptStageClasses : "") +
         (data.maxWidth >= 1100 ? " lb-stage--full" : "") +
         (data.pattern && data.pattern !== "none" ? " lb-pattern lb-pattern--" + data.pattern : "");
+      if (stage.className !== stageClass) stage.className = stageClass;
     }
 
     /* اللغة اللي السيرفر عرضها فعلاً بتتكتب على ‎<html lang>‎ بتاع الإطار.
@@ -3690,22 +4007,40 @@
        يتشال أو يتضاف. */
     applyHeadCss(fdoc, "data-zero-block-css", data.zeroCss);
     applyHeadCss(fdoc, "data-imported-css", data.sharedCss);
-    applyIntro(fdoc, data.intro);
-    applyMusic(fdoc, data.music || {});
+    var introChanged = applyIntro(fdoc, data.intro);
+    var musicChanged = applyMusic(fdoc, data.music || {});
     runSectionScripts(fdoc);
 
-    var runtimeReady = introOnly
+    /* سكربتات القالب المستورد بتتشغّل من الأول مع كل تحديث للـHTML. لو
+       الـHTML ماتغيّرش (تعديل لون مثلاً) ومافيش موعد عدّاد جديد، مفيش
+       داعي نوقّفها ونشغّلها تاني. */
+    var runtimeDate = data.runtimeCountdownDate || "";
+    var skipRuntime = introOnly || (htmlUnchanged && runtimeDate === lastRuntimeDate);
+    if (!introOnly) lastRuntimeDate = runtimeDate;
+    var runtimeReady = skipRuntime
       ? Promise.resolve()
-      : restartTemplateRuntime(fdoc, data.runtimeCountdownDate || "");
+      : restartTemplateRuntime(fdoc, runtimeDate);
+    var runtimeRestarted = !skipRuntime && stageHasRuntime(fdoc, stage);
+    var anyChanged = stageChanged || introChanged || musicChanged || runtimeRestarted;
 
     runtimeReady.then(function () {
-      bindPreviewInteractions();
-      if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
-        refs.frame.contentWindow.__lbRefresh();
+      if (anyChanged) {
+        bindPreviewInteractions();
+        if (refs.frame.contentWindow && refs.frame.contentWindow.__lbRefresh) {
+          refs.frame.contentWindow.__lbRefresh();
+        }
+      } else {
+        // مافيش عقدة جديدة تتربط ولا مشغّلات تتهيّأ — الارتفاعات بس بتتبع المستند
+        syncSectionHeights(fdoc);
       }
       if (refs.blockCount) refs.blockCount.textContent = data.blockCount + " قسم";
       if (state.selected) highlightInPreview(state.selected);
     });
+
+    // قسم اتأجّل تبديله لإنه بيتكتب فيه — نحاول تاني بعد ما الكتابة تهدى
+    if (swapRetry) requestPreview(PREVIEW_RETRY_WAIT);
+
+    if (!anyChanged) return;
 
     var restore = function () {
       var w = fdoc.defaultView;
@@ -4443,8 +4778,15 @@
     syncSectionHeights(fdoc);
     applySectionBounds();
 
+    /* ‎bindPreviewInteractions‎ بتتنادى بعد كل تحديث معاينة، والأقسام اللي
+       ماتغيّرتش بتفضل هي نفس العقد (مش بتتبدّل). فكل ربط هنا بيتعلّم على
+       العقدة نفسها بخاصية JS (مش ‎data-*‎ عشان مانتسجّلش في ‎props.html‎)،
+       وإلا المستمعات كانت هتتضاعف مع كل تحديث. */
+
     // اختيار القسم بالضغط عليه
     fdoc.querySelectorAll("[data-block]").forEach(function (node) {
+      if (node.__lbPickBound) return;
+      node.__lbPickBound = true;
             node.addEventListener("click", function (e) {
         var slot = e.target.closest("[data-slot]");
         if (slot && slot.isContentEditable) return;
@@ -4500,6 +4842,8 @@
       var key = node.getAttribute("data-slot");
       var block = findBlock(blockId);
       if (!block || !(key in block.props)) return;
+      if (node.__lbSlotBound) return;
+      node.__lbSlotBound = true;
 
       node.setAttribute("contenteditable", "plaintext-only");
       node.setAttribute("data-lb-text", "1");
@@ -4517,7 +4861,12 @@
       });
       node.addEventListener("input", function () {
         if (translatedPreviewShown()) return;
-        block.props[key] = node.textContent;
+        /* القسم بيتقرا وقت الكتابة مش وقت الربط: التراجع/الإعادة بيبدّلوا
+           المستند كله بنسخة جديدة، والعقدة دي ممكن تفضل شغّالة بعدها. */
+        var current = findBlock(blockId);
+        if (!current) return;
+        current.props[key] = node.textContent;
+        liveSeq++;           // أي رد سيرفر في الطريق فيه النص القديم
         markDirty();
         syncInspectorField(blockId, key, node.textContent);
       });
@@ -4537,6 +4886,7 @@
     // الصور، الخريطة، العدّاد، الفورم…). النصوص متعلّمة تلقائياً في القوالب.
     fdoc.querySelectorAll("[data-move]").forEach(function (node) {
       if (node.hasAttribute("data-slot")) return;      // اتربط فوق
+      if (node.__lbMoveBound) return;
       /* حاوية «كود متقدّم»: اللي بيتسحب هو الشكل اللي جوّاها (‎ce-1‎)
          مش هي. الاتنين كانوا بيتسحبوا، فلو مسكت من حرف المربع بتحرّك
          الحاوية ولو مسكت من نص الشكل بتحرّك الشكل — حركتين مختلفتين
@@ -4546,6 +4896,7 @@
           node.querySelector("[data-move]")) return;
       var holder = node.closest("[data-block]");
       if (!holder) return;
+      node.__lbMoveBound = true;
       bindSlotDrag(node, holder.getAttribute("data-block"),
                    node.getAttribute("data-move"));
     });
@@ -4726,8 +5077,10 @@
     var root = section.querySelector(".lb-custom");
     if (!block || !root || !("html" in block.props)) return;
     if (translatedPreviewShown()) return;     // الـDOM هنا نصه مترجَم
-    block.props.html = serializeCustom(root);
-    markDirty();
+    deferCustomWrite(root, function () {
+      block.props.html = serializeCustom(root);
+      markDirty();
+    });
   }
 
   // ==========================================================
@@ -5128,8 +5481,10 @@
         }
         // السحب بيحفظ موضعه في ‎block.layout‎؛ الـDOM هنا نصه مترجَم
         if (translatedPreviewShown()) return;
-        block.props.html = serializeCustom(root);
-        markDirty();
+        deferCustomWrite(root, function () {
+          block.props.html = serializeCustom(root);
+          markDirty();
+        });
       };
 
       /* الترتيب مهم:
@@ -6096,6 +6451,7 @@
   }
 
   function save(silent) {
+    flushCustomWrites();
     if (state.saving) return Promise.resolve(false);
     state.saving = true;
     setSaveState("saving", "جارٍ الحفظ…");
@@ -6238,6 +6594,7 @@
   // حفظ كقالب
   // ==========================================================
   function saveAsTemplate() {
+    flushCustomWrites();
     var form = refs.templateForm;
     var name = $("[name=tpl_name]", form).value.trim();
     if (name.length < 2) { toast("اكتب اسماً للقالب.", "error"); return; }
@@ -6457,7 +6814,13 @@
 
     // حقول بيانات المناسبة
     $$("[data-inv-field]").forEach(function (node) {
-      node.addEventListener("input", function () { markDirty(); requestPreview(); });
+      // الكتابة في خانة نص بتستنى وقفة أطول — مش كل حرف يبعت المستند للسيرفر
+      var typed = node.tagName === "TEXTAREA" ||
+        (node.tagName === "INPUT" && /^(text|url|search|tel|email)$/.test(node.type));
+      node.addEventListener("input", function () {
+        markDirty();
+        requestPreview(typed ? PREVIEW_TYPING_WAIT : undefined);
+      });
       node.addEventListener("change", function () { markDirty(); requestPreview(); });
     });
 
@@ -6529,6 +6892,7 @@
     });
 
     window.addEventListener("beforeunload", function (e) {
+      flushCustomWrites();
       if (state.dirty) { e.preventDefault(); e.returnValue = ""; }
     });
 
