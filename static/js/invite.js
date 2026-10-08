@@ -1206,7 +1206,22 @@
     return cls.some(function (c) { return b.classList.contains(c); });
   }
 
-  function planLanguagePatch(live, fresh, ops, liveIntro) {
+  /* عقدة السيرفر اللي كود المصمّم **نقلها** لمكان تاني في الصفحة.
+
+     مقيس حي على ‎mohamed-doaa‎: سكربت قسم الـbranding بيرفع
+     ‎#farhaAdGlassOnly‎ من ‎.lb-extra-html‎ لجذر القسم. فصفحة السيرفر
+     فيها العقدة تحت ‎.lb-extra-html‎ والحية مالهاش مقابل هناك، والخطة
+     كانت بتفشل → استبدال كامل → الفيديو يتطلب من الأول وشاشة سودة.
+     لو العقدة ليها ‎id‎ وموجودة في مكان تاني جوّه نفس الجذر، نطبّق
+     عليها هي بدل ما نعتبرها قسم ناقص. */
+  function movedCounterpart(live, fresh, root) {
+    if (!fresh.id || !root) return null;
+    var moved = doc.getElementById(fresh.id);
+    return moved && moved !== live && moved.parentNode !== live &&
+      root.contains(moved) ? moved : null;
+  }
+
+  function planLanguagePatch(live, fresh, ops, liveIntro, root) {
     if (live.nodeType === 3) {
       if (live.data !== fresh.data) ops.push(function () { live.data = fresh.data; });
       return true;
@@ -1228,13 +1243,19 @@
     var b = langKids(fresh, true, liveIntro);
     var i = 0;
     for (var j = 0; j < b.length; j++) {
+      // اتنقلت لمكان تاني: نطبّق على مكانها الجديد ومانحرّكش المؤشر هنا
+      var moved = b[j].nodeType === 1 ? movedCounterpart(live, b[j], root) : null;
+      if (moved) {
+        if (!planLanguagePatch(moved, b[j], ops, liveIntro, root)) return false;
+        continue;
+      }
       // عنصر عندنا بس (حقنه كود المصمّم): نعدّيه. نص زيادة: مش هنخمّن
       while (i < a.length && !langSame(a[i], b[j])) {
         if (a[i].nodeType === 3) return false;
         i++;
       }
       if (i >= a.length) return false;     // حاجة جت من السيرفر ومالهاش مقابل
-      if (!planLanguagePatch(a[i], b[j], ops, liveIntro)) return false;
+      if (!planLanguagePatch(a[i], b[j], ops, liveIntro, root)) return false;
       i++;
     }
     return true;
@@ -1244,7 +1265,7 @@
   function patchLanguageInPlace(live, fresh) {
     var ops = [];
     var liveIntro = !!live.querySelector(":scope > .lb-intro");
-    if (!planLanguagePatch(live, fresh, ops, liveIntro)) return false;
+    if (!planLanguagePatch(live, fresh, ops, liveIntro, live)) return false;
     ops.forEach(function (op) { op(); });
     return true;
   }
