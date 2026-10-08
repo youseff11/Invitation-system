@@ -4005,28 +4005,42 @@ class LanguageSwitchInPlaceTests(TestCase):
 
     def test_a_mismatch_falls_back_to_the_full_swap(self):
         """أي قسم ظهر أو اختفى بين اللغتين = استبدال كامل، مش ترجمة ناقصة."""
-        self.assertIn("if (i >= a.length) return false;", self.js)
-        self.assertIn(
-            "if (!planLanguagePatch(live, fresh, ops, liveIntro, live)) return false;",
-            self.js)
-        # الخطة بتتحسب كلها قبل أول تغيير
-        plan = self.js.index("if (!planLanguagePatch(live, fresh, ops, liveIntro, live))")
-        apply = self.js.index("ops.forEach(function (op) { op(); });")
-        self.assertLess(plan, apply)
+        # نص من السيرفر مالوش مقابل، أو عنصر اتأجّل ومالقيناش له مقابل
+        self.assertIn("if (b[j].nodeType !== 1) return false;", self.js)
+        self.assertIn("if (!done) return false;", self.js)
+        self.assertIn("if (!planLanguagePatch(live, fresh, ctx)) return false;", self.js)
+        self.assertIn("if (!resolveMovedNodes(ctx)) return false;", self.js)
+        # الخطة بتتحسب كلها (بما فيها العقد المنقولة) قبل أول تغيير
+        body = self.js[self.js.index("function patchLanguageInPlace"):]
+        plan = body.index("if (!planLanguagePatch(live, fresh, ctx))")
+        moved = body.index("if (!resolveMovedNodes(ctx))")
+        apply = body.index("ctx.ops.forEach(function (op) { op(); });")
+        self.assertLess(plan, moved)
+        self.assertLess(moved, apply)
 
     def test_a_node_moved_by_designer_code_is_patched_where_it_went(self):
         """سكربت المصمّم بينقل عقدة (‎#farhaAdGlassOnly‎ من ‎.lb-extra-html‎
-        للقسم). عقدة السيرفر ليها ‎id‎ وموجودة في مكان تاني جوّه الجذر =
-        نطبّق عليها هناك، مش نعتبرها قسم ناقص ونرجع للاستبدال الكامل
-        (الفيديو يتطلب من الأول وشاشة سودة)."""
-        self.assertIn("function movedCounterpart(live, fresh, root)", self.js)
+        للقسم). عقدة السيرفر اللي مالهاش مقابل عند أبوها بتتأجّل وتتربط
+        بعنصرها الحي في مكانه الجديد، مش بنعتبرها قسم ناقص ونرجع للاستبدال
+        الكامل (الفيديو يتطلب من الأول وشاشة سودة). ولازم تشتغل حتى لو
+        العنصر من غير ‎id‎."""
         body = self.js[self.js.index("function planLanguagePatch"):
                        self.js.index("function patchLanguageInPlace")]
-        moved = body.index("movedCounterpart(live, b[j], root)")
-        # لازم تتفحص قبل ما نعتبر العقدة «مالهاش مقابل»
-        self.assertLess(moved, body.index("if (i >= a.length) return false;"))
-        # ومانحرّكش مؤشر الأولاد الحية عشان باقي الإخوات يلاقوا مقابلهم
-        self.assertIn("continue;", body[moved:body.index("while (i < a.length")])
+        # بتتأجّل ومابتفشلش الخطة، وبنفتّش بمؤشر مؤقت عشان إخواتها يلاقوا مقابلهم
+        self.assertIn("ctx.pending.push(b[j]);", body)
+        self.assertIn("var k = i;", body)
+        # ‎id‎ الأول، وبعدين الشكل (وسم + كلاس + data-move) من غير ‎id‎
+        cand = self.js[self.js.index("function movedCandidates"):
+                       self.js.index("function resolveMovedNodes")]
+        self.assertIn("doc.getElementById(fresh.id)", cand)
+        self.assertIn('getAttribute("data-move")', cand)
+        self.assertIn("langSame(c, fresh)", cand)
+        # عنصر حي بـ‎id‎ مختلف مش ممكن يتربط بعقدة (الأقسام ماتتلخبطش)
+        self.assertIn("if (c.id ||", cand)
+        # مرشّح فشلت التجربة عليه = نلغي اللي ضافه ونجرّب اللي بعده
+        resolve = self.js[self.js.index("function resolveMovedNodes"):
+                          self.js.index("function planLanguagePatch")]
+        self.assertIn("ctx.ops.length = mark[0];", resolve)
 
 
 class TranslationKeyContractTests(BaseAppTest):

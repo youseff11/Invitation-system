@@ -1212,16 +1212,68 @@
      ‎#farhaAdGlassOnly‎ من ‎.lb-extra-html‎ لجذر القسم. فصفحة السيرفر
      فيها العقدة تحت ‎.lb-extra-html‎ والحية مالهاش مقابل هناك، والخطة
      كانت بتفشل → استبدال كامل → الفيديو يتطلب من الأول وشاشة سودة.
-     لو العقدة ليها ‎id‎ وموجودة في مكان تاني جوّه نفس الجذر، نطبّق
-     عليها هي بدل ما نعتبرها قسم ناقص. */
-  function movedCounterpart(live, fresh, root) {
-    if (!fresh.id || !root) return null;
-    var moved = doc.getElementById(fresh.id);
-    return moved && moved !== live && moved.parentNode !== live &&
-      root.contains(moved) ? moved : null;
+
+     أي سكربت ممكن ينقل أي عنصر، مش بس اللي ليه ‎id‎. فالعقدة اللي ملهاش
+     مقابل عند أبوها **ما بنفشلش عليها على طول**: بنأجّلها ونكمّل المشي،
+     ولما نخلص نشوف مين من العناصر الحية «اللي عندنا بس» (اللي مالهاش
+     مقابل في السيرفر) هو هي. بالترتيب:
+       ١) نفس الـ‎id‎ — أدق حاجة.
+       ٢) من غير ‎id‎: نفس الوسم ونفس الكلاس ونفس ‎data-move‎، وبعدها
+          نجرّب نطبّق الخطة عليه فعلاً — لو بنيته مش بنية العقدة يبقى
+          مش هو وننتقل للي بعده.
+     مفيش مقابل مقنع = نفس الاستبدال الكامل زي الأول. الأقسام الحقيقية
+     مش بتتلخبط مع بعض لإن لكل قسم ‎id‎ مختلف. */
+  function usedAbove(ctx, node) {
+    for (var n = node; n && n !== ctx.root; n = n.parentNode) {
+      if (ctx.used.indexOf(n) >= 0) return true;
+    }
+    return false;
   }
 
-  function planLanguagePatch(live, fresh, ops, liveIntro, root) {
+  function movedCandidates(ctx, fresh) {
+    if (fresh.id) {
+      var byId = doc.getElementById(fresh.id);
+      return byId && ctx.root.contains(byId) && !usedAbove(ctx, byId) ? [byId] : [];
+    }
+    var move = fresh.getAttribute("data-move");
+    var exact = [], loose = [];
+    ctx.spare.forEach(function (spare) {
+      var all = [spare].concat(Array.prototype.slice.call(spare.querySelectorAll("*")));
+      all.forEach(function (c) {
+        if (c.id || c.getAttribute("data-move") !== move) return;
+        if (!langSame(c, fresh) || usedAbove(ctx, c)) return;
+        (c.className === fresh.className ? exact : loose).push(c);
+      });
+    });
+    return exact.concat(loose);
+  }
+
+  /** كل عقدة اتأجّلت تلاقي مقابلها الحي. ‎false‎ = مالقيناش، استبدل. */
+  function resolveMovedNodes(ctx) {
+    // ‎pending‎ ممكن يزيد وإحنا ماشيين (عقدة منقولة جواها منقولة)
+    for (var p = 0; p < ctx.pending.length; p++) {
+      var fresh = ctx.pending[p];
+      var cands = movedCandidates(ctx, fresh);
+      var done = false;
+      for (var c = 0; c < cands.length && !done; c++) {
+        var mark = [ctx.ops.length, ctx.spare.length, ctx.pending.length];
+        if (planLanguagePatch(cands[c], fresh, ctx)) {
+          ctx.used.push(cands[c]);
+          done = true;
+        } else {
+          // التجربة فشلت: نلغي اللي ضافته ونجرّب اللي بعده
+          ctx.ops.length = mark[0];
+          ctx.spare.length = mark[1];
+          ctx.pending.length = mark[2];
+        }
+      }
+      if (!done) return false;
+    }
+    return true;
+  }
+
+  function planLanguagePatch(live, fresh, ctx) {
+    var ops = ctx.ops;
     if (live.nodeType === 3) {
       if (live.data !== fresh.data) ops.push(function () { live.data = fresh.data; });
       return true;
@@ -1239,34 +1291,47 @@
       });
     });
 
-    var a = langKids(live, false, liveIntro);
-    var b = langKids(fresh, true, liveIntro);
+    var a = langKids(live, false, ctx.liveIntro);
+    var b = langKids(fresh, true, ctx.liveIntro);
     var i = 0;
     for (var j = 0; j < b.length; j++) {
-      // اتنقلت لمكان تاني: نطبّق على مكانها الجديد ومانحرّكش المؤشر هنا
-      var moved = b[j].nodeType === 1 ? movedCounterpart(live, b[j], root) : null;
-      if (moved) {
-        if (!planLanguagePatch(moved, b[j], ops, liveIntro, root)) return false;
+      /* نفتّش بـ‎k‎ مش ‎i‎: العقدة اللي ملهاش مقابل هنا ماتاكلش إخواتها
+         (قبل كده المؤشر كان بيوصل لآخر الأولاد وكل اللي بعدها يفشل) */
+      var k = i;
+      while (k < a.length && !langSame(a[k], b[j])) k++;
+      if (k >= a.length) {
+        // نص من السيرفر مالوش مقابل: مش هنخمّن. عنصر: يمكن اتنقل، نأجّله
+        if (b[j].nodeType !== 1) return false;
+        ctx.pending.push(b[j]);
         continue;
       }
-      // عنصر عندنا بس (حقنه كود المصمّم): نعدّيه. نص زيادة: مش هنخمّن
-      while (i < a.length && !langSame(a[i], b[j])) {
-        if (a[i].nodeType === 3) return false;
-        i++;
+      // عنصر عندنا بس (حقنه كود المصمّم أو جاله منقول): نعدّيه. نص زيادة: مش هنخمّن
+      for (var m = i; m < k; m++) {
+        if (a[m].nodeType === 3) return false;
+        ctx.spare.push(a[m]);
       }
-      if (i >= a.length) return false;     // حاجة جت من السيرفر ومالهاش مقابل
-      if (!planLanguagePatch(a[i], b[j], ops, liveIntro, root)) return false;
-      i++;
+      if (!planLanguagePatch(a[k], b[j], ctx)) return false;
+      i = k + 1;
+    }
+    for (; i < a.length; i++) {
+      if (a[i].nodeType === 1) ctx.spare.push(a[i]);
     }
     return true;
   }
 
   /** يطبّق اللغة الجديدة على الصفحة مكانها. ‎false‎ = مش ممكن، استبدل. */
   function patchLanguageInPlace(live, fresh) {
-    var ops = [];
-    var liveIntro = !!live.querySelector(":scope > .lb-intro");
-    if (!planLanguagePatch(live, fresh, ops, liveIntro, live)) return false;
-    ops.forEach(function (op) { op(); });
+    var ctx = {
+      root: live,
+      liveIntro: !!live.querySelector(":scope > .lb-intro"),
+      ops: [],        // التعديلات — مابتتنفّذ غير بعد ما الخطة كلها تنجح
+      spare: [],      // عناصر حية مالهاش مقابل في السيرفر
+      pending: [],    // عقد السيرفر اللي مالقيناش لها مقابل عند أبوها
+      used: []        // عناصر حية اتربطت بعقدة منقولة
+    };
+    if (!planLanguagePatch(live, fresh, ctx)) return false;
+    if (!resolveMovedNodes(ctx)) return false;
+    ctx.ops.forEach(function (op) { op(); });
     return true;
   }
 
