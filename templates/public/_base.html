@@ -6,7 +6,8 @@
 {% block chrome %}{% include 'partials/nav.html' %}{% include 'partials/_whatsapp_float.html' %}{% endblock %}
 {% block robots %}index, follow, max-image-preview:large, max-snippet:-1{% endblock %}
 {% block seo %}
-<meta name="keywords" content="{{ SEO_KEYWORDS }}">
+{% if GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ GOOGLE_SITE_VERIFICATION }}">
+{% endif %}<meta name="keywords" content="{{ SEO_KEYWORDS }}">
 <link rel="canonical" href="{{ SEO_CANONICAL }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ SITE_NAME }}">

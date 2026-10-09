@@ -257,6 +257,8 @@ SITE_CURRENCY = env("SITE_CURRENCY", "ج.م")
 # ---------------------------------------------------------------- SEO
 # الدومين الأساسي — بيتبني منه canonical وsitemap وصور المشاركة.
 SITE_URL = env("SITE_URL", "https://www.farha-invitations.com").rstrip("/")
+# كود تحقق ملكية Google Search Console (علامة meta في الصفحات العامة).
+GOOGLE_SITE_VERIFICATION = env("GOOGLE_SITE_VERIFICATION", "rggPLGrAiSjHKvTNnns6TydSwxah0oP1rh5qVqcmWPs")
 SEO_DESCRIPTION_AR = env(
     "SEO_DESCRIPTION_AR",
     "فرحة: صمّم دعوة زفاف إلكترونية أو دعوة فرح رقمية بالأسماء واللوكيشن والخريطة "

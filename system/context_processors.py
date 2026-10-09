@@ -75,6 +75,7 @@ def site_settings(request):
     site_url = settings.SITE_URL
     return {
         "SEO_URL": site_url,
+        "GOOGLE_SITE_VERIFICATION": settings.GOOGLE_SITE_VERIFICATION,
         # canonical بدون query string — ?category= وغيره مش صفحات مستقلة
         "SEO_CANONICAL": site_url + path,
         "SEO_IMAGE": site_url + settings.STATIC_URL + "images/home-arabic-light.webp",
