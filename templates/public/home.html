@@ -1,6 +1,7 @@
 {% extends 'public/_base.html' %}
 {% load static i18n bilingual %}
-{% block title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}
+{% block title %}{% if LANGUAGE_CODE == 'en' %}Digital Wedding Invitations & Wedding Websites in Egypt — {{ SITE_NAME }}{% else %}دعوة زفاف إلكترونية ودعوات أفراح رقمية — {{ SITE_NAME }}{% endif %}{% endblock %}
+{% block jsonld %}<script type="application/ld+json">{{ jsonld }}</script>{% endblock %}
 {% comment %}
   data-bilingual بتقول لـsite.js إن الصفحة دي فيها اللغتين، فالتبديل
   بيتم في المتصفح على طول من غير ما نروح للسيرفر.

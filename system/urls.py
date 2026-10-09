@@ -6,6 +6,8 @@ from . import views
 urlpatterns = [
     # ------------------------------------------------------------ عام
     path("", views.home, name="home"),
+    path("robots.txt", views.robots_txt, name="robots_txt"),
+    path("sitemap.xml", views.sitemap_xml, name="sitemap_xml"),
     path("templates/", views.template_gallery, name="template_gallery"),
     path("templates/<slug:slug>/preview/", views.template_demo, name="template_demo"),
     path("media-video/<path:path>", views.media_video, name="media_video"),

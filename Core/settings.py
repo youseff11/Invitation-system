@@ -254,6 +254,39 @@ SITE_WHATSAPP = env("SITE_WHATSAPP", "")
 SITE_EMAIL = env("SITE_EMAIL", "")
 SITE_CURRENCY = env("SITE_CURRENCY", "ج.م")
 
+# ---------------------------------------------------------------- SEO
+# الدومين الأساسي — بيتبني منه canonical وsitemap وصور المشاركة.
+SITE_URL = env("SITE_URL", "https://www.farha-invitations.com").rstrip("/")
+SEO_DESCRIPTION_AR = env(
+    "SEO_DESCRIPTION_AR",
+    "فرحة: صمّم دعوة زفاف إلكترونية أو دعوة فرح رقمية بالأسماء واللوكيشن والخريطة "
+    "وعداد تنازلي وRSVP، وشاركها برابط على واتساب. دعوات أفراح وكتب كتاب وخطوبة في مصر.",
+)
+SEO_DESCRIPTION_EN = env(
+    "SEO_DESCRIPTION_EN",
+    "FARHA: create an elegant digital wedding invitation website with location map, "
+    "countdown, RSVP and WhatsApp sharing. Online wedding invitations in Egypt.",
+)
+SEO_KEYWORDS_AR = (
+    "دعوة زفاف إلكترونية، دعوة فرح إلكترونية، دعوات زفاف إلكترونية، دعوات أفراح إلكترونية، "
+    "تصميم دعوة زفاف، تصميم دعوة فرح، دعوة زفاف رقمية، دعوة فرح رقمية، دعوة زفاف أونلاين، "
+    "دعوة فرح أونلاين، دعوة زفاف واتساب، دعوة فرح واتساب، لينك دعوة فرح، رابط دعوة زفاف، "
+    "موقع دعوة زفاف، موقع دعوة فرح، تصميم موقع زفاف، كارت دعوة زفاف إلكتروني، "
+    "كارت فرح إلكتروني، دعوة زفاف تفاعلية، دعوة فرح تفاعلية، دعوة زفاف مخصصة، "
+    "دعوة فرح باسم العروسين، دعوة زفاف مع لوكيشن، دعوة فرح مع لوكيشن، دعوة زفاف مع خريطة، "
+    "دعوة زفاف مع عداد تنازلي، دعوة زفاف مع RSVP، دعوة كتب كتاب إلكترونية، "
+    "دعوة خطوبة إلكترونية، دعوات مناسبات إلكترونية، دعوات أفراح مصر، دعوات زفاف مصر، "
+    "تصميم دعوات أفراح، تصميم دعوات زفاف، دعوة فرح مودرن، دعوة زفاف فخمة، "
+    "دعوة زفاف أنيقة، دعوة زفاف بالرابط"
+)
+SEO_KEYWORDS_EN = (
+    "Wedding Invitation, Digital Wedding Invitation, Online Wedding Invitation, "
+    "Wedding Invitation Website, Wedding Website, Interactive Wedding Invitation, "
+    "Custom Wedding Invitation, Modern Wedding Invitation, Elegant Wedding Invitation, "
+    "Wedding RSVP, Wedding RSVP Website, Save The Date, Save The Date Website, "
+    "Wedding Countdown, Wedding Location, Wedding Invitation Egypt"
+)
+
 # حدود استيراد القوالب — حماية من ZIP bomb.
 TEMPLATE_IMPORT_MAX_ZIP_SIZE = 50 * 1024 * 1024        # 50MB للأرشيف نفسه
 TEMPLATE_IMPORT_MAX_UNCOMPRESSED = 150 * 1024 * 1024    # 150MB بعد الفك

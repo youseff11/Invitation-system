@@ -4,3 +4,20 @@
   dashboard/_base.html) ولا في دعوة العميل (صفحة مستقلة مالهاش أب).
 {% endcomment %}
 {% block chrome %}{% include 'partials/nav.html' %}{% include 'partials/_whatsapp_float.html' %}{% endblock %}
+{% block robots %}index, follow, max-image-preview:large, max-snippet:-1{% endblock %}
+{% block seo %}
+<meta name="keywords" content="{{ SEO_KEYWORDS }}">
+<link rel="canonical" href="{{ SEO_CANONICAL }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ SITE_NAME }}">
+<meta property="og:locale" content="{{ SEO_LOCALE }}">
+<meta property="og:title" content="{% block og_title %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endblock %}">
+<meta property="og:description" content="{% block og_description %}{{ SEO_DESC }}{% endblock %}">
+<meta property="og:url" content="{{ SEO_CANONICAL }}">
+<meta property="og:image" content="{{ SEO_IMAGE }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ SITE_NAME }} — {{ SITE_TAGLINE }}">
+<meta name="twitter:description" content="{{ SEO_DESC }}">
+<meta name="twitter:image" content="{{ SEO_IMAGE }}">
+{% block jsonld %}{% endblock %}
+{% endblock %}

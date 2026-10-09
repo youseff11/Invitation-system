@@ -1,6 +1,7 @@
 {% extends 'public/_base.html' %}
 {% load i18n bilingual %}
-{% block title %}{% translate "القوالب" %} — {{ SITE_NAME }}{% endblock %}
+{% block title %}{% if LANGUAGE_CODE == 'en' %}Wedding Invitation Templates{% else %}قوالب دعوات زفاف وأفراح إلكترونية{% endif %} — {{ SITE_NAME }}{% endblock %}
+{% block description %}{% if LANGUAGE_CODE == 'en' %}Browse modern and elegant digital wedding invitation templates with live preview, location map, countdown and RSVP.{% else %}تصفّح قوالب دعوات زفاف وأفراح إلكترونية مودرن وفخمة، بمعاينة حية ولوكيشن وعداد تنازلي وRSVP.{% endif %}{% endblock %}
 {% block html_attrs %} data-bilingual{% endblock %}
 {% block content %}
 <section class="section section--below-nav" id="main">

@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
-<meta name="description" content="{% block description %}{{ SITE_TAGLINE }}{% endblock %}">
+<meta name="description" content="{% block description %}{{ SEO_DESC }}{% endblock %}">
+{% comment %} الافتراضي noindex: لوحة التحكم وصفحات العملاء مش للفهرسة.
+   صفحات الموقع العامة (public/_base.html) هي اللي بتفتحها. {% endcomment %}
+<meta name="robots" content="{% block robots %}noindex, nofollow{% endblock %}">
+{% block seo %}{% endblock %}
 <script>
 /* يضبط المظهر قبل رسم الصفحة — يمنع ومضة اللون عند التحميل.
    لا يحتوي على أي متغيّر Django عمداً، فلا يمكن لأي formatter أن يكسره. */

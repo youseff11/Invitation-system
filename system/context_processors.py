@@ -71,7 +71,22 @@ def site_settings(request):
     name_en = getattr(settings, "SITE_NAME_EN", "") or name_ar
     tag_ar = settings.SITE_TAGLINE
     tag_en = getattr(settings, "SITE_TAGLINE_EN", "") or tag_ar
+    path = request.path
+    site_url = settings.SITE_URL
     return {
+        "SEO_URL": site_url,
+        # canonical بدون query string — ?category= وغيره مش صفحات مستقلة
+        "SEO_CANONICAL": site_url + path,
+        "SEO_IMAGE": site_url + settings.STATIC_URL + "images/home-arabic-light.webp",
+        "SEO_DESC": (settings.SEO_DESCRIPTION_EN if en
+                     else settings.SEO_DESCRIPTION_AR),
+        "SEO_KEYWORDS": ", ".join([settings.SEO_KEYWORDS_AR if not en
+                                   else settings.SEO_KEYWORDS_EN,
+                                   settings.SEO_KEYWORDS_EN if not en
+                                   else settings.SEO_KEYWORDS_AR]),
+        "SEO_DESC_AR": settings.SEO_DESCRIPTION_AR,
+        "SEO_DESC_EN": settings.SEO_DESCRIPTION_EN,
+        "SEO_LOCALE": "en_US" if en else "ar_EG",
         "SITE_NAME": name_en if en else name_ar,
         "SITE_TAGLINE": tag_en if en else tag_ar,
         "SITE_NAME_AR": name_ar,

@@ -314,6 +314,20 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
 _TEMPLATE_HEAVY_FIELDS = ("document", "preview_render", "runtime_scripts")
 
 
+def _jsonld(*items):
+    """JSON-LD جاهز للطباعة جوّه <script> — الـ`<` بتتهرّب عشان مفيش </script> تكسر الصفحة."""
+    from django.utils.safestring import mark_safe
+    data = json.dumps(list(items), ensure_ascii=False).replace("<", "\\u003c")
+    return mark_safe(data)
+
+
+def _seo_keywords():
+    sep = "،"
+    ar = [k.strip() for k in settings.SEO_KEYWORDS_AR.split(sep) if k.strip()]
+    en = [k.strip() for k in settings.SEO_KEYWORDS_EN.split(",") if k.strip()]
+    return ar + en
+
+
 def home(request):
     templates = (Template.objects.filter(is_active=True)
                  .defer(*_TEMPLATE_HEAVY_FIELDS)[:12])
@@ -339,10 +353,73 @@ def home(request):
             return redirect("home")
         messages.error(request, "يرجى مراجعة البيانات المدخلة.")
     faqs = FAQ.objects.filter(is_active=True)
+
+    site = settings.SITE_URL
+    ld = [
+        {"@context": "https://schema.org", "@type": "Organization",
+         "name": settings.SITE_NAME, "alternateName": settings.SITE_NAME_EN,
+         "url": site + "/", "logo": site + settings.STATIC_URL + "images/logo.jpeg",
+         "sameAs": [u for u in (cfg.facebook_url, cfg.instagram_url) if u]},
+        {"@context": "https://schema.org", "@type": "WebSite",
+         "name": settings.SITE_NAME, "alternateName": settings.SITE_NAME_EN,
+         "url": site + "/", "inLanguage": ["ar", "en"]},
+        {"@context": "https://schema.org", "@type": "Service",
+         "name": "دعوات زفاف إلكترونية — Digital Wedding Invitations",
+         "serviceType": "Digital wedding invitation design",
+         "description": settings.SEO_DESCRIPTION_AR,
+         "keywords": ", ".join(_seo_keywords()),
+         "areaServed": {"@type": "Country", "name": "Egypt"},
+         "provider": {"@type": "Organization", "name": settings.SITE_NAME,
+                      "url": site + "/"}},
+    ]
+    if faqs:
+        ld.append({
+            "@context": "https://schema.org", "@type": "FAQPage",
+            "mainEntity": [{"@type": "Question", "name": f.question_ar,
+                            "acceptedAnswer": {"@type": "Answer", "text": f.answer_ar}}
+                           for f in faqs],
+        })
     return render(request, "public/home.html", {
         "templates": templates, "plans": plans, "form": form,
         "addons": addons, "faqs": faqs, "site_config": cfg,
+        "jsonld": _jsonld(*ld),
     })
+
+
+@require_GET
+def robots_txt(request):
+    """robots.txt — الموقع العام مفتوح، واللوحة وروابط العملاء والـAPI مقفولة."""
+    lines = [
+        "User-agent: *",
+        "Allow: /$",
+        "Allow: /templates/",
+        "Disallow: /dashboard/",
+        "Disallow: /admin/",
+        "Disallow: /login/",
+        "Disallow: /logout/",
+        "Disallow: /i/",
+        "Disallow: /i18n/",
+        "Disallow: /media-video/",
+        "",
+        f"Sitemap: {settings.SITE_URL}/sitemap.xml",
+        "",
+    ]
+    return HttpResponse("\n".join(lines), content_type="text/plain; charset=utf-8")
+
+
+@require_GET
+def sitemap_xml(request):
+    """sitemap.xml — الرئيسية والمعرض بس؛ معاينات القوالب noindex فمش بتتحط هنا."""
+    base = settings.SITE_URL
+    urls = [(base + "/", None, "1.0"),
+            (base + reverse("template_gallery"), None, "0.8")]
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, _updated, prio in urls:
+        out.append("<url><loc>%s</loc>%s<priority>%s</priority></url>" % (
+            loc, "", prio))
+    out.append("</urlset>")
+    return HttpResponse("\n".join(out), content_type="application/xml; charset=utf-8")
 
 
 @require_GET
