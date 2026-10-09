@@ -78,7 +78,7 @@ def site_settings(request):
         "GOOGLE_SITE_VERIFICATION": settings.GOOGLE_SITE_VERIFICATION,
         # canonical بدون query string — ?category= وغيره مش صفحات مستقلة
         "SEO_CANONICAL": site_url + path,
-        "SEO_IMAGE": site_url + settings.STATIC_URL + "images/home-arabic-light.webp",
+        "SEO_IMAGE": site_url + settings.STATIC_URL + "images/logo.jpeg",
         "SEO_DESC": (settings.SEO_DESCRIPTION_EN if en
                      else settings.SEO_DESCRIPTION_AR),
         "SEO_KEYWORDS": ", ".join([settings.SEO_KEYWORDS_AR if not en
