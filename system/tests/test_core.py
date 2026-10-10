@@ -186,6 +186,33 @@ class BaseAppTest(TestCase):
 
 
 # ==========================================================================
+class SharePreviewTests(BaseAppTest):
+    def test_robots_lets_social_crawlers_read_invitations(self):
+        """ميتا بتلتزم بـ robots.txt: ‎/i/‎ المقفول كان بيشيل صورة المعاينة."""
+        body = self.client.get("/robots.txt").content.decode()
+        groups = [g for g in body.split("\n\n") if "User-agent:" in g]
+        meta = next(g for g in groups if "facebookexternalhit" in g)
+        self.assertIn("Allow: /i/", meta)
+        self.assertNotIn("Disallow: /i/\n", meta + "\n")
+        self.assertIn("Disallow: /i/*/client/", meta)
+        # محركات البحث لسه ممنوعة من ‎/i/‎
+        star = next(g for g in groups if "User-agent: *" in g)
+        self.assertIn("Disallow: /i/", star)
+
+    def test_invitation_page_has_absolute_og_image(self):
+        self.template.cover_url = "/static/img/cover.jpg"
+        self.template.save()
+        html = self.client.get(
+            f"/i/{self.inv.slug}/",
+            HTTP_USER_AGENT="facebookexternalhit/1.1",
+        ).content.decode()
+        self.assertIn(
+            'property="og:image" content="http://testserver/static/img/cover.jpg"',
+            html,
+        )
+
+
+# ==========================================================================
 class AccessTests(BaseAppTest):
     def test_dashboard_requires_login(self):
         self.assertEqual(self.client.get("/dashboard/").status_code, 302)

@@ -386,10 +386,42 @@ def home(request):
     })
 
 
+# زواحف معاينة الروابط في السوشيال. فيسبوك وميتا بيزنس وماسنجر وإنستجرام
+# بيلتزموا بـ robots.txt (واتساب لأ)، فلما كان ‎/i/‎ مقفول لكل الزواحف
+# كان الرابط بيتبعت على ميتا من غير صورة ولا عنوان ولينك عريان، وعلى
+# واتساب بيظهر عادي. الزاحف اللي ليه مجموعة باسمه بيتجاهل مجموعة ‎*‎،
+# فلازم نكرر فيها المسارات الخاصة.
+_SHARE_PREVIEW_BOTS = (
+    "facebookexternalhit", "facebookcatalog", "Facebot",
+    "meta-externalagent", "meta-externalfetcher",
+    "WhatsApp", "Twitterbot", "LinkedInBot", "Slackbot", "Slack-ImgProxy",
+    "TelegramBot", "Discordbot", "Pinterest", "SkypeUriPreview",
+)
+
+
 @require_GET
 def robots_txt(request):
-    """robots.txt — الموقع العام مفتوح، واللوحة وروابط العملاء والـAPI مقفولة."""
-    lines = [
+    """robots.txt — الموقع العام مفتوح، واللوحة وروابط العملاء والـAPI مقفولة.
+
+    ‎/i/‎ مقفول لمحركات البحث بس، ومفتوح لزواحف المعاينة عشان الدعوة
+    تظهر بصورتها وعنوانها لما تتشارك. لوحة العميل ولوحة القاعة (رموز
+    سرية في الرابط) فضلت مقفولة عليهم كمان.
+    """
+    lines = [f"User-agent: {bot}" for bot in _SHARE_PREVIEW_BOTS]
+    lines += [
+        "Allow: /i/",
+        "Allow: /media/",
+        "Allow: /static/",
+        "Allow: /templates/",
+        "Disallow: /i/*/client/",
+        "Disallow: /i/*/venue/",
+        "Disallow: /dashboard/",
+        "Disallow: /admin/",
+        "Disallow: /login/",
+        "Disallow: /logout/",
+        "Disallow: /i18n/",
+        "Disallow: /media-video/",
+        "",
         "User-agent: *",
         "Allow: /$",
         "Allow: /templates/",
