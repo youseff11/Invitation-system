@@ -64,6 +64,36 @@ def _as_upload(img, name: str, quality: int) -> InMemoryUploadedFile:
     return InMemoryUploadedFile(buf, "ImageField", name, "image/webp", size, None)
 
 
+SHARE_EDGE = 1200        # مقاس صورة معاينة اللينك المعتاد في فيسبوك/ميتا
+SHARE_QUALITY = 86
+
+
+def share_jpeg(src, dest) -> tuple[int, int]:
+    """يحوّل صورة لـJPEG مناسب لمعاينة الرابط ويحفظه في ``dest``.
+
+    ميتا بترفض ‎og:image‎ لو رد السيرفر من غير ‎Content-Type‎، وده اللي
+    بيحصل لملفات ‎.webp‎ على الاستضافة. فبنخدم نسخة JPEG من عندنا.
+    بيرجّع ``(العرض, الارتفاع)``.
+    """
+    import os
+    from PIL import Image
+
+    with open(src, "rb") as fh:
+        img = _fit(_open_upright(fh), SHARE_EDGE)
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+            flat = Image.new("RGB", img.size, (255, 255, 255))
+            flat.paste(img, mask=img.getchannel("A"))
+            img = flat
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".tmp")
+        img.save(tmp, "JPEG", quality=SHARE_QUALITY, optimize=True)
+        os.replace(tmp, dest)
+        return img.size
+
+
 def compress(upload, content_type: str):
     """يرجّع ``(ملف_مضغوط, مصغّرة, العرض, الارتفاع)``.
 

@@ -234,12 +234,95 @@ def _share_image(request, *candidates) -> dict:
             url = (source or "").strip()
         if not url:
             continue
+        converted = _share_jpeg_url(request, url)
+        if converted:
+            return converted
         return {
             "url": request.build_absolute_uri(url),
             "width": width,
             "height": height,
         }
     return {"url": "", "width": 0, "height": 0}
+
+
+# jpeg وpng بيتخدموا من ‎/media/‎ مباشرة ورد السيرفر فيه نوعهم صح.
+_SHARE_DIRECT_EXT = {".jpg", ".jpeg", ".png"}
+
+
+def _share_source(rel: str):
+    """ملف الصورة تحت ``MEDIA_ROOT`` أو None لو المسار بره أو مش صورة."""
+    root = Path(settings.MEDIA_ROOT).resolve()
+    try:
+        src = (root / rel).resolve()
+    except (OSError, ValueError):
+        return None
+    if root not in src.parents or not src.is_file():
+        return None
+    return root, src
+
+
+def _share_jpeg(rel: str):
+    """نسخة JPEG مخزّنة من الصورة: ``(مسار, عرض, ارتفاع, بصمة)`` أو None.
+
+    البصمة من المسار ووقت التعديل: لو الصورة اتغيّرت الرابط بيتغيّر
+    وميتا مابتفضلش ماسكة القديمة.
+    """
+    found = _share_source(rel)
+    if not found:
+        return None
+    root, src = found
+    key = hashlib.sha1(f"{rel}|{src.stat().st_mtime_ns}".encode()).hexdigest()[:16]
+    dest = root / "_share" / f"{key}.jpg"
+    try:
+        if dest.is_file():
+            from PIL import Image
+            with Image.open(dest) as im:
+                width, height = im.size
+        else:
+            width, height = images.share_jpeg(src, dest)
+    except Exception:
+        logger.warning("share image conversion failed: %s", rel, exc_info=True)
+        return None
+    return dest, width, height, key
+
+
+def _share_jpeg_url(request, url: str):
+    """رابط نسخة JPEG لصورة محلية مش jpeg/png، أو None لو مش لازم."""
+    from urllib.parse import unquote, urlsplit
+
+    parts = urlsplit(url)
+    if parts.netloc and parts.netloc != request.get_host():
+        return None                                  # صورة من موقع تاني
+    path = unquote(parts.path)
+    media = settings.MEDIA_URL
+    if not path.startswith(media):
+        return None
+    rel = path[len(media):]
+    if Path(rel).suffix.lower() in _SHARE_DIRECT_EXT:
+        return None
+    made = _share_jpeg(rel)
+    if not made:
+        return None
+    _dest, width, height, key = made
+    link = reverse("share_image", args=[rel]) + f"?v={key[:8]}"
+    return {"url": request.build_absolute_uri(link), "width": width, "height": height}
+
+
+@require_GET
+def share_image(request, path):
+    """يخدم صورة المشاركة JPEG بنوع محتوى صريح.
+
+    ملفات ‎.webp‎ على الاستضافة بتتردّ من غير ‎Content-Type‎ فميتا
+    بترفضها وتبعت اللينك من غير صورة.
+    """
+    from django.http import FileResponse
+
+    made = _share_jpeg(path)
+    if not made:
+        raise Http404
+    response = FileResponse(open(made[0], "rb"), content_type="image/jpeg")
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
 def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):

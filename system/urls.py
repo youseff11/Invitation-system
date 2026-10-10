@@ -11,6 +11,7 @@ urlpatterns = [
     path("templates/", views.template_gallery, name="template_gallery"),
     path("templates/<slug:slug>/preview/", views.template_demo, name="template_demo"),
     path("media-video/<path:path>", views.media_video, name="media_video"),
+    path("share-image/<path:path>", views.share_image, name="share_image"),
 
     # ------------------------------------------------------------ دخول
     path("login/", auth_views.LoginView.as_view(

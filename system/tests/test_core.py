@@ -199,6 +199,32 @@ class SharePreviewTests(BaseAppTest):
         star = next(g for g in groups if "User-agent: *" in g)
         self.assertIn("Disallow: /i/", star)
 
+    def test_webp_share_image_is_served_as_jpeg(self):
+        """‎.webp‎ بيتردّ من غير Content-Type على الإنتاج فميتا بترفضه."""
+        import io
+        import shutil
+        import tempfile
+        from PIL import Image
+        from django.test import override_settings
+
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        folder = Path(root) / "assets"
+        folder.mkdir()
+        Image.new("RGB", (1320, 902), (200, 30, 30)).save(folder / "سسسس.webp", "WEBP")
+        with override_settings(MEDIA_ROOT=root):
+            self.template.cover_url = "/media/assets/%D8%B3%D8%B3%D8%B3%D8%B3.webp"
+            self.template.save()
+            html = self.client.get(f"/i/{self.inv.slug}/").content.decode()
+            m = re.search(r'property="og:image" content="([^"]+)"', html)
+            self.assertIn("/share-image/assets/", m.group(1))
+            self.assertIn('property="og:image:width" content="1200"', html)
+            res = self.client.get(m.group(1).replace("http://testserver", ""))
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res["Content-Type"], "image/jpeg")
+            self.assertEqual(Image.open(io.BytesIO(b"".join(res.streaming_content))).format, "JPEG")
+            self.assertEqual(self.client.get("/share-image/../settings.py").status_code, 404)
+
     def test_invitation_page_has_absolute_og_image(self):
         self.template.cover_url = "/static/img/cover.jpg"
         self.template.save()
