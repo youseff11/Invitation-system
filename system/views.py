@@ -35,7 +35,7 @@ from django.utils.text import slugify
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_safe
 
 from . import blocks as blocks_engine
 from . import qrcodes
@@ -308,7 +308,7 @@ def _share_jpeg_url(request, url: str):
     return {"url": request.build_absolute_uri(link), "width": width, "height": height}
 
 
-@require_GET
+@require_safe        # كراولر ميتا ساعات بيبعت HEAD قبل GET
 def share_image(request, path):
     """يخدم صورة المشاركة JPEG بنوع محتوى صريح.
 
