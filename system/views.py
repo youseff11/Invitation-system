@@ -304,7 +304,9 @@ def _share_jpeg_url(request, url: str):
     if not made:
         return None
     _dest, width, height, key = made
-    link = reverse("share_image", args=[rel]) + f"?v={key[:8]}"
+    # الرابط بينتهي بـ ‎.jpg‎ عشان الكراولر اللي بيحكم بالامتداد يلاقيه
+    # صورة، وكمان بيبقى رابط جديد فميتا مابتفضلش ماسكة نتيجة فشل قديمة.
+    link = reverse("share_image", args=[rel + ".jpg"]) + f"?v={key[:8]}"
     return {"url": request.build_absolute_uri(link), "width": width, "height": height}
 
 
@@ -317,6 +319,10 @@ def share_image(request, path):
     """
     from django.http import FileResponse
 
+    # الرابط الجديد بيضيف ‎.jpg‎ في الآخر؛ والقديم (من غيرها) يفضل شغال.
+    # ملفات jpg/png الأصلية ماتعديش من هنا أصلاً (_SHARE_DIRECT_EXT).
+    if path.lower().endswith(".jpg") and not _share_source(path):
+        path = path[:-4]
     made = _share_jpeg(path)
     if not made:
         raise Http404

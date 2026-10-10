@@ -223,6 +223,10 @@ class SharePreviewTests(BaseAppTest):
             self.assertEqual(res.status_code, 200)
             self.assertEqual(res["Content-Type"], "image/jpeg")
             self.assertEqual(Image.open(io.BytesIO(b"".join(res.streaming_content))).format, "JPEG")
+            self.assertIn(".jpg?v=", m.group(1))
+            # الرابط القديم (من غير ‎.jpg‎) لسه شغال لأي معاينة اتخزنت قبل كده
+            old = m.group(1).replace("http://testserver", "").replace(".jpg?v=", "?v=")
+            self.assertEqual(self.client.get(old).status_code, 200)
             self.assertEqual(self.client.get("/share-image/../settings.py").status_code, 404)
 
     def test_invitation_page_has_absolute_og_image(self):
