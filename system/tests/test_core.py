@@ -188,16 +188,22 @@ class BaseAppTest(TestCase):
 # ==========================================================================
 class SharePreviewTests(BaseAppTest):
     def test_robots_lets_social_crawlers_read_invitations(self):
-        """ميتا بتلتزم بـ robots.txt: ‎/i/‎ المقفول كان بيشيل صورة المعاينة."""
+        """ميتا بتلتزم بـ robots.txt: ‎/i/‎ المقفول كان بيشيل صورة المعاينة.
+
+        ومجموعة ‎User-agent‎ متعددة ماكانتش بتتفهم عند ميتا، فمجموعة واحدة.
+        """
         body = self.client.get("/robots.txt").content.decode()
-        groups = [g for g in body.split("\n\n") if "User-agent:" in g]
-        meta = next(g for g in groups if "facebookexternalhit" in g)
-        self.assertIn("Allow: /i/", meta)
-        self.assertNotIn("Disallow: /i/\n", meta + "\n")
-        self.assertIn("Disallow: /i/*/client/", meta)
-        # محركات البحث لسه ممنوعة من ‎/i/‎
-        star = next(g for g in groups if "User-agent: *" in g)
-        self.assertIn("Disallow: /i/", star)
+        self.assertEqual(body.count("User-agent:"), 1)
+        self.assertNotIn("Disallow: /i/\n", body)
+        self.assertIn("Disallow: /i/*/client/", body)
+        self.assertIn("Disallow: /i/*/venue/", body)
+
+    def test_invitation_page_is_noindex_for_search_engines(self):
+        """الدعوات برّه جوجل بـ ‎noindex‎ بدل ‎robots.txt‎."""
+        res = self.client.get(f"/i/{self.inv.slug}/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('name="robots" content="noindex, nofollow"', res.content.decode())
+        self.assertEqual(res["X-Robots-Tag"], "noindex, nofollow")
 
     def test_webp_share_image_is_served_as_jpeg(self):
         """‎.webp‎ بيتردّ من غير Content-Type على الإنتاج فميتا بترفضه."""

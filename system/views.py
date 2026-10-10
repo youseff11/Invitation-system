@@ -331,7 +331,7 @@ def share_image(request, path):
     return response
 
 
-def _render_invitation_page(request, invitation, *, editable=False, noindex=False, guest=None):
+def _render_invitation_page(request, invitation, *, editable=False, guest=None):
     """يبني صفحة الدعوة كاملة من المستند."""
     result = render_document(
         invitation.document,
@@ -365,11 +365,13 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
             "player": doc_settings.get("music_player") or "floating",
         }
 
-    return render(request, "invitations/render.html", {
+    response = render(request, "invitations/render.html", {
         "render": result,
         "invitation": invitation,
         "editable": editable,
-        "noindex": noindex or invitation.status != "published",
+        # الدعوات دايماً برّه محركات البحث — ‎robots.txt‎ مابيقفلهاش عشان
+        # زواحف المعاينة تقدر تقراها (شوف ‎robots_txt‎).
+        "noindex": True,
         "page_title": title,
         "page_description": description,
         # لو المصمّم ما حطّش صورة مشاركة، غلاف القالب أحسن من لا شيء —
@@ -390,6 +392,8 @@ def _render_invitation_page(request, invitation, *, editable=False, noindex=Fals
         "site_name": settings.SITE_NAME,
         "site_url": request.build_absolute_uri("/"),
     })
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 # ==========================================================================
@@ -475,50 +479,27 @@ def home(request):
     })
 
 
-# زواحف معاينة الروابط في السوشيال. فيسبوك وميتا بيزنس وماسنجر وإنستجرام
-# بيلتزموا بـ robots.txt (واتساب لأ)، فلما كان ‎/i/‎ مقفول لكل الزواحف
-# كان الرابط بيتبعت على ميتا من غير صورة ولا عنوان ولينك عريان، وعلى
-# واتساب بيظهر عادي. الزاحف اللي ليه مجموعة باسمه بيتجاهل مجموعة ‎*‎،
-# فلازم نكرر فيها المسارات الخاصة.
-_SHARE_PREVIEW_BOTS = (
-    "facebookexternalhit", "facebookcatalog", "Facebot",
-    "meta-externalagent", "meta-externalfetcher",
-    "WhatsApp", "Twitterbot", "LinkedInBot", "Slackbot", "Slack-ImgProxy",
-    "TelegramBot", "Discordbot", "Pinterest", "SkypeUriPreview",
-)
-
-
 @require_GET
 def robots_txt(request):
-    """robots.txt — الموقع العام مفتوح، واللوحة وروابط العملاء والـAPI مقفولة.
+    """robots.txt — مجموعة واحدة لكل الزواحف.
 
-    ‎/i/‎ مقفول لمحركات البحث بس، ومفتوح لزواحف المعاينة عشان الدعوة
-    تظهر بصورتها وعنوانها لما تتشارك. لوحة العميل ولوحة القاعة (رموز
-    سرية في الرابط) فضلت مقفولة عليهم كمان.
+    ‎/i/‎ **مش** مقفول هنا: زاحف ميتا (فيسبوك وماسنجر وميتا بيزنس) بيلتزم
+    بـ robots.txt، ولما ‎/i/‎ اتقفل لـ ‎*‎ الدعوات بقت تتبعت من غير صورة.
+    ومجموعة باسم كل زاحف ماكانتش كفاية — كذا ‎User-agent‎ ورا بعض قبل
+    القواعد تنسيق قياسي بس ميتا ماكانتش بتفهمه وفضلت ترجّع 403.
+    الدعوات بتفضل برّه محركات البحث بـ ‎noindex‎ جوّه الصفحة نفسها
+    (``_render_invitation_page``)، وده كمان الأصح: جوجل لازم يفتح الصفحة
+    عشان يشوف ‎noindex‎. لوحة العميل ولوحة القاعة (رموز سرية في الرابط)
+    فضلت مقفولة.
     """
-    lines = [f"User-agent: {bot}" for bot in _SHARE_PREVIEW_BOTS]
-    lines += [
-        "Allow: /i/",
-        "Allow: /media/",
-        "Allow: /static/",
-        "Allow: /templates/",
+    lines = [
+        "User-agent: *",
         "Disallow: /i/*/client/",
         "Disallow: /i/*/venue/",
         "Disallow: /dashboard/",
         "Disallow: /admin/",
         "Disallow: /login/",
         "Disallow: /logout/",
-        "Disallow: /i18n/",
-        "Disallow: /media-video/",
-        "",
-        "User-agent: *",
-        "Allow: /$",
-        "Allow: /templates/",
-        "Disallow: /dashboard/",
-        "Disallow: /admin/",
-        "Disallow: /login/",
-        "Disallow: /logout/",
-        "Disallow: /i/",
         "Disallow: /i18n/",
         "Disallow: /media-video/",
         "",
@@ -2046,7 +2027,7 @@ def invitation_preview_frame(request, pk):
     invitation = get_object_or_404(
         Invitation.objects.select_related("template", "plan"), pk=pk
     )
-    return _render_invitation_page(request, invitation, editable=True, noindex=True)
+    return _render_invitation_page(request, invitation, editable=True)
 
 
 @login_required
