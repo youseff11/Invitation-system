@@ -273,15 +273,51 @@
     var url = root.getAttribute("data-scan-url");
     var stream = null, detector = null, timer = null;
     var lastToken = "", lastAt = 0;
+    var canvas = null, ctx = null, scanning = false;
 
-    var hasDetector = "BarcodeDetector" in window;
-    if (!hasDetector) {
+    /* سفاري على الآيفون (وكل متصفحات الآيفون لإنها كلها WebKit) مافيهوش
+       ‎BarcodeDetector‎ — قبل كده الزرار كان بيتقفل خالص والكاميرا
+       ماتفتحش. دلوقتي لو مش موجود بنقرا الكود بنفسنا بـjsQR: بنرسم فريم
+       الفيديو على canvas ونفك الكود من البكسلات. بيتحمّل بس على
+       الأجهزة اللي محتاجاه، وبيبدأ تحميله أول ما الصفحة تفتح عشان
+       يكون جاهز أول ما يدوسوا «تشغيل الكاميرا». */
+    var JSQR_SRC = [
+      "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+      "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"
+    ];
+    var JSQR_SRI = "sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx";
+    var jsqrReady = null;
+
+    function loadJsQR() {
+      if (window.jsQR) return Promise.resolve(window.jsQR);
+      if (jsqrReady) return jsqrReady;
+      jsqrReady = new Promise(function (resolve, reject) {
+        var i = 0;
+        (function next() {
+          if (i >= JSQR_SRC.length) { jsqrReady = null; reject(); return; }
+          var s = doc.createElement("script");
+          s.src = JSQR_SRC[i++];
+          s.integrity = JSQR_SRI;
+          s.crossOrigin = "anonymous";
+          s.async = true;
+          s.onload = function () { window.jsQR ? resolve(window.jsQR) : next(); };
+          s.onerror = function () { s.remove(); next(); };
+          doc.head.appendChild(s);
+        })();
+      });
+      return jsqrReady;
+    }
+
+    var hasCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    var hasDetector = typeof window.BarcodeDetector === "function";
+    if (!hasCamera) {
       support.textContent =
-        "متصفحك مابيدعمش قراءة الأكواد بالكاميرا (الغالب على آيفون). " +
-        "استخدم كروم على أندرويد، أو الصق الرمز في الخانة تحت.";
+        "المتصفح ده مش بيسمح بفتح الكاميرا. افتح الرابط في سفاري أو كروم، " +
+        "أو اكتب الكود في الخانة تحت.";
       startBtn.disabled = true;
     } else {
       support.textContent = "وجّه الكاميرا على كود الضيف — التسجيل بيتم تلقائياً.";
+      if (!hasDetector) loadJsQR().catch(function () {});
     }
 
     function show(kind, title, lines) {
@@ -342,34 +378,90 @@
         .catch(function () { show("bad", "✕ تعذّر الاتصال بالخادم"); });
     }
 
+    /* jsQR تقيل على الموبايل لو اديناه الفريم بحجمه الكامل (1080p)،
+       فبنصغّره لـ640 بكسل كحد أقصى — كفاية جداً لكود قدام الكاميرا. */
+    function decodeFrame() {
+      var w = video.videoWidth, h = video.videoHeight;
+      var scale = Math.min(1, 640 / Math.max(w, h));
+      var cw = Math.round(w * scale), ch = Math.round(h * scale);
+      if (!canvas) {
+        canvas = doc.createElement("canvas");
+        ctx = canvas.getContext("2d", { willReadFrequently: true });
+      }
+      if (canvas.width !== cw) canvas.width = cw;
+      if (canvas.height !== ch) canvas.height = ch;
+      ctx.drawImage(video, 0, 0, cw, ch);
+      var code = window.jsQR(ctx.getImageData(0, 0, cw, ch).data, cw, ch,
+        { inversionAttempts: "dontInvert" });
+      return code ? [{ rawValue: code.data }] : [];
+    }
+
     function tick() {
-      if (!detector || !video.videoWidth) return;
-      detector.detect(video).then(function (codes) {
+      if (!stream || !video.videoWidth || scanning) return;
+      var found;
+      if (detector) {
+        scanning = true;
+        found = detector.detect(video);
+      } else if (window.jsQR) {
+        try { found = Promise.resolve(decodeFrame()); } catch (e) { return; }
+      } else {
+        return;                       // jsQR لسه بيتحمّل
+      }
+      found.then(function (codes) {
+        scanning = false;
         if (codes && codes.length) send(String(codes[0].rawValue || "").trim());
-      }).catch(function () {});
+      }).catch(function () { scanning = false; });
+    }
+
+    function makeDetector() {
+      if (!hasDetector) return null;
+      try { return new window.BarcodeDetector({ formats: ["qr_code"] }); }
+      catch (e) { return null; }    // موجود بس مش بيدعم QR
     }
 
     startBtn.addEventListener("click", function () {
+      startBtn.disabled = true;
+      /* لازم getUserMedia تتنده جوّه الضغطة نفسها، قبل أي انتظار —
+         سفاري بيرفض الكاميرا لو الطلب جه بعد ‎await‎ لتحميل حاجة. */
       navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, audio: false
+        video: { facingMode: { ideal: "environment" } }, audio: false
       }).then(function (s) {
         stream = s;
+        // سفاري بيحتاج الخاصيتين دول كـproperties مش بس attributes
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute("playsinline", "");
         video.srcObject = s;
-        video.play();
+        var playing = video.play();
+        if (playing && playing.catch) playing.catch(function () {});
         idle.hidden = true;
         startBtn.hidden = true;
+        startBtn.disabled = false;
         stopBtn.hidden = false;
-        detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-        timer = setInterval(tick, 350);
-      }).catch(function () {
-        support.textContent = "مفيش إذن للكاميرا. اسمح بالوصول من إعدادات المتصفح.";
+        detector = makeDetector();
+        if (!detector) {
+          loadJsQR().catch(function () {
+            support.textContent =
+              "تعذّر تحميل قارئ الأكواد. اتأكد من النت، أو اكتب الكود في الخانة تحت.";
+          });
+        }
+        timer = setInterval(tick, 300);
+      }).catch(function (err) {
+        startBtn.disabled = false;
+        var name = err && err.name;
+        support.textContent =
+          name === "NotAllowedError" || name === "SecurityError"
+            ? "مفيش إذن للكاميرا. على الآيفون: الإعدادات ← Safari ← الكاميرا ← اسمح، وبعدين حدّث الصفحة."
+            : name === "NotFoundError" || name === "OverconstrainedError"
+              ? "مفيش كاميرا متاحة على الجهاز ده."
+              : "الكاميرا مشغولة أو مش متاحة دلوقتي. اقفل أي تطبيق تاني بيستخدمها وجرّب تاني.";
       });
     });
 
     stopBtn.addEventListener("click", function () {
       if (timer) clearInterval(timer);
       if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
-      stream = null; detector = null;
+      stream = null; detector = null; scanning = false;
       video.srcObject = null;
       idle.hidden = false;
       startBtn.hidden = false;
