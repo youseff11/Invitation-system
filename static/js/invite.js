@@ -883,6 +883,177 @@
       }
     }
 
+    /* افتتاحية مكتوبة كلها بـ«كود متقدّم».
+
+       في افتتاحيات المصمّم بتغطّي الشاشة كلها بطبقة خاصة بيها (خلفية +
+       كارت + زرار) وبتعمل حركة وبعدين تخفي نفسها. فيه مشكلتين:
+       ١. الكود بيخفي طبقته بس ومابيقولناش، فالضيف بيفضل قدام خلفية
+          ‎.lb-intro‎ الفاضية — «شاشة بيضاء بدل الدعوة». وده بيحصل أكتر
+          لما زرار الكود بيعمل ‎stopPropagation‎ فالضغطة ماتوصلناش أصلاً.
+       ٢. أي ضغطة برّه زرار الكود بتطلع لنا فنفتح على طول، والحركة
+          اللي المصمّم عاملها ماتظهرش خالص.
+       مقيس على قالب chung (‎#farhaPremiumOpening‎): الحالتين كانوا بيحصلوا.
+
+       الحل: طول ما فيه «غطا» من الكود ظاهر، الكود هو اللي ماسك الفتح:
+       - الضغطة على زرار جوّه الغطا بتروح له زي ما هي.
+       - الضغطة على أي حتة تانية بتتحوّل لزرار الغطا لو ليه زرار واحد
+         بس — نفس الضغطة بالظبط. لو أكتر من زرار مانخمّنش.
+       - أول ما الغطا يختفي (اتشال، ‎display:none‎، شفاف، أو بدأ يبهت
+         لـ٠، أو خرج من الشاشة) نفتح الدعوة.
+       - لو الكود ماعملش أي حاجة خالص بعد الضغطة نفتح زي الأول،
+         عشان الضيف مايتحبسش قدام كود مش بيرد. */
+    var CODE_CONTROLS = "button, [role=button], a[href], input[type=button], input[type=submit]";
+    var codeArmed = false;          // الضيف ضغط والغطا ظاهر
+    var codeHanded = null;          // الضغطة اللي اتسلّمت للكود، مانفتحش بيها
+    var codeForwarding = false;
+    var codeMutations = 0;
+    var codeCheck = 0;
+    var codeReaction = null;
+    var codePlayAnnounced = false;
+
+    function alphaOf(color) {
+      var m = /rgba?\(([^)]+)\)/.exec(color || "");
+      if (!m) return color === "transparent" ? 0 : 1;
+      var parts = m[1].split(/[\s,\/]+/).filter(Boolean);
+      return parts.length > 3 ? parseFloat(parts[3]) : 1;
+    }
+
+    /* العنصر بيبهت لـ٠ دلوقتي؟ (‎transition‎ أو ‎animation‎ أو
+       ‎el.animate‎). بنفتح مع **بداية** البهتان مش آخره، وإلا الضيف
+       بيشوف خلفية ‎.lb-intro‎ لحظة بين اختفاء الغطا وظهور الدعوة. */
+    function fadingOut(el) {
+      if (!el.getAnimations) return false;
+      try {
+        return el.getAnimations().some(function (a) {
+          if (a.playState !== "running" && a.playState !== "finished") return false;
+          var t = a.effect && a.effect.getTiming ? a.effect.getTiming() : {};
+          if (t.iterations === Infinity) return false;   // نبض أو وميض
+          var kf = a.effect.getKeyframes();
+          var last = kf[kf.length - 1];
+          return !!last && last.opacity !== undefined && parseFloat(last.opacity) < 0.05;
+        });
+      } catch (e) { return false; }
+    }
+
+    function coverShown(el, box) {
+      if (getComputedStyle(el).visibility === "hidden") return false;
+      for (var n = el; n && n !== box.parentNode; n = n.parentNode) {
+        if (parseFloat(getComputedStyle(n).opacity) < 0.05) return false;
+        if (fadingOut(n)) return false;
+      }
+      return true;
+    }
+
+    /** الطبقة اللي كود الافتتاحية مغطّي بيها الشاشة، أو null. */
+    function codeCover() {
+      var vw = window.innerWidth, vh = window.innerHeight, found = null;
+      $$(".lb-intro-extra", intro).some(function (box) {
+        return $$("*", box).some(function (el) {
+          var r = el.getBoundingClientRect();
+          if (r.width < vw * 0.9 || r.height < vh * 0.9) return false;
+          if (r.left > vw * 0.05 || r.top > vh * 0.05 ||
+              r.right < vw * 0.95 || r.bottom < vh * 0.95) return false;
+          // طبقة شفافة (ورد بيقع، كونفيتي) مش غطا
+          var cs = getComputedStyle(el);
+          var paints = cs.backgroundImage !== "none" ||
+            alphaOf(cs.backgroundColor) > 0.5 || /^(IMG|VIDEO)$/.test(el.tagName);
+          if (!paints || !coverShown(el, box)) return false;
+          found = el;
+          return true;
+        });
+      });
+      return found;
+    }
+
+    function codeControls(cover) {
+      return $$(CODE_CONTROLS, cover).filter(function (c) {
+        if (c.disabled || c.closest("[data-intro-open],[data-intro-play]")) return false;
+        return c.getClientRects().length > 0 && getComputedStyle(c).visibility !== "hidden";
+      });
+    }
+
+    /* الغطا راح؟ نستنى تكّة ونتأكد — في افتتاحيات بمراحل الغطا الأول
+       بيختفي والتاني بيظهر في التكّة اللي بعدها. */
+    function checkCodeCover() {
+      codeCheck = 0;
+      if (!codeArmed || intro.classList.contains("is-open")) return;
+      if (codeCover()) return;
+      setTimeout(function () {
+        if (!intro.classList.contains("is-open") && !codeCover()) open();
+      }, 120);
+    }
+    function scheduleCodeCheck() {
+      if (!codeArmed || codeCheck) return;
+      codeCheck = window.requestAnimationFrame(checkCodeCover);
+    }
+
+    /* الكود رد على الضغطة؟ أي تغيير في الـDOM أو حركة محدودة شغالة
+       (مش اللي بتلف على طول زي نبض القلب) يعتبر رد. */
+    function expectCodeReaction() {
+      if (codeReaction) return;
+      var before = codeMutations;
+      codeReaction = setTimeout(function () {
+        codeReaction = null;
+        if (intro.classList.contains("is-open") || codeMutations !== before) return;
+        var busy = false;
+        try {
+          busy = intro.getAnimations({ subtree: true }).some(function (a) {
+            var t = a.effect && a.effect.getTiming ? a.effect.getTiming() : {};
+            return a.playState === "running" && t.iterations !== Infinity;
+          });
+        } catch (e) {}
+        if (!busy) open();
+      }, 700);
+    }
+
+    if (!editable && window.MutationObserver) {
+      new MutationObserver(function () {
+        codeMutations++;
+        scheduleCodeCheck();
+      }).observe(intro, { subtree: true, childList: true, attributes: true });
+      intro.addEventListener("transitionend", scheduleCodeCheck);
+      intro.addEventListener("animationend", scheduleCodeCheck);
+      doc.addEventListener("lb:intro-open", function () {
+        if (codeReaction) { clearTimeout(codeReaction); codeReaction = null; }
+      });
+    }
+
+    /* مرحلة الالتقاط: بنوصل قبل زرار الكود، فحتى لو عمل
+       ‎stopPropagation‎ بنعرف إن الضيف ضغط. */
+    intro.addEventListener("click", function (e) {
+      if (editable || intro.classList.contains("is-open")) return;
+      if (codeForwarding) { codeHanded = e; return; }
+      var cover = codeCover();
+      if (!cover) return;                    // مفيش غطا — السلوك القديم
+
+      codeArmed = true;
+      codeHanded = e;
+      /* الأغنية تبدأ مع الضغطة نفسها (سفاري محتاجها جوّه مكدس الضغطة)
+         — زي الفيديو الصامت المستني ضغطة. */
+      if (!codePlayAnnounced) {
+        codePlayAnnounced = true;
+        doc.dispatchEvent(new CustomEvent("lb:intro-play"));
+      }
+
+      var hit = e.target && e.target.closest ? e.target.closest(CODE_CONTROLS) : null;
+      if (!(hit && cover.contains(hit))) {
+        var controls = codeControls(cover);
+        if (controls.length === 1) {
+          e.stopPropagation();
+          e.preventDefault();
+          codeForwarding = true;
+          try { controls[0].click(); } finally { codeForwarding = false; }
+        } else if (!cover.contains(e.target)) {
+          /* الغطا عامل ‎pointer-events:none‎ وهو بيتحرّك فالضغطة عدّت
+             لتحت — ماتوصلش لحاجة. */
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        // غير كده: الكود ممكن يكون مستمع على الغطا نفسه، فنسيبها توصل له
+      }
+      expectCodeReaction();
+    }, true);
+
     /* لمسة في أي مكان = نفس اللي بيعمله الزر.
 
        قبل كده الضغطة برّه الزر كانت بتتجاهل: مع زر «افتح الدعوة» كان
@@ -917,6 +1088,7 @@
         }
         return;
       }
+      if (codeHanded === e) return;   // الضغطة دي ملك كود الافتتاحية
       if (intro.classList.contains("is-awaiting-play")) {
         if (startManualVideo) startManualVideo();
         return;
