@@ -48,11 +48,23 @@
   {% endif %}
 
   {% else %}
+  {% comment %}
+    لو «الكود المتقدّم» بينده ‎.play()‎ بنفسه، الفيديو بيستنّاه (‎data-intro-hold‎)
+    ومن غير ‎autoplay‎ — شوف ‎code_drives_video‎ و‎initIntro‎.
+  {% endcomment %}
+  {% if render.settings.intro_code|code_drives_video %}
+  <video class="lb-intro-video" data-intro-video data-intro-hold
+         data-intro-audio="{{ render.settings.intro_video_audio }}"
+         src="{{ render.settings.intro_video }}"
+         {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
+         {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %} playsinline preload="auto"></video>
+  {% else %}
   <video class="lb-intro-video" data-intro-video
          data-intro-audio="{{ render.settings.intro_video_audio }}"
          src="{{ render.settings.intro_video }}"
          {% if render.settings.intro_poster %}poster="{{ render.settings.intro_poster }}"{% endif %}
          autoplay {% if render.settings.intro_video_audio != 'sound' %}muted{% endif %} playsinline preload="auto"></video>
+  {% endif %}
   {% endif %}
 
   {% endif %}

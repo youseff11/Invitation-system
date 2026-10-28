@@ -747,7 +747,12 @@
       intro.classList.remove("is-open");
       doc.body.style.overflow = "hidden";
       var vid = $("[data-intro-video]", intro);
-      if (vid) { try { vid.currentTime = 0; vid.play(); } catch (e) {} }
+      if (vid) {
+        try {
+          vid.currentTime = 0;
+          if (!vid.hasAttribute("data-intro-hold")) vid.play();
+        } catch (e) {}
+      }
       startAuto();
     };
     window.__lbIntro = { open: open, reopen: reopen };
@@ -845,6 +850,11 @@
           e.stopPropagation();          // ما نفتحش الدعوة بالغلط
           startManualVideo();
         });
+      } else if (video.hasAttribute("data-intro-hold")) {
+        /* كود المصمّم هو اللي بينده ‎play()‎ (مثلاً بعد ثلاث دقّات) —
+           مانشغّلش حاجة هنا. الصوت بيتظبط بس عشان نداء الكود ينجح
+           بالإعداد المطلوب. */
+        video.muted = !wantsSound;
       } else {
         video.muted = !wantsSound;
         var tryPlay = video.play();

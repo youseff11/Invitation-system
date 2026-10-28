@@ -2449,6 +2449,23 @@ class IntroPlayButtonTests(BaseAppTest):
         # الوضع الافتراضي للصوت صامت، ويمكن تغييره من حقل الصوت.
         self.assertIn("muted", tag)
 
+    def test_intro_code_that_plays_the_video_holds_autoplay(self):
+        """كود الافتتاحية اللي بينده play() بنفسه (دُقّات مثلاً) هو اللي
+        بيبدّأ الفيديو — المنصة مابتشغّلوش لوحدها."""
+        body = self._render(
+            intro_play_mode="autoplay",
+            intro_code="<script>document.querySelector('video').play();</script>")
+        tag = body[body.index("<video"):body.index("</video>")]
+        self.assertIn("data-intro-hold", tag)
+        self.assertNotIn("autoplay", tag)
+
+    def test_intro_code_without_play_keeps_autoplay(self):
+        body = self._render(intro_play_mode="autoplay",
+                            intro_code="<style>.x{color:red}</style>")
+        tag = body[body.index("<video"):body.index("</video>")]
+        self.assertIn("autoplay", tag)
+        self.assertNotIn("data-intro-hold", tag)
+
     def test_button_effects_mode_shows_a_play_button_with_effects(self):
         body = self._render(intro_play_mode="button_effects")
         self.assertIn("data-intro-play", body)

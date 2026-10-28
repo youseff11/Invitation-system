@@ -345,6 +345,21 @@ def split_code(value):
             "fluid": fills_width(css, html)}
 
 
+_CODE_PLAY_RE = re.compile(r"\.play\s*\(")
+
+
+@register.filter(name="code_drives_video")
+def code_drives_video(value):
+    """هل كود المصمّم بيشغّل الفيديو بنفسه (‎.play()‎)؟
+
+    لو آه، المنصة مابتشغّلوش تلقائياً ولا بسمة ‎autoplay‎ ولا بـ‎play()‎:
+    وإلا الفيديو بيبدأ لوحده في أي متصفح بيسمح بالتشغيل التلقائي بصوت
+    (طبقة «دُقّوا ثلاث دقّات» بتتحط فوقه بس ومابتوقّفوش)، والكود اللي
+    اتكتب عشان يتحكّم في البداية يبقى بلا معنى.
+    """
+    return bool(_CODE_PLAY_RE.search(str(value or "")))
+
+
 @register.filter(name="wrap_js")
 def wrap_js(value):
     """يلفّ كود المصمّم في دالة مقفولة عليها ‎try/catch‎ ومعاها ‎root‎.
