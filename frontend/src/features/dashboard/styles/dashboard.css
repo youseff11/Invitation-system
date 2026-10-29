@@ -1,0 +1,1718 @@
+/* ================================================================
+   لوحة التحكم — منقول من static/css/site.css (أقسام الأزرار والترويسة والنماذج واللوحة).
+   كل القواعد جوّه ‎.dash-root‎ عشان ماتتعارضش مع أساس التطبيق (app.css) ولا مع باقي الميزات،
+   وبتعيد ضبط أي خاصية بيتسرّب بيها الأساس عشان الشكل يطابق الموقع القديم بالظبط.
+   الألوان كلها من ‎tokens.css‎ (‎var(--accent)‎ …).
+   ================================================================ */
+
+.dash-root {
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------- الأزرار */
+.dash-root .btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+.dash-root .btn:hover {
+  transform: translateY(-2px);
+}
+.dash-root .btn:active {
+  transform: translateY(0) scale(0.985);
+}
+.dash-root .btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.dash-root .btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+}
+.dash-root .btn--gold {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 52%,
+    color-mix(in srgb, var(--accent) 82%, #000) 100%
+  );
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+.dash-root .btn--gold:hover {
+  filter: none;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.dash-root .btn--ghost {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.dash-root .btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.dash-root .btn--sm {
+  padding: 7px 15px;
+  font-size: 13px;
+}
+.dash-root .btn--block {
+  width: 100%;
+}
+.dash-root .btn--danger {
+  color: var(--danger);
+  border-color: currentColor;
+}
+
+/* ---------------------------------------------------------- الترويسة العائمة */
+/* ارتفاع الترويسة **ثابت** (16 + 62 + 16): التقلّص عند النزول شكلي بس (ارتفاع الجزيرة
+   وtransform) من غير ما يتغيّر مكان باقي الصفحة. لما كان الارتفاع نفسه بيتغيّر، الصفحة
+   القصيرة بتقصر 24px فترجع لفوق وتشيل «is-stuck» والترويسة تكبر تاني — اهتزاز في أول الصفحة. */
+.dash-root .nav {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  box-sizing: border-box;
+  height: 94px;
+  /* padding مش margin: هامش الجزيرة كان بيتدمج مع الأب (margin collapse) */
+  padding: 16px 0 0;
+  pointer-events: none; /* الفراغ حوالين الجزيرة ما يحجبش الضغط على الصفحة */
+}
+.dash-root .nav > * {
+  pointer-events: auto;
+}
+.dash-root .nav-shell {
+  position: relative;
+  width: min(1180px, 100% - 28px);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 62px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  box-shadow: 0 2px 10px -7px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  transition:
+    height 0.28s ease,
+    transform 0.28s ease,
+    background 0.28s ease,
+    box-shadow 0.28s ease;
+}
+.dash-root .nav.is-stuck .nav-shell {
+  height: 54px;
+  transform: translateY(-8px);
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: var(--shadow-nav);
+}
+
+/* اللوجو صورة خلفية مش <img>: المتصفح بينزّل النسخة الفعّالة بس (فاتحة أو غامقة). */
+.dash-root .brand {
+  display: block;
+  flex: none;
+  text-decoration: none;
+  height: 44px;
+  aspect-ratio: 714 / 200;
+  margin-inline-start: 10px;
+  background-image: var(--site-logo-light, url('/site-logo/light.png'));
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition:
+    height 0.28s ease,
+    opacity 0.18s ease;
+}
+[data-theme='dark'] .dash-root .brand {
+  background-image: var(--site-logo-dark, url('/site-logo/dark.png'));
+}
+.dash-root .brand:hover {
+  opacity: 0.82;
+}
+.dash-root .brand:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.dash-root .nav.is-stuck .brand {
+  height: 38px;
+}
+.dash-root .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dash-root .nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+.dash-root .nav-links a {
+  padding: 9px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 14.5px;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+.dash-root .nav-links a:hover {
+  color: var(--text);
+}
+.dash-root .nav-links a.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- مجموعة «المكتبة»: زرار بيفتح قايمة منسدلة (الخطوط، الموسيقى، الافتتاحيات) ---- */
+.dash-root .nav-group {
+  position: relative;
+}
+.dash-root .nav-group-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    color 0.18s;
+}
+.dash-root .nav-group-btn:hover,
+.dash-root .nav-group.is-open .nav-group-btn {
+  color: var(--text);
+}
+.dash-root .nav-group-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.dash-root .nav-group-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.dash-root .nav-group-caret {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s ease;
+}
+.dash-root .nav-group.is-open .nav-group-caret {
+  transform: rotate(180deg);
+}
+.dash-root .nav-sub {
+  position: absolute;
+  top: calc(100% + 12px);
+  inset-inline-start: 0;
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-nav);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0.18s;
+}
+.dash-root .nav-group.is-open .nav-sub {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.dash-root .nav-sub a {
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+.dash-root .nav-sub a:hover {
+  background: var(--accent-soft);
+}
+.dash-root .nav-cta-inline,
+.dash-root .nav-only-mobile {
+  display: none;
+}
+
+/* ---- مبدّل اللغة ---- */
+.dash-root .lang-form {
+  display: flex;
+}
+.dash-root .lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  transition:
+    color 0.18s,
+    border-color 0.18s,
+    transform 0.18s;
+}
+.dash-root .lang-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.dash-root .lang-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.dash-root .lang-btn svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+.dash-root .lang-btn span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+.dash-root .lang-btn.is-busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.dash-root .lang-btn.is-busy svg {
+  animation: dash-lang-spin 0.9s linear infinite;
+}
+@keyframes dash-lang-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dash-root .nav-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: 6px;
+}
+
+.dash-root .icon-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: inherit;
+  transition:
+    color 0.18s,
+    border-color 0.18s,
+    transform 0.18s;
+}
+.dash-root .icon-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.dash-root .icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.dash-root .icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.dash-root .i-moon {
+  display: none;
+}
+[data-theme='dark'] .dash-root .i-sun {
+  display: none;
+}
+[data-theme='dark'] .dash-root .i-moon {
+  display: block;
+}
+
+.dash-root .nav-burger {
+  display: none;
+  width: 40px;
+  height: 38px;
+  padding: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  cursor: pointer;
+}
+.dash-root .nav-burger span {
+  width: 17px;
+  height: 1.8px;
+  background: var(--text);
+  border-radius: 2px;
+  transition:
+    transform 0.25s ease,
+    opacity 0.2s ease;
+}
+.dash-root .nav-burger[aria-expanded='true'] span:nth-child(1) {
+  transform: translateY(5.8px) rotate(45deg);
+}
+.dash-root .nav-burger[aria-expanded='true'] span:nth-child(2) {
+  opacity: 0;
+}
+.dash-root .nav-burger[aria-expanded='true'] span:nth-child(3) {
+  transform: translateY(-5.8px) rotate(-45deg);
+}
+.dash-root .nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+}
+.dash-root .nav-scrim[hidden] {
+  display: none;
+}
+
+/* لوحة التحكم فيها ٩ روابط. بين ٧٨١ و١١٥٠ الشريط كان بيعدّي عرض الشاشة — نضيّق المسافات والخط */
+@media (min-width: 781px) and (max-width: 1150px) {
+  .dash-root .nav-links a,
+  .dash-root .nav-group-btn {
+    padding: 8px 9px;
+    font-size: 13.5px;
+  }
+  .dash-root .nav-shell {
+    gap: 8px;
+  }
+  .dash-root .nav-tools {
+    gap: 6px;
+  }
+  .dash-root .lang-btn span {
+    display: none;
+  }
+}
+@media (min-width: 781px) and (max-width: 980px) {
+  .dash-root .nav-links a,
+  .dash-root .nav-group-btn {
+    padding: 7px 6px;
+    font-size: 12.5px;
+  }
+  .dash-root .nav-cta {
+    padding: 8px 12px;
+    font-size: 12.5px;
+  }
+}
+
+/* ---- الموبايل ---- */
+@media (max-width: 780px) {
+  .dash-root .nav {
+    height: 82px; /* 12 + 58 + 12 */
+    padding-top: 12px;
+  }
+  .dash-root .nav-shell {
+    height: 58px;
+    gap: 8px;
+  }
+  .dash-root .nav.is-stuck .nav-shell {
+    height: 54px;
+    transform: translateY(-4px);
+  }
+  .dash-root .nav-burger {
+    display: flex;
+  }
+  .dash-root .nav-cta {
+    display: none;
+  }
+  .dash-root .nav-cta-inline {
+    display: inline-flex;
+    margin-top: 6px;
+  }
+  .dash-root .nav-only-mobile {
+    display: block;
+  }
+  .dash-root .nav-logout-inline {
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .dash-root .nav-tools {
+    margin-inline-start: auto;
+    gap: 6px;
+  }
+  .dash-root .lang-btn {
+    height: 34px;
+    padding: 0 10px 0 8px;
+  }
+  .dash-root .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .dash-root .nav-burger {
+    width: 36px;
+    height: 34px;
+  }
+  .dash-root .nav-links {
+    position: absolute;
+    top: calc(100% + 10px);
+    inset-inline: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: var(--shadow-nav);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease,
+      visibility 0.2s;
+  }
+  .dash-root .nav-links.is-open {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .dash-root .nav-links a {
+    padding: 12px 15px;
+    border-radius: 13px;
+    font-size: 15px;
+  }
+  .dash-root .nav-group-btn {
+    width: 100%;
+    justify-content: space-between;
+    padding: 12px 15px;
+    border-radius: 13px;
+    font-size: 15px;
+  }
+  .dash-root .nav-sub {
+    position: static;
+    display: none;
+    min-width: 0;
+    padding: 2px 0 4px;
+    padding-inline-start: 12px;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .dash-root .nav-group.is-open .nav-sub {
+    display: flex;
+  }
+  .dash-root .brand {
+    height: 34px;
+    margin-inline-start: 8px;
+  }
+  .dash-root .nav.is-stuck .brand {
+    height: 31px;
+  }
+}
+@media (max-width: 380px) {
+  .dash-root .brand {
+    height: 30px;
+  }
+  .dash-root .lang-btn span {
+    display: none;
+  }
+  .dash-root .lang-btn {
+    padding: 0 9px;
+  }
+}
+
+/* ---------------------------------------------------------- النماذج */
+.dash-root .form {
+  display: grid;
+  gap: 14px;
+}
+.dash-root .form--2 {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.dash-root .field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 0;
+}
+.dash-root .field > label,
+.dash-root .field label:first-child {
+  font-size: 13px;
+  color: var(--muted);
+}
+.dash-root .field input,
+.dash-root .field select,
+.dash-root .field textarea {
+  font: inherit;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+.dash-root .field input:focus,
+.dash-root .field select:focus,
+.dash-root .field textarea:focus,
+.dash-root .field input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.dash-root .field textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+/* حقل مربّع اختيار: المربّع جنب كلامه مش فوقه */
+.dash-root .field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+.dash-root .field--check input {
+  width: auto;
+  flex: none;
+  accent-color: var(--accent);
+}
+.dash-root .field > span,
+.dash-root .field--check span {
+  display: inline;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text);
+}
+.dash-root .errorlist {
+  color: var(--danger);
+  font-size: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 2px 0 0;
+}
+.dash-root .span-2 {
+  grid-column: 1 / -1;
+}
+
+/* ---------------------------------------------------------- لوحة التحكم */
+.dash-root .dash-main {
+  padding: 30px 0 70px;
+}
+.dash-root .dash-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.dash-root .dash-head h1 {
+  margin: 0;
+  font-size: 27px;
+}
+
+.dash-root .stats {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 26px;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 46%), 1fr));
+}
+.dash-root .stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.dash-root .stat b {
+  display: block;
+  font-family: 'Amiri', serif;
+  font-size: 32px;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.dash-root .stat span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.dash-root .table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow-x: auto;
+}
+.dash-root table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.dash-root th,
+.dash-root td {
+  padding: 12px 14px;
+  text-align: start;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.dash-root th {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.dash-root tbody tr:last-child td {
+  border-bottom: 0;
+}
+.dash-root tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.dash-root .pill {
+  display: inline-block;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  border: 1px solid var(--line);
+}
+.dash-root .pill--published,
+.dash-root .pill--completed,
+.dash-root .pill--attending {
+  color: var(--ok);
+  border-color: currentColor;
+}
+.dash-root .pill--draft,
+.dash-root .pill--new {
+  color: var(--muted);
+}
+.dash-root .pill--review,
+.dash-root .pill--in_progress,
+.dash-root .pill--maybe {
+  color: var(--accent);
+  border-color: currentColor;
+}
+.dash-root .pill--archived,
+.dash-root .pill--cancelled,
+.dash-root .pill--declined {
+  color: var(--danger);
+  border-color: currentColor;
+}
+
+.dash-root .toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.dash-root .toolbar input,
+.dash-root .toolbar select {
+  font: inherit;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+}
+.dash-root .empty {
+  text-align: center;
+  padding: 54px 20px;
+  color: var(--muted);
+}
+
+/* مدخلات جوّه خلايا الجدول (تعديل سريع للباقات) */
+.dash-root .cell-input {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+.dash-root .cell-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------------------------------------------------------- الشبكة والكروت */
+.dash-root .grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: none;
+}
+.dash-root .grid--3 {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.dash-root .grid--4 {
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+.dash-root .card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+.dash-root .card h3 {
+  font-size: 19px;
+  margin-bottom: 6px;
+}
+
+.dash-root .tpl-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 0.8, 0.3, 1),
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
+}
+.dash-root .tpl-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--accent);
+  box-shadow: 0 26px 46px -30px color-mix(in srgb, var(--accent) 70%, rgba(23, 19, 15, 0.6));
+}
+.dash-root .tpl-cover {
+  position: relative;
+  aspect-ratio: 3/4;
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface-2));
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  font-family: 'Amiri', serif;
+  font-size: 30px;
+  background-size: cover;
+  background-position: center;
+}
+.dash-root .tpl-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent 46%);
+  opacity: 0;
+  transition: opacity 0.24s ease;
+}
+.dash-root .tpl-card:hover .tpl-cover::after {
+  opacity: 1;
+}
+.dash-root .tpl-body {
+  padding: 15px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.dash-root .tpl-body h3 {
+  margin: 0;
+  font-size: 17px;
+}
+.dash-root .tpl-meta {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: normal;
+}
+html[lang='en'] .dash-root .tpl-meta {
+  letter-spacing: 0.1em;
+}
+.dash-root .tpl-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+.dash-root .tpl-action-menu {
+  position: relative;
+  width: 100%;
+}
+.dash-root .tpl-action-trigger {
+  width: 100%;
+  justify-content: center;
+  cursor: pointer;
+}
+.dash-root .tpl-action-panel {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(40, 25, 10, 0.16);
+}
+.dash-root .tpl-action-panel[hidden] {
+  display: none;
+}
+.dash-root .tpl-action-panel a,
+.dash-root .tpl-action-panel button {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+.dash-root .tpl-action-panel a:hover,
+.dash-root .tpl-action-panel button:hover,
+.dash-root .tpl-action-panel a:focus-visible,
+.dash-root .tpl-action-panel button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: none;
+}
+.dash-root .tpl-action-panel form {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------- إجراءات الصف
+   الصف الواحد فيه إجراءين أساسيين (المحرر · الضيوف) وتلات روابط لكل واحد فيهم «فتح» و«نسخ».
+   الستة دول في صف الجدول بيكسروا العرض، فالروابط اتلمّت في قائمة واحدة. */
+.dash-root .row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.dash-root .cell--actions {
+  text-align: end;
+}
+.dash-root .th-actions {
+  text-align: end;
+}
+/* عمود الاسم: العنوان فوق والرابط الصغير تحته */
+.dash-root .cell--title strong {
+  display: block;
+}
+.dash-root .cell--title small {
+  display: block;
+  margin-top: 2px;
+}
+
+.dash-root .rowmenu {
+  position: relative;
+  display: inline-flex;
+}
+.dash-root .rowmenu-caret {
+  font-size: 10px;
+  opacity: 0.75;
+}
+.dash-root .rowmenu-btn[aria-expanded='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* القائمة ‎position: fixed‎ ومكانها بيتحسب بالجافاسكربت عن قصد: جدول اللوحة جوه حاوية
+   ‎overflow-x: auto‎، وأي قائمة ‎absolute‎ جواها بتتقص عند حافة الحاوية. */
+.dash-root .rowmenu-pop {
+  position: fixed;
+  z-index: 90;
+  min-width: 226px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  text-align: start;
+}
+.dash-root .rowmenu-pop[hidden] {
+  display: none;
+}
+.dash-root .rowmenu-title {
+  margin: 8px 10px 4px;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.dash-root .rowmenu-title:first-child {
+  margin-top: 2px;
+}
+.dash-root .rowmenu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dash-root .rowmenu-item:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.dash-root .rowmenu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.dash-root .rowmenu-ico {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dash-root .rowmenu-item:hover .rowmenu-ico {
+  color: var(--accent);
+}
+.dash-root .rowmenu-item--danger {
+  color: #e06666;
+}
+.dash-root .rowmenu-item--danger:hover {
+  background: rgba(224, 102, 102, 0.12);
+  color: #e06666;
+}
+.dash-root .rowmenu-item--danger:hover .rowmenu-ico {
+  color: #e06666;
+}
+/* على التليفون القائمة بتبقى شيت من تحت — أقرب للإبهام، وورا ستارة */
+.dash-root .rowmenu-pop.is-sheet {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 20px;
+  box-shadow: 0 -18px 50px -20px rgba(0, 0, 0, 0.6);
+}
+.dash-root .rowmenu-pop.is-sheet .rowmenu-item {
+  padding: 13px 13px;
+  font-size: 14.5px;
+}
+.dash-root .rowmenu-pop.is-sheet .rowmenu-title {
+  margin: 10px 12px 4px;
+}
+.dash-root .rowmenu-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+/* ---------------------------------------------------------- جدول → كروت
+   على الموبايل الجدول بيتحوّل كروت بدل التمرير الأفقي: كل صف كارت، وكل خانة بتاخد
+   عنوانها من ‎data-label‎ بدل ترويسة الجدول. */
+@media (max-width: 920px) {
+  .dash-root .table-cards {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .dash-root .table-cards table {
+    display: block;
+  }
+  .dash-root .table-cards thead {
+    display: none;
+  }
+  .dash-root .table-cards tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .dash-root .table-cards tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px 14px;
+    padding: 15px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .dash-root .table-cards tbody tr:hover {
+    background: var(--surface);
+  }
+  .dash-root .table-cards td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    min-width: 0;
+  }
+  .dash-root .table-cards td::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .dash-root .table-cards .cell--title {
+    grid-column: 1 / -1;
+    order: -1;
+    display: block;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dash-root .table-cards .cell--title::before {
+    content: none;
+  }
+  .dash-root .table-cards .cell--title strong {
+    display: block;
+    font-size: 15.5px;
+  }
+  .dash-root .table-cards .cell--title small {
+    display: block;
+    font-size: 12px;
+    direction: ltr;
+    text-align: start;
+  }
+  .dash-root .table-cards .cell--actions {
+    grid-column: 1 / -1;
+    order: 99;
+    padding-top: 11px;
+    border-top: 1px solid var(--line);
+  }
+  .dash-root .table-cards .cell--actions::before {
+    content: none;
+  }
+  .dash-root .table-cards .cell--wide {
+    grid-column: 1 / -1;
+  }
+  .dash-root .table-cards .row-actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+    width: 100%;
+  }
+  .dash-root .table-cards .row-actions > * {
+    flex: 1 1 96px;
+  }
+  .dash-root .table-cards .rowmenu-btn {
+    width: 100%;
+  }
+  .dash-root .table-cards tr.is-empty {
+    display: block;
+    padding: 0;
+  }
+  .dash-root .table-cards tr.is-empty td {
+    display: block;
+  }
+  .dash-root .table-cards tr.is-empty td::before {
+    content: none;
+  }
+}
+/* تابلت: تلات أعمدة بدل اتنين */
+@media (min-width: 620px) and (max-width: 920px) {
+  .dash-root .table-cards tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dash-root .table-cards .row-actions {
+    justify-content: flex-end;
+    width: auto;
+  }
+  .dash-root .table-cards .row-actions > * {
+    flex: 0 0 auto;
+  }
+  .dash-root .table-cards .rowmenu-btn {
+    width: auto;
+  }
+}
+@media (max-width: 420px) {
+  .dash-root .table-cards tr {
+    padding: 14px;
+    gap: 9px 10px;
+  }
+}
+
+/* ---------------------------------------------------------- جدول الدعوات
+   تسع أعمدة + تلات أزرار: الشاشة الكبيرة بحشوة أصغر والنصوص الطويلة تلف على سطرين،
+   وتحت ‎1180px‎ الجدول بيبقى كروت بدري عن باقي الجداول. */
+.dash-root .inv-table {
+  overflow-x: visible;
+}
+.dash-root .inv-table th,
+.dash-root .inv-table td {
+  padding: 12px 10px;
+}
+.dash-root .inv-table th {
+  letter-spacing: 0.04em;
+}
+.dash-root .inv-table .cell--text {
+  white-space: normal;
+  min-width: 90px;
+  max-width: 180px;
+}
+.dash-root .inv-table .cell--title {
+  white-space: normal;
+  min-width: 150px;
+}
+.dash-root .inv-table .cell--title small {
+  word-break: break-all;
+}
+
+@media (min-width: 921px) and (max-width: 1180px) {
+  .dash-root .table-cards--lg {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .dash-root .table-cards--lg table {
+    display: block;
+  }
+  .dash-root .table-cards--lg thead {
+    display: none;
+  }
+  .dash-root .table-cards--lg tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .dash-root .table-cards--lg tr {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px 14px;
+    padding: 15px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .dash-root .table-cards--lg tbody tr:hover {
+    background: var(--surface);
+  }
+  .dash-root .table-cards--lg td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    min-width: 0;
+    max-width: none;
+  }
+  .dash-root .table-cards--lg td::before {
+    content: attr(data-label);
+    flex: none;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .dash-root .table-cards--lg .cell--title {
+    grid-column: 1 / -1;
+    order: -1;
+    display: block;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dash-root .table-cards--lg .cell--title::before {
+    content: none;
+  }
+  .dash-root .table-cards--lg .cell--title strong {
+    font-size: 15.5px;
+  }
+  .dash-root .table-cards--lg .cell--title small {
+    font-size: 12px;
+    direction: ltr;
+    text-align: start;
+  }
+  .dash-root .table-cards--lg .cell--actions {
+    grid-column: 1 / -1;
+    order: 99;
+    align-items: stretch;
+    padding-top: 11px;
+    border-top: 1px solid var(--line);
+  }
+  .dash-root .table-cards--lg .cell--actions::before {
+    content: none;
+  }
+  .dash-root .table-cards--lg .cell--wide {
+    grid-column: 1 / -1;
+  }
+  .dash-root .table-cards--lg tr.is-empty {
+    display: block;
+    padding: 0;
+  }
+  .dash-root .table-cards--lg tr.is-empty td {
+    display: block;
+  }
+  .dash-root .table-cards--lg tr.is-empty td::before {
+    content: none;
+  }
+}
+/* الكروت على الموبايل/التابلت بتاخد قواعد ‎.table-cards‎ العامة؛ بس نلغي حدود العرض */
+@media (max-width: 920px) {
+  .dash-root .inv-table .cell--text,
+  .dash-root .inv-table .cell--title {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .dash-root .dash-main {
+    padding: 22px 0 60px;
+  }
+  .dash-root .dash-head h1 {
+    font-size: 22px;
+  }
+}
+
+/* ---------------------------------------------------------- الباقات والإضافات (وتخطيط الجداول + نموذج الجنب)
+   عمودين (الجداول + نموذج الإضافة) على الشاشة الكبيرة، وعمود واحد تحت 1280px؛
+   الجداول كروت تحت 1180px زي جدول الدعوات، والمزايا بتلف على أكتر من سطر. */
+.dash-root .split-layout {
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+  align-items: start;
+}
+@media (max-width: 1280px) {
+  .dash-root .split-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.dash-root .rows-table th,
+.dash-root .rows-table td {
+  padding: 12px 10px;
+}
+.dash-root .rows-table .cell--title,
+.dash-root .rows-table .cell--features,
+.dash-root .rows-table .cell--text {
+  white-space: normal;
+}
+.dash-root .rows-table .cell--title {
+  min-width: 140px;
+}
+.dash-root .rows-table .cell--features {
+  min-width: 190px;
+}
+.dash-root .rows-table .cell--text {
+  min-width: 90px;
+  max-width: 200px;
+}
+.dash-root .rows-table .cell-desc {
+  display: block;
+  font-size: 12.5px;
+}
+.dash-root .cell-input--name {
+  max-width: 190px;
+}
+.dash-root .plan-featured {
+  margin-top: 6px;
+}
+.dash-root .plan-price {
+  display: grid;
+  gap: 5px;
+}
+.dash-root .plan-price-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-root .plan-price .cell-input {
+  width: 100px;
+  max-width: 100%;
+}
+.dash-root .plan-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dash-root .plan-features code {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.dash-root .rows-table .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dash-root .list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dash-root .music-audio {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: 34px;
+}
+.dash-root .rows-table .row-actions,
+.dash-root .rows-table .toolbar {
+  flex-wrap: wrap;
+}
+@media (max-width: 920px) {
+  .dash-root .music-audio {
+    width: 100%;
+  }
+}
+/* مجموعة مربعات اختيار بعنوانها (نموذج الإضافة: الباقات) */
+.dash-root .field--group {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.dash-root .field--group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.dash-root .check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.dash-root .check-row input {
+  width: auto;
+  flex: none;
+  accent-color: var(--accent);
+}
+.dash-root .check-row span {
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------- التنبيهات (toasts)
+   بدل رسائل Django (‎.flash‎): نفس الألوان، بس بتطلع فوق الصفحة وتختفي لوحدها. */
+.dash-toasts {
+  position: fixed;
+  inset-block-start: 88px;
+  inset-inline: 0;
+  z-index: 120;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding-inline: 14px;
+  pointer-events: none;
+}
+.dash-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(520px, 100%);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: var(--shadow-nav);
+  pointer-events: auto;
+}
+.dash-toast p {
+  flex: 1;
+  margin: 0;
+  line-height: 1.6;
+}
+.dash-toast--success {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 9%, var(--surface));
+}
+.dash-toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+}
+.dash-toast--warning {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.dash-toast-close {
+  flex: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.dash-toast-close:hover {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------- حوار التأكيد */
+.dash-dialog-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+.dash-dialog {
+  width: min(420px, 100%);
+  padding: 22px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+.dash-dialog p {
+  margin: 0 0 18px;
+  white-space: pre-line;
+  line-height: 1.7;
+}
+.dash-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+/* حوار التأكيد: أيقونة فوق الرسالة وزراير في النص — بدل شكل رسالة المتصفح */
+.dash-dialog--confirm {
+  text-align: center;
+  padding: 26px 24px 20px;
+}
+.dash-dialog--confirm .dash-dialog-actions {
+  justify-content: center;
+}
+.dash-dialog--confirm .btn {
+  min-width: 100px;
+  justify-content: center;
+}
+.dash-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.dash-dialog-icon.is-danger {
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------------- الحركة المخفّضة */
+@media (prefers-reduced-motion: reduce) {
+  /* زي site.css القديم: من غير ده ‎scrollTo(0,0)‎ بيعدّي ثواني (تمرير ناعم) والترويسة بتفضل «is-stuck» */
+  html:root {
+    scroll-behavior: auto;
+  }
+  .dash-root *,
+  .dash-toast,
+  .dash-dialog {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .dash-root .btn,
+  .dash-root .tpl-card {
+    transition: none;
+  }
+  .dash-root .btn:hover,
+  .dash-root .tpl-card:hover {
+    transform: none;
+  }
+  .dash-root .lang-btn.is-busy svg {
+    animation: none;
+  }
+}
+
+/* «جارٍ التحميل…» ماتظهرش في التحميلات السريعة (أقل من ~٣٥٠ms): بتتأخر شوية بدل ما تومض في كل تنقّل */
+.dash-root .empty[aria-busy="true"] {
+  animation: dash-late-in .2s ease .35s both;
+}
+@keyframes dash-late-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-root .empty[aria-busy="true"] { animation-duration: 0s; }
+}
+
+/* ---------------------------------------------------------- مكتبات الفيديو (كروت معاينة) */
+.dash-root .clip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.dash-root .clip-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.dash-root .clip-card.is-hidden {
+  opacity: 0.62;
+}
+.dash-root .clip-preview {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: #000;
+}
+.dash-root .clip-preview video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.dash-root .clip-preview--empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--surface-2);
+}
+.dash-root .clip-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  border: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.28), transparent 55%);
+  cursor: pointer;
+}
+.dash-root .clip-play svg {
+  width: 52px;
+  height: 52px;
+  padding: 14px 12px 14px 16px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.92);
+  fill: #111;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+  transition: transform 0.2s ease;
+}
+.dash-root .clip-play:hover svg {
+  transform: scale(1.08);
+}
+.dash-root .clip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+.dash-root .clip-name {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.dash-root .clip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.dash-root .clip-note {
+  margin: 0;
+  font-size: 12.5px;
+}
+.dash-root .clip-actions {
+  margin: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.dash-root .clip-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dash-root .clip-rename input {
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+}

@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-XKyaHtl9.js";import{n as t}from"./jsx-runtime-C3cWAN_r.js";var n=e(t(),1),r=(0,n.createContext)({lang:`ar`,t:e=>e,maxWidth:0,demo:!1,hasIntro:!1}),i=()=>(0,n.useContext)(r);export{i as n,r as t};

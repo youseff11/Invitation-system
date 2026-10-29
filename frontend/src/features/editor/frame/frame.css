@@ -1,0 +1,7 @@
+/* إضافات إطار المعاينة فقط (مش بتتحمّل في صفحة الضيف). */
+
+/* القسم المخفي لازم يفضل باهت حتى لو ليه حركة ظهور: ‎.lb-anim.is-in‎ بترجّع الـopacity لـ1 */
+.lb-doc--editing .lb--hidden.lb-anim.is-in {
+  opacity: 0.32;
+  filter: grayscale(1);
+}

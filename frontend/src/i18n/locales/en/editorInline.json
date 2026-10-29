@@ -1,0 +1,222 @@
+{
+  "refused": "This is the translated preview — typing, adding and deleting happen in the base-language view; translate from the Translation tab. Dragging still works.",
+  "layout": {
+    "heading": "Element positions",
+    "hint": "Drag any text in the preview to move it. Offsets are relative, so they hold on every screen.",
+    "step": "Nudge a little",
+    "zero": "Zero",
+    "resetAll": "Reset all positions",
+    "resetDone": "Positions are back to the original",
+    "right": "→",
+    "left": "←",
+    "down": "↓",
+    "up": "↑",
+    "slots": {
+      "buttons": "Buttons",
+      "ornament_top": "Top ornament",
+      "ornament_bottom": "Bottom ornament",
+      "image": "Image",
+      "gallery": "Gallery",
+      "map": "Map",
+      "countdown": "Countdown",
+      "qr": "QR code",
+      "form": "RSVP form",
+      "details": "Details",
+      "video": "Video",
+      "hosts": "Hosts",
+      "agenda": "Agenda",
+      "share": "Share buttons",
+      "scroll_hint": "Scroll hint",
+      "wishes": "Wishes"
+    }
+  },
+  "i18n": {
+    "kicker": "{{lang}} version",
+    "intro": "Write the {{lang}} version of each {{base}} text. Anything you leave empty keeps showing in the invitation's base language. The language button stays hidden from guests until you write at least one line.",
+    "langName": {
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "langAdj": {
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "placeholder": {
+      "ar": "بالعربي…",
+      "en": "English…"
+    },
+    "counter": "{{done}} of {{total}} texts translated.",
+    "counterNone": "Nothing translated yet — the language button is hidden from guests.",
+    "empty": "There are no texts in the invitation to translate.",
+    "loading": "Loading texts…",
+    "failed": "Couldn't load the texts.",
+    "peekAlt": "Preview the {{lang}} version",
+    "peekBase": "Back to the {{lang}} preview",
+    "clear": "Clear translation",
+    "clearConfirm": "Clear the whole {{lang}} version?",
+    "cleared": "The {{lang}} version was cleared — Ctrl+Z to undo",
+    "gear": "Font and size of the translated text — the original is unaffected",
+    "gearAria": "Translated text style",
+    "styleFont": "Translated-text font",
+    "styleFontHelp": "Leave empty to use the invitation's font.",
+    "styleSize": "Font size",
+    "styleSizeHelp": "Zero = same size as the original text."
+  },
+  "element": {
+    "title": "Selected element",
+    "hint": "Click anything inside the imported section — a word, an image, a button — to select it. Double-click text to type.",
+    "slot": "Element id",
+    "clear": "Deselect element",
+    "addTitle": "Add text or image",
+    "addImage": "+ Image",
+    "addText": "+ Text",
+    "addInside": "Goes inside the element",
+    "addAfter": "Goes after the element",
+    "clipTitle": "Copy and paste",
+    "copy": "Copy",
+    "duplicate": "Duplicate",
+    "paste": "Paste",
+    "pasteInside": "Paste inside",
+    "pasteHint": "Ctrl+V — pastes after the element",
+    "parent": "↰ Parent",
+    "parentHint": "Select the element that contains this one",
+    "delete": "Delete",
+    "keys": "Click = select · double-click = type · Esc leaves typing · Delete removes · Ctrl+C copy · Ctrl+V paste · Ctrl+D duplicate · arrows nudge (Shift = bigger step) · Shift while dragging = fine move",
+    "newText": "New text — double-click it and type",
+    "copied": "Element copied — Ctrl+V to paste",
+    "pasted": "Copy pasted",
+    "pastedInside": "Pasted inside the element",
+    "duplicated": "Element duplicated",
+    "deleted": "Element deleted — Ctrl+Z to undo",
+    "added": "Element added",
+    "fail": {
+      "missing": "That element is no longer in the section",
+      "empty": "Nothing copied — select an element and press Ctrl+C",
+      "top": "This is the top element in the section",
+      "locked": "The section is locked"
+    },
+    "name": "Name",
+    "fields": {
+      "text": "Text content",
+      "textPlaceholder": "Type the text here",
+      "style": "Element style",
+      "styleHint": "Element style: font, colour and size",
+      "font": "Font",
+      "size": "Font size",
+      "weight": "Font weight",
+      "align": "Alignment",
+      "color": "Text colour",
+      "background": "Background colour",
+      "letter": "Letter spacing",
+      "line": "Line height",
+      "image": "Image",
+      "imageWidth": "Image width",
+      "imageRadius": "Corner radius",
+      "imageOpacity": "Opacity",
+      "imageHint": "This is an image — font and text tools do not affect it, so they are hidden.",
+      "weights": {
+        "inherit": "As is",
+        "300": "Light",
+        "400": "Regular",
+        "500": "Medium",
+        "600": "Semi-bold",
+        "700": "Bold"
+      },
+      "aligns": {
+        "inherit": "As is",
+        "right": "Right",
+        "center": "Center",
+        "left": "Left"
+      }
+    },
+    "hide": "Hide",
+    "show": "Show",
+    "positionPx": "Position ({{dx}}px / {{dy}}px)",
+    "positionPct": "Position ({{dx}}% / {{dy}}%)",
+    "reset": "Reset",
+    "nudgePx": "Move one pixel",
+    "nudgeStep": "Move a quarter step",
+    "video": {
+      "hint": "This is a video — pick another one from the library; its place and styling stay as they are.",
+      "swap": "Replace the video"
+    },
+    "map": {
+      "hint": "The map is selected for editing; drag it or change its link and size here. Google zoom is off inside the editor.",
+      "url": "Map link",
+      "placeholder": "Google Maps link, embed code or coordinates",
+      "apply": "Change the map link",
+      "empty": "Enter the map link first.",
+      "help": "That link cannot be shown inside a frame. Open the place in Google Maps → Share → \"Embed a map\" and paste the code, or paste coordinates like: 29.990823, 31.130000",
+      "changed": "Map link changed.",
+      "width": "Map width",
+      "height": "Map height"
+    },
+    "countdown": {
+      "hint": "This is an imported countdown — you can change its date and the order of its boxes, and pick any label from the layers to edit its text or font."
+    }
+  },
+  "layers": {
+    "title": "Layers",
+    "empty": "No selectable elements inside the section.",
+    "remove": "Delete layer",
+    "removeConfirm": "Delete this layer?",
+    "kind": {
+      "text": "Text",
+      "image": "Image",
+      "video": "Video",
+      "map": "Google map"
+    },
+    "name": {
+      "heading": "Heading",
+      "paragraph": "Paragraph",
+      "text": "Text",
+      "link": "Link",
+      "image": "Image",
+      "listItem": "List item",
+      "list": "List",
+      "group": "Group",
+      "header": "Header",
+      "footer": "Footer",
+      "quote": "Quote",
+      "table": "Table",
+      "cell": "Cell",
+      "button": "Button",
+      "element": "Element"
+    },
+    "codeTitle": "Advanced code layers"
+  },
+  "colors": {
+    "title": "Section colours",
+    "empty": "No colours are written in this section's styles.",
+    "hint": "Change a colour here and it changes everywhere it is used inside the section."
+  },
+  "intro": {
+    "title": "Intro — intro code",
+    "hint": "Elements of the intro-screen code: click them in the preview (the Intro button replays it) or pick them from the layers."
+  },
+  "bounds": {
+    "label": "Section bounds",
+    "show": "Show section bounds",
+    "hide": "Hide section bounds",
+    "hint": "Show the frame, then drag the bottom handle to make the section taller or shorter (each device keeps its own height)."
+  },
+  "overlays": {
+    "title": "Add an element on top of the selected section — drag it anywhere with the mouse",
+    "pick": "Select a section first to add this to it.",
+    "unsupported": "This section does not accept elements on top of it.",
+    "selected": "Element on the section",
+    "done": "Done",
+    "duplicate": "Duplicate element",
+    "remove": "Delete element",
+    "hint": "Drag it anywhere with the mouse; the two handles on its sides change its width. Delete removes it.",
+    "layers": {
+      "title": "Layer order",
+      "front": "⤒ Bring to front",
+      "back": "⤓ Send to back",
+      "up": "Forward",
+      "down": "Backward",
+      "content": "▣ Section content (text and ornaments)",
+      "hint": "Top to bottom: what's higher covers what's below. Move an element under “Section content” to put it behind the text; select it from here if it gets covered in the preview."
+    }
+  }
+}

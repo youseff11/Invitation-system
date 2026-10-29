@@ -400,6 +400,8 @@ SECTION_TEXT_OVERLAY_FIELD = field(
         _only(field("src", "الصورة", "image", ""), "image"),
         _only(field("radius", "استدارة الحواف", "range", 0,
                     minimum=0, maximum=200, step=2, unit="px"), "image"),
+        _only(field("opacity", "الشفافية", "range", 100,
+                    minimum=5, maximum=100, step=5, unit="%"), "image"),
 
         # ---- زرار
         _only(field("label", "نص الزرار", "text", ""), "button"),
@@ -431,6 +433,15 @@ SECTION_TEXT_OVERLAY_FIELD = field(
                         "تقدر تسحبه من المقبضين على الجنبين في المعاينة."),
         field("x", "الموضع أفقياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
         field("y", "الموضع رأسياً", "range", 0, minimum=-1000, maximum=1000, step=1, unit="%"),
+
+        # ---- ترتيب الطبقات (بيتغيّر من قايمة «ترتيب الطبقات» في المحرر
+        # مش من حقول). ‎behind‎ = العنصر تحت محتوى القسم نفسه، و‎z‎ ترتيبه
+        # وسط العناصر اللي في نفس الجهة. القديم من غير المفتاحين = فوق
+        # المحتوى بترتيب الإضافة، زي ما كان.
+        field("z", "ترتيب الطبقة", "range", 0, minimum=0, maximum=60, step=1,
+              editor_hidden=True, translate=False),
+        field("behind", "خلف محتوى القسم", "toggle", False,
+              editor_hidden=True, translate=False),
     ],
 )
 # التلات أزرار اللي بتظهر **فوق** القايمة في المحرر. ``seed`` هو
@@ -948,6 +959,7 @@ register(
             opt("gold", "إطار ذهبي"),
         ]),
         field("max_width", "أقصى عرض", "range", 520, minimum=160, maximum=1200, step=20, unit="px"),
+        field("opacity", "الشفافية", "range", 100, minimum=5, maximum=100, step=5, unit="%"),
     ],
 )
 

@@ -16,6 +16,7 @@ from django.utils.text import slugify
 from django.utils.translation import get_language
 
 from . import blocks as blocks_engine
+from . import images
 
 
 def _pick(ar: str, en: str) -> str:
@@ -588,6 +589,11 @@ class IntroVideo(TimeStampedModel):
     ملفات مرفوعة لدعوة واحدة.
     """
 
+    LIBRARY_CHOICES = [("intros", "افتتاحيات"), ("videos", "فيديوهات")]
+
+    # نفس الجدول بيخدم المكتبتين: «النقل للافتتاحيات» مجرد تغيير الحقل ده.
+    library = models.CharField("المكتبة", max_length=10, choices=LIBRARY_CHOICES,
+                               default="intros", db_index=True)
     name = models.CharField("الاسم", max_length=120)
     file = models.FileField("الفيديو", upload_to="intro_videos/%Y/%m/", blank=True)
     poster = models.ImageField("صورة الغلاف", upload_to="intro_videos/%Y/%m/",
@@ -921,6 +927,15 @@ class SiteSetting(models.Model):
                   "«الباقات» في القايمة. الباقات نفسها مابتتمسحش.",
     )
 
+    # ---- شكل القوالب في الصفحة الرئيسية على التليفون
+    home_templates_per_row = models.PositiveSmallIntegerField(
+        "عدد القوالب في الصف (التليفون)", choices=[(1, "قالب واحد في الصف"),
+                                                   (2, "قالبين جنب بعض")],
+        default=1,
+        help_text="بيأثر على قسم القوالب في الصفحة الرئيسية على شاشة "
+                  "التليفون بس. الكمبيوتر والتابلت ماتتغيرش.",
+    )
+
     # ---- استقبال الطلبات
     orders_enabled = models.BooleanField(
         "نموذج «اطلب دعوتك» في الموقع", default=True,
@@ -997,3 +1012,75 @@ class SiteSetting(models.Model):
         مش باين ومحدش يعرف ليه. اللوحة بتحذّر من الحالة دي دلوقتي.
         """
         return bool(self.preview_cta_enabled and self.has_contact_link)
+
+
+# --------------------------------------------------------------------------
+def _hero_path(instance, filename: str) -> str:
+    return f"home/{uuid.uuid4().hex[:12]}/{filename}"
+
+
+class HomeHero(models.Model):
+    """هيرو الصفحة الرئيسية — سجل واحد: الخلفية (دارك/لايت × عربي/إنجليزي) والكلام المكتوب.
+
+    أي حقل فاضي بيرجع للقيمة الافتراضية المترجمة في الواجهة، فتعديل حقل واحد
+    مابيخلّيش الباقي يفضى. الصور بتتضغط وتتحوّل WebP عند الحفظ (‎images.compress_hero‎).
+    """
+
+    IMAGE_FIELDS = ("bg_light_ar", "bg_light_en", "bg_dark_ar", "bg_dark_en")
+
+    bg_light_ar = models.ImageField("خلفية لايت — عربي", upload_to=_hero_path, blank=True,
+                                    help_text="مقاس مناسب: 1672×941 (نسبة 16:9 تقريباً). بتتضغط تلقائياً.")
+    bg_light_en = models.ImageField("خلفية لايت — إنجليزي", upload_to=_hero_path, blank=True)
+    bg_dark_ar = models.ImageField("خلفية دارك — عربي", upload_to=_hero_path, blank=True)
+    bg_dark_en = models.ImageField("خلفية دارك — إنجليزي", upload_to=_hero_path, blank=True)
+
+    top_ar = models.CharField("السطر الصغير — عربي", max_length=120, blank=True)
+    top_en = models.CharField("السطر الصغير — إنجليزي", max_length=120, blank=True)
+    main_ar = models.CharField("العنوان الرئيسي — عربي", max_length=160, blank=True)
+    main_en = models.CharField("العنوان الرئيسي — إنجليزي", max_length=160, blank=True)
+    sub_ar = models.CharField("الوصف — عربي", max_length=300, blank=True)
+    sub_en = models.CharField("الوصف — إنجليزي", max_length=300, blank=True)
+    cta_ar = models.CharField("زرار البدء — عربي", max_length=60, blank=True)
+    cta_en = models.CharField("زرار البدء — إنجليزي", max_length=60, blank=True)
+    plans_ar = models.CharField("زرار الباقات — عربي", max_length=60, blank=True)
+    plans_en = models.CharField("زرار الباقات — إنجليزي", max_length=60, blank=True)
+
+    # ثلاث خانات «ثقة» تحت الأزرار: قيمة + تسمية (عربي/إنجليزي)
+    trust1_value_ar = models.CharField("خانة ١ — القيمة (عربي)", max_length=30, blank=True)
+    trust1_label_ar = models.CharField("خانة ١ — التسمية (عربي)", max_length=60, blank=True)
+    trust1_value_en = models.CharField("خانة ١ — القيمة (إنجليزي)", max_length=30, blank=True)
+    trust1_label_en = models.CharField("خانة ١ — التسمية (إنجليزي)", max_length=60, blank=True)
+    trust2_value_ar = models.CharField("خانة ٢ — القيمة (عربي)", max_length=30, blank=True)
+    trust2_label_ar = models.CharField("خانة ٢ — التسمية (عربي)", max_length=60, blank=True)
+    trust2_value_en = models.CharField("خانة ٢ — القيمة (إنجليزي)", max_length=30, blank=True)
+    trust2_label_en = models.CharField("خانة ٢ — التسمية (إنجليزي)", max_length=60, blank=True)
+    trust3_value_ar = models.CharField("خانة ٣ — القيمة (عربي)", max_length=30, blank=True)
+    trust3_label_ar = models.CharField("خانة ٣ — التسمية (عربي)", max_length=60, blank=True)
+    trust3_value_en = models.CharField("خانة ٣ — القيمة (إنجليزي)", max_length=30, blank=True)
+    trust3_label_en = models.CharField("خانة ٣ — التسمية (إنجليزي)", max_length=60, blank=True)
+
+    class Meta:
+        verbose_name = "هيرو الصفحة الرئيسية"
+        verbose_name_plural = "هيرو الصفحة الرئيسية"
+
+    def __str__(self) -> str:
+        return "هيرو الصفحة الرئيسية"
+
+    @classmethod
+    def load(cls) -> "HomeHero":
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # سجل واحد
+        previous = type(self).objects.filter(pk=1).first()
+        for name in self.IMAGE_FIELDS:
+            field = getattr(self, name)
+            old = getattr(previous, name) if previous else None
+            replaced = bool(old) and (not field or field.name != old.name)
+            if field and not field._committed:           # ملف جديد لسه ماتخزّنش: نضغطه
+                field.file = images.compress_hero(field.file)
+                field.name = field.file.name
+            if replaced:
+                old.storage.delete(old.name)               # الصورة القديمة مالهاش لازمة
+        super().save(*args, **kwargs)

@@ -1,0 +1,90 @@
+/* أساس صفحات الضيوف — بيتحط تحت ‎.gw‎ (الجذر في كل صفحات الميزة).
+   منقول من static/css/site.css: الأزرار بشكلها النهائي (التدرّج الذهبي والظل)،
+   والرسائل. الأزرار هنا بدل ما نغيّر في ‎styles/base.css‎ المشترك. */
+
+.gw .btn {
+  position: relative;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.2;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+.gw .btn:active {
+  transform: translateY(0) scale(0.985);
+}
+.gw .btn--gold {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+    var(--accent) 52%,
+    color-mix(in srgb, var(--accent) 82%, #000) 100%
+  );
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+.gw .btn--gold:hover {
+  filter: none;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.gw .btn--ghost {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.gw .btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.gw .btn--ghost.btn--danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+.gw .btn--ghost.btn--danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.gw .btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+}
+
+/* ---------------------------------------------------------- الرسائل */
+.gw .flash {
+  padding: 12px 18px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+}
+.gw .flash--success {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: rgba(78, 154, 99, 0.08);
+}
+.gw .flash--error {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(193, 84, 77, 0.08);
+}
+
+.gw .muted {
+  color: var(--muted);
+}
+
+/* رابط مش صالح (404) في صفحات الرموز */
+.gw-invalid {
+  text-align: center;
+  color: var(--muted);
+  padding: 80px 20px;
+  margin: 0;
+}

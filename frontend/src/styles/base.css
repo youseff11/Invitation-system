@@ -1,0 +1,146 @@
+/* أساسيات الصفحة — منقولة من static/css/site.css (الجزء المشترك). */
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Tajawal', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+a {
+  color: var(--accent);
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: 'Amiri', Georgia, serif;
+  font-weight: 500;
+  line-height: 1.3;
+  margin: 0 0 0.5em;
+}
+/* الإنجليزي بخط لاتيني كلاسيكي — Amiri مصمّم للعربي والنسخة اللاتينية منه ضعيفة */
+html[lang='en'] h1,
+html[lang='en'] h2,
+html[lang='en'] h3,
+html[lang='en'] h4 {
+  font-family: 'Cormorant Garamond', 'Amiri', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+p {
+  margin: 0 0 1em;
+}
+
+.wrap {
+  width: min(1180px, 100% - 36px);
+  margin-inline: auto;
+}
+.muted {
+  color: var(--muted);
+}
+
+/* من غير تباعد حروف في العربي: حروفه بتتوصل ببعض والتباعد بيفصلها.
+   التباعد الواسع أسلوب لاتيني فبيفضل للإنجليزي بس. */
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 8px;
+}
+html[lang='en'] .eyebrow {
+  letter-spacing: 0.22em;
+}
+
+/* ---------------------------------------------------------- الأزرار */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  transition:
+    transform 0.18s,
+    filter 0.18s,
+    border-color 0.18s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+}
+.btn--gold {
+  background: var(--accent);
+  color: #fff;
+}
+.btn--gold:hover {
+  filter: brightness(1.07);
+}
+.btn--ghost {
+  border-color: var(--line);
+}
+.btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn--sm {
+  padding: 7px 15px;
+  font-size: 13px;
+}
+.btn--block {
+  width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 0 0 12px 12px;
+  text-decoration: none;
+  font-size: 14px;
+}
+.skip-link:focus {
+  inset-inline-start: 24px;
+}

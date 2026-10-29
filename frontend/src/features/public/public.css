@@ -1,0 +1,1511 @@
+/* ================================================================
+   الموقع العام (B1) — منقول من static/css/site.css
+   القواعد دي نفس قيم الموقع القديم بالظبط (اللون، المسافات، الحركة) — مجرد
+   اللي الصفحات العامة بتستعمله. الترتيب محفوظ زي الأصل لأن بلوكات الآخر
+   (الطبقة الاحترافية) بتغلب اللي فوقها بالترتيب مش بالـspecificity.
+   الملف بيتحمّل بعد styles/app.css (شوف components/Layout.tsx) عشان يغلبه.
+   ================================================================ */
+
+/* ======== الأزرار — site.css:67-82 ======== */
+/* ---------------------------------------------------------- الأزرار */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 22px; border-radius: 999px; border: 1px solid transparent;
+  background: none; color: inherit; cursor: pointer; font: inherit; font-size: 14px;
+  text-decoration: none; transition: transform .18s, filter .18s, border-color .18s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.btn--gold { background: var(--accent); color: #fff; }
+.btn--gold:hover { filter: brightness(1.07); }
+.btn--ghost { border-color: var(--line); }
+.btn--ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn--sm { padding: 7px 15px; font-size: 13px; }
+.btn--block { width: 100%; }
+.btn--danger { color: var(--danger); border-color: currentColor; }
+
+/* ======== الترويسة العائمة — site.css:84-215 ======== */
+/* ---------------------------------------------------------- الترويسة العائمة
+   شريط "جزيرة": مفصول عن حواف الشاشة، حوافه دائرية، وخلفيته زجاجية.
+   يتقلّص ويكتسب ظلاً عند النزول بالصفحة (كلاس is-stuck من site.js). */
+
+.skip-link {
+  position: absolute; inset-inline-start: -9999px; top: 0; z-index: 100;
+  background: var(--accent); color: #fff; padding: 10px 20px;
+  border-radius: 0 0 12px 12px; text-decoration: none; font-size: 14px;
+}
+.skip-link:focus { inset-inline-start: 24px; }
+
+/* ارتفاع الترويسة ثابت (16 + 62 + 16): التقلّص عند النزول شكلي بس، من غير ما يتغيّر
+   مكان باقي الصفحة — وإلا الصفحة القصيرة بتقصر وترجع لفوق والترويسة تهتز. */
+.nav {
+  position: sticky; top: 0; z-index: 60;
+  box-sizing: border-box;
+  height: 94px;
+  padding: 16px 0 0;                /* padding مش margin: الهامش كان بيتدمج مع الأب */
+  pointer-events: none;            /* الفراغ حوالين الجزيرة ما يحجبش الضغط على الصفحة */
+}
+.nav > * { pointer-events: auto; }
+
+.nav-shell {
+  position: relative;
+  width: min(1180px, 100% - 28px);
+  margin-inline: auto;
+  display: flex; align-items: center; gap: 10px;
+  height: 62px; padding-inline: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  box-shadow: 0 2px 10px -7px rgba(0, 0, 0, .3);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  transition: height .28s ease, transform .28s ease, background .28s ease, box-shadow .28s ease;
+}
+.nav.is-stuck .nav-shell {
+  height: 54px;
+  transform: translateY(-8px);
+  background: color-mix(in srgb, var(--surface) 93%, transparent);
+  box-shadow: var(--shadow-nav);
+}
+
+/* اللوجو صورة خلفية مش <img> عن قصد: كده المتصفح بينزّل النسخة الفعّالة بس
+   (فاتحة أو غامقة) بدل الاتنين، والاسم فاضل موجود كنص لقارئات الشاشة. */
+.brand {
+  display: block; flex: none; text-decoration: none;
+  height: 44px; aspect-ratio: 714 / 200;
+  margin-inline-start: 10px;
+  background-image: var(--site-logo-light, url("/site-logo/light.png"));
+  background-size: contain; background-position: center; background-repeat: no-repeat;
+  transition: height .28s ease, opacity .18s ease;
+}
+[data-theme="dark"] .brand { background-image: var(--site-logo-dark, url("/site-logo/dark.png")); }
+.brand:hover { opacity: .82; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.nav.is-stuck .brand { height: 38px; }
+
+/* النسخة الكاملة المرصوصة — صفحة الدخول */
+.brand--stacked {
+  height: 120px; aspect-ratio: 694 / 658; margin-inline: auto;
+  background-image: url("/static/images/logo-full-light.png");
+}
+[data-theme="dark"] .brand--stacked { background-image: url("/static/images/logo-full-dark.png"); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+.nav-links { display: flex; align-items: center; gap: 2px; margin-inline-start: auto; }
+.nav-links a {
+  padding: 9px 14px; border-radius: 999px; text-decoration: none; white-space: nowrap;
+  color: var(--muted); font-size: 14.5px; transition: background .18s, color .18s;
+}
+.nav-links a:hover { color: var(--text); }
+/* القسم اللي المستخدم واقف فيه دلوقتي فقط — بيتحدّد من scroll-spy في site.js */
+.nav-links a.is-active {
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+}
+.nav-cta-inline, .nav-only-mobile { display: none; }
+
+/* ---- مبدّل اللغة ---- */
+.lang-form { display: flex; }
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 38px; padding: 0 12px 0 10px;
+  border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); cursor: pointer; font: inherit;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.lang-btn:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.lang-btn svg { width: 17px; height: 17px; flex: none; }
+.lang-btn span {
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; line-height: 1;
+}
+
+.nav-tools { display: flex; align-items: center; gap: 8px; margin-inline-start: 6px; }
+
+.icon-btn {
+  width: 38px; height: 38px; padding: 0; display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); cursor: pointer;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.icon-btn svg { width: 18px; height: 18px; }
+.i-moon { display: none; }
+[data-theme="dark"] .i-sun { display: none; }
+[data-theme="dark"] .i-moon { display: block; }
+
+.nav-burger {
+  display: none; width: 40px; height: 38px; padding: 0;
+  flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border-radius: 12px; border: 1px solid var(--line); background: transparent; cursor: pointer;
+}
+.nav-burger span {
+  width: 17px; height: 1.8px; background: var(--text); border-radius: 2px;
+  transition: transform .25s ease, opacity .2s ease;
+}
+.nav-burger[aria-expanded="true"] span:nth-child(1) { transform: translateY(5.8px) rotate(45deg); }
+.nav-burger[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.nav-burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5.8px) rotate(-45deg); }
+
+.nav-scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(0, 0, 0, .3); backdrop-filter: blur(2px);
+}
+
+/* ---------------------------------------------------------- الرسائل */
+.flash { padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; font-size: 14px; border: 1px solid var(--line); }
+.flash--success { border-color: var(--ok); color: var(--ok); background: rgba(78, 154, 99, .08); }
+.flash--error { border-color: var(--danger); color: var(--danger); background: rgba(193, 84, 77, .08); }
+
+/* ======== الهيرو — site.css:217-285 ======== */
+/* ---------------------------------------------------------- الهيرو
+   الصورة نضيفة بلا نص محروق، والكلام كله HTML فوقها.
+   الصورتين اتقصّوا لنفس النسبة (1.8) عشان الارتفاع ما ينطّش عند تبديل المظهر. */
+
+.hero {
+  position: relative;
+  margin-top: calc(-1 * var(--nav-space));   /* الترويسة العائمة تطفو فوق الصورة */
+  background: var(--bg);
+  isolation: isolate;
+}
+
+.hero-art {
+  --hero-img: url("/static/images/home-arabic-light.webp");
+  position: relative;
+  aspect-ratio: 1672 / 941;
+  background-image: var(--hero-img);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* موضع/ميلان الكارت مقيسين من كل صورة على حدة */
+  --card-x: 69.2%; --card-y: 50.5%; --card-w: 20.5%; --card-rot: 7.5deg;
+  container-type: inline-size;     /* مرجع وحدات cqw لكتابة الكارت */
+}
+html[lang="en"] .hero-art {
+  --hero-img: url("/static/images/home-english-light.webp");
+}
+[data-theme="dark"] .hero-art {
+  --hero-img: url("/static/images/home-arabic-dark.webp");
+  --card-x: 69.3%; --card-y: 50.8%; --card-w: 20.5%; --card-rot: 7.2deg;
+}
+html[lang="en"][data-theme="dark"] .hero-art {
+  --hero-img: url("/static/images/home-english-dark.webp");
+}
+
+/* شبكة أمان للتباين: تدرّج من حافة الصورة الشمال (مكان النص) ناحية النص.
+   في اللايت أبيض وفي الدارك أسود، فمابيبانش فوق المنطقة الفاضية أصلاً —
+   بيشتغل بس لو النص قرّب من الورد. */
+.hero-art::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to right,
+              var(--bg) 0%,
+              color-mix(in srgb, var(--bg) 72%, transparent) 26%,
+              transparent 52%);
+}
+/* ذوبان الحافة السفلية في خلفية الصفحة */
+.hero-art::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 16%;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+
+/* الكلام: طبقة فوق الصورة، في النص الفاضي على الشمال في اللغتين
+   (المساحة الفاضية في الصورة نفسها على الشمال، فالوضع فيزيائي مش منطقي). */
+.hero-copy {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center;
+  padding-top: calc(var(--nav-space) * .5);
+  pointer-events: none;
+}
+/* هوامش فيزيائية عن قصد: المساحة الفاضية في الصورة على الشمال في اللغتين،
+   فالكتلة لازم تفضل شمال سواء عربي (RTL) أو إنجليزي (LTR).
+   text-align:start بيخلي العربي محاذى يمين والإنجليزي شمال جوّه الكتلة نفسها. */
+.hero-copy-in {
+  pointer-events: auto;
+  width: min(42%, 520px);
+  margin-left: clamp(20px, 5.5vw, 96px);
+  margin-right: auto;
+  text-align: center;          /* زي الصورة الأصلية بالظبط */
+}
+
+/* ======== نص الهيرو — site.css:307-339 ======== */
+/* ---- العنوان بسطرين زي الصورة: سطر صغير غامق + سطر كبير ذهبي ---- */
+.hero-copy h1 { margin: 0; }
+.h1-top {
+  display: block; color: var(--text); font-weight: 400;
+  font-size: clamp(19px, 2.05vw, 34px); line-height: 1.35; margin-bottom: 2px;
+}
+.h1-main {
+  display: block; color: var(--accent); font-weight: 400;
+  font-size: clamp(31px, 4.1vw, 66px); line-height: 1.2; text-wrap: balance;
+}
+
+/* ---- الفاصل: خط ذهبي متلاشي ← قلب → خط ذهبي متلاشي ---- */
+.hero-rule {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  width: min(88%, 400px); margin: 20px auto 22px; font-size: 17px;
+}
+.hero-rule i { flex: 1; height: 1px; border: 0; }
+.hero-rule i:first-child { background: linear-gradient(to right, transparent, var(--accent)); }
+.hero-rule i:last-child  { background: linear-gradient(to left,  transparent, var(--accent)); }
+
+.hero-sub {
+  color: var(--muted); font-size: clamp(14px, 1.2vw, 18px);
+  max-width: 27ch; margin: 0 auto; line-height: 1.9; text-wrap: balance;
+}
+
+.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+
+/* زر محدَّد بإطار ذهبي وقلبين على الجنبين — زي الصورة */
+.btn--outline {
+  background: transparent; border-color: var(--accent); color: var(--accent);
+  padding: 13px 30px; gap: 15px; font-size: 15px;
+}
+.btn--outline:hover { background: var(--accent-soft); }
+
+/* ======== الأقسام والكروت — site.css:431-465 ======== */
+/* الصفحات اللي مفيهاش هيرو محتاجة تبعد عن الترويسة العائمة */
+.section--below-nav { padding-top: 34px; }
+
+.section { padding: 74px 0; }
+.section--alt { background: var(--surface-2); }
+.section-head { text-align: center; margin-bottom: 40px; }
+.section-head h2 { font-size: clamp(27px, 4vw, 40px); }
+.section-head p { color: var(--muted); max-width: 58ch; margin-inline: auto; }
+
+.grid { display: grid; gap: 18px; }
+.grid--3 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.grid--4 { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow);
+}
+.card h3 { font-size: 19px; margin-bottom: 6px; }
+
+.tpl-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; transition: transform .22s, border-color .22s;
+}
+.tpl-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.tpl-cover {
+  aspect-ratio: 3/4; background: linear-gradient(150deg, var(--accent-soft), var(--surface-2));
+  display: grid; place-items: center; color: var(--accent);
+  font-family: "Amiri", serif; font-size: 30px; background-size: cover; background-position: center;
+}
+.tpl-body { padding: 15px 16px 18px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.tpl-body h3 { margin: 0; font-size: 17px; }
+.tpl-meta { font-size: 12px; color: var(--muted); letter-spacing: normal; }
+html[lang="en"] .tpl-meta { letter-spacing: .1em; }
+.tpl-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
+
+/* ======== الباقات — site.css:486-502 ======== */
+.plan {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 28px 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow);
+  position: relative;
+}
+.plan--featured { border-color: var(--accent); border-width: 2px; }
+.plan-badge {
+  position: absolute; top: -12px; inset-inline-start: 22px;
+  background: var(--accent); color: #fff; font-size: 11px;
+  padding: 3px 12px; border-radius: 999px; letter-spacing: normal;
+}
+html[lang="en"] .plan-badge { letter-spacing: .1em; }
+.plan-price { font-family: "Amiri", serif; font-size: 40px; color: var(--accent); line-height: 1; }
+.plan-price small { font-size: 14px; color: var(--muted); font-family: inherit; }
+.plan ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 7px; font-size: 14px; }
+.plan li::before { content: "✓"; color: var(--accent); margin-inline-end: 8px; }
+
+
+/* ======== النماذج — site.css:513-531 ======== */
+/* ---------------------------------------------------------- النماذج */
+.form { display: grid; gap: 14px; }
+.form--2 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > label, .field label:first-child { font-size: 13px; color: var(--muted); }
+.field input, .field select, .field textarea {
+  font: inherit; padding: 10px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--text); width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field textarea { resize: vertical; min-height: 84px; }
+/* حقل مربّع اختيار: المربّع جنب كلامه مش فوقه */
+.field--check { flex-direction: row; align-items: center; gap: 9px; cursor: pointer; }
+.field--check input { width: auto; flex: none; accent-color: var(--accent); }
+.field--check span { font-size: 13.5px; color: var(--text); }
+.errorlist { color: var(--danger); font-size: 12px; list-style: none; padding: 0; margin: 2px 0 0; }
+.span-2 { grid-column: 1 / -1; }
+
+/* ======== شريط الفلتر وحالة الفراغ — site.css:563-569 ======== */
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.toolbar input, .toolbar select {
+  font: inherit; padding: 8px 13px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--surface); color: var(--text);
+}
+
+.empty { text-align: center; padding: 54px 20px; color: var(--muted); }
+
+/* ======== التذييل والدخول — site.css:756-762 ======== */
+/* ---------------------------------------------------------- التذييل */
+.foot { border-top: 1px solid var(--line); padding: 34px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ---------------------------------------------------------- الدخول */
+.login-page { min-height: 100vh; display: grid; place-items: center; padding: 26px; }
+.login-card { width: min(390px, 100%); }
+
+
+/* ======== الاستجابة — الترويسة والهيرو — site.css:769-880 ======== */
+/* ================================================================
+   الاستجابة — الترويسة والهيرو
+   ================================================================ */
+
+/* شاشات متوسطة: نسخة أخف من صورة الهيرو */
+@media (min-width: 781px) and (max-width: 1200px) {
+  .hero-art { --hero-img: url("/static/images/home-arabic-light.webp"); }
+  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-english-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-arabic-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-english-dark.webp"); }
+  .hero-copy-in { width: min(48%, 460px); }
+}
+
+/* ---- الموبايل ---- */
+@media (max-width: 780px) {
+  :root { --nav-space: 78px; }
+
+  /* الترويسة */
+  .nav { height: 82px; padding-top: 12px; }   /* 12 + 58 + 12 */
+  .nav-shell { height: 58px; gap: 8px; }
+  .nav.is-stuck .nav-shell { height: 54px; transform: translateY(-4px); }
+  .nav-burger { display: flex; }
+  .nav-cta { display: none; }
+  .nav-cta-inline { display: inline-flex; margin-top: 6px; }
+  .nav-only-mobile { display: block; }
+  .nav-logout-inline { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .nav-tools { margin-inline-start: auto; gap: 6px; }
+  .lang-btn { height: 34px; padding: 0 10px 0 8px; }
+  .icon-btn { width: 34px; height: 34px; }
+  .nav-burger { width: 36px; height: 34px; }
+
+  .nav-links {
+    position: absolute; top: calc(100% + 10px); inset-inline: 0;
+    flex-direction: column; align-items: stretch; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 20px; padding: 10px; box-shadow: var(--shadow-nav);
+    opacity: 0; visibility: hidden; transform: translateY(-8px);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+  }
+  .nav-links.is-open { opacity: 1; visibility: visible; transform: none; }
+  .nav-links a { padding: 12px 15px; border-radius: 13px; font-size: 15px; }
+
+  /* الهيرو على التليفون: الصورة كاملة بعرض الشاشة من غير أي قص،
+     والكلام تحتها — عشان النص ما يبقاش فوق ورد ومش مقروء.
+     مفيش سحب تحت الترويسة هنا: الصورة قصيرة والشريط كان هيغطي ثلثها. */
+  .hero { margin-top: 0; }
+  .hero-art {
+    aspect-ratio: 1672 / 941;
+    width: 100%;
+    background-size: cover;           /* الخلفية الجديدة مع الهاتف داخلها */
+    background-position: center top;
+    --hero-img: url("/static/images/home-arabic-light.webp");
+  }
+  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-english-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-arabic-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-english-dark.webp"); }
+  .hero-art::before { display: none; }          /* مفيش نص فوق الصورة هنا */
+  .hero-art::after  { height: 26%; }
+
+  .hero-copy {
+    position: static; display: block; padding: 26px 0 4px;
+    pointer-events: auto;
+  }
+  .hero-copy-in {
+    width: min(100% - 36px, 620px);
+    margin: 0 auto; text-align: center;
+  }
+  .hero-copy h1 { font-size: clamp(27px, 7.4vw, 40px); }
+  .hero-sub { max-width: none; margin-inline: auto; font-size: 15.5px; }
+  .hero-actions { justify-content: center; margin-top: 20px; }
+  .hero-actions .btn { flex: 1 1 auto; min-width: 150px; }
+}
+
+/* شاشات صغيرة جداً */
+@media (max-width: 380px) {
+  .brand { height: 30px; }
+  .lang-btn span { display: none; }
+  .lang-btn { padding: 0 9px; }
+}
+
+/* اللوجو على الشاشات الصغيرة */
+@media (max-width: 780px) {
+  .brand { height: 34px; margin-inline-start: 8px; }
+  .nav.is-stuck .brand { height: 31px; }
+  .brand--stacked { height: 100px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* ======== كارت القالب على التليفون — site.css:928-972 ======== */
+/* ---- كارت المعرض في الصفحة الرئيسية على شاشة التلفون
+
+   المقاسات متظبطة على كارت «ذكرى» بالقياس: على شاشة ٣٧٥px كارتهم
+   ٣٢٧×٥١٧ بصورة مربعة ٣٠٦×٣٠٦، وكارتنا كان ٣٣٩×٥٨٨ بغلاف ٣:٤ —
+   الغلاف الطويل هو اللي كان بيزوّد الارتفاع ٧١px. الغلاف بقى مربع،
+   والعرض «الشاشة − ٤٨px» بدل «− ٣٦px».
+
+   محصور في ‎#templates‎ عن قصد: نفس الكارت بيتستعمل في صفحة المعرض
+   وفي لوحة التحكم، وطلب التعديل كان على الصفحة الرئيسية بس. */
+@media (max-width: 600px) {
+  #templates .grid--4 {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-inline: 6px;          /* ‎.wrap‎ بتدي ١٨px لكل جنب، +٦ = ٢٤ */
+  }
+  #templates .tpl-card { padding: 10px; border-radius: 18px; }
+  #templates .tpl-cover { aspect-ratio: 1 / 1; border-radius: 12px; }
+
+  /* الجسم بارتفاع ثابت عشان كل الكروت تطلع بنفس الطول حتى لو
+     الوصف ناقص أو الاسم بيلف على سطرين. */
+  #templates .tpl-body {
+    padding: 16px 12px 12px;
+    min-height: 190px;
+    gap: 5px;
+  }
+  #templates .tpl-body h3 {
+    font-size: 18px; line-height: 1.35;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* سطرين بالظبط للوصف: كده كل الكروت بتقف عند ‎١٩٠px‎ اللي فوق
+     من غير ما وصف طويل يزوّد ارتفاع كارت عن التاني. */
+  #templates .tpl-desc {
+    margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    line-clamp: 2; overflow: hidden;
+  }
+  #templates .tpl-actions { padding-top: 12px; }
+  #templates .tpl-actions .btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.2;
+    border-radius: 10px;
+  }
+}
+
+/* قالبين جنب بعض على التليفون (اختيار من «إعدادات الموقع»): نفس الكارت بمقاسات أصغر.
+   الغلاف مربع زي الواحد في الصف، والجسم من غير ارتفاع ثابت عشان العرض نص الشاشة. */
+@media (max-width: 600px) {
+  #templates .grid--4[data-per-row="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-inline: 0;
+  }
+  #templates .grid--4[data-per-row="2"] .tpl-card { padding: 6px; border-radius: 14px; }
+  #templates .grid--4[data-per-row="2"] .tpl-cover { border-radius: 10px; }
+  #templates .grid--4[data-per-row="2"] .tpl-body { padding: 10px 6px 6px; min-height: 0; gap: 4px; }
+  #templates .grid--4[data-per-row="2"] .tpl-body h3 { font-size: 15px; }
+  #templates .grid--4[data-per-row="2"] .tpl-desc { font-size: 11.5px; line-height: 1.5; }
+  #templates .grid--4[data-per-row="2"] .tpl-actions { padding-top: 8px; margin-top: auto; }
+  #templates .grid--4[data-per-row="2"] .tpl-actions .btn { padding: 9px 8px; font-size: 12.5px; }
+}
+
+/* ======== الناف على الشاشات المتوسطة — site.css:1028-1040 ======== */
+/* ------------------------------------------------ الناف على الشاشات المتوسطة */
+/* لوحة التحكم بقى فيها ٧ روابط. بين ٧٨١ و١١٥٠ الشريط كان بيعدّي عرض
+   الشاشة ويعمل تمرير أفقي — فبنضيّق المسافات والخط بدل ما نخفي روابط. */
+@media (min-width: 781px) and (max-width: 1150px) {
+  .nav-links a { padding: 8px 9px; font-size: 13.5px; }
+  .nav-shell { gap: 8px; }
+  .nav-tools { gap: 6px; }
+  .lang-btn span { display: none; }
+}
+@media (min-width: 781px) and (max-width: 980px) {
+  .nav-links a { padding: 7px 6px; font-size: 12.5px; }
+  .nav-cta { padding: 8px 12px; font-size: 12.5px; }
+}
+
+/* ======== إضافات الطلب — site.css:1042-1085 ======== */
+/* ---------------------------------------------------------- إضافات الطلب */
+.addons {
+  display: grid;
+  gap: 8px;
+  /* عمودين على الشاشات الواسعة، عمود على الموبايل — من غير media query.
+     min(240px, 100%) مش 240px: auto-fit مابيصغّرش العمود تحت الحد
+     الأدنى، فعلى شاشة ٣٩٠ كان العمود بيفضل ٢٤٠ ويطلّع السعر بره. */
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+.addon {
+  /* جريد مش فليكس: العمود الأوسط ‎1fr‎ بيصغّر لحد ما الاسم يلف، فالسعر
+     مابيخرجش بره الشاشة على الموبايل ومحدش بينزل سطر لوحده.
+     مع فليكس + wrap كان مربّع الاختيار بينزل سطر لوحده فوق. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+.addon:hover { border-color: var(--accent); }
+/* الاختيار لازم يبان من نظرة واحدة، مش من مربّع صغير بس */
+.addon:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.addon input { margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+.addon-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.addon-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.addon-desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.addon-price {
+  font-size: 13px; font-weight: 700; color: var(--accent);
+  white-space: nowrap;
+}
+.addons-total {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ======== زر واتساب العائم + إضافات الباقات — site.css:1103-1327 ======== */
+/* ================================================================
+   زر واتساب عائم + إضافات الباقات
+   ================================================================ */
+
+/* الركن المقابل لاتجاه القراءة: في RTL شمال، وفي LTR يمين — عشان
+   ما يغطّيش أزرار المحرر ولا التمرير لفوق. */
+.wa-float {
+  text-decoration: none !important;
+  position: fixed;
+  inset-block-end: 22px;
+  inset-inline-start: 22px;
+  z-index: 90;
+  width: 54px; height: 54px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  box-shadow: 0 10px 26px -8px rgba(0, 0, 0, .45);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.wa-float:hover { transform: translateY(-2px) scale(1.05); }
+.wa-float:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.wa-float .wa-icon {
+  text-decoration: none !important;
+  display: inline-grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  font-size: 30px;
+  line-height: 1;
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+}
+@media (max-width: 600px) {
+  .wa-float { width: 48px; height: 48px; inset-block-end: 16px; inset-inline-start: 16px; }
+  .wa-float .wa-icon { font-size: 27px; }
+}
+
+/* الأيقونة بتتقلب «×» والنافذة مفتوحة */
+.wa-float .wa-icon--close { display: none; place-items: center; line-height: 0; }
+.wa-float .wa-icon--close svg { width: 26px; height: 26px; }
+.wa-float.is-open .wa-icon { display: none; }
+.wa-float.is-open .wa-icon--close { display: grid; }
+.wa-x { display: block; }
+
+/* ---- نافذة الشات — شكل محادثة واتساب فوق الزر العائم */
+.wa-chat {
+  --wa-green: #075e54;
+  --wa-bg: #efeae2;
+  --wa-bubble: #ffffff;
+  --wa-ink: #111b21;
+  --wa-soft: #667781;
+  --wa-foot: #f0f2f5;
+  position: fixed;
+  z-index: 91;
+  inset-block-end: 90px;
+  inset-inline-start: 22px;
+  width: min(370px, calc(100vw - 32px));
+  max-height: calc(100dvh - 120px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--wa-bg);
+  color: var(--wa-ink);
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .45);
+  font-family: inherit;
+  transform-origin: bottom left;
+}
+[dir="ltr"] .wa-chat { transform-origin: bottom right; }
+.wa-chat[hidden] { display: none; }
+.wa-chat.is-in { animation: wa-pop .22s cubic-bezier(.2, .9, .3, 1.2); }
+@keyframes wa-pop { from { opacity: 0; transform: translateY(10px) scale(.94); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wa-chat.is-in { animation: none; } }
+
+.wa-chat-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--wa-green);
+  color: #fff;
+}
+.wa-chat-avatar {
+  width: 46px; height: 46px; flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  border: 2px solid rgba(255, 255, 255, .85);
+}
+.wa-chat-who { flex: 1; min-width: 0; display: grid; line-height: 1.35; }
+.wa-chat-who strong { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-chat-who small { font-size: 12.5px; opacity: .85; }
+.wa-chat-close {
+  flex: none; width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: transparent; color: #fff;
+  font-size: 20px; cursor: pointer;
+}
+.wa-chat-close:hover { background: rgba(255, 255, 255, .14); }
+.wa-chat-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+
+/* خلفية المحادثة: نقش خفيف مرسوم بـSVG بدل صورة — مفيش طلب شبكة زيادة */
+.wa-chat-body {
+  flex: 1;
+  min-height: 250px;
+  overflow-y: auto;
+  padding: 16px 14px 20px;
+  background-color: var(--wa-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='.06' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='14' cy='14' r='5'/%3E%3Cpath d='M52 8l6 6-6 6-6-6z'/%3E%3Ccircle cx='62' cy='50' r='4'/%3E%3Cpath d='M10 56h14M17 49v14'/%3E%3Ccircle cx='40' cy='44' r='2.5'/%3E%3Cpath d='M30 76q6-6 12 0t12 0'/%3E%3Cpath d='M70 20l3 7 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z' transform='scale(.8) translate(14 0)'/%3E%3C/g%3E%3C/svg%3E");
+}
+.wa-bubble {
+  position: relative;
+  max-width: 92%;
+  padding: 10px 12px 6px;
+  background: var(--wa-bubble);
+  border-radius: 0 10px 10px 10px;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, .13);
+  font-size: 15px;
+  line-height: 1.6;
+}
+/* الذيل الصغير في ركن الفقاعة — ناحية بداية السطر */
+.wa-bubble::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: -8px;
+  border-style: solid;
+  border-width: 0 8px 10px 0;
+  border-color: transparent var(--wa-bubble) transparent transparent;
+}
+[dir="rtl"] .wa-bubble { border-radius: 10px 0 10px 10px; }
+[dir="rtl"] .wa-bubble::before { border-width: 0 0 10px 8px; border-color: transparent transparent transparent var(--wa-bubble); }
+.wa-bubble p { margin: 0; }
+.wa-bubble-time {
+  display: flex; justify-content: flex-end; align-items: center; gap: 4px;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--wa-soft);
+  direction: ltr;
+}
+.wa-bubble-time i { color: #53bdeb; font-size: 11px; }
+
+.wa-chat-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--wa-foot);
+}
+.wa-chat-foot input {
+  flex: 1; min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  border: 0; border-radius: 10px;
+  background: #fff;
+  color: var(--wa-ink);
+  /* 16px بالظبط: أقل من كده سفاري الآيفون بيزوّم على الصفحة */
+  font: inherit; font-size: 16px;
+}
+.wa-chat-foot input::placeholder { color: #8696a0; }
+.wa-chat-foot input:focus { outline: 2px solid #25d366; outline-offset: 0; }
+.wa-chat-send {
+  flex: none; width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: transparent;
+  color: var(--wa-soft);
+  font-size: 19px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+[dir="rtl"] .wa-chat-send svg { transform: scaleX(-1); }
+.wa-chat-foot.has-text .wa-chat-send { background: #25d366; color: #fff; }
+.wa-chat-send:focus-visible { outline: 2px solid #25d366; outline-offset: 2px; }
+
+/* الوضع الداكن — نفس ألوان واتساب الليلي */
+[data-theme="dark"] .wa-chat {
+  --wa-green: #1f2c34;
+  --wa-bg: #0b141a;
+  --wa-bubble: #202c33;
+  --wa-ink: #e9edef;
+  --wa-soft: #8696a0;
+  --wa-foot: #1f2c34;
+}
+[data-theme="dark"] .wa-chat-body { background-image: none; }
+[data-theme="dark"] .wa-chat-foot input { background: #2a3942; }
+
+/* الموبايل: النافذة بعرض الشاشة (هامش ١٢px من الجنبين) فوق الزر،
+   وارتفاعها بيتظبط لوحده على الشاشات القصيرة ولما الكيبورد يطلع. */
+@media (max-width: 600px) {
+  .wa-chat {
+    inset-block-end: calc(76px + env(safe-area-inset-bottom, 0px));
+    inset-inline: 12px;
+    width: auto;
+    max-height: calc(100dvh - 110px);
+    border-radius: 16px;
+  }
+  .wa-chat-head { padding: 12px 14px; gap: 10px; }
+  .wa-chat-avatar { width: 42px; height: 42px; }
+  .wa-chat-who strong { font-size: 15px; }
+  .wa-chat-body { min-height: 0; flex: 1 1 auto; height: 38vh; height: 38dvh; padding: 14px 12px 16px; }
+  .wa-bubble { font-size: 14.5px; max-width: 94%; }
+  .wa-chat-foot { padding: 8px 10px; }
+  .wa-float { inset-block-end: calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 600px) and (max-height: 560px) {
+  .wa-chat-body { height: auto; min-height: 90px; }
+}
+
+/* إضافات الباقة — عرض سعر بس، مفيش اختيار ولا مجموع */
+.plan-addons {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.plan-addons-title {
+  margin: 0 0 7px;
+  font-size: 11px; letter-spacing: 1.5px;
+  color: var(--muted);
+}
+.plan-addons-list { list-style: none; margin: 0; padding: 0; }
+.plan-addons-list li {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 13px; padding: 3px 0;
+  color: var(--muted);
+}
+.plan-addons-list b { color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+/* ======== الرئيسية: المميزات والأسئلة والـCTA والفوتر — site.css:1345-1452 ======== */
+
+.section--features { background: var(--bg); }
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px; max-width: 1050px; margin-inline: auto;
+}
+.feature-card {
+  min-height: 205px; padding: 28px 20px 24px; text-align: center;
+  border: 1px solid var(--line); border-radius: 20px;
+  background: var(--surface); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.feature-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.feature-icon {
+  width: 52px; height: 52px; display: grid; place-items: center;
+  margin-bottom: 14px; border-radius: 50%; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.feature-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.feature-card h3 { margin: 0 0 5px; color: var(--text); font-size: 21px; }
+.feature-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+
+.wrap--narrow { width: min(760px, 100% - 36px); }
+.section--faq { background: var(--surface-2); }
+.faq-list { display: grid; gap: 10px; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: 15px; background: var(--surface);
+  overflow: hidden; box-shadow: 0 12px 30px -28px rgba(23,19,15,.55);
+}
+.faq-item summary {
+  cursor: pointer; list-style: none; padding: 18px 22px;
+  color: var(--text); font-family: "Amiri", Georgia, serif; font-size: 20px;
+  font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; color: var(--accent); font-family: sans-serif; font-size: 24px; font-weight: 300; }
+.faq-item[open] summary::after { content: "−"; }
+.faq-answer { padding: 0 22px 19px; color: var(--muted); line-height: 1.9; font-size: 15px; }
+.home-cta { padding-block: 96px; background: var(--surface-2); }
+.home-cta-in { max-width: 720px; text-align: center; }
+.home-cta h2 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 48px); }
+.home-cta p:not(.eyebrow) { color: var(--muted); margin-bottom: 24px; }
+.foot { padding: 28px 0; border-top: 1px solid var(--line); background: var(--surface); }
+.foot-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.foot-inner > p { margin: 0; color: var(--muted); font-size: 13px; }
+.foot-brand { display: inline-flex; width: 42px; height: 42px; align-items: center; justify-content: center; }
+.foot-brand img { width: 100%; height: 100%; object-fit: contain; }
+.foot-socials { display: flex; align-items: center; gap: 9px; }
+.foot-socials a {
+  width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--muted); border: 1px solid var(--line); text-decoration: none;
+  transition: color .18s, border-color .18s, transform .18s;
+}
+.foot-socials a:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-2px); }
+.foot-socials svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.foot-socials a:nth-child(2) svg { fill: currentColor; stroke: none; }
+
+@media (max-width: 700px) {
+  .feature-grid { grid-template-columns: 1fr; gap: 13px; }
+  .feature-card { min-height: 176px; padding: 24px 18px; }
+  .feature-card h3 { font-size: 20px; }
+  .feature-card p { font-size: 13.5px; }
+  .faq-item summary { padding: 16px 17px; font-size: 18px; }
+  .faq-answer { padding: 0 17px 16px; font-size: 14px; }
+  .home-cta { padding-block: 70px; }
+  .foot-inner { flex-wrap: wrap; justify-content: center; text-align: center; }
+  .foot-brand { order: 0; }
+  .foot-inner > p { width: 100%; order: 2; }
+  .foot-socials { order: 1; }
+}
+
+
+/* المحتوى الثنائي اللغة لكروت المميزات */
+.feature-en { display: none; }
+html[lang="en"] .feature-ar { display: none; }
+html[lang="en"] .feature-en { display: inline; }
+
+/* أيقونات الفوتر: دوائر واضحة، متوازنة، وبألوان المنصات عند المرور */
+.foot-socials { gap: 11px; }
+.foot-socials a {
+  text-decoration: none !important;
+  position: relative; width: 44px; height: 44px; overflow: hidden;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  box-shadow: 0 8px 18px -14px rgba(23, 19, 15, .75);
+}
+.foot-socials a::before {
+  content: ""; position: absolute; inset: 3px; border-radius: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  pointer-events: none;
+}
+.foot-socials a[aria-label="WhatsApp"] { color: #1daa61; }
+.foot-socials a[aria-label="Facebook"] { color: #1877f2; }
+.foot-socials a[aria-label="Instagram"] { color: #c13584; }
+.foot-socials a:hover { transform: translateY(-3px); box-shadow: 0 13px 22px -14px currentColor; }
+.foot-socials a[aria-label="WhatsApp"] .wa-icon {
+  text-decoration: none !important;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  font-size: 20px;
+  line-height: 1;
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+}
+.foot-socials a[aria-label="Facebook"] svg { width: 19px; height: 19px; }
+.foot-socials a[aria-label="Instagram"] svg { width: 20px; height: 20px; }
+
+
+/* ======== الرئيسية: المميزات على الهاتف — site.css:1454-1472 ======== */
+
+
+/* المميزات على الهاتف: كارتان في كل صف */
+@media (max-width: 700px) {
+  .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .feature-card {
+    min-height: 156px; padding: 18px 9px 16px; border-radius: 16px;
+  }
+  .feature-icon { width: 42px; height: 42px; margin-bottom: 9px; }
+  .feature-icon svg { width: 20px; height: 20px; }
+  .feature-card h3 { font-size: 16px; line-height: 1.35; margin-bottom: 4px; }
+  .feature-card p { font-size: 11.5px; line-height: 1.55; }
+}
+@media (max-width: 360px) {
+  .feature-grid { gap: 8px; }
+  .feature-card { min-height: 148px; padding-inline: 6px; }
+  .feature-card h3 { font-size: 14.5px; }
+  .feature-card p { font-size: 10.5px; }
+}
+
+/* ======== الرئيسية: الطبقة الاحترافية (مؤثرات، زخارف، أزرار، ظهور، تايم‑لاين) — site.css:1639-2152 ======== */
+/* ================================================================
+   الصفحة الرئيسية — الطبقة الاحترافية
+   مؤثرات الخلفية (نجوم بتقع + وهج ذهبي)، زخارف، وأزرار مظبوطة.
+   الملف ده متضاف في الآخر عن قصد: أي قاعدة هنا بتغلب اللي فوق من
+   غير !important، فسهل ترجع لأي حاجة بحذف البلوك ده لوحده.
+   مقاسات كروت القوالب (.tpl-card / .tpl-cover) ما اتلمستش خالص.
+   ================================================================ */
+
+/* ---------------------------------------------------------- 1) طبقات الرسم
+   طبقة المؤثرات ثابتة ورا المحتوى. الأقسام بقت position:relative عشان
+   تتحط فوقها في ترتيب الرسم، وخلفياتها بقت شبه شفافة عشان النجوم تبان
+   من وراها بهدوء من غير ما النص يتأثر. */
+.fx-sky {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden; contain: strict;
+  /* طبقة تركيب مستقلة: السكرول مابيعيدش رسمها */
+  transform: translateZ(0); backface-visibility: hidden;
+}
+.hero, .section, .home-cta, .foot { position: relative; z-index: 1; }
+.section--features { background: transparent; }
+.section--alt,
+.section--faq { background: color-mix(in srgb, var(--surface-2) 90%, transparent); }
+.home-cta { background: color-mix(in srgb, var(--surface-2) 88%, transparent); }
+.foot { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+
+/* وهج ذهبي واسع وناعم.
+   من غير ‎filter: blur()‎ عن قصد: بلور على عنصر بحجم ٤٤vw بيتعاد رسمه مع
+   كل فريم سكرول وده أغلى حاجة كانت في الصفحة. التدرّج الشعاعي لوحده
+   بيدّي نفس النعومة ببلاش. ومن غير أنيميشن كمان — عنصر بالحجم ده وهو
+   بيتحرّك بيفضل يعيد الرسم طول الوقت. */
+.fx-glow {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side circle,
+              color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+              color-mix(in srgb, var(--accent) 22%, transparent) 42%,
+              transparent 78%);
+}
+.fx-glow--a { width: 52vw; height: 52vw; top: -14vw; inset-inline-start: -12vw; opacity: .5; }
+.fx-glow--b { width: 46vw; height: 46vw; bottom: -16vw; inset-inline-end: -14vw; opacity: .38; }
+[data-theme="dark"] .fx-glow--a { opacity: .42; }
+[data-theme="dark"] .fx-glow--b { opacity: .34; }
+
+/* ---------------------------------------------------------- 2) النجوم اللي بتقع
+   كل نجمة span واحد بيتولّد من site.js بمكان وحجم وسرعة عشوائية.
+   الحركة كلها transform + opacity، يعني على كارت الشاشة ومفيش reflow. */
+.fx-stars, .hero-sparks {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  contain: strict; transform: translateZ(0);
+}
+.hero-sparks { z-index: 1; }
+/* الهالة تدرّج مش ‎box-shadow‎: الظل المموّه بيتعاد رسمه مع كل حركة.
+   ومن غير ‎will-change‎ على كل نجمة — ٤٨ نجمة كانت بتعمل ٤٨ طبقة على
+   كارت الشاشة؛ الحاويات فوق هي اللي بقت طبقة واحدة تكفي. */
+.fx-star {
+  position: absolute; top: -6%;
+  width: var(--s, 3px); height: var(--s, 3px);
+  border-radius: 50%;
+  background: radial-gradient(circle,
+              var(--accent) 0%,
+              color-mix(in srgb, var(--accent) 60%, transparent) 45%,
+              transparent 72%);
+  opacity: 0;
+  animation: fx-fall var(--dur, 11s) linear var(--delay, 0s) infinite;
+}
+/* الأنيميشن بيقف لما الهيرو يخرج من الشاشة أو التاب يتخفي (site.js) */
+.fx-idle .fx-star, .fx-idle .fx-shoot { animation-play-state: paused; }
+/* نجمة رباعية الأشعة — بتتحط على جزء من النجوم بس عشان الشكل ما يبقاش مكرر */
+.fx-star--spark { border-radius: 0; background: none; }
+.fx-star--spark::before,
+.fx-star--spark::after {
+  content: ""; position: absolute; inset-inline-start: 50%; top: 50%;
+  background: var(--accent); border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+.fx-star--spark::before { width: 100%; height: 1px; }
+.fx-star--spark::after  { width: 1px; height: 100%; }
+
+@keyframes fx-fall {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--peak, .75); }
+  85%  { opacity: var(--peak, .75); }
+  100% { transform: translate3d(var(--drift, 22px), var(--fall, 110vh), 0) rotate(220deg); opacity: 0; }
+}
+/* في الأقسام (طبقة الصفحة) المسافة أقصر شوية عشان الحركة تفضل هادية */
+.fx-sky .fx-star { --peak: .5; }
+[data-theme="dark"] .fx-star { --peak: .85; }
+
+/* ---------------------------------------------------------- 3) الشهاب */
+.hero-shooting { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
+.fx-shoot {
+  position: absolute; width: 120px; height: 1px; opacity: 0;
+  background: linear-gradient(to left, color-mix(in srgb, var(--accent) 92%, transparent), transparent);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent));
+  transform: rotate(18deg);
+  animation: fx-shoot 1.5s cubic-bezier(.3, .1, .2, 1) forwards;
+}
+.fx-shoot::after {
+  content: ""; position: absolute; inset-inline-end: -2px; top: -1.5px;
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 9px 2px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+@keyframes fx-shoot {
+  0%   { transform: translate3d(0, 0, 0) rotate(18deg) scaleX(.2); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translate3d(-320px, 105px, 0) rotate(18deg) scaleX(1); opacity: 0; }
+}
+
+/* ---------------------------------------------------------- 4) الزخارف
+   بديل القلوب: معيّن رباعي الأشعة + تاج نباتي فوق العنوان + فاصل
+   متكرر تحت عناوين الأقسام (CSS mask عشان ياخد لون --accent لوحده). */
+.orn svg, .orn-diamond { display: block; width: 100%; height: 100%; }
+.orn svg path, .orn svg circle, .orn-diamond path {
+  fill: none; stroke: var(--accent); stroke-width: 1.2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.orn svg .orn-fill, .orn-diamond .orn-fill { fill: var(--accent); stroke: none; }
+
+.orn--crown {
+  display: block; width: clamp(132px, 14vw, 196px); aspect-ratio: 180 / 34;
+  margin: 0 auto 14px; opacity: .95;
+}
+.orn-diamond { width: 34px; height: 18px; flex: none; }
+.hero-rule .orn-diamond { animation: orn-twinkle 4.5s ease-in-out infinite; }
+@keyframes orn-twinkle {
+  0%, 100% { opacity: .95; transform: scale(1); }
+  50%      { opacity: .6;  transform: scale(.9); }
+}
+
+/* فاصل زخرفي تحت كل عنوان قسم — شكل واحد متكرر بيربط الصفحة بصرياً */
+.section-head { position: relative; }
+.section-head::after {
+  content: ""; display: block; width: 132px; height: 15px;
+  margin: 14px auto 0; background-color: var(--accent); opacity: .8;
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
+}
+:root {
+  --orn-rule: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 15"><g fill="none" stroke="black" stroke-width="1.1" stroke-linecap="round"><path d="M2 7.5h34M96 7.5h34"/><path d="M40 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/><path d="M76 7.5c3 0 6-2.5 8-5.5 2 3 5 5.5 8 5.5-3 0-6 2.5-8 5.5-2-3-5-5.5-8-5.5Z"/></g><path fill="black" d="M66 1.2c1 3.4 3.3 5.3 7 6.3-3.7 1-6 2.9-7 6.3-1-3.4-3.3-5.3-7-6.3 3.7-1 6-2.9 7-6.3Z"/><circle fill="black" cx="37.5" cy="7.5" r="1.1"/><circle fill="black" cx="94.5" cy="7.5" r="1.1"/></svg>');
+}
+
+/* هالة الركن اتشالت: كانت بتبان كمربّع فاتح في الركن مش كوهج —
+   ‎inset-inline-end‎ في RTL بيروح شمال، فمركز التدرّج كان بيتقلب،
+   و‎border-radius: inherit‎ على مربّع ١٣٠px بيسيب حواف مستقيمة باينة.
+   الهوفر دلوقتي بيقول حاجة مفهومة: الكارت بيرتفع، إطاره بيتحوّل دهب،
+   وظله بيغمق — يعني «الكارت ده قابل للاختيار». */
+.feature-card, .plan { position: relative; }
+
+/* ---------------------------------------------------------- 5) الهيرو */
+.hero-copy-in { position: relative; z-index: 2; }
+.hero-sub { margin-bottom: 0; }
+
+/* شريط أرقام صغير تحت الأزرار — بيدّي إحساس بالثقة من غير زحمة */
+.hero-trust {
+  list-style: none; margin: 26px auto 0; padding: 0;
+  display: flex; justify-content: center; align-items: stretch;
+  gap: clamp(10px, 2vw, 26px); flex-wrap: wrap; pointer-events: none;
+}
+.hero-trust li {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding-inline: clamp(8px, 1.4vw, 18px);
+  border-inline-end: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.hero-trust li:last-child { border-inline-end: 0; }
+.hero-trust b {
+  font-family: "Amiri", Georgia, serif; color: var(--accent);
+  font-size: clamp(15px, 1.5vw, 21px); line-height: 1.2; font-weight: 500;
+}
+.hero-trust span { font-size: clamp(10px, .95vw, 12.5px); color: var(--muted); line-height: 1.3; }
+
+/* ---------------------------------------------------------- 6) الأزرار
+   شكل واحد متّسق: ارتفاع ثابت، حواف كاملة الاستدارة، ظل ذهبي خفيف،
+   ولمعة بتعدّي عند المرور. الحركة بقت أهدأ (2px بدل النطة القديمة). */
+/* ملحوظة: المقاسات ما اتغيّرتش عن قصد — نفس الـ.btn مستعمل في لوحة
+   التحكم والمحرر، وأي تغيير في الـpadding كان هيحرّك تخطيطات كتير.
+   اللي اتغيّر: اللون والظل والحركة بس. */
+.btn {
+  position: relative;
+  font-weight: 500; letter-spacing: normal; line-height: 1.2;
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease,
+              border-color .2s ease, color .2s ease, filter .2s ease;
+}
+.btn:active { transform: translateY(0) scale(.985); }
+
+.btn--gold {
+  background: linear-gradient(135deg,
+              color-mix(in srgb, var(--accent) 88%, #fff) 0%,
+              var(--accent) 52%,
+              color-mix(in srgb, var(--accent) 82%, #000) 100%);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+.btn--gold:hover {
+  filter: none; transform: translateY(-2px);
+  box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+.btn--outline {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent); background: transparent;
+}
+.btn--outline:hover {
+  background: var(--accent-soft); border-color: var(--accent); transform: translateY(-2px);
+  box-shadow: 0 12px 26px -18px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+
+.btn--ghost {
+  border-color: var(--line); color: var(--muted);
+}
+.btn--ghost:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+/* حجم كبير للهيرو بس */
+.btn--lg { padding: 14px 32px; min-height: 52px; font-size: 15.5px; }
+
+/* اللمعة: شريحة مايلة بتعدّي على الزرار مرة عند المرور.
+   الـoverflow هنا مش على .btn كله عشان ما يقصّش حاجة في صفحات تانية. */
+.btn--shine { overflow: hidden; isolation: isolate; }
+.btn--shine::after {
+  content: ""; position: absolute; top: -60%; inset-inline-start: -75%;
+  width: 45%; height: 220%; z-index: -1; pointer-events: none;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, .42), transparent);
+  transform: rotate(22deg) translateX(0);
+  transition: transform .75s cubic-bezier(.22, .8, .3, 1);
+}
+.btn--shine:hover::after { transform: rotate(22deg) translateX(320%); }
+
+.btn-arrow { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor;
+             stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+             transition: transform .22s ease; }
+.btn:hover .btn-arrow { transform: translateX(4px); }
+/* السهم بيلف في العربي (RTL) عشان يشاور ناحية القراية */
+[dir="rtl"] .btn-arrow { transform: scaleX(-1); }
+[dir="rtl"] .btn:hover .btn-arrow { transform: scaleX(-1) translateX(4px); }
+
+/* ---------------------------------------------------------- 7) ظهور تدريجي بالسكرول */
+html.js [data-reveal] {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .5s cubic-bezier(.22, .8, .3, 1),
+              transform .5s cubic-bezier(.22, .8, .3, 1);
+  transition-delay: var(--reveal-delay, 0s);
+}
+html.js [data-reveal].is-in { opacity: 1; transform: none; }
+/* أمان: من غير جافاسكربت الكلاس js مش بيتحط، فالمحتوى بيفضل ظاهر عادي */
+
+/* ---------------------------------------------------------- 8) لمسات على الأقسام
+   ملحوظة: مقاس كارت القالب زي ما هو — التعديل على الظل والحدود بس. */
+.tpl-card {
+  transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease;
+}
+.tpl-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 26px 46px -30px color-mix(in srgb, var(--accent) 70%, rgba(23, 19, 15, .6));
+}
+.tpl-cover { position: relative; }
+.tpl-cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, .28), transparent 46%);
+  opacity: 0; transition: opacity .24s ease;
+}
+.tpl-card:hover .tpl-cover::after { opacity: 1; }
+
+.feature-card {
+  /* من غير ‎backdrop-filter‎: بيجبر المتصفح يقرا ويموّه اللي ورا كل كارت
+     من تاني مع كل فريم سكرول، ومكانش بيبان منه حاجة أصلاً فوق خلفية سادة. */
+  transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease;
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 44px -30px color-mix(in srgb, var(--accent) 65%, rgba(23, 19, 15, .55));
+}
+.feature-icon {
+  transition: transform .28s cubic-bezier(.22, .8, .3, 1),
+              background-color .28s ease, color .28s ease, border-color .28s ease;
+}
+/* الأيقونة بتتملي دهب ورمزها يبقى أبيض — إشارة واضحة إن الكارت نشط */
+.feature-card:hover .feature-icon {
+  transform: translateY(-2px) scale(1.06);
+  background: var(--accent); color: #fff;
+  border-color: var(--accent);
+}
+
+.plan { transition: transform .24s cubic-bezier(.22, .8, .3, 1), border-color .24s ease, box-shadow .24s ease; }
+.plan:hover {
+  transform: translateY(-5px);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  box-shadow: 0 26px 46px -32px color-mix(in srgb, var(--accent) 65%, rgba(23,19,15,.6));
+}
+.plan--featured { box-shadow: 0 22px 46px -30px color-mix(in srgb, var(--accent) 70%, transparent); }
+.plan--featured:hover { border-color: var(--accent); }
+/* الزرار الأساسي جوّه الكارت بينوّر مع الكارت — بيوضّح الفعل المتاح */
+.plan:hover .btn--gold { filter: brightness(1.06); box-shadow: 0 14px 28px -14px color-mix(in srgb, var(--accent) 90%, transparent); }
+
+/* الخطوات: الرقم بقى دايرة مليانة عند المرور */
+.step::before { transition: background-color .25s ease, color .25s ease, transform .25s ease; }
+.step:hover::before { background: var(--accent); color: #fff; transform: scale(1.06); }
+
+.faq-item { transition: border-color .2s ease, box-shadow .2s ease; }
+.faq-item[open], .faq-item:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+
+/* قسم الدعوة الأخير: إطار زخرفي خفيف حوالين الكتلة */
+.home-cta-in {
+  position: relative; padding: 44px clamp(18px, 4vw, 52px);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-radius: 26px; margin-inline: auto;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+/* إطار داخلي رفيع — بيدي إحساس بكارت دعوة مطبوع */
+.home-cta-in::before {
+  content: ""; position: absolute; inset: 9px; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 19px;
+}
+/* زخرفة صغيرة قاعدة في نص الحد العلوي، بتقطع الخط بهدوء */
+.home-cta-in::after {
+  content: ""; position: absolute; top: -8px; inset-inline-start: 50%;
+  transform: translateX(50%); width: 74px; height: 16px; pointer-events: none;
+  background-color: var(--accent);
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
+}
+[dir="ltr"] .home-cta-in::after { transform: translateX(-50%); }
+
+/* ---------------------------------------------------------- 9) الموبايل والحركة المخفّضة */
+@media (max-width: 780px) {
+  .orn--crown { width: clamp(112px, 40vw, 168px); margin-bottom: 8px; }
+  .section-head::after { width: 104px; height: 12px; margin-top: 11px; }
+  .hero-trust { gap: 8px; margin-top: 16px; }
+  .hero-trust li { padding-inline: 8px; }
+  .btn--lg { padding: 12px 24px; min-height: 48px; font-size: 14.5px; }
+  .hero-actions { gap: 9px; margin-top: 20px; }
+  .home-cta-in { padding: 32px 18px; border-radius: 20px; }
+  .fx-glow--a, .fx-glow--b { width: 70vw; height: 70vw; }
+}
+/* الأرقام التلاتة بيدخلوا في ٣٧٥px لو ضيّقنا المسافات — أحسن من إخفاء واحد */
+@media (max-width: 520px) {
+  .hero-trust { gap: 4px; }
+  .hero-trust li { padding-inline: 6px; }
+}
+
+/* احترام إعداد «تقليل الحركة» في النظام: كل حاجة بتقف، والمحتوى بيفضل ظاهر */
+@media (prefers-reduced-motion: reduce) {
+  .fx-sky, .hero-sparks, .hero-shooting { display: none; }
+  html.js [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .btn, .tpl-card, .feature-card, .plan { transition: none; }
+  .btn:hover, .tpl-card:hover, .feature-card:hover, .plan:hover { transform: none; }
+  .orn-diamond, .fx-glow { animation: none; }
+}
+
+
+/* ================================================================
+   «أربع خطوات فقط» — تايم‑لاين متوصّل
+   كان فيه رقمين على بعض: ‎<span class="step-number">01</span>‎ من الـHTML
+   و‎.step::before‎ عدّاد من الـCSS. الأول بقى هو الدايرة، والتاني اتقفل.
+   وكمان ‎.grid--4‎ كان بيعمل ٥ أعمدة لأربع خطوات فبيسيب عمود فاضي —
+   الأعمدة هنا مثبّتة بأربعة.
+   ================================================================ */
+.steps {
+  --step-gap: 22px;
+  --step-dot: 56px;                 /* قطر الدايرة */
+  --step-line: color-mix(in srgb, var(--accent) 45%, transparent);
+  /* نفس لون خلفية القسم بالظبط: ‎.section--alt‎ بيتحط بشفافية ٩٠٪ فوق ‎--bg‎،
+     فالدايرة بتاخد الناتج المركّب عشان تقطع الخط من غير ما تبان كبقعة. */
+  --step-punch: color-mix(in srgb, var(--surface-2) 90%, var(--bg));
+  position: relative;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px var(--step-gap);
+  counter-reset: none;
+}
+
+/* الخيط الذهبي اللي بيوصل الخطوات ببعض — بيبدأ ويخلص متلاشي */
+.steps::before {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  top: calc(var(--step-dot) / 2); inset-inline: 12%; height: 1px;
+  background: linear-gradient(to left, transparent, var(--step-line) 14%,
+                              var(--step-line) 86%, transparent);
+}
+
+.step {
+  position: relative; z-index: 1;
+  padding-inline-start: 0; text-align: center;
+}
+.step::before { content: none; }    /* إلغاء دايرة العدّاد القديمة */
+
+/* الرقم بقى هو الدايرة نفسها */
+.step-number {
+  position: relative; z-index: 1;
+  width: var(--step-dot); height: var(--step-dot);
+  display: grid; place-items: center; margin: 0 auto 16px;
+  border-radius: 50%; border: 1px solid var(--accent);
+  background: var(--step-punch); color: var(--accent);
+  font-family: "Amiri", Georgia, serif; font-size: 19px; line-height: 1;
+  /* من غير ‎direction: ltr‎ عن قصد: الأرقام بتتعرض صح من غيرها، ولو اتحطت
+     بتخلّي ‎inset-inline-start‎ للدايرة نفسها يتحسب شمال بدل يمين في RTL. */
+  letter-spacing: normal;
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 10px 24px -16px color-mix(in srgb, var(--accent) 80%, transparent);
+  transition: background-color .28s ease, color .28s ease,
+              transform .28s cubic-bezier(.22, .8, .3, 1), box-shadow .28s ease;
+}
+
+/* معيّن صغير قاعد على الخيط في نص المسافة بين كل خطوتين */
+.step:not(:last-child)::after {
+  content: ""; position: absolute; z-index: 1; pointer-events: none;
+  top: calc(var(--step-dot) / 2); margin-top: -3.5px;
+  inset-inline-start: 100%; margin-inline-start: calc((var(--step-gap) - 7px) / 2);
+  width: 7px; height: 7px; transform: rotate(45deg);
+  background: var(--accent); opacity: .75;
+}
+
+.step h3 { margin: 0 0 6px; font-size: 20px; }
+.step p { margin: 0; max-width: 24ch; margin-inline: auto; font-size: 14px; line-height: 1.75; }
+
+/* المرور: الدايرة بتتملي دهب والخطوة بتطلع لفوق شوية */
+.step:hover .step-number {
+  background: var(--accent); color: #fff; transform: translateY(-3px) scale(1.06);
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+/* ---- تابلت: نفس الصف الأفقي بمقاسات أصغر.
+       عمودين كانوا بيقطعوا الخيط ويضيّعوا فكرة إن الخطوات متوصلة. ---- */
+@media (max-width: 980px) and (min-width: 761px) {
+  .steps { --step-dot: 48px; --step-gap: 16px; gap: 26px var(--step-gap); }
+  .steps::before { inset-inline: 12.5%; }
+  .step-number { font-size: 16px; margin-bottom: 13px; }
+  .step h3 { font-size: 17px; }
+  .step p { font-size: 13px; max-width: none; }
+}
+
+/* ---- الموبايل: نفس التايم‑لاين بس رأسي، والخط جنب الأرقام ---- */
+@media (max-width: 760px) {
+  .steps {
+    --step-dot: 48px;
+    /* الخيط أوضح شوية هنا: القطع اللي بين الدواير قصيرة، فلو باهت
+       بيبان كأن فيه معيّنات سايبة من غير خط. */
+    --step-line: color-mix(in srgb, var(--accent) 60%, transparent);
+    grid-template-columns: 1fr; gap: 0;
+  }
+  .steps::before {
+    top: 14px; bottom: 22px; height: auto; width: 1px;
+    inset-inline: auto; inset-inline-start: calc(var(--step-dot) / 2);
+    background: linear-gradient(to bottom, transparent, var(--step-line) 8%,
+                                var(--step-line) 92%, transparent);
+  }
+  .step {
+    text-align: start; padding-block: 19px;   /* مساحة كافية تخلّي الخيط يبان */
+    padding-inline-start: calc(var(--step-dot) + 16px); padding-inline-end: 0;
+  }
+  .step-number {
+    position: absolute; top: 12px; inset-inline-start: 0; margin: 0; font-size: 16px;
+    box-shadow: 0 0 0 3px var(--step-punch),
+                0 8px 18px -14px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+  .step h3 { font-size: 18px; margin-bottom: 3px; }
+  .step p { max-width: none; margin-inline: 0; font-size: 13.5px; }
+  .step:not(:last-child)::after {
+    top: auto; bottom: -3.5px; margin-top: 0;
+    inset-inline-start: calc(var(--step-dot) / 2 - 3.5px); margin-inline-start: 0;
+  }
+}
+
+
+/* ================================================================
+   الهيرو على التليفون — تظبيط قص الصورة
+   الصورة متصمّمة والشمال بتاعها فاضي عشان الكلام يتحط فوقه في الديسكتوب.
+   على التليفون الكلام بينزل تحت الصورة، فالفراغ ده كان بيفضل باين
+   والموبايل والظرف مزنوقين على اليمين.
+   الموضوع في الصورة (الموبايل + الظرف + الورد) بيبدأ من ٤٥٪ من عرضها
+   وبيكمّل لآخرها. الكارت المربّع مع ‎background-position: 100%‎ بيوري
+   الجزء من ٤٤٪ لـ ١٠٠٪ — يعني الموضوع بيبقى في نص الكادر بالظبط
+   والفراغ بيتقص كله.
+   ================================================================ */
+@media (max-width: 780px) {
+  .hero-art {
+    aspect-ratio: 1 / 0.95;
+    background-size: cover;
+    background-position: 100% center;
+  }
+  /* الذوبان السفلي أنعم مع الكادر الأطول */
+  .hero-art::after { height: 20%; }
+}
+
+/* التليفون بالعرض: نرجع للنسبة العريضة عشان الصورة ما تاخدش الشاشة كلها */
+@media (max-width: 780px) and (orientation: landscape) {
+  .hero-art {
+    aspect-ratio: 1672 / 941;
+    background-position: center;
+  }
+}
+
+/* شاشات صغيرة جداً: نقص شوية من الطول عشان الأزرار تفضل قريبة */
+@media (max-width: 400px) {
+  .hero-art { aspect-ratio: 1 / 0.9; }
+}
+
+
+/* ================================================================
+   سلاسة السكرول — الخلاصة
+   الطبقة الثابتة اللي ورا الصفحة أغلى حاجة على التليفون: بتفضل مرسومة
+   طول الوقت والأقسام الشبه شفافة فوقها بتخلي المتصفح يخلط الألوان مع
+   كل فريم. على التليفون بنقفلها خالص — نجوم الهيرو لوحدها كفاية،
+   وهي بتقف أصلاً أول ما الهيرو يخرج من الشاشة.
+   ================================================================ */
+@media (max-width: 900px) {
+  .fx-sky { display: none; }
+  /* من غير الطبقة اللي وراهم، الأقسام ترجع سادة — بلاش خلط ألوان ببلاش */
+  .section--alt, .section--faq, .home-cta { background: var(--surface-2); }
+  .foot { background: var(--surface); }
+  .home-cta-in { background: color-mix(in srgb, var(--surface) 92%, transparent); }
+}
+
+/* الأجهزة اللي بتقول إنها ضعيفة في الرسم: مفيش مؤثرات خلفية خالص */
+@media (max-width: 900px) and (prefers-reduced-data: reduce) {
+  .hero-sparks, .hero-shooting { display: none; }
+}
+
+/* ======== انتقال تبديل اللغة (View Transitions) — site.css:2195-2201 ======== */
+/* التبديل نفسه بيتلوّن كتلاشي ناعم بدل ما الصفحة تنطّ (كروم) */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: vt-out .18s ease both; }
+  ::view-transition-new(root) { animation: vt-in .22s ease both; }
+}
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; } }
+
+
+/* ================================================================
+   إضافات React (مش في site.css)
+   ================================================================ */
+
+/* قواعد styles/app.css (الأساس المشترك) اللي بتتعارض مع الموقع القديم */
+.hero { padding: 0; text-align: start; }
+.hero h1 { font-size: inherit; }
+.field { margin-bottom: 0; }
+.field > span { display: inline; margin-bottom: 0; font-size: inherit; color: inherit; }
+.card { overflow: visible; }
+
+/* تبديل اللغة اتحوّل لزرار واحد بيتبدّل نصه — مفيش ‎data-lang‎ لنسختين */
+.lang-btn { display: inline-flex; }
+
+/* ‎<main>‎ مش بيعمل طبقة ترتيب جديدة، فالطبقة الثابتة ورا المحتوى فاضلة زي الأصل */
+main { display: block; }
+
+/* القفلة اللي بتتحط بدل اللينكات الميتة: أزرار الباقات اللي مفيهاش وسيلة تواصل */
+.plan-bottom-actions .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ---- ستايل كان inline في templates/public/home.html و gallery.html و login.html ---- */
+.plan { align-self: flex-start; height: max-content; }
+.plan .plan-tagline { margin: 0; }
+.plan-bottom-actions {
+  margin-top: auto; display: flex; flex-direction: column; gap: 10px;
+  padding-top: 14px; width: 100%;
+}
+.plan-addons { display: none; }
+.plan-addons.is-open { display: block; }
+.plan-addons .plan-addons-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
+.plan-addons .plan-addons-list {
+  margin: 0; padding: 8px 0 0; font-size: 13.5px; border-top: 1px dashed var(--line);
+}
+.plan-addons .plan-addons-list li { margin-bottom: 6px; }
+.toolbar--center { justify-content: center; }
+.tpl-body .tpl-desc--sm { font-size: 13px; }
+.login-card .brand--stacked { margin-bottom: 22px; }
+.login-card h2 { font-size: 21px; }
+.order-section-wrap { max-width: 760px; }
+
+/* أيقونات واتساب SVG بدل خط Font Awesome — نفس مقاس الخط (عرض ‎448/512‎ من الارتفاع) */
+.wa-icon { width: .875em; height: 1em; flex: none; }
+.wa-float .wa-icon { width: .875em; height: 1em; }
+.foot-socials a[aria-label="WhatsApp"] .wa-icon { width: .875em; height: 1em; }
+.wa-bubble-time svg { color: #53bdeb; font-size: 11px; width: .875em; height: 1em; }

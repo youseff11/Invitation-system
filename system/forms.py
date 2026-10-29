@@ -324,6 +324,7 @@ class SiteSettingForm(forms.ModelForm):
         # ونصوص شريط المعاينة تحت.
         fields = [
             "plans_public",
+            "home_templates_per_row",
             "orders_enabled",
             "whatsapp_enabled", "whatsapp_number",
             "whatsapp_float_enabled", "whatsapp_cta_message",
@@ -339,3 +340,8 @@ class SiteSettingForm(forms.ModelForm):
             "instagram_url": forms.URLInput(attrs={"placeholder": "https://instagram.com/…",
                                                     "dir": "ltr"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # مفتاح ناقص = سيب القيمة الحالية (عملاء قدام ماكانوش بيبعتوه)
+        self.fields["home_templates_per_row"].required = False

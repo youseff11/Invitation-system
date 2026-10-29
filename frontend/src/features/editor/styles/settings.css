@@ -1,0 +1,14 @@
+/* تبويبات التصميم / البيانات / الإعدادات + ترس تنسيق النص (C2) — أسماء ‎ed-*‎ وألوان ‎--e-*‎ بس.
+   أساس الترس والـslug في ‎editor.css‎ (منقول من القديم)، وهنا إضافات React. */
+
+/* الترس جنب الخانة والوحته تحتها: الصف بيلفّ فاللوحة تاخد عرضه كله */
+.ed-text-control-row { flex-wrap: wrap; }
+.ed-text-control-row > textarea { flex: 1; min-width: 0; }
+.ed-text-control-row > .ed-inline-font-panel { flex: 1 0 100%; margin-top: 2px; }
+
+/* حقول البيانات */
+.ed-field small.ed-field-error { color: var(--e-danger); opacity: 1; }
+.ed-field [aria-invalid="true"] { border-color: var(--e-danger); }
+.ed-field-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.ed-field-actions .ed-btn { text-decoration: none; }
+.ed-field input[readonly] { color: var(--e-muted); cursor: text; }

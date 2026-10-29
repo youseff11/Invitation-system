@@ -1,118 +1,61 @@
-from django.contrib.auth import views as auth_views
-from django.urls import path
+"""مسارات التحويل النهائي (Phase D): React على الجذر والموقع القديم مش مسجّل.
 
-from . import views
+بتتفعّل لما ‎SPA_BASENAME‎ يكون فاضي (‎SPA_BASENAME=‎ في البيئة). الفكرة:
+
+* الصفحات كلها بتتقدّم من React (‎spa_shell‎ / ‎invite_page‎) على نفس المسارات القديمة بالظبط —
+  فروابط الدعوات اللي اتبعتت (الضيف، العميل، القاعة، التصريح) وروابط QR المطبوعة بتفضل شغّالة.
+* اللي مش صفحات (QR، الصور، ‎robots‎، ‎sitemap‎، فيديو المشاركة) بيفضل بيتقدّم من Django.
+* الأسماء القديمة (‎invitation_public‎، ‎template_demo‎ …) بتفضل موجودة عشان ‎reverse()‎ في الـmodels
+  والـAPI يرجّع نفس الروابط من غير تغيير.
+* أي رابط قديم تحت ‎/app/‎ بيتحوّل (301) للمسار الجذري (مفعّل بس لو ‎SPA_BASENAME‎ فاضي).
+"""
+
+from django.conf import settings
+from django.http import HttpResponsePermanentRedirect
+from django.urls import path, re_path
+
+from . import files
+from .api import invite_page
+from .spa import spa_shell
+
+
+def app_prefix_redirect(request, rest=""):
+    """‎/app/i/x/‎ → ‎/i/x/‎ (روابط اتحفظت أو اتشاركت أثناء الترحيل)."""
+    query = request.META.get("QUERY_STRING")
+    return HttpResponsePermanentRedirect("/" + rest + (f"?{query}" if query else ""))
+
 
 urlpatterns = [
-    # ------------------------------------------------------------ عام
-    path("", views.home, name="home"),
-    path("robots.txt", views.robots_txt, name="robots_txt"),
-    path("sitemap.xml", views.sitemap_xml, name="sitemap_xml"),
-    path("templates/", views.template_gallery, name="template_gallery"),
-    path("templates/<slug:slug>/preview/", views.template_demo, name="template_demo"),
-    path("media-video/<path:path>", views.media_video, name="media_video"),
-    path("share-image/<path:path>", views.share_image, name="share_image"),
 
-    # ------------------------------------------------------------ دخول
-    path("login/", auth_views.LoginView.as_view(
-        template_name="auth/login.html", redirect_authenticated_user=True,
-    ), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    # ---- ملفات مش صفحات: Django بيقدّمها زي ما هي
+    path("robots.txt", files.robots_txt, name="robots_txt"),
+    path("sitemap.xml", files.sitemap_xml, name="sitemap_xml"),
+    path("site-icon.png", files.site_icon, name="site_icon"),
+    path("site-logo/<str:slot>.png", files.site_logo, name="site_logo"),
+    path("favicon.ico", files.site_icon, name="favicon"),
+    path("media-video/<path:path>", files.media_video, name="media_video"),
+    path("share-image/<path:path>", files.share_image, name="share_image"),
+    path("i/<slug:slug>/qr.svg", files.invitation_qr, name="invitation_qr"),
+    path("i/<slug:slug>/g/<str:token>/qr.svg", files.guest_qr, name="guest_qr"),
+    path("i/<slug:slug>/g/<str:token>/qr.png", files.guest_qr_png, name="guest_qr_png"),
+    # الاسم بيتعمله ‎reverse‎ في ‎renderer‎؛ الإرسال الفعلي بقى ‎POST /api/v1/invitations/<slug>/rsvp/‎
+    path("i/<slug:slug>/rsvp/", spa_shell, name="invitation_rsvp"),
 
-    # ------------------------------------------------------------ لوحة التحكم
-    path("dashboard/", views.dashboard, name="dashboard"),
-    path("dashboard/orders/", views.dashboard_orders, name="dashboard_orders"),
-        path("dashboard/templates/", views.dashboard_templates, name="dashboard_templates"),
-    path("dashboard/templates/new/", views.template_create, name="template_create"),
-    path("dashboard/templates/<int:pk>/editor/", views.template_editor,
-         name="template_editor"),
-    path("dashboard/templates/<int:pk>/preview-frame/", views.template_editor_frame,
-         name="template_editor_frame"),
-
-    # حمولتا المحرر التقيلتان في ملفين مستقلين — البصمة في الاسم هي اللي
-    # بتبطّل كاش المتصفح، فالملف نفسه بيتخزّن للأبد
-    path("dashboard/editor/schema.<slug:stamp>.js", views.editor_schema_js,
-         name="editor_schema_js"),
-    path("dashboard/editor/favorites.<slug:stamp>.js", views.editor_favorites_js,
-         name="editor_favorites_js"),
-
-        path("dashboard/fonts/", views.dashboard_fonts, name="dashboard_fonts"),
-    path("dashboard/fonts/api/create/", views.font_api_create, name="font_api_create"),
-    path("dashboard/favorites/api/create/", views.favorite_api_create, name="favorite_api_create"),
-    path("dashboard/favorites/<int:pk>/delete/", views.favorite_api_delete, name="favorite_api_delete"),
-    path("dashboard/music/", views.dashboard_music, name="dashboard_music"),
-
-    path("dashboard/intros/", views.dashboard_intros, name="dashboard_intros"),
-    path("dashboard/plans/", views.dashboard_plans, name="dashboard_plans"),
-    path("dashboard/site/", views.dashboard_site, name="dashboard_site"),
-    path("dashboard/analytics/", views.analytics, name="analytics"),
-    path("dashboard/invitations/", views.dashboard_invitations, name="dashboard_invitations"),
-    path("dashboard/invitations/new/", views.invitation_create, name="invitation_create"),
-    path("dashboard/invitations/<int:pk>/editor/", views.invitation_editor,
-         name="invitation_editor"),
-    path("dashboard/invitations/<int:pk>/preview-frame/", views.invitation_preview_frame,
-         name="invitation_preview_frame"),
-    path("dashboard/invitations/<int:pk>/guests/", views.guests_view, name="guests"),
-    path("dashboard/invitations/<int:pk>/guests/qr-sheet/", views.guest_qr_sheet,
-         name="guest_qr_sheet"),
-    path("dashboard/invitations/<int:pk>/guests/export.xlsx", views.guests_export,
-         name="guests_export"),
-    path("dashboard/invitations/<int:pk>/checkin/", views.checkin_scanner, name="checkin"),
-    path("dashboard/invitations/<int:pk>/checkin/scan/", views.checkin_scan,
-         name="checkin_scan"),
-    path("dashboard/guests/sample.csv", views.guests_sample_csv, name="guests_sample_csv"),
-    path("dashboard/guests/<int:pk>/toggle-checkin/", views.guest_toggle_checkin,
-         name="guest_toggle_checkin"),
-
-        # ------------------------------------------------------------ محرر القوالب للأدمن
-    path("dashboard/templates/<int:pk>/api/preview/", views.template_api_preview,
-         name="template_api_preview"),
-    path("dashboard/templates/<int:pk>/api/save/", views.template_api_save,
-         name="template_api_save"),
-    path("dashboard/templates/<int:pk>/api/upload/", views.template_api_upload,
-         name="template_api_upload"),
-    path("dashboard/templates/<int:pk>/api/assets/", views.template_api_assets,
-         name="template_api_assets"),
-    path("dashboard/templates/<int:pk>/api/assets/delete/", views.template_api_delete_asset,
-         name="template_api_delete_asset"),
-    path("dashboard/templates/<int:pk>/api/assets/bulk-delete/", views.template_api_delete_assets,
-         name="template_api_delete_assets"),
-    path("dashboard/templates/<int:pk>/api/crop/", views.template_api_crop,
-         name="template_api_crop"),
-
-    # ------------------------------------------------------------ واجهة المحرر
-
-    path("dashboard/invitations/<int:pk>/api/preview/", views.api_preview, name="api_preview"),
-    path("dashboard/invitations/<int:pk>/api/save/", views.api_save, name="api_save"),
-    path("dashboard/invitations/<int:pk>/api/upload/", views.api_upload, name="api_upload"),
-        path("dashboard/invitations/<int:pk>/api/assets/", views.api_assets, name="api_assets"),
-    path("dashboard/invitations/<int:pk>/api/assets/delete/", views.api_delete_asset,
-         name="api_delete_asset"),
-    path("dashboard/invitations/<int:pk>/api/assets/bulk-delete/", views.api_delete_assets,
-         name="api_delete_assets"),
-
-    path("dashboard/invitations/<int:pk>/api/crop/", views.api_crop, name="api_crop"),
-    path("dashboard/invitations/<int:pk>/api/save-template/", views.api_save_as_template,
-         name="api_save_as_template"),
-
-    # ------------------------------------------------------------ الدعوة
-    path("i/<slug:slug>/", views.invitation_public, name="invitation_public"),
-    path("i/<slug:slug>/rsvp/", views.invitation_rsvp, name="invitation_rsvp"),
-    path("i/<slug:slug>/client/<str:token>/", views.invitation_client_followup,
-         name="invitation_client_followup"),
-    # بوابة القاعة — الرمز هو بيانات الاعتماد، مفيش تسجيل دخول
-    path("i/<slug:slug>/venue/<str:token>/", views.invitation_venue,
-         name="invitation_venue"),
-    path("i/<slug:slug>/venue/<str:token>/state/", views.invitation_venue_state,
-         name="invitation_venue_state"),
-    path("i/<slug:slug>/venue/<str:token>/scan/", views.invitation_venue_scan,
-         name="invitation_venue_scan"),
-    path("i/<slug:slug>/venue/<str:token>/mark/", views.invitation_venue_mark,
-         name="invitation_venue_mark"),
-    # الرابط الشخصي للضيف — الرمز هو بيانات الاعتماد
-    path("i/<slug:slug>/g/<str:token>/", views.invitation_guest, name="invitation_guest"),
-    path("i/<slug:slug>/qr.svg", views.invitation_qr, name="invitation_qr"),
-    path("i/<slug:slug>/g/<str:token>/qr.svg", views.guest_qr, name="guest_qr"),
-    path("i/<slug:slug>/g/<str:token>/qr.png", views.guest_qr_png, name="guest_qr_png"),
-    path("i/<slug:slug>/g/<str:token>/pass/", views.guest_pass, name="guest_pass"),
+    # ---- صفحات: نفس الأسماء والمسارات القديمة، والمحتوى من React
+    path("i/<slug:slug>/", invite_page.invitation_page, name="invitation_public"),
+    path("i/<slug:slug>/g/<str:token>/", invite_page.invitation_page, name="invitation_guest"),
+    path("templates/<slug:slug>/preview/", invite_page.template_page, name="template_demo"),
+    path("i/<slug:slug>/client/<str:token>/", spa_shell, name="invitation_client_followup"),
+    path("i/<slug:slug>/venue/<str:token>/", spa_shell, name="invitation_venue"),
+    path("i/<slug:slug>/g/<str:token>/pass/", spa_shell, name="guest_pass"),
+    path("templates/", spa_shell, name="template_gallery"),
+    path("login/", spa_shell, name="login"),
+    path("dashboard/", spa_shell, name="dashboard"),
+    path("", spa_shell, name="home"),
 ]
+
+if not settings.SPA_BASENAME:
+    urlpatterns[:0] = [
+        re_path(r"^app/(?P<rest>.*)$", app_prefix_redirect),
+        re_path(r"^app$", app_prefix_redirect),
+    ]

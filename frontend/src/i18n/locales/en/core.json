@@ -1,0 +1,37 @@
+{
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "login": "Sign in",
+    "logout": "Sign out",
+    "skip": "Skip to content",
+    "theme": "Toggle theme",
+    "language": "العربية"
+  },
+  "home": {
+    "eyebrow": "React preview",
+    "templates": "Templates",
+    "templatesEmpty": "No templates yet.",
+    "loadError": "Couldn't load the data."
+  },
+  "login": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {{name}}",
+    "soon": "Dashboard pages move to React in the next phase."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "network": "Couldn't reach the server."
+  }
+}

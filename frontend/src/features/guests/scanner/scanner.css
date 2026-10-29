@@ -1,0 +1,187 @@
+/* ماسح الدخول على الباب — منقول من static/css/site.css (‎.checkin*‎) و
+   static/css/venue.css (‎.venue-scanner‎). مشترك بين شاشة الاستقبال وبوابة القاعة. */
+
+.checkin {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  align-items: start;
+}
+.checkin-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #0b0b0b;
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+}
+.checkin-stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.checkin-frame {
+  position: absolute;
+  inset: 18%;
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.checkin-idle {
+  position: absolute;
+  color: #cfc9c0;
+  font-size: 14px;
+  margin: 0;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.checkin .toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.checkin .toolbar input {
+  font: inherit;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+}
+.checkin-support {
+  font-size: 13px;
+}
+.checkin-manual {
+  margin-top: 6px;
+}
+.checkin-manual input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.checkin-result {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--surface);
+  min-height: 92px;
+}
+.checkin-result strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.checkin-result p {
+  margin: 2px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.checkin-result.is-ok {
+  border-color: var(--ok);
+}
+.checkin-result.is-ok strong {
+  color: var(--ok);
+}
+.checkin-result.is-warn {
+  border-color: var(--accent);
+}
+.checkin-result.is-warn strong {
+  color: var(--accent);
+}
+.checkin-result.is-bad {
+  border-color: var(--danger);
+}
+.checkin-result.is-bad strong {
+  color: var(--danger);
+}
+
+.checkin-log-title {
+  font-size: 14px;
+  margin: 18px 0 8px;
+}
+.checkin-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.checkin-log li {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.checkin-side .stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.checkin-side .stat b {
+  display: block;
+  font-family: 'Amiri', serif;
+  font-size: 32px;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.checkin-side .stat span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .checkin {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------- بوابة القاعة */
+.venue-scanner {
+  margin-bottom: 26px;
+}
+
+/* شاشة الباب أعرض من شاشة لوحة التحكم، فنسبة 4/3 بتطلّع مربّع كاميرا
+   طوله نص الشاشة. بنضيّق النسبة ونحطّ سقف للطول. */
+.venue-scanner .checkin-stage {
+  aspect-ratio: 16 / 10;
+  max-height: 430px;
+}
+@media (max-width: 860px) {
+  .venue-scanner .checkin-stage {
+    aspect-ratio: 4 / 3;
+    max-height: none;
+  }
+}
+
+.venue-support {
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+
+.venue-manual {
+  margin-top: 10px;
+}
+.venue-manual input {
+  flex: 1;
+  min-width: 200px;
+  /* الكود بيتكتب إنجليزي جوه صفحة عربية — الشرطة بتقفز لأول الخانة من غير السطرين دول */
+  direction: ltr;
+  text-align: left;
+}
+
+.venue-scan-stat {
+  margin-bottom: 14px;
+}
+
+.venue-log-title {
+  font-size: 14px;
+  margin: 18px 0 8px;
+  color: var(--text);
+}

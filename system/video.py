@@ -236,13 +236,12 @@ def make_thumbnail(upload, *, max_width: int = 1920):
                 src.write(chunk)
             src_path = src.name
 
-        thumb_path = src_path + ".thumb.jpg"
+        thumb_path = src_path + ".thumb.png"
         subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path,
-             "-frames:v", "1", "-vf", f"scale='min({max_width},iw)':-2",
-             # ‎q:v 2‎ = أعلى جودة عملية في JPEG. الفرق في الحجم صغير
-             # (عشرات الكيلوبايت) والصورة دي بتتعرض ملء الشاشة.
-             "-q:v", "2", thumb_path],
+             # PNG بمقاس الفيديو الأصلي من غير تصغير ولا ضغط بفقد: الغلاف بيتعرض
+             # ملء الشاشة قبل الفيديو، وصاحب الدعوة طلب الجودة الأصلية.
+             "-frames:v", "1", thumb_path],
             check=True, timeout=TIMEOUT, stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
@@ -252,7 +251,7 @@ def make_thumbnail(upload, *, max_width: int = 1920):
             return None
         stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
         return InMemoryUploadedFile(
-            io.BytesIO(data), "ImageField", f"{stem}-thumb.jpg", "image/jpeg",
+            io.BytesIO(data), "ImageField", f"{stem}-thumb.png", "image/png",
             len(data), None,
         )
     except Exception:

@@ -37,7 +37,7 @@ SUSPECT_MAX_EDGE = 1000
 
 # لاحقة الغلاف المولّد تلقائياً. أي غلاف باسم تاني = صورة اختارها
 # صاحب الدعوة بنفسه، وماينفعش نلمسها.
-AUTO_SUFFIXES = ("-thumb.jpg", "-poster.jpg")
+AUTO_SUFFIXES = ("-thumb.jpg", "-thumb.png", "-poster.jpg")
 
 
 class Command(BaseCommand):

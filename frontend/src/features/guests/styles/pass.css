@@ -1,0 +1,198 @@
+/* تصريح الضيف — منقول من templates/invitations/pass.html.
+   الصفحة دي ليها لوحة ألوان خاصة بيها (ورق فاتح) مش بتتبع الثيم الغامق،
+   زي القديمة بالظبط. الأسماء اتبدّلت بـ‎pass-*‎ عشان ما تتعارضش مع ‎.btn‎ و‎.pill‎ العامة. */
+
+.pass-page {
+  --ink: #241f18;
+  --muted: #7a6f60;
+  --paper: #f7f3ec;
+  --card: #ffffff;
+  --gold: #a9803c;
+  --line: #e6dcca;
+  --ok: #3f7a52;
+  --used: #a8541f;
+
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Tajawal', system-ui, sans-serif;
+  line-height: 1.8;
+  display: grid;
+  place-items: center;
+  padding: 26px 16px;
+}
+.pass-page *,
+.pass-page *::before,
+.pass-page *::after {
+  box-sizing: border-box;
+}
+
+.pass {
+  width: min(420px, 100%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 2px rgba(50, 38, 20, 0.05),
+    0 22px 54px rgba(50, 38, 20, 0.1);
+}
+.pass-top {
+  background: linear-gradient(160deg, #2b241c, #4a3c29);
+  color: #fff;
+  padding: 24px 22px 20px;
+  text-align: center;
+}
+.pass-top .ev {
+  font-size: 12px;
+  letter-spacing: 2.4px;
+  color: #e3c98f;
+  margin: 0 0 8px;
+}
+.pass-top h1 {
+  font-family: 'Amiri', Georgia, serif;
+  font-weight: 400;
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.35;
+  color: #fff;
+}
+.pass-top .who {
+  margin: 10px 0 0;
+  color: #efe6d8;
+  font-size: 15px;
+}
+
+/* الحافة المسنّنة اللي بتخلي الكارت شبه التذكرة */
+.pass .tear {
+  height: 18px;
+  background: var(--card);
+  position: relative;
+  -webkit-mask: radial-gradient(9px at 9px 50%, transparent 98%, #000) 0 0 / 22px 100% repeat-x;
+  mask: radial-gradient(9px at 9px 50%, transparent 98%, #000) 0 0 / 22px 100% repeat-x;
+}
+.pass-body {
+  padding: 6px 22px 24px;
+  text-align: center;
+}
+.pass .qr {
+  width: min(258px, 78%);
+  margin: 6px auto 4px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.pass .qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pass .code {
+  font-family:
+    ui-monospace,
+    'SFMono-Regular',
+    monospace;
+  direction: ltr;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  margin: 8px 0 2px;
+}
+.pass .pass-pill {
+  display: inline-block;
+  font-size: 12.5px;
+  padding: 3px 13px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  margin-bottom: 14px;
+}
+.pass .pass-pill--active {
+  color: var(--ok);
+}
+.pass .pass-pill--used {
+  color: var(--used);
+}
+.pass .pass-pill--none {
+  color: var(--muted);
+}
+
+.pass .meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 4px 0 18px;
+}
+.pass .meta div {
+  background: var(--card);
+  padding: 11px 6px;
+}
+.pass .meta b {
+  display: block;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.pass .meta span {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.pass .pass-btn {
+  display: block;
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 11px;
+  background: var(--gold);
+  color: #fff;
+  text-decoration: none;
+  border: 0;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+}
+.pass .pass-btn:hover {
+  filter: brightness(1.06);
+}
+.pass .pass-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  margin-top: 9px;
+}
+.pass .hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 16px 0 0;
+}
+.pass-page .brand-note {
+  text-align: center;
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pass-page .brand-note a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+@media print {
+  .pass-page {
+    background: #fff;
+    padding: 0;
+  }
+  .pass {
+    box-shadow: none;
+    border-color: #ccc;
+  }
+  .pass .pass-btn,
+  .pass .hint,
+  .pass-page .brand-note {
+    display: none;
+  }
+}

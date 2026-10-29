@@ -1,0 +1,141 @@
+{
+  "title": {
+    "home": "Digital Wedding Invitations & Wedding Websites in Egypt — {{name}}",
+    "gallery": "Wedding Invitation Templates — {{name}}",
+    "login": "Sign in — {{name}}"
+  },
+  "loadError": "Couldn't load the data.",
+  "nav": {
+    "main": "Main navigation",
+    "skip": "Skip to content",
+    "templates": "Templates",
+    "how": "How it works",
+    "plans": "Pricing",
+    "order": "Order now",
+    "orderWhatsapp": "Order on WhatsApp",
+    "dashboard": "Dashboard",
+    "theme": "Toggle light and dark mode",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "switchLanguage": "التبديل إلى العربية",
+    "switchLanguageShort": "ع",
+    "faq": "FAQ"
+  },
+  "hero": {
+    "alt": "An elegant digital invitation on a phone surrounded by flowers",
+    "top": "Wedding invitations",
+    "main": "that tell your love story",
+    "sub": "Refined, made-to-order designs for a day worth remembering",
+    "start": "Start designing",
+    "plans": "View plans",
+    "trust": {
+      "templatesValue": "50+",
+      "templatesLabel": "ready-made templates",
+      "deliveryValue": "24 hours",
+      "deliveryLabel": "average delivery",
+      "editableValue": "100%",
+      "editableLabel": "editable"
+    }
+  },
+  "templates": {
+    "eyebrow": "Gallery",
+    "title": "Carefully curated templates",
+    "sub": "Elegant designs to begin the story of your special day.",
+    "empty": "No templates published yet.",
+    "preview": "Preview template"
+  },
+  "features": {
+    "eyebrow": "Features",
+    "title": "Features That Make Your Invitation Unique",
+    "sub": "Everything your guests need in one elegant invitation.",
+    "countdown": { "title": "Countdown Timer", "text": "Every moment until your wedding day" },
+    "gallery": { "title": "Photo Gallery", "text": "Share your most beautiful memories" },
+    "rsvp": { "title": "RSVP Confirmation", "text": "Easy guest list management" },
+    "whatsapp": { "title": "WhatsApp Sharing", "text": "Send your invitation in one tap" },
+    "music": { "title": "Background Music", "text": "Add a romantic touch to your invitation" },
+    "maps": { "title": "Google Maps", "text": "Make your venue easy to find" },
+    "qr": { "title": "Invitation QR Code", "text": "Quick and direct access to your invitation" },
+    "calendar": { "title": "Add to Calendar", "text": "Keep the wedding date on every calendar" },
+    "venueQr": { "title": "Venue Entry QR", "text": "Faster and more organized guest entry" }
+  },
+  "plans": {
+    "eyebrow": "Pricing",
+    "title": "Clear packages, no surprises",
+    "popular": "Most popular",
+    "choose": "Choose {{plan}}",
+    "addonsTitle": "Optional add-ons",
+    "showAddons": "Show available add-ons",
+    "hideAddons": "Hide add-ons",
+    "noAddons": "No add-ons available"
+  },
+  "steps": {
+    "eyebrow": "How it works",
+    "title": "Just four steps",
+    "pick": { "title": "Pick a template", "text": "Browse the gallery and choose what suits your occasion." },
+    "send": { "title": "Send your details", "text": "Names, date, venue and anything else you'd like." },
+    "design": { "title": "We design it", "text": "We fine-tune everything and send you a preview before publishing." },
+    "link": { "title": "Get your link", "text": "A private link, ready to send to every guest." }
+  },
+  "order": {
+    "eyebrow": "Order now",
+    "title": "Get started",
+    "sub": "Fill in your details and we'll get back to you within hours to confirm.",
+    "customerName": "Full name",
+    "customerPhone": "WhatsApp number",
+    "customerEmail": "Email",
+    "plan": "Plan",
+    "template": "Template",
+    "eventType": "Event type",
+    "eventDate": "Event date",
+    "names": "Hosts' names",
+    "message": "Notes",
+    "addons": "Optional add-ons",
+    "addonsTotal": "Add-ons total: +{{total}} {{currency}}",
+    "noTemplate": "—",
+    "choosePlan": "Choose a plan",
+    "send": "Send request",
+    "sending": "Sending…",
+    "success": "We received your request. We'll be in touch soon to confirm the details.",
+    "invalid": "Please check the details you entered.",
+    "networkError": "Couldn't send your request. Please try again."
+  },
+  "faq": {
+    "eyebrow": "Help",
+    "title": "Frequently asked questions"
+  },
+  "cta": {
+    "eyebrow": "Your next step",
+    "title": "Ready to design your invitation?",
+    "sub": "Get in touch and let's start an invitation worthy of your occasion.",
+    "button": "Get in touch"
+  },
+  "footer": {
+    "social": "Social links"
+  },
+  "gallery": {
+    "eyebrow": "Gallery",
+    "title": "All templates",
+    "all": "All",
+    "live": "Live preview",
+    "order": "Order this",
+    "empty": "No templates in this category yet."
+  },
+  "whatsapp": {
+    "label": "Message us on WhatsApp",
+    "close": "Close",
+    "status": "Answers within minutes",
+    "greeting": "Congratulations ❤️ We'd love to help with all your event needs. How can we help you? 😊",
+    "placeholder": "Type a message",
+    "input": "Your message",
+    "send": "Send"
+  },
+  "login": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "invalid": "Incorrect username or password.",
+    "tooMany": "Too many attempts. Please wait a bit and try again."
+  }
+}

@@ -71,7 +71,7 @@ class Command(BaseCommand):
         بتتشغّل باليد، مش جزء من مسار عادي.
         """
         from system.models import Asset
-        from system.views import _asset_usage_map, _asset_usage_scan
+        from system.services import _asset_usage_map, _asset_usage_scan
 
         assets = list(Asset.objects.all())
         if not assets:

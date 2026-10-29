@@ -1,0 +1,65 @@
+{
+  "gear": {
+    "title": "Text style: font, colour and size",
+    "label": "Text style: {{name}}"
+  },
+  "theme": {
+    "kicker": "Visual identity",
+    "hint": "These values apply to the whole invitation. Any section can override them from its own properties tab."
+  },
+  "settings": {
+    "kicker": "Invitation settings",
+    "hint": "Music, the intro screen, and the sharing details for WhatsApp and Facebook."
+  },
+  "intro": {
+    "button": "Intro",
+    "title": "Show the intro screen in the preview",
+    "skip": "Skip intro",
+    "skipTitle": "Open the invitation and skip the intro screen",
+    "disabled": "Turn on “Intro screen” in the first Settings group."
+  },
+  "data": {
+    "kicker": "Event details",
+    "hint": "These details fill the sections automatically. A section whose field is left empty takes its value from here.",
+    "groups": {
+      "basics": "Basics",
+      "place": "Venue and contact",
+      "publish": "Publishing"
+    },
+    "fields": {
+      "title": "Internal title",
+      "eventType": "Event type",
+      "nameOne": "First name",
+      "nameTwo": "Second name",
+      "eventDate": "Date and time",
+      "venue": "Venue name",
+      "address": "Address",
+      "mapUrl": "Map link",
+      "whatsapp": "WhatsApp number",
+      "status": "Invitation status",
+      "password": "Invitation password",
+      "expiresAt": "Expires at",
+      "slug": "Invitation link",
+      "publicUrl": "Public link",
+      "followupUrl": "Client follow-up link"
+    },
+    "passwordHint": "Leave empty for an invitation open to anyone with the link.",
+    "slug": {
+      "placeholder": "ahmed-sara",
+      "apply": "Change link",
+      "copy": "Copy",
+      "hint": "English letters, digits and “-” only. Note: the old link stops working after the change.",
+      "tooShort": "The link must be at least 3 English letters or digits.",
+      "same": "That is already the current link.",
+      "confirm": "Change the link to “{{slug}}”?\nThe old link will stop working, and anything already sent to guests must be sent again.",
+      "changed": "The invitation link was changed."
+    },
+    "followup": {
+      "copy": "Copy link",
+      "open": "Open follow-up page",
+      "hint": "Send this link to the client to follow attendance, the QR code and the greetings added to the invitation."
+    },
+    "copied": "Link copied.",
+    "copyFailed": "Could not copy — select the link and copy it manually."
+  }
+}

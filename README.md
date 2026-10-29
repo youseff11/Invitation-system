@@ -150,8 +150,8 @@ python manage.py runserver
 DJANGO_DEBUG=1 python manage.py test system
 ```
 
-٤٣ اختباراً تغطي التنقية، بنية المستند، الـrenderer، الصلاحيات، واجهة المحرر،
-تفعيل الباقات، وحماية RSVP.
+اختبارات الـAPI والمحرر وإدارة البيانات والتحويل، بالإضافة لاختبارات الـrenderer والتنقية واستيراد القوالب.
+(٣ اختبارات قديمة في `test_core.py` بتفشل من قبل حذف الموقع القديم — CSS scope وsanitize وتخزين CSS المستورد.)
 
 للفحص البصري في متصفح حقيقي (يتطلب Playwright وسيرفر يعمل على المنفذ 8010):
 
@@ -163,18 +163,11 @@ python _verify.py
 
 ## ملاحظة مهمة للصيانة
 
-**لا تكتب أبداً متغيّر Django داخل كتلة `<script>`.**
-
-كل JavaScript في ملفات ستاتيك مستقلة (`static/js/*.js`)، وكل البيانات تصل
-للمتصفح عبر `{{ x|json_script:"id" }}`. السبب: النسخة السابقة من المشروع
-كُسرت بالكامل لأن أداة تنسيق HTML أعادت ترتيب `{{ design_json|safe }}` على
-عدة أسطر، وDjango لا يقرأ `{{ }}` متعدد الأسطر — فتحوّل المحرر إلى صفحة ميتة.
-
-للسبب نفسه: **تعليقات `{# #}` تعمل على سطر واحد فقط**. لأي تعليق متعدد الأسطر
-استخدم `{% comment %}...{% endcomment %}`.
-
-وفي قوالب البلوكات: كلها ملفوفة بـ `{% localize off %}` لأن اللغة العربية
-تحوّل الفاصلة العشرية (`1.9` → `1,9`) وتكسر قيم CSS.
+الواجهة كلها React (`frontend/`) والموقع الكلاسيك (قوالب Django + `static/js` و`static/css`) اتحذف.
+قوالب `templates/blocks/` بس لسه موجودة لأن ‎`renderer.py`‎ و‎`api/invite_render.py`‎ بيستخدموها
+في رسم أقسام الدعوة. في قوالب البلوكات: كلها ملفوفة بـ `{% localize off %}` لأن اللغة العربية
+تحوّل الفاصلة العشرية (`1.9` → `1,9`) وتكسر قيم CSS، وتعليقات `{# #}` تعمل على سطر واحد فقط
+(لأي تعليق متعدد الأسطر استخدم `{% comment %}...{% endcomment %}`).
 
 ---
 
@@ -195,21 +188,86 @@ Core/
 ├── manage.py
 ├── Core/settings.py            # إعدادات مبنية على متغيرات البيئة
 ├── system/
+│   ├── models.py  admin.py  forms.py  urls.py
 │   ├── blocks.py               # سجل البلوكات — قلب المحرر
 │   ├── renderer.py             # blocks -> HTML
 │   ├── sanitize.py             # منقّي HTML
-│   ├── qrcodes.py
-│   ├── models.py  views.py  forms.py  urls.py  admin.py
+│   ├── services.py  files.py   # خدمات مشتركة (أصول، دعوات) + مسارات الملفات (QR، robots، sitemap)
+│   ├── spa.py                  # صفحة الـshell اللي بيتحمّل فيها React
+│   ├── api/                    # واجهة JSON تحت /api/v1/ (بما فيها إدارة البيانات)
 │   ├── templatetags/invite.py  # الزخارف والأيقونات
 │   ├── data/golden_classic.py  # القالب الأصلي
-│   └── tests/test_core.py
+│   └── tests/
 ├── templates/
 │   ├── blocks/                 # قالب عرض لكل نوع بلوك
-│   ├── editor/editor.html
-│   ├── invitations/render.html
-│   ├── dashboard/  public/  auth/
-└── static/
-    ├── css/  invite.css · editor.css · site.css
-    └── js/   invite.js  · editor.js  · site.js
+│   └── spa/                    # shell التطبيق وصفحة الدعوة ومعاينة المحرر
+├── frontend/                   # React + TypeScript (Vite)
+└── static/images  img          # صور ثابتة (الناتج المبني في static/app)
 ```
 python manage.py fix_posters --apply
+
+---
+
+## واجهة React (قيد الترحيل)
+
+الموقع بيتحوّل تدريجياً من قوالب Django + جافاسكريبت يدوي إلى تطبيق React
+(`frontend/` — Vite + TypeScript). Django بيفضل الباك إند: النماذج، الأدمن،
+معالجة الصور والفيديو، التصدير، وواجهة JSON تحت `/api/v1/` (`system/api/`).
+
+**التحويل النهائي اتعمل (Phase D):** الافتراضي دلوقتي إن React هو اللي على `/`
+(`SPA_BASENAME` فاضي). وللرجوع مؤقتاً للموقع القديم على الجذر (وReact على `/app/`) حطّ في `.env`:
+
+```
+SPA_BASENAME=/app
+```
+
+في الوضع الافتراضي:
+
+- نفس روابط الدعوات اللي اتبعتت بتفضل شغّالة: `/i/<slug>/` والرابط الشخصي `/i/<slug>/g/<token>/`
+  والتصريح `…/pass/` والعميل `…/client/<token>/` والقاعة `…/venue/<token>/` وصور QR.
+- أي رابط قديم تحت `/app/…` بيتحوّل (301) للمسار الجذري.
+- `robots.txt` و`sitemap.xml` وصور QR وفيديو المشاركة والأدمن و`/api/v1/` بيفضلوا من Django.
+- المسارات في `system/urls.py`، واختباراتها في `system/tests/test_cutover.py`.
+- أمر `manage.py test` بيثبّت `SPA_BASENAME=/app` بغض النظر عن `.env` (الاختبارات القديمة محتاجاه).
+
+### تشغيل التطوير (طرفيتين)
+
+```bash
+# 1) Django مع سيرفر Vite
+VITE_DEV_SERVER=http://localhost:5173 DJANGO_DEBUG=1 python manage.py runserver
+
+# 2) Vite (HMR)
+cd frontend && npm install && npm run dev
+```
+
+افتح `http://localhost:8000/`. Django هو اللي بيقدّم الصفحة (الـ`<head>` وOG
+بيتبنوا على السيرفر)، والسكربتات بتتحمّل من Vite.
+
+### البناء والفحص
+
+```bash
+cd frontend
+npm run build       # يطلّع static/app/ (بيقراه Django من manifest.json)
+npm run typecheck && npm run lint && npm test
+```
+
+### اختبارات التطابق مع الموقع القديم (Playwright)
+
+```bash
+cd frontend && npx playwright install chromium
+python e2e/dump_routes.py                                   # معرّفات حقيقية → e2e/routes.local.json
+E2E_USER=… E2E_PASSWORD=… TARGET=react npx playwright test # بيقارن الصفحات المنقولة باللقطات
+```
+
+اللقطات المرجعية للموقع القديم محلية في `frontend/e2e/baseline/` (مش في Git: بتتصوّر من قاعدة بيانات حقيقية والـrepo عام). جلسة على worktree تقدر تقراها من الـcheckout الرئيسي بـ `BASELINE_DIR=<المسار>`. كل صفحة بتتنقل بتقلب
+`ported` لـ `true` في `frontend/e2e/pages.ts`. لإعادة توليدها من الموقع القديم:
+`TARGET=legacy npx playwright test --project=parity --update-snapshots`.
+استخدم **قاعدة بيانات تجريبية** مش الحقيقية.
+
+
+cd frontend
+npm run ship
+
+cd ..
+git commit -am "..."
+git push

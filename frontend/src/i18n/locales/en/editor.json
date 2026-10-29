@@ -1,0 +1,119 @@
+{
+  "title": "Editor",
+  "loading": "Loading the editor…",
+  "loadFailed": "Couldn't open the editor",
+  "retry": "Try again",
+  "confirm": {
+    "cancel": "Cancel",
+    "ok": "Confirm",
+    "delete": "Delete"
+  },
+  "top": {
+    "back": "Back",
+    "undo": "Undo (Ctrl+Z)",
+    "redo": "Redo (Ctrl+Y)",
+    "save": "Save",
+    "open": "Open invitation",
+    "preview": "Preview invitation",
+    "more": "More",
+    "theme": "Toggle theme",
+    "panel": "Edit panel"
+  },
+  "device": {
+    "label": "Screen size",
+    "mobile": "Mobile",
+    "tablet": "Tablet",
+    "desktop": "Desktop"
+  },
+  "status": {
+    "saved": "Saved",
+    "savedAt": "Saved {{time}}",
+    "dirty": "Unsaved changes",
+    "saving": "Saving…",
+    "error": "Save failed"
+  },
+  "toast": {
+    "saved": "Changes saved.",
+    "saveFailed": "Couldn't save.",
+    "slug": "Invitation link: {{message}}",
+    "added": "Added the “{{name}}” section.",
+    "removed": "Deleted “{{name}}” — Ctrl+Z to undo",
+    "noDuplicate": "This section can't be duplicated.",
+    "previewFailed": "Couldn't refresh the preview."
+  },
+  "tabs": {
+    "blocks": "Sections",
+    "inspector": "Properties",
+    "theme": "Design",
+    "data": "Details",
+    "i18n": "Translation",
+    "settings": "Settings"
+  },
+  "blocks": {
+    "heading": "Invitation sections",
+    "add": "＋ Add section",
+    "hint": "Drag the handle to reorder, click a section to edit it.",
+    "empty": "No sections yet. Click “Add section” to start.",
+    "hide": "Hide section",
+    "show": "Show section",
+    "duplicate": "Duplicate section",
+    "delete": "Delete section",
+    "deleteConfirm": "Delete the “{{name}}” section?",
+    "drag": "Drag to reorder",
+    "warn": "Warning",
+    "pickerTitle": "Add a section",
+    "pickerHint": "Pick a section type — it's added after the selected section and you can move it later.",
+    "exists": "Already added",
+    "outsidePlan": "Warning: outside the plan — will still be added",
+    "close": "Close"
+  },
+  "inspector": {
+    "empty": "Pick a section from the list, or click it in the preview, to edit it.",
+    "selected": "Selected section",
+    "back": "Sections ↩",
+    "rename": "Section name in the list",
+    "gated": "This section isn't included in the client's plan and won't show to guests.",
+    "outsidePlan": "Warning: outside the plan",
+    "defaultGroup": "Content",
+    "collapseAll": "▴ Collapse all menus"
+  },
+  "fields": {
+    "clear": "Clear",
+    "theme": "Template default",
+    "none": "— None —",
+    "listEmpty": "No items yet.",
+    "listAdd": "Add item",
+    "up": "Move up",
+    "down": "Move down",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "item": "Item {{n}}",
+    "pasteImage": "Paste an image link",
+    "pasteFile": "Paste the file link",
+    "fromLibrary": "From the font library — {{name}}",
+    "alignRight": "Right",
+    "alignCenter": "Center",
+    "alignLeft": "Left",
+    "kindText": "Text",
+    "kindImage": "Image",
+    "kindButton": "Button"
+  },
+  "preview": {
+    "title": "Invitation preview"
+  },
+  "saveTemplate": {
+    "open": "Save as template",
+    "title": "Save the design as a template",
+    "hint": "Creates a new library template from the current design (even unsaved). The invitation itself isn't changed and the cover date is cleared.",
+    "name": "Template name",
+    "slug": "Short link (optional)",
+    "slugHint": "Latin letters, digits and dashes — generated from the name when empty.",
+    "category": "Category",
+    "collection": "Collection",
+    "description": "Description",
+    "active": "Visible to customers",
+    "confirm": "Save template",
+    "saved": "Template “{{name}}” saved to the library",
+    "failed": "Couldn't save the template"
+  }
+}

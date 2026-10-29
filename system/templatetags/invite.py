@@ -345,21 +345,6 @@ def split_code(value):
             "fluid": fills_width(css, html)}
 
 
-_CODE_PLAY_RE = re.compile(r"\.play\s*\(")
-
-
-@register.filter(name="code_drives_video")
-def code_drives_video(value):
-    """هل كود المصمّم بيشغّل الفيديو بنفسه (‎.play()‎)؟
-
-    لو آه، المنصة مابتشغّلوش تلقائياً ولا بسمة ‎autoplay‎ ولا بـ‎play()‎:
-    وإلا الفيديو بيبدأ لوحده في أي متصفح بيسمح بالتشغيل التلقائي بصوت
-    (طبقة «دُقّوا ثلاث دقّات» بتتحط فوقه بس ومابتوقّفوش)، والكود اللي
-    اتكتب عشان يتحكّم في البداية يبقى بلا معنى.
-    """
-    return bool(_CODE_PLAY_RE.search(str(value or "")))
-
-
 @register.filter(name="wrap_js")
 def wrap_js(value):
     """يلفّ كود المصمّم في دالة مقفولة عليها ‎try/catch‎ ومعاها ‎root‎.
@@ -473,6 +458,15 @@ def video_text_style(item):
     if size > 0:
         style += f";--section-text-size:{_fluid(size)}"
 
+    # ترتيب الطبقات: الافتراضي ‎4‎ (فوق المحتوى بترتيب الإضافة). ‎behind‎
+    # بينزّل العنصر تحت محتوى القسم — الخلفية نفسها (‎.lb--has-bg‎) أرضيتها
+    # ‎-200‎ فمفيش عنصر بيغطّيها.
+    z = int(_ovl_num(item, "z", 0.0, 60.0))
+    if item.get("behind") is True:
+        style += f";--ovl-z:{-100 + z}"
+    elif z:
+        style += f";--ovl-z:{4 + z}"
+
     kind = str(item.get("kind") or "text")
     # الظل اختياري ومقفول افتراضياً. العنصر القديم مالوش المفتاح ده
     # فبيطلع من غير ظل — وده المقصود: النص فوق خلفية سادة كان بيبان
@@ -482,6 +476,11 @@ def video_text_style(item):
     if kind == "image":
         radius = _ovl_num(item, "radius", 0.0, 200.0)
         style += f";--ovl-radius:{radius:g}px"
+        # عنصر قديم مالوش المفتاح = معتم كامل (مش ٥٪ — الحد الأدنى بيطبّق على القيمة المحفوظة بس)
+        if item.get("opacity") not in (None, ""):
+            opacity = _ovl_num(item, "opacity", 5.0, 100.0, 100.0)
+            if opacity < 100:
+                style += f";--ovl-opacity:{opacity / 100:g}"
     elif kind == "button":
         btn_size = _ovl_num(item, "btn_size", 0.0, 120.0)
         style += (

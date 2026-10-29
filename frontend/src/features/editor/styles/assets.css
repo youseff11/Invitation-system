@@ -1,0 +1,45 @@
+/* ================================================================
+   C3 — مكتبة الأصول والقص والمفضلة. القواعد الأساسية (‎.ed-modal‎، ‎.ed-assets‎،
+   ‎.ed-crop-*‎، ‎.ed-favorite-*‎…) في ‎editor.css‎ المنقول؛ هنا الإضافات بس.
+   ================================================================ */
+
+/* علامة «مستخدم»: الأصل مرتبط بمستند فمفيش حذف */
+.ed-asset-used {
+  position: absolute; inset-block-start: 4px; inset-inline-start: 4px; z-index: 2;
+  padding: 1px 6px; border-radius: 999px;
+  background: var(--e-accent); color: var(--e-on-accent);
+  font-size: 10px; line-height: 16px; pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+.ed-asset-check:disabled { opacity: .35; cursor: not-allowed; }
+
+/* تقدّم الرفع */
+.ed-uploads {
+  list-style: none; margin: 0 0 12px; padding: 0;
+  display: grid; gap: 6px;
+}
+.ed-uploads li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; border: 1px solid var(--e-line); border-radius: 8px;
+  background: var(--e-panel-2); font-size: 12px;
+}
+.ed-uploads li.is-error { border-color: var(--e-danger); }
+.ed-upload-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-upload-error { flex: 2 1 0; min-width: 0; color: var(--e-danger); font-size: 11.5px; }
+.ed-uploads progress {
+  flex: 1 1 90px; max-width: 160px; height: 6px;
+  accent-color: var(--e-accent);
+}
+
+/* مقابض القص: الاتجاه (nw/ne/…) فعلي مش منطقي. الأسماء في editor.css منطقية، فبتتقلب في RTL
+   ويبقى المقبض اللي على اليمين بيتصرّف كأنه الشمال. */
+.ed-modal .ed-crop-box i[data-handle] { inset: auto; }
+.ed-modal .ed-crop-box i[data-handle="nw"] { top: -7px; left: -7px; cursor: nwse-resize; }
+.ed-modal .ed-crop-box i[data-handle="ne"] { top: -7px; right: -7px; cursor: nesw-resize; }
+.ed-modal .ed-crop-box i[data-handle="sw"] { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.ed-modal .ed-crop-box i[data-handle="se"] { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.ed-modal .ed-crop-box i { touch-action: none; }
+
+/* رفع الخط جنب القايمة */
+.ed-font-tools--compact { margin-top: 6px; }
+.ed-font-tools--compact .ed-btn { width: auto; }

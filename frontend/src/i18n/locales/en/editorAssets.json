@@ -1,0 +1,126 @@
+{
+  "close": "Close",
+  "cancel": "Cancel",
+  "retry": "Try again",
+  "dismiss": "Dismiss",
+  "upload": "Upload files",
+  "uploading": "Uploading {{name}}",
+  "used": "In use",
+  "usedHint": "This file is used by a template or an invitation, so it can't be deleted.",
+  "selectForDelete": "Select file for bulk delete",
+  "select": "Select {{name}}",
+  "noneSelected": "No files selected",
+  "selectAll": "Select all",
+  "deselectAll": "Clear selection",
+  "deleteSelected": "Delete selected",
+  "source": {
+    "ask": "Where do you want the video from?",
+    "videos": "Video library",
+    "videosHint": "Regular videos uploaded from the dashboard",
+    "videosEmpty": "The video library is empty — upload from Dashboard ← Library ← Videos.",
+    "intros": "Intro library",
+    "introsHint": "Ready-made intro videos",
+    "introsEmpty": "The intro library is empty — upload from Dashboard ← Library ← Intros.",
+    "mine": "Upload from your device",
+    "mineHint": "Files for this invitation only",
+    "back": "Back"
+  },
+  "ownOnly": "Or upload a file for this invitation only",
+  "image": {
+    "title": "Image library",
+    "hint": "Upload JPG, PNG or WebP images, up to 8 MB per file.",
+    "empty": "No images uploaded yet.",
+    "deleteOne": "Delete image from the library",
+    "confirmOne": "Delete this image from the library?",
+    "confirmMany": "Delete the {{count}} selected images?",
+    "selected": "{{count}} images selected"
+  },
+  "video": {
+    "title": "Video library",
+    "hint": "Upload MP4 or WebM video, up to 40 MB — it is compressed to 720p after upload. Keep the intro video short (3–7 seconds).",
+    "empty": "No videos uploaded yet.",
+    "deleteOne": "Delete video from the library",
+    "confirmOne": "Delete this video from the library?",
+    "confirmMany": "Delete the {{count}} selected videos?",
+    "selected": "{{count}} videos selected",
+    "shared": "Video library — available to every invitation"
+  },
+  "audio": {
+    "title": "Music library",
+    "hint": "Upload MP3 or M4A, up to 8 MB.",
+    "empty": "No tracks uploaded yet.",
+    "shared": "Music library — available to every invitation"
+  },
+  "filter": {
+    "label": "Filter images",
+    "all": "All images",
+    "used": "Used in a template or invitation",
+    "unused": "Not used"
+  },
+  "toast": {
+    "uploaded": "Uploaded “{{name}}”.",
+    "deleted": "File deleted from the library.",
+    "deletedMany": "Selected files deleted from the library.",
+    "cropped": "Image cropped."
+  },
+  "crop": {
+    "title": "Crop image",
+    "hint": "Drag the box to move it and drag the corners to resize. Cropping starts from the original file, which stays saved so you can crop again.",
+    "ratio": "Crop ratio",
+    "free": "Free",
+    "square": "Square",
+    "apply": "Crop",
+    "busy": "Cropping…"
+  },
+  "field": {
+    "preview": "Preview — click to choose",
+    "pick": {
+      "image": "Choose or upload an image",
+      "video": "Choose or upload a video",
+      "audio": "Choose or upload a file"
+    },
+    "paste": {
+      "image": "Or paste an image link",
+      "video": "Or paste a file link",
+      "audio": "Or paste a file link"
+    },
+    "crop": "Crop image",
+    "cropNeedsLibrary": "Pick an image from the library first so it can be cropped."
+  },
+  "favorites": {
+    "open": "★ Favorites",
+    "title": "Favorites library",
+    "hint": "Pick a saved item to add it to the current document. A new editable copy is created.",
+    "loading": "Loading favorites…",
+    "empty": "The favorites library is empty. Select a section and press “Save as favorite”.",
+    "use": "Use",
+    "delete": "Delete",
+    "added": "A copy of the favorite was added.",
+    "exists": "This section already exists and can't be repeated.",
+    "invalid": "The favorite is invalid or no longer supported.",
+    "confirmDelete": "Delete this item from the favorites library?",
+    "deleted": "Favorite deleted.",
+    "save": "☆ Save as favorite",
+    "saveTitle": "Save section as favorite",
+    "nameLabel": "Name this favorite",
+    "saveConfirm": "Save",
+    "saved": "Saved to the favorites library."
+  },
+  "font": {
+    "upload": "＋ Upload a new font",
+    "uploading": "Uploading font…",
+    "added": "Font added to the library and applied to the text."
+  },
+  "errors": {
+    "session": "Your session has expired. Sign in and reopen the editor.",
+    "tooLarge": "The server rejected the file because it is too large. Try a smaller file.",
+    "network": "Couldn't reach the server.",
+    "upload": "Couldn't upload the file.",
+    "delete": "Couldn't delete the file.",
+    "crop": "Couldn't crop the image.",
+    "font": "Couldn't add the font.",
+    "favoritesLoad": "Couldn't load favorites.",
+    "favoriteSave": "Couldn't save the favorite.",
+    "favoriteDelete": "Couldn't delete the favorite."
+  }
+}

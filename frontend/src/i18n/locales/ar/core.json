@@ -1,0 +1,37 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "dashboard": "لوحة التحكم",
+    "login": "دخول",
+    "logout": "خروج",
+    "skip": "تخطّي إلى المحتوى",
+    "theme": "تبديل المظهر",
+    "language": "English"
+  },
+  "home": {
+    "eyebrow": "نسخة React التجريبية",
+    "templates": "القوالب",
+    "templatesEmpty": "لا توجد قوالب بعد.",
+    "loadError": "تعذّر تحميل البيانات."
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "submit": "دخول",
+    "submitting": "جارٍ الدخول…"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "أهلاً {{name}}",
+    "soon": "صفحات اللوحة هتتنقل لـReact في المرحلة الجاية."
+  },
+  "notFound": {
+    "title": "الصفحة غير موجودة",
+    "back": "الرجوع للرئيسية"
+  },
+  "errors": {
+    "generic": "حصل خطأ غير متوقع.",
+    "network": "تعذّر الاتصال بالخادم."
+  }
+}

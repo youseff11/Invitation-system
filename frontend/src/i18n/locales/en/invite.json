@@ -1,0 +1,83 @@
+{
+  "editor": {
+    "gate": "This section is not included in the client's current plan"
+  },
+  "map": {
+    "title": "Location map",
+    "empty": "Add the map link from the editor"
+  },
+  "empty": {
+    "gallery": "Add photos from the editor",
+    "image": "Choose an image from the editor",
+    "video": "Upload a video or paste its link from the editor",
+    "qr": "The code appears once the invitation is published"
+  },
+  "video": {
+    "title": "Event video",
+    "play": "Play video"
+  },
+  "share": {
+    "copied": "Copied",
+    "native": "Share",
+    "prompt": "Copy the link"
+  },
+  "rsvp": {
+    "sending": "Sending…",
+    "sent": "Sent ✓",
+    "failed": "Couldn't send, please try again.",
+    "connection": "Connection failed, please try again.",
+    "demoNote": "Template preview — replies aren't saved.",
+    "welcome": "Welcome, {name} 🤍",
+    "welcomeBack": "We already have your reply, {name} — you can update it here.",
+    "upTo": "up to",
+    "passTitle": "Your entry pass",
+    "passAlt": "Entry code {code}",
+    "passNoteOne": "Valid for {n} person — show it at the door.",
+    "passNoteMany": "Valid for {n} people — show it at the door.",
+    "passDownload": "Download code",
+    "passOpen": "Open pass",
+    "thanks": "Thank you — your reply has been received."
+  },
+  "intro": {
+    "hello": "Welcome {name}",
+    "play": "Play video"
+  },
+  "music": {
+    "play": "Play music",
+    "pause": "Pause music"
+  },
+  "scroll": {
+    "pause": "Pause auto-scroll",
+    "play": "Play auto-scroll"
+  },
+  "lang": {
+    "toEn": "View in English",
+    "toAr": "اعرض بالعربية"
+  },
+  "footer": {
+    "designedBy": "This invitation was designed with"
+  },
+  "lock": {
+    "title": "This invitation is protected",
+    "hint": "Enter the password that came with the link.",
+    "placeholder": "Password",
+    "submit": "Open invitation",
+    "wrong": "Wrong password.",
+    "error": "Connection failed, please try again.",
+    "tooMany": "Too many attempts. Please try again shortly.",
+    "pageTitle": "Protected invitation"
+  },
+  "error": {
+    "unavailable": "This invitation isn't available.",
+    "retry": "Try again"
+  },
+  "templateShare": {
+    "label": "Share this template on WhatsApp",
+    "text": "Take a look at the “{name}” invitation template:",
+    "textPlain": "Take a look at this invitation template:"
+  },
+  "cta": {
+    "whatsapp": "Request this template on WhatsApp",
+    "facebook": "Our Facebook page"
+  }
+}

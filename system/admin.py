@@ -3,7 +3,7 @@ from django.utils.html import format_html
 
 from .models import (
         Asset, CustomFont, Customer, FavoriteBlock, Guest, Invitation, IntroVideo, MusicTrack, Order,
-    OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template, FAQ,
+    HomeHero, OrderAddon, Plan, PlanAddon, RSVPResponse, SiteSetting, Template, FAQ,
 
 )
 
@@ -142,6 +142,27 @@ class SiteSettingAdmin(admin.ModelAdmin):
         return False
 
 
+@admin.register(HomeHero)
+class HomeHeroAdmin(admin.ModelAdmin):
+    """هيرو الرئيسية: خلفيات (دارك/لايت × عربي/إنجليزي) + الكلام. فاضي = الافتراضي المترجم."""
+
+    fieldsets = (
+        ("الخلفيات (بتتضغط وتتحوّل WebP تلقائياً)", {"fields": ("bg_light_ar", "bg_light_en", "bg_dark_ar", "bg_dark_en")}),
+        ("النصوص — عربي", {"fields": ("top_ar", "main_ar", "sub_ar", "cta_ar", "plans_ar")}),
+        ("النصوص — إنجليزي", {"fields": ("top_en", "main_en", "sub_en", "cta_en", "plans_en")}),
+        ("خانات الثقة — عربي", {"fields": (
+            "trust1_value_ar", "trust1_label_ar", "trust2_value_ar", "trust2_label_ar", "trust3_value_ar", "trust3_label_ar")}),
+        ("خانات الثقة — إنجليزي", {"fields": (
+            "trust1_value_en", "trust1_label_en", "trust2_value_en", "trust2_label_en", "trust3_value_en", "trust3_label_en")}),
+    )
+
+    def has_add_permission(self, request):
+        return not HomeHero.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
     list_display = ("original_name", "kind", "invitation", "created_at")
@@ -176,6 +197,7 @@ class FavoriteBlockAdmin(admin.ModelAdmin):
 @admin.register(IntroVideo)
 class IntroVideoAdmin(admin.ModelAdmin):
 
-    list_display = ("name", "seconds", "is_active", "order", "created_at")
+    list_display = ("name", "library", "seconds", "is_active", "order", "created_at")
     list_editable = ("is_active", "order")
+    list_filter = ("library",)
     search_fields = ("name", "note")

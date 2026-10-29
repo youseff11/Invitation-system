@@ -118,6 +118,24 @@ def compress(upload, content_type: str):
     return main, thumb, width, height
 
 
+HERO_EDGE = 2400         # خلفية الهيرو بعرض الشاشة كلها — أكبر من صور المعرض، وأقل من الأصل
+HERO_QUALITY = 80
+
+
+def compress_hero(upload):
+    """خلفية الهيرو → WebP مصغّر (أطول ضلع ٢٤٠٠px وجودة ٨٠) من غير مصغّرة.
+
+    صورة هيرو من الكاميرا أو التصميم بتطلع كذا ميجا وهي أول حاجة الزائر بيحمّلها،
+    فبنصغّرها هنا قبل التخزين بدل ما نعتمد إن اللي رفعها ضغطها. SVG بيفضل زي ما هو.
+    """
+    content_type = getattr(upload, "content_type", "") or ""
+    if content_type in SKIP_TYPES or str(getattr(upload, "name", "")).lower().endswith(".svg"):
+        return upload
+    img = _fit(_to_rgb(_open_upright(upload)), HERO_EDGE)
+    stem = (getattr(upload, "name", "hero") or "hero").rsplit(".", 1)[0].rsplit("/", 1)[-1][:60] or "hero"
+    return _as_upload(img, f"{stem}.webp", HERO_QUALITY)
+
+
 def crop(source_path_or_file, box: dict, *, max_edge: int = MAX_EDGE):
     """يقص من الصورة الأصلية بنِسَب (0..1) ويرجّع ملف WebP جاهز للحفظ.
 
