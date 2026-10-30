@@ -68,6 +68,26 @@ describe('InviteApp', () => {
     open.mockRestore()
   })
 
+  it('template preview has a back-to-site link; it goes back in history when we came from inside the app', () => {
+    window.history.replaceState({}, '', '/templates/golden-night/preview/')
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {})
+    const { unmount } = render(
+      <InviteApp boot={{ mode: 'view', ...payload({ kind: 'template', blocks: [hero('ليلى')] }) }} />,
+    )
+    const link = screen.getByRole('link', { name: 'رجوع للموقع' })
+    expect(link.getAttribute('href')).toBe('http://x/') // ‎siteUrl‎ من الـpayload
+    fireEvent.click(link) // دخول مباشر: مفيش تاريخ جوّه التطبيق → الرابط يشتغل عادي
+    expect(back).not.toHaveBeenCalled()
+    window.history.replaceState({ idx: 2 }, '', '/templates/golden-night/preview/')
+    fireEvent.click(link)
+    expect(back).toHaveBeenCalledTimes(1)
+    unmount()
+
+    render(<InviteApp boot={{ mode: 'view', ...payload({ blocks: [hero('ليلى')] }) }} />)
+    expect(document.querySelector('[data-template-back]')).toBeNull()
+    back.mockRestore()
+  })
+
   it('skips unknown block types instead of crashing', () => {
     render(<InviteApp boot={{ mode: 'view', ...payload({ blocks: [block('from-the-future'), hero('ليلى')] }) }} />)
     expect(document.querySelectorAll('[data-block]').length).toBe(1)

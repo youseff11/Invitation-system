@@ -1,1 +1,0 @@
-import{o as e}from"./hooks-kewzhmUJ.js";function t(t){let n=e.basename;return n&&t.startsWith(`${n}/`)?t.slice(n.length):t}export{t};

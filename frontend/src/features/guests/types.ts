@@ -159,7 +159,7 @@ export interface ClientRsvpRow {
 }
 
 export interface ClientFollowup {
-  invitation: { slug: string; nameOne: string; nameTwo: string; venueToken: string }
+  invitation: { slug: string; nameOne: string; nameTwo: string }
   hasRsvp: boolean
   hasQr: boolean
   hasGuestbook: boolean

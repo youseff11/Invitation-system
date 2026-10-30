@@ -4,10 +4,9 @@ import { Link, useParams } from 'react-router-dom'
 import { useSite } from '@/api/hooks'
 import { useDocumentTitle } from '@/lib/useDocumentTitle'
 import { useClientFollowup } from '../api'
-import { absoluteUrl, passPath, qrPngUrl, qrSvgUrl, venuePath } from '../links'
+import { passPath, qrPngUrl, qrSvgUrl } from '../links'
 import { rsvpLabel } from '../scanner/useScanFlow'
 import { useNoIndex } from '../useNoIndex'
-import { CopyButton } from './CopyButton'
 import { InvalidLink } from './PageStatus'
 import '../styles/base.css'
 import '../styles/client.css'
@@ -55,7 +54,6 @@ export function ClientFollowupPage() {
   }
 
   const { invitation, hasRsvp, hasQr, hasGuestbook, hasAnswers, rsvpRows, messageRows, qrRows, stats } = data
-  const venueLink = absoluteUrl(venuePath(invitation.slug, invitation.venueToken))
   const names = invitation.nameTwo ? `${invitation.nameOne} ${t('guests.client.and')}${invitation.nameTwo}` : invitation.nameOne
   const answersColumns = hasAnswers ? 6 : 5
 
@@ -108,48 +106,6 @@ export function ClientFollowupPage() {
             </article>
           )}
         </section>
-
-        {hasQr && (
-          <section className="client-followup-section client-followup-venue" aria-labelledby="venue-title">
-            <div className="client-followup-section-head">
-              <div>
-                <p className="client-followup-kicker">{t('guests.client.venueKicker')}</p>
-                <h2 id="venue-title">{t('guests.client.venueTitle')}</h2>
-              </div>
-            </div>
-            <p className="client-followup-venue-note">{t('guests.client.venueNote')}</p>
-            <div className="client-followup-venue-row">
-              <input
-                className="client-followup-venue-input"
-                type="text"
-                value={venueLink}
-                readOnly
-                onFocus={(e) => e.currentTarget.select()}
-                dir="ltr"
-                aria-label={t('guests.client.venueLink')}
-              />
-              <CopyButton className="btn btn--gold btn--sm" text={venueLink}>
-                {t('guests.client.copyLink')}
-              </CopyButton>
-              <Link
-                className="btn btn--ghost btn--sm"
-                to={venuePath(invitation.slug, invitation.venueToken)}
-                target="_blank"
-                rel="noopener"
-              >
-                {t('guests.client.open')}
-              </Link>
-              <a
-                className="btn btn--ghost btn--sm"
-                target="_blank"
-                rel="noopener"
-                href={`https://wa.me/?text=${encodeURIComponent(venueLink)}`}
-              >
-                {t('guests.client.whatsapp')}
-              </a>
-            </div>
-          </section>
-        )}
 
         {hasRsvp && (
           <section className="client-followup-section" aria-labelledby="rsvp-title">

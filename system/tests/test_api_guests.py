@@ -578,7 +578,7 @@ class ClientFollowupApiTests(GuestsApiCase):
         self.assertEqual(data["stats"]["guests"], 2)
         self.assertEqual(data["stats"]["messages"], 1)
         self.assertEqual(data["messageRows"][0]["message"], "ألف مبروك")
-        self.assertEqual(data["invitation"]["venueToken"], self.inv.venue_token)
+        self.assertNotIn("venueToken", data["invitation"])
         self.assertEqual({r["name"] for r in data["qrRows"]}, {"علي", "منى"})
 
     def test_pass_locked_from_the_editor_hides_qr(self):

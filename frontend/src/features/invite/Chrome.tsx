@@ -58,6 +58,35 @@ ${url}`)}`, '_blank', 'noopener')
   )
 }
 
+/**
+ * زرار الرجوع للموقع في معاينة القالب. لو الضيف جه من صفحة جوّه التطبيق بنرجّعه لها بالظبط
+ * (مكان السكرول محفوظ)، وإلا (فتح مباشر / رابط مشترك) بنودّيه للرئيسية.
+ */
+export function PreviewBack({ siteUrl }: { siteUrl: string }) {
+  const { t } = useInvite()
+  const href = siteUrl || '/'
+  return (
+    <a
+      className="lb-back-fab"
+      data-template-back
+      href={href}
+      onClick={(e) => {
+        // ‎idx‎ بتحطه react-router على كل تنقّل جوّه التطبيق؛ صفر/مفيش = دخول مباشر
+        const idx = (window.history.state as { idx?: number } | null)?.idx
+        if (typeof idx === 'number' && idx > 0) {
+          e.preventDefault()
+          window.history.back()
+        }
+      }}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="m9 6 6 6-6 6" />
+      </svg>
+      {t('templateBack.label')}
+    </a>
+  )
+}
+
 /** شريط «عجبك القالب؟» — بيظهر في معاينة القالب بس. */
 export function PreviewCtaBar({ cta }: { cta: PreviewCta }) {
   const { t } = useInvite()

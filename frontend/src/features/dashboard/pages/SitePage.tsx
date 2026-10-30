@@ -183,9 +183,9 @@ export function SitePage() {
                   <p className="muted" style={{ fontSize: 13.5 }}>
                     {t('dashboard.site.tryBody')}
                   </p>
-                  <a className="btn btn--ghost btn--block" target="_blank" rel="noopener" href={data.sample.previewUrl}>
+                  <Link className="btn btn--ghost btn--block" to={data.sample.previewUrl}>
                     {t('dashboard.site.previewSample', { name: data.sample.name })}
-                  </a>
+                  </Link>
                 </>
               ) : (
                 <p className="muted" style={{ fontSize: 13.5 }}>

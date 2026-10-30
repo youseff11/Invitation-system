@@ -89,9 +89,9 @@ function TemplateActionMenu({ template }: { template: TemplateRow }) {
         <a href={template.adminUrl} role="menuitem">
           {t('dashboard.templates.editData')}
         </a>
-        <a href={template.previewUrl} target="_blank" rel="noopener" role="menuitem">
+        <Link to={template.previewUrl} role="menuitem">
           {t('dashboard.templates.preview')}
-        </a>
+        </Link>
         <button type="button" role="menuitem" onClick={onToggle}>
           {template.isActive ? t('dashboard.templates.hide') : t('dashboard.templates.show')}
         </button>

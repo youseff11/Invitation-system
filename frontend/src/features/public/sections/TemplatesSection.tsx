@@ -49,7 +49,7 @@ export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
         <Meta template={template} />
         {hasDescription && <p className="tpl-desc">{pick(lang, template.description, template.descriptionEn)}</p>}
         <div className="tpl-actions">
-          <Link className="btn btn--gold btn--sm" to={previewPath(template)} target="_blank" rel="noopener">
+          <Link className="btn btn--gold btn--sm" to={previewPath(template)}>
             {t('public.templates.preview')}
           </Link>
         </div>
@@ -76,7 +76,7 @@ export function GalleryTemplateCard({ template }: { template: PublicTemplate }) 
           </p>
         )}
         <div className="tpl-actions">
-          <Link className="btn btn--ghost btn--sm" to={previewPath(template)} target="_blank" rel="noopener">
+          <Link className="btn btn--ghost btn--sm" to={previewPath(template)}>
             {t('public.gallery.live')}
           </Link>
           <Link className="btn btn--gold btn--sm" to={{ pathname: '/', hash: '#order' }}>

@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { fetchRender, type Source } from './api'
 import { BlockView } from './blocks'
 import { prefetchBlocks } from './blocks/lazy'
-import { LangToggle, PreviewCtaBar, PreviewShare } from './Chrome'
+import { LangToggle, PreviewBack, PreviewCtaBar, PreviewShare } from './Chrome'
 import { InviteContext } from './context'
 import { applyPageMeta, syncHeadStyles } from './head'
 import { Intro } from './Intro'
@@ -226,6 +226,7 @@ function Viewer({ initial }: { initial: RenderPayload }) {
           <AutoScroll config={payload.scroll} />
         </Suspense>
       )}
+      {kind === 'template' && <PreviewBack siteUrl={payload.siteUrl} />}
       {kind === 'template' && <PreviewShare name={payload.cta?.template_name ?? ''} />}
       {kind === 'template' && payload.cta && <PreviewCtaBar cta={payload.cta} />}
       {payload.music && <Music config={payload.music} />}

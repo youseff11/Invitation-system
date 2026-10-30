@@ -1879,6 +1879,30 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 }
 @media print { .lb-share-fab { display: none !important; } }
 
+/* زرار الرجوع للموقع في معاينة القالب: جنب زرار المشاركة (inline-end)، فوق الافتتاحية كمان */
+.lb-back-fab {
+  position: fixed; z-index: 95;
+  inset-block-start: 16px; inset-inline-end: 68px;
+  block-size: 42px; padding-inline: 14px 16px;
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: var(--text); text-decoration: none;
+  font: 600 13px/1 var(--font-body, inherit);
+  box-shadow: 0 8px 22px -12px rgba(0, 0, 0, .45);
+  transition: transform .18s ease, background .18s ease;
+}
+.lb-back-fab svg { inline-size: 17px; block-size: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[dir="rtl"] .lb-back-fab svg { transform: none; }
+[dir="ltr"] .lb-back-fab svg { transform: scaleX(-1); }
+.lb-back-fab:hover { transform: translateY(-1px); background: var(--accent-10); }
+.lb-back-fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 480px) {
+  .lb-back-fab { inset-block-start: 12px; inset-inline-end: 58px; block-size: 38px; padding-inline: 11px 13px; font-size: 12px; }
+}
+@media print { .lb-back-fab { display: none !important; } }
+
 .lb-intro:not(.is-open) ~ .lb-lang {
   /* خلفية الافتتاحية ممكن تكون صورة أو فيديو — نضبّب اللي ورا الزرار
      عشان يفضل مقروء فوق أي حاجة. */

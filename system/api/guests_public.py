@@ -256,8 +256,6 @@ def client_followup(request, slug, token):
             "slug": invitation.slug,
             "nameOne": invitation.name_one,
             "nameTwo": invitation.name_two,
-            # رابط القاعة بيتعرض هنا كمان عشان العروسين يبعتوه بنفسهم
-            "venueToken": invitation.venue_token,
         },
         "hasRsvp": has_rsvp,
         "hasQr": has_qr,

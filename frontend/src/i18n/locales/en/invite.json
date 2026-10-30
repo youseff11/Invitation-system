@@ -76,6 +76,9 @@
     "text": "Take a look at the “{name}” invitation template:",
     "textPlain": "Take a look at this invitation template:"
   },
+  "templateBack": {
+    "label": "Back to site"
+  },
   "cta": {
     "whatsapp": "Request this template on WhatsApp",
     "facebook": "Our Facebook page"
