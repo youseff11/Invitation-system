@@ -27,7 +27,7 @@ describe('InviteApp', () => {
     expect(section.getAttribute('data-block-type')).toBe('hero')
     expect(section.className).toContain('lb--hero')
     expect(section.querySelector('[data-ts="name_one"]')!.textContent).toBe('ليلى')
-    expect(document.querySelector('footer.lb-footer')!.textContent).toContain('T DESIGNATION')
+    expect(document.querySelector('footer.lb-footer')!.textContent).toContain('فرحة')
   })
 
   it('reveals a lazily loaded block (video) once its chunk replaces the placeholder', async () => {

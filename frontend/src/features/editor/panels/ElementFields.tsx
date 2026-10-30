@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AssetLibrary } from '../assets/AssetLibrary'
@@ -7,7 +7,7 @@ import { useSchema } from '../hooks'
 import { cssNumber, fontKey, lineRatio, toHex } from '../imported/css'
 import { computedValue } from '../imported/live'
 import { mapEmbedUrl } from '../imported/map'
-import type { NodeInfo, StyleProp } from '../imported/nodeEdit'
+import { normalizeText, type NodeInfo, type StyleProp } from '../imported/nodeEdit'
 import { useElementActions } from '../imported/useElementActions'
 import { useEditor } from '../store'
 import type { FieldSpec, FieldType } from '../types'
@@ -164,6 +164,13 @@ export function ElementFields({ blockId, slot, info }: Props) {
   const actions = useElementActions()
   const textId = useId()
   const [gear, setGear] = useState(false)
+  // نص الخانة بيتقصّ ويتلم من المصدر (مسافة آخر السطر/الأسطر الفاضية)، فلو الخانة اتحكمت بيه مباشرة
+  // كانت المسافة والـEnter بيرجعوا مكانهم. بنحتفظ بما كُتب، ونستبدله بس لو النص اتغيّر من برّه (تراجع/عنصر تاني).
+  const [draft, setDraft] = useState(info.text ?? '')
+  useEffect(() => {
+    if (info.text !== null && info.text !== normalizeText(draft)) setDraft(info.text)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [info.text, slot])
   const { data: schema } = useSchema()
   const library = useEditor((s) => s.lib.fonts)
   const all = useMemo(() => styleFields(t, info.kind), [t, info.kind])
@@ -255,9 +262,12 @@ export function ElementFields({ blockId, slot, info }: Props) {
               id={textId}
               className="ed-input"
               rows={4}
-              value={info.text}
+              value={draft}
               placeholder={t('editorInline.element.fields.textPlaceholder')}
-              onChange={(e) => actions.edit({ kind: 'text', value: e.target.value }, `el-text:${slot}`)}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                actions.edit({ kind: 'text', value: e.target.value }, `el-text:${slot}`)
+              }}
             />
             {gearButton}
           </div>

@@ -135,6 +135,24 @@ describe('FrameApp', () => {
     expect(container.textContent).not.toContain('وكتبت')
   })
 
+  it('a panel edit inside a code box patches it live, and the confirming render does not re-inject the box', () => {
+    const { container } = render(<FrameApp />)
+    const withCode = (name: string) => preview([quote({ code: `<div class="lb-extra-html"><p data-move="ce-1">${name}</p></div>` })])
+    fromParent({ type: 'lb-editor:render', selected: null, payload: withCode('زين') })
+    const box = container.querySelector('.lb-extra-html')!
+    expect(box.textContent).toBe('زين')
+
+    fromParent({ type: 'lb-editor:node', id: 'q1', slot: 'ce-1', edit: { kind: 'text', value: 'زين ويارا ' } })
+    expect(box.textContent).toBe('زين ويارا ')
+    fromParent({ type: 'lb-editor:render', selected: null, payload: withCode('زين ويارا') })
+    expect(container.querySelector('.lb-extra-html')).toBe(box) // نفس العقدة: السكربتات والحركات ماتبدأش من الأول
+    expect(box.textContent).toBe('زين ويارا ') // والمكتوب (بمسافته) فاضل
+
+    // التراجع/الإعادة بيعيد رسم الكود فعلاً
+    fromParent({ type: 'lb-editor:render', selected: null, payload: withCode('زين'), force: true })
+    expect(container.querySelector('.lb-extra-html')!.textContent).toBe('زين')
+  })
+
   it('reports a click on a block and blocks link navigation', () => {
     const { container } = render(<FrameApp />)
     const withLink = quote({ code: '' })

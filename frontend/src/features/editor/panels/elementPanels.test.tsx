@@ -154,6 +154,21 @@ describe('ElementPanel content and style (S4a)', () => {
     expect((screen.getByPlaceholderText('اكتب محتوى النص هنا') as HTMLTextAreaElement).value).toBe('عريس وعروسة')
   })
 
+  it('lets you type a trailing space and a new line (the source trims them, the box must not snap back)', () => {
+    mount()
+    act(() => s().selectElement('a', 'el-2'))
+    const box = () => screen.getByPlaceholderText('اكتب محتوى النص هنا') as HTMLTextAreaElement
+    fireEvent.change(box(), { target: { value: 'عريس ' } })
+    expect(box().value).toBe('عريس ')
+    fireEvent.change(box(), { target: { value: 'عريس \n' } })
+    expect(box().value).toBe('عريس \n')
+    fireEvent.change(box(), { target: { value: 'عريس \nعروسة' } })
+    expect(html()).toContain('عريس <br>عروسة')
+    expect(box().value).toBe('عريس \nعروسة')
+    act(() => s().undo()) // تغيير من برّه (تراجع) لازم يظهر في الخانة
+    expect(box().value).toBe('العريس والعروسة')
+  })
+
   it('keeps the style tools behind the gear, and sizes, weights and colours land in the inline style', () => {
     const { container } = mount()
     act(() => s().selectElement('a', 'el-2'))

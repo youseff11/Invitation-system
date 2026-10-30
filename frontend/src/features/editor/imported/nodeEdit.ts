@@ -85,7 +85,14 @@ export function applyNodeEdit(root: Element, slot: string, edit: NodeEdit): bool
     case 'text': {
       const unit = textUnitIn(node)
       if (!unit) return false
-      unit.textContent = edit.value
+      // السطر الجديد = ‎<br>‎ (نفس اللي ‎plainText‎ بيقراه) — ‎\n‎ خام كان بيتلم لمسافة فالـEnter مايظهرش
+      const doc = unit.ownerDocument
+      unit.replaceChildren(
+        ...edit.value.split('\n').flatMap((line, at) => {
+          const text = doc.createTextNode(line)
+          return at ? [doc.createElement('br'), text] : [text]
+        }),
+      )
       return true
     }
     case 'inner':
@@ -170,8 +177,13 @@ const MAP_DEFAULT = 335
 function plainText(unit: Element): string {
   const clone = unit.cloneNode(true) as Element
   clone.querySelectorAll('br').forEach((br) => br.replaceWith(BREAK))
-  return (clone.textContent ?? '').replace(/\s+/g, ' ').trim().replace(new RegExp(` ?${BREAK} ?`, 'g'), '\n')
+  return collapse(clone.textContent ?? '')
 }
+
+const collapse = (raw: string) => raw.replace(/\s+/g, ' ').trim().replace(new RegExp(` ?${BREAK} ?`, 'g'), '\n')
+
+/** النص اللي هيرجع من ‎readNode‎ لو كتبنا ‎value‎ — اللوحة بتقارن بيه عشان تعرف رجع صدى كتابتها ولا تغيّر من برّه. */
+export const normalizeText = (value: string) => collapse(value.split('\n').join(BREAK))
 
 function mapSize(node: Element, prop: 'width' | 'height'): number {
   const box = mapBoxOf(node)

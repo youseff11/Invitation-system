@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { cssNumber, fontKey, lineRatio, toHex } from './css'
 import { parse } from './dom'
-import { applyNodeEdit, readNode, styleTarget, textUnitIn } from './nodeEdit'
+import { applyNodeEdit, normalizeText, readNode, styleTarget, textUnitIn } from './nodeEdit'
 import { editOf, nodeInfo } from './ops'
 
 const HTML =
@@ -64,8 +64,17 @@ describe('applyNodeEdit', () => {
   it('replaces text as plain text (markup in the value stays text)', () => {
     const root = dom()
     applyNodeEdit(root, 'el-2', { kind: 'text', value: 'a <b>x</b>\nb' })
-    expect(node(root, 'el-2').children).toHaveLength(0)
-    expect(node(root, 'el-2').textContent).toBe('a <b>x</b>\nb')
+    expect(node(root, 'el-2').querySelectorAll('b')).toHaveLength(0)
+    expect(node(root, 'el-2').textContent).toBe('a <b>x</b>b')
+  })
+
+  it('writes a new line as <br> so it reads back as a new line, and keeps a typed trailing space out of the round trip', () => {
+    const root = dom()
+    applyNodeEdit(root, 'el-2', { kind: 'text', value: 'سطر\nتاني ' })
+    expect(node(root, 'el-2').querySelectorAll('br')).toHaveLength(1)
+    expect(readNode(root, 'el-2')!.text).toBe('سطر\nتاني')
+    expect(normalizeText('سطر\nتاني ')).toBe('سطر\nتاني')
+    expect(normalizeText('a\n\nb')).toBe('a\n\nb')
   })
 
   it('swaps the image source and drops srcset (it beats src)', () => {
