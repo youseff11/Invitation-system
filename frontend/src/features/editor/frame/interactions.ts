@@ -2,6 +2,7 @@ import type { BlockData } from '@/features/invite/types'
 
 import { INTRO_ID } from '../doc'
 import { commitHtml, commitSwap } from '../imported/frame'
+import { pointTarget } from './pointTarget'
 import type { FromFrame, PreviewPayload } from '../types'
 
 /**
@@ -288,7 +289,7 @@ export function installInteractions({ payload, send }: Options): () => void {
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0 || drag) return
-    const node = movableAt(e.target)
+    const node = movableAt(pointTarget(e))
     if (!node) return
     // كود الافتتاحية مش جوّه قسم: بلوكه الوهمي ‎__intro‎ وإزاحاته (بكسل) بتتقرا من الـCSS المحسوب لأنها مش في حمولة الأقسام
     const intro = !!node.closest('.lb-intro-extra')

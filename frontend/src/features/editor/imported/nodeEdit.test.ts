@@ -34,6 +34,22 @@ describe('style target', () => {
   })
 })
 
+describe('empty element in a code box', () => {
+  const code = '<div data-move="ce-1"><span class="ck-sub" data-move="ce-2"></span><div data-move="ce-3"><b>x</b></div></div>'
+
+  it('keeps a text box so a cleared text unit can be typed into again', () => {
+    expect(nodeInfo(code, 'ce-2')?.text).toBe('')
+    const edited = editOf(code, 'ce-2', { kind: 'text', value: 'اسحب' })
+    expect(edited && nodeInfo(edited.html, 'ce-2')?.text).toBe('اسحب')
+  })
+
+  it('does not turn containers or imported-section shapes into text units', () => {
+    expect(nodeInfo(code, 'ce-3')?.text).toBe('x')
+    expect(nodeInfo(code, 'ce-1')?.text).toBe('x')
+    expect(nodeInfo(HTML, 'el-5')?.text).toBeNull()
+  })
+})
+
 describe('applyNodeEdit', () => {
   it('sets and removes inline style on the style target; empty removes (and drops an empty style attribute)', () => {
     const root = dom()

@@ -1,6 +1,6 @@
 import { findSlot } from './dom'
 import { GOOGLE_MAP } from './map'
-import { isImportedCountdownPart, isTextual } from './units'
+import { CODE_ROOTS, isImportedCountdownPart, isTextual } from './units'
 
 /**
  * تعديلات «لوحة العنصر» (S4): نص، تنسيق (style مضمّن)، صورة، فيديو، خريطة. نفس الدالة (‎applyNodeEdit‎) بتتطبّق مرتين:
@@ -40,9 +40,22 @@ export function mapFrameIn(node: Element): Element | null {
 /** صندوق الخريطة: عنصر Tilda (‎.tn-elem‎) اللي حاويها، وإلا العنصر نفسه. */
 const mapBoxOf = (node: Element): Element => node.closest('.tn-elem') ?? node
 
+const NOT_TEXT_LEAF = new Set(['IMG', 'VIDEO', 'IFRAME', 'SVG', 'CANVAS', 'PICTURE', 'SOURCE', 'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'BR', 'HR'])
+
+/**
+ * عنصر فاضي جوّه صندوق كود (مفيش أبناء ولا نص — النص اتمسح أو سكربت المصمّم هو اللي بيملاه): مش «وحدة نص» لأن وحدة النص
+ * لازم فيها كلام، لكن لو اتحدّد لازم تفضل خانة النص قدّامه وإلا مفيش طريق يرجّع يكتب فيه.
+ */
+const isEmptyCodeLeaf = (node: Element): boolean =>
+  !node.matches(CODE_ROOTS) &&
+  !!node.closest(CODE_ROOTS) &&
+  node.children.length === 0 &&
+  !(node.textContent ?? '').trim() &&
+  !NOT_TEXT_LEAF.has(tagOf(node))
+
 /** وحدة النص اللي العنصر هو نفسه أو أول واحدة جواه (من غير حد المقاس — مفيش layout في المستند الخامل). */
 export function textUnitIn(node: Element): Element | null {
-  if (isTextual(node)) return node
+  if (isTextual(node) || isEmptyCodeLeaf(node)) return node
   return Array.from(node.querySelectorAll('*')).find(isTextual) ?? null
 }
 

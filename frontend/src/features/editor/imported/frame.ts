@@ -1,4 +1,5 @@
 import type { FromFrame, PreviewPayload } from '../types'
+import { pointTarget } from '../frame/pointTarget'
 import { applyNodeEdit, videoIn, type NodeEdit } from './nodeEdit'
 import { numberElements } from './numbering'
 import { serializeCustom } from './serialize'
@@ -198,7 +199,7 @@ export function installImported({ payload, send, onPick }: Options): () => void 
 
   // ضغطة = اختيار أقرب عنصر مرقّم (اللي جوّه وحدة نص مابيترقّمش فالنص نفسه هو اللي بيتحدّد)
   const onClick = (e: MouseEvent) => {
-    const node = inRoot(e.target, '[data-move]')
+    const node = inRoot(pointTarget(e), '[data-move]')
     if (!node || node.classList.contains('lb-el-typing')) return
     const root = rootAt(node)
     const id = root && blockIdOf(root)
@@ -210,7 +211,7 @@ export function installImported({ payload, send, onPick }: Options): () => void 
 
   // ضغطتين على نص = كتابة (الضغطة الواحدة بتفضل للتحديد عشان Delete والأسهم وCtrl+C تفضل للعنصر)
   const onDblClick = (e: MouseEvent) => {
-    const node = inRoot(e.target, '[data-lb-text]')
+    const node = inRoot(pointTarget(e), '[data-lb-text]')
     if (!node) return
     e.preventDefault()
     e.stopPropagation()
