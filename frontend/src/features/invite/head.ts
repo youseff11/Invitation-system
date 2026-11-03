@@ -12,6 +12,15 @@ const HEAD_STYLES: [keyof HeadCss, string][] = [
   ['zero', 'data-zero-block-css'],
 ]
 
+/** اللي مطبوع في ‎<head>‎ دلوقتي — الحمولة الأولى مالهاش ‎css‎ لأن الـshell طابعه، فبنقراه قبل أول تبديل عشان نرجع له. */
+export function readHeadStyles(): HeadCss {
+  const css: HeadCss = { font: '', layout: '', shared: '', zero: '' }
+  for (const [key, attr] of HEAD_STYLES) {
+    css[key] = document.head.querySelector<HTMLStyleElement>(`style[${attr}]`)?.textContent || ''
+  }
+  return css
+}
+
 export function syncHeadStyles(css: HeadCss) {
   for (const [key, attr] of HEAD_STYLES) {
     const next = css[key] || ''

@@ -5,14 +5,14 @@ import { BlockView } from './blocks'
 import { prefetchBlocks } from './blocks/lazy'
 import { LangToggle, PreviewBack, PreviewCtaBar, PreviewShare } from './Chrome'
 import { InviteContext } from './context'
-import { applyPageMeta, syncHeadStyles } from './head'
+import { applyPageMeta, readHeadStyles, syncHeadStyles } from './head'
 import { Intro } from './Intro'
 import { Music } from './Music'
 import { initFarhaState, guardCodeRoots } from './runtime/code-roots'
 import { initImportedMedia } from './runtime/media'
 import { bindScrollLinks } from './runtime/scroll-links'
 import { makeT } from './strings'
-import type { Boot, InviteLang, RenderPayload } from './types'
+import type { Boot, HeadCss, InviteLang, RenderPayload } from './types'
 
 const AutoScroll = lazy(() => import('./AutoScroll').then((m) => ({ default: m.AutoScroll })))
 const Locked = lazy(() => import('./Locked').then((m) => ({ default: m.Locked })))
@@ -69,6 +69,7 @@ function Viewer({ initial }: { initial: RenderPayload }) {
   const [payload, setPayload] = useState(initial)
   const [busy, setBusy] = useState(false)
   const cache = useRef(new Map<InviteLang, RenderPayload>([[initial.lang, initial]]))
+  const baseCss = useRef<HeadCss | null>(null)
   const [hasIntro] = useState(() => Boolean(initial.intro))
 
   const t = useMemo(() => makeT(payload.lang), [payload.lang])
@@ -140,6 +141,8 @@ function Viewer({ initial }: { initial: RenderPayload }) {
   const switchLang = useCallback(
     async (target: InviteLang) => {
       setBusy(true)
+      // ستايل اللغة الأصلية مطبوع في الـhead من السيرفر ومش جوّه الحمولة — نحفظه قبل أول تبديل عشان الرجوع ليها
+      baseCss.current ??= initial.css ?? readHeadStyles()
       const url = new URL(location.href)
       url.searchParams.set('lang', target)
       // الضغطة **لازم** تنتهي بنتيجة: لو الشبكة بطيئة ننتقل بالرابط عادي
@@ -150,7 +153,8 @@ function Viewer({ initial }: { initial: RenderPayload }) {
         const next = cache.current.get(target) ?? (await fetchRender(sourceOf(initial), target))
         cache.current.set(target, next)
         window.clearTimeout(giveUp)
-        if (next.css) syncHeadStyles(next.css)
+        const css = next.css ?? (target === initial.lang ? baseCss.current : undefined)
+        if (css) syncHeadStyles(css)
         applyPageMeta(next)
         try {
           window.history.replaceState({}, '', url.toString())

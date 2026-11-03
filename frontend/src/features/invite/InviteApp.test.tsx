@@ -124,6 +124,43 @@ describe('InviteApp', () => {
     expect(urls.filter((u) => u.includes('lang=en')).length).toBeGreaterThanOrEqual(1)
   })
 
+  it('switching back to the original language restores the head styles the shell printed', async () => {
+    const head = (label: string) => ({ title: label, description: '', image: { url: '', width: 0, height: 0 }, favicon: '', canonical: '' })
+    const en: RenderPayload = payload({
+      lang: 'en',
+      dir: 'ltr',
+      altLang: 'ar',
+      hasAlt: true,
+      blocks: [hero('Layla')],
+      head: head('Layla'),
+      css: { font: '', layout: '.en-only{font-size:99px}', shared: '', zero: '' },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => json(200, en)))
+    // الـshell بيطبع ستايل اللغة الأصلية في الـhead، والحمولة الأولى مالهاش ‎css‎
+    document.head.querySelectorAll('style[data-lb-layout-css]').forEach((n) => n.remove())
+    const printed = document.createElement('style')
+    printed.setAttribute('data-lb-layout-css', '')
+    printed.textContent = '.ar-only{font-size:20px}'
+    document.head.appendChild(printed)
+    const layout = () => document.head.querySelector('style[data-lb-layout-css]')!.textContent
+
+    const { unmount } = render(<InviteApp boot={{ mode: 'view', ...payload({ hasAlt: true, blocks: [hero('ليلى')] }) }} />)
+    fireEvent.click(screen.getByRole('link', { name: 'View in English' }))
+    await waitFor(() => expect(layout()).toContain('.en-only'))
+
+    fireEvent.click(screen.getByRole('link', { name: 'اعرض بالعربية' }))
+    await waitFor(() => expect(document.querySelector('[data-ts="name_one"]')!.textContent).toBe('ليلى'))
+    expect(layout()).toBe('.ar-only{font-size:20px}')
+
+    // وتاني مرة للترجمة: نفس الخط اللي المصمّم اختاره، مش حاجة اتلخبطت
+    fireEvent.click(screen.getByRole('link', { name: 'View in English' }))
+    await waitFor(() => expect(layout()).toContain('.en-only'))
+    fireEvent.click(screen.getByRole('link', { name: 'اعرض بالعربية' }))
+    await waitFor(() => expect(layout()).toBe('.ar-only{font-size:20px}'))
+    unmount()
+    printed.remove()
+  })
+
   it('shows the password form, rejects a wrong password, then loads the invitation', async () => {
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (String(url).includes('/unlock/')) {
