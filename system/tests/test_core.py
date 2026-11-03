@@ -2303,6 +2303,35 @@ class CustomSectionTextTests(TestCase):
     def test_void_tags_are_not_offered(self):
         self.assertNotIn("el-4", dict(customtext.text_units(self.HTML)))
 
+    NESTED = (
+        '<div data-move="ce-1" class="card">'
+        '<h2 data-move="ce-2">دعوة زفاف</h2>'
+        '<div data-move="ce-3"><p data-move="ce-4">نتشرف بحضوركم</p></div>'
+        '<p data-move="ce-5">line one<br>line two</p>'
+        '</div>'
+    )
+
+    def test_numbered_text_inside_a_numbered_wrapper_is_offered(self):
+        """مربع «كود متقدّم» بيرقّم الكارت وعناوينه — الكارت ما يبلعش اللي جوّاه."""
+        units = dict(customtext.text_units(self.NESTED))
+        self.assertEqual(
+            units,
+            {"ce-2": "دعوة زفاف", "ce-4": "نتشرف بحضوركم",
+             "ce-5": "line one\nline two"},
+        )
+
+    def test_a_wrapper_with_loose_text_and_a_numbered_child_is_not_a_unit(self):
+        units = dict(customtext.text_units(
+            '<div data-move="a">hello <b data-move="b">world</b></div>'))
+        self.assertEqual(units, {"b": "world"})
+
+    def test_nested_numbered_text_is_replaced_in_place(self):
+        out = customtext.replace_texts(
+            self.NESTED, {"ce-2": "Wedding", "ce-4": "Join us"})
+        self.assertIn('<h2 data-move="ce-2">Wedding</h2>', out)
+        self.assertIn('<p data-move="ce-4">Join us</p>', out)
+        self.assertIn('<p data-move="ce-5">line one<br>line two</p>', out)
+
     def test_style_and_script_are_never_offered(self):
         """ده كان الباج: الجدول بيعرض CSS بدل الكلام."""
         for _m, text in customtext.text_units(self.HTML):

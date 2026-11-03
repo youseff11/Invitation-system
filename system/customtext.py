@@ -41,12 +41,28 @@ def _text_to_html(text: str) -> str:
     return "<br>".join(escape(line) for line in lines)
 
 
+class _Candidate:
+    """عنصر مرقّم لسه مفتوح — بيجمع نصه وهل اتفتح جواه وسم."""
+
+    __slots__ = ("move", "depth", "buf", "dirty")
+
+    def __init__(self, move: str, depth: int):
+        self.move = move
+        self.depth = depth
+        self.buf: list[str] = []
+        self.dirty = False           # اتفتح وسم جوّه العنصر؟
+
+
 class _Collector(HTMLParser):
     """يجمع وحدات النص: عنصر له ``data-move`` ومحتواه نص صافي.
 
     «نص صافي» شرط متشدّد عن قصد: لو جوّه العنصر أي وسم تاني بنسيبه.
     الاستبدال ساعتها كان هيمسح الوسم ده (``<br>`` أو ``<span>`` ملوّن)
     والمصمّم مش هيفهم راح فين. الأقسام المستوردة أغلب عناوينها نص صافي.
+
+    العناصر المرقّمة ممكن تتداخل: مربع «كود متقدّم» بيرقّم الكارت وعناوينه
+    اللي جوّاه. الكارت مش نص صافي فبنسيبه، لكن عناوينه لازم تفضل وحدات
+    نص مستقلة — وإلا الكلام اللي جوّا أي كارت ما يوصلش لجدول الترجمة.
     """
 
     def __init__(self):
@@ -54,42 +70,37 @@ class _Collector(HTMLParser):
         self.units: list[tuple[str, str]] = []
         self._stack: list[str] = []
         self._skip = 0
-        self._move: str | None = None
-        self._buf: list[str] = []
-        self._dirty = False          # اتفتح وسم جوّه العنصر؟
+        self._open: list[_Candidate] = []   # الأقرب للوسم الحالي في الآخر
+
+    def _mark_dirty(self):
+        for cand in self._open:
+            cand.dirty = True
 
     def handle_starttag(self, tag, attrs):
         if tag in SKIP_TAGS:
             self._skip += 1
             return
         if tag in LINE_BREAK_TAGS:
-            if self._move is not None and not self._skip:
-                self._buf.append("\n")
+            if self._open and not self._skip:
+                self._open[-1].buf.append("\n")
             return
         if tag in VOID_TAGS:
-            if self._move is not None:
-                self._dirty = True
+            self._mark_dirty()
             return
         self._stack.append(tag)
-        if self._move is not None:
-            self._dirty = True
-            return
+        self._mark_dirty()
         if self._skip:
             return
         move = dict(attrs).get("data-move")
         if move:
-            self._move = move
-            self._buf = []
-            self._dirty = False
-            self._depth = len(self._stack)
+            self._open.append(_Candidate(move, len(self._stack)))
 
     def handle_startendtag(self, tag, attrs):
         if tag in LINE_BREAK_TAGS:
-            if self._move is not None and not self._skip:
-                self._buf.append("\n")
+            if self._open and not self._skip:
+                self._open[-1].buf.append("\n")
             return
-        if self._move is not None:
-            self._dirty = True
+        self._mark_dirty()
 
     def handle_endtag(self, tag):
         if tag in SKIP_TAGS:
@@ -99,18 +110,17 @@ class _Collector(HTMLParser):
             return
         if self._stack:
             self._stack.pop()
-        if self._move is not None and len(self._stack) < self._depth:
+        if self._open and len(self._stack) < self._open[-1].depth:
+            cand = self._open.pop()
             text = "\n".join(
-                line.strip() for line in "".join(self._buf).split("\n")
+                line.strip() for line in "".join(cand.buf).split("\n")
             ).strip()
-            if text and not self._dirty and len(text) <= MAX_UNIT_CHARS:
-                self.units.append((self._move, text))
-            self._move = None
-            self._buf = []
+            if text and not cand.dirty and len(text) <= MAX_UNIT_CHARS:
+                self.units.append((cand.move, text))
 
     def handle_data(self, data):
-        if self._move is not None and not self._skip:
-            self._buf.append(data)
+        if self._open and not self._skip:
+            self._open[-1].buf.append(data)
 
 
 def text_units(html: str) -> list[tuple[str, str]]:
