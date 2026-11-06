@@ -55,6 +55,8 @@ export function Intro({ data }: { data: IntroData }) {
   const manual = Boolean(data.video) && (data.playMode === 'button' || data.playMode === 'button_effects')
   // كود الافتتاحية بيشغّل الفيديو بنفسه (مثلاً بعد ٣ دقّات): ماننافسوهوش بتشغيل تلقائي
   const selfPlay = !manual && ownsVideo(data)
+  // افتتاحية الفيديو مالهاش تخطّي: الضيف يتفرّج للآخر والدعوة تبدأ بعدها
+  const locked = Boolean(data.video)
   const [open, setOpen] = useState(false)
   const [awaiting, setAwaiting] = useState(manual)
   const [blocked, setBlocked] = useState(false)
@@ -70,6 +72,9 @@ export function Intro({ data }: { data: IntroData }) {
     let isOpen = false
     let isAwaiting = manual
     const vid = video.current
+    // الفيديو خلص (أو ماينفعش يتشغّل خالص): ساعتها بس الدعوة تتفتح
+    let finished = !locked || !vid
+    let forcePlay: (() => void) | null = null
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -96,10 +101,22 @@ export function Intro({ data }: { data: IntroData }) {
       // التمرير التلقائي مستني الإشارة دي — قبلها التمرير مقفول أصلاً
       document.dispatchEvent(new CustomEvent('lb:intro-open'))
     }
+    // طرق فتح الضيف (لمسة، زر، عدّاد، غطا الكود): طول ما الفيديو ماخلصش
+    // مابتفتحش. لو الفيديو واقف (المتصفح رفض التشغيل التلقائي أو الكود ماشغّلوش)
+    // اللمسة بتشغّله، وإلا الضيف هيفضل قدام صورة ثابتة.
+    const guestOpen = () => {
+      if (finished) {
+        doOpen()
+        return
+      }
+      forcePlay?.()
+    }
+    // ‎window.__lbIntro.open‎ بيفضل يفتح فوراً: المحرر بيستخدمه لتخطّي المعاينة
     window.__lbIntro = { open: doOpen, reopen: () => {} }
 
     const startAuto = () => {
       if (timer) clearTimeout(timer)
+      if (locked) return // الفيديو هو اللي بيفتح لما يخلص، مش العدّاد
       if (data.seconds > 0) timer = window.setTimeout(doOpen, data.seconds * 1000)
     }
     // لو الفيديو مستني ضغطة تشغيل، العدّاد التلقائي يستنى معاه
@@ -155,6 +172,24 @@ export function Intro({ data }: { data: IntroData }) {
       }
 
       const wantsSound = data.audio === 'sound'
+      forcePlay = () => {
+        if (!vid.paused || vid.ended) return
+        vid.muted = !wantsSound
+        const attempt = vid.play()
+        if (attempt && attempt.catch) {
+          attempt.catch(() => {
+            vid.muted = true
+            const again = vid.play()
+            if (again && again.catch) {
+              // الفيديو ماينفعش يتشغّل على الجهاز ده خالص — مانحبسش الضيف
+              again.catch(() => {
+                finished = true
+                doOpen()
+              })
+            }
+          })
+        }
+      }
       if (manual && playBtn.current) {
         let announced = false
         const announcePlay = () => {
@@ -197,17 +232,27 @@ export function Intro({ data }: { data: IntroData }) {
         }
       }
       const onEnded = () => {
-        if (!intro.getAttribute('data-intro-auto')) doOpen()
+        finished = true
+        doOpen()
+      }
+      // ملف فيديو بايظ أو مش بيتحمّل: ماينفعش نستنى نهايته
+      const onError = () => {
+        finished = true
+        doOpen()
       }
       vid.addEventListener('ended', onEnded)
-      cleanup.push(() => vid.removeEventListener('ended', onEnded))
+      vid.addEventListener('error', onError)
+      cleanup.push(() => {
+        vid.removeEventListener('ended', onEnded)
+        vid.removeEventListener('error', onError)
+      })
     }
 
     const btn = openBtn.current
     if (btn) {
       const onBtn = (e: Event) => {
         e.stopPropagation()
-        doOpen()
+        guestOpen()
       }
       btn.addEventListener('click', onBtn)
       cleanup.push(() => btn.removeEventListener('click', onBtn))
@@ -219,7 +264,7 @@ export function Intro({ data }: { data: IntroData }) {
     if (data.code?.html) {
       void import('./runtime/intro-code').then((m) => {
         if (disposed) return
-        cover = m.bindCodeCover(intro, { open: doOpen, isOpen: () => isOpen })
+        cover = m.bindCodeCover(intro, { open: guestOpen, isOpen: () => isOpen })
       })
     }
     cleanup.push(() => {
@@ -235,11 +280,11 @@ export function Intro({ data }: { data: IntroData }) {
         startManual?.()
         return
       }
-      doOpen()
+      guestOpen()
     }
     intro.addEventListener('click', onTouch)
     cleanup.push(() => intro.removeEventListener('click', onTouch))
-    intro.style.cursor = 'pointer'
+    if (!locked) intro.style.cursor = 'pointer'
 
     return () => {
       cleanup.forEach((fn) => fn())
@@ -347,7 +392,7 @@ export function Intro({ data }: { data: IntroData }) {
             {data.text}
           </p>
         )}
-        {data.button && (
+        {data.button && !locked && (
           <button
             ref={openBtn}
             type="button"

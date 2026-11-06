@@ -134,4 +134,67 @@ describe('Intro', () => {
     expect(root.classList.contains('is-open')).toBe(false)
     document.removeEventListener('lb:intro-play', played)
   })
+
+  describe('video intro cannot be skipped', () => {
+    const mockMedia = (play = vi.fn().mockResolvedValue(undefined)) => {
+      HTMLMediaElement.prototype.play = play
+      HTMLMediaElement.prototype.pause = vi.fn()
+      HTMLMediaElement.prototype.load = vi.fn()
+      return play
+    }
+
+    it('ignores taps, the open button and the auto timer until the video ends', () => {
+      mockMedia()
+      const { container } = renderIntro(intro({ video: '/v.mp4', seconds: 2 }))
+      const root = container.querySelector('.lb-intro')!
+      fireEvent.click(root)
+      fireEvent.click(root)
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      expect(root.classList.contains('is-open')).toBe(false)
+      // زرار «فتح» مابيتعرضش أصلاً فوق فيديو مالوش تخطّي
+      expect(container.querySelector('[data-intro-open]')).toBeNull()
+      act(() => {
+        fireEvent(container.querySelector('video')!, new Event('ended'))
+      })
+      expect(root.classList.contains('is-open')).toBe(true)
+    })
+
+    it('opens at the end even when an auto timer is configured', () => {
+      mockMedia()
+      const { container } = renderIntro(intro({ video: '/v.mp4', seconds: 30 }))
+      act(() => {
+        fireEvent(container.querySelector('video')!, new Event('ended'))
+      })
+      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(true)
+    })
+
+    it('a tap restarts a video the browser refused to autoplay instead of opening', () => {
+      const play = mockMedia(vi.fn().mockRejectedValueOnce(new Error('blocked')).mockResolvedValue(undefined))
+      const { container } = renderIntro(intro({ video: '/v.mp4' }))
+      const root = container.querySelector('.lb-intro')!
+      fireEvent.click(root)
+      expect(play.mock.calls.length).toBeGreaterThanOrEqual(2)
+      expect(root.classList.contains('is-open')).toBe(false)
+    })
+
+    it('does not trap the guest when the video file fails to load', () => {
+      mockMedia()
+      const { container } = renderIntro(intro({ video: '/missing.mp4' }))
+      act(() => {
+        fireEvent(container.querySelector('video')!, new Event('error'))
+      })
+      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(true)
+    })
+
+    it('the editor can still skip through window.__lbIntro.open', () => {
+      mockMedia()
+      const { container } = renderIntro(intro({ video: '/v.mp4' }))
+      act(() => {
+        window.__lbIntro?.open()
+      })
+      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(true)
+    })
+  })
 })
