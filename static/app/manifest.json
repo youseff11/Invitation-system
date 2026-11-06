@@ -820,6 +820,12 @@
       "_media-lY9_eud7.js"
     ]
   },
+  "src/features/invite/runtime/debug.ts": {
+    "file": "assets/debug-Ba_nhe6P.js",
+    "name": "debug",
+    "src": "src/features/invite/runtime/debug.ts",
+    "isDynamicEntry": true
+  },
   "src/features/invite/runtime/imported.ts": {
     "file": "assets/imported-CfKWLyl_.js",
     "name": "imported",
@@ -833,7 +839,7 @@
     "isDynamicEntry": true
   },
   "src/invite-main.tsx": {
-    "file": "assets/invite-Cy5QIOq2.js",
+    "file": "assets/invite-BF2lkCz4.js",
     "name": "invite",
     "src": "src/invite-main.tsx",
     "isEntry": true,
@@ -842,6 +848,9 @@
       "_preload-helper-RmSEHuqO.js",
       "_InviteApp-HDyvikzt.js",
       "_invite-BpYjUTEJ.js"
+    ],
+    "dynamicImports": [
+      "src/features/invite/runtime/debug.ts"
     ]
   },
   "src/main.tsx": {

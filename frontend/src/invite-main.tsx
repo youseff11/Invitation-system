@@ -12,4 +12,12 @@ import '@/features/invite/invite.css'
  */
 const node = document.getElementById('invite-data')
 const boot = JSON.parse(node?.textContent || '{}') as Boot
-createRoot(document.getElementById('root')!).render(<InviteApp boot={boot} />)
+const mount = () => createRoot(document.getElementById('root')!).render(<InviteApp boot={boot} />)
+
+// ‎?lbdebug=1‎: لوحة تشخيص الفيديو على الشاشة (للآيفون من غير Web Inspector).
+// بتتحمّل قبل الرسم عشان تلحق أول ‎play()‎، ومش بتدخل الحزمة العادية.
+if (/[?&]lbdebug=1/.test(window.location.search)) {
+  import('@/features/invite/runtime/debug').then((m) => m.startDebug()).catch(() => {}).finally(mount)
+} else {
+  mount()
+}
