@@ -484,6 +484,19 @@ class RsvpTests(BaseAppTest):
         self.assertEqual(RSVPResponse.objects.count(), 1)
         self.assertEqual(RSVPResponse.objects.first().companions, 2)
 
+    def test_followup_total_counts_companions_of_attendees_only(self):
+        RSVPResponse.objects.create(invitation=self.inv, name="أ", status="attending", companions=2)
+        RSVPResponse.objects.create(invitation=self.inv, name="ب", status="attending", companions=0)
+        RSVPResponse.objects.create(invitation=self.inv, name="ج", status="declined", companions=3)
+        r = self.client.get(f"/i/{self.inv.slug}/client/{self.inv.client_token}/")
+        self.assertEqual(r.status_code, 200)
+        # 2 أكدوا + مرافقان؛ مرافقو المعتذر مايتحسبوش
+        self.assertEqual(r.context["stats"]["attending_total"], 4)
+        html = r.content.decode()
+        self.assertIn('property="og:image"', html)
+        self.assertIn("followup-share", html)
+        self.assertIn("متابعة تأكيدات الحضور ورسائل التهنئة", html)
+
     def test_companions_clamped_to_block_max(self):
         self.client.post(self.url(), {"name": "منى", "status": "attending", "companions": "9999"})
         self.assertLessEqual(RSVPResponse.objects.first().companions, 5)

@@ -744,6 +744,12 @@ def invitation_client_followup(request, slug, token):
     declined = sum(1 for response in rsvps if response.status == "declined")
     maybe = sum(1 for response in rsvps if response.status == "maybe")
     companions = sum(int(response.companions or 0) for response in rsvps)
+    # إجمالي اللي هيحضروا فعلاً = اللي أكدوا + مرافقيهم هم بس (مرافقو
+    # المعتذرين والمتردّدين مايتحسبوش).
+    attending_companions = sum(
+        int(response.companions or 0)
+        for response in rsvps if response.status == "attending"
+    )
     checked_in = sum(1 for guest in guests if guest.checked_in)
 
     response = render(request, "public/client_followup.html", {
@@ -765,6 +771,8 @@ def invitation_client_followup(request, slug, token):
             "declined": declined if has_rsvp else 0,
             "maybe": maybe if has_rsvp else 0,
             "companions": companions if has_rsvp else 0,
+            "attending_companions": attending_companions if has_rsvp else 0,
+            "attending_total": (attending + attending_companions) if has_rsvp else 0,
             "guests": len(guests) if has_qr else 0,
             "checked_in": checked_in if has_qr else 0,
             "messages": len(message_rows) if has_guestbook else 0,
