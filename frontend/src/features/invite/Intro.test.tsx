@@ -234,6 +234,50 @@ describe('Intro', () => {
     expect(root.classList.contains('is-open')).toBe(true)
   })
 
+  describe('intro video prefetch', () => {
+    const setup = () => {
+      HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
+      HTMLMediaElement.prototype.pause = vi.fn()
+      HTMLMediaElement.prototype.load = vi.fn()
+      const blob = new Blob(['x'], { type: 'video/mp4' })
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: () => '700000' },
+        blob: () => Promise.resolve(blob),
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const create = vi.fn(() => 'blob:intro-1')
+      const revoke = vi.fn()
+      Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke })
+      return { fetchMock, create }
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('loads the whole intro before the tap and plays it from memory', async () => {
+      const { fetchMock } = setup()
+      const { container } = renderIntro(intro({ video: '/media-video/a.web.mp4', playMode: 'button' }))
+      expect(fetchMock).toHaveBeenCalledWith('/media-video/a.web.mp4', expect.anything())
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(container.querySelector('video')!.getAttribute('src')).toBe('blob:intro-1')
+    })
+
+    it('does not swap the source once the guest already tapped play', async () => {
+      setup()
+      const { container } = renderIntro(intro({ video: '/media-video/a.web.mp4', playMode: 'button' }))
+      fireEvent.click(container.querySelector('[data-intro-play]')!)
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(container.querySelector('video')!.getAttribute('src')).toBe('/media-video/a.web.mp4')
+    })
+  })
+
   describe('first invitation video', () => {
     it('keeps an autoplay video paused behind the intro and starts it on open', () => {
       const play = vi.fn().mockResolvedValue(undefined)
