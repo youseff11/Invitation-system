@@ -171,7 +171,7 @@
     "marked": "✓ {{name}} — {{used}} من {{allowed}}"
   },
   "client": {
-    "docTitle": "متابعة دعوتكم — {{site}}",
+    "docTitle": "متابعة تأكيدات الحضور ورسائل التهنئة",
     "invalid": "رابط المتابعة غير صالح.",
     "and": "و",
     "welcomeNamed": "أهلاً بكم يا {{names}} 🤍",
@@ -180,6 +180,7 @@
     "summary": "ملخص المتابعة",
     "allReplies": "كل الردود",
     "attending": "سيحضرون",
+    "attendingTotal": "إجمالي الحضور بالمرافقين",
     "guestsQr": "الضيوف والـQR",
     "checkedIn": "تصاريح دخلت القاعة",
     "wishes": "رسائل التهنئة",

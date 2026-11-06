@@ -171,7 +171,7 @@
     "marked": "✓ {{name}} — {{used}} of {{allowed}}"
   },
   "client": {
-    "docTitle": "Following your invitation — {{site}}",
+    "docTitle": "RSVP tracking and well-wishes",
     "invalid": "This follow-up link isn't valid.",
     "and": "and ",
     "welcomeNamed": "Welcome, {{names}} 🤍",
@@ -180,6 +180,7 @@
     "summary": "Follow-up summary",
     "allReplies": "All replies",
     "attending": "Attending",
+    "attendingTotal": "Total attending incl. companions",
     "guestsQr": "Guests & QR",
     "checkedIn": "Passes used at the venue",
     "wishes": "Well-wishes",

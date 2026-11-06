@@ -8,14 +8,44 @@ Django بيقدّم HTML واحد صغير: الـ``<head>`` (العنوان، O
 
 from __future__ import annotations
 
+import re
+
 from django.conf import settings
 from django.shortcuts import render
+from django.templatetags.static import static
 from django.utils.translation import get_language, get_language_bidi
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_safe
 
 from .api.serializers import site_payload, user_payload
+
+
+# صفحة متابعة العروسين (/i/<slug>/client/<token>/، وتحت /app/ أثناء الترحيل).
+_FOLLOWUP_PATH = re.compile(r"^(?:/[^/]+)?/i/[^/]+/client/[^/]+/?$")
+
+FOLLOWUP_TITLE = "متابعة تأكيدات الحضور ورسائل التهنئة"
+FOLLOWUP_DESC = (
+    "رابط خاص بالعريس والعروسة لمتابعة ردود المدعوين على دعوة الفرح، "
+    "ومعرفة مين أكد حضوره ومين اعتذر، والاطلاع على رسائل التهنئة من الأهل والأصدقاء."
+)
+
+
+def _share_overrides(request) -> dict:
+    """عنوان/وصف/صورة معاينة الصفحات اللي ليها معاينة خاصة.
+
+    زواحف واتساب وميتا مابتشغّلش جافاسكربت، فالمعاينة لازم تتبني هنا
+    على السيرفر مش من React. الصورة برابط مطلق ومعاها مقاسها.
+    """
+    if _FOLLOWUP_PATH.match(request.path):
+        return {
+            "share_title": FOLLOWUP_TITLE,
+            "share_description": FOLLOWUP_DESC,
+            "share_image": settings.SITE_URL + static("images/followup-share.jpg"),
+            "share_image_width": 1600,
+            "share_image_height": 900,
+        }
+    return {}
 
 
 def boot_payload(request) -> dict:
@@ -41,6 +71,7 @@ def spa_shell(request, *args, **kwargs):
     response = render(request, "spa/shell.html", {
         "boot": boot_payload(request),
         "noindex": noindex,
+        **_share_overrides(request),
     })
     if noindex:
         response["X-Robots-Tag"] = "noindex, nofollow"

@@ -180,6 +180,8 @@ export interface ClientFollowup {
     declined: number
     maybe: number
     companions: number
+    attendingCompanions: number
+    attendingTotal: number
     guests: number
     checkedIn: number
     messages: number

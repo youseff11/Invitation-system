@@ -575,11 +575,26 @@ class ClientFollowupApiTests(GuestsApiCase):
         self.assertEqual(data["stats"]["attending"], 1)
         self.assertEqual(data["stats"]["declined"], 1)
         self.assertEqual(data["stats"]["companions"], 1)
+        # 1 أكّد + مرافق واحد؛ المعتذر مايتحسبش
+        self.assertEqual(data["stats"]["attendingTotal"], 2)
         self.assertEqual(data["stats"]["guests"], 2)
         self.assertEqual(data["stats"]["messages"], 1)
         self.assertEqual(data["messageRows"][0]["message"], "ألف مبروك")
         self.assertNotIn("venueToken", data["invitation"])
         self.assertEqual({r["name"] for r in data["qrRows"]}, {"علي", "منى"})
+
+    def test_total_ignores_companions_of_non_attendees(self):
+        RSVPResponse.objects.create(invitation=self.inv, name="أ", status="attending", companions=2)
+        RSVPResponse.objects.create(invitation=self.inv, name="ب", status="declined", companions=3)
+        stats = self.client.get(self.url()).json()["stats"]
+        self.assertEqual(stats["attendingTotal"], 3)
+        self.assertEqual(stats["attendingCompanions"], 2)
+
+    def test_shell_has_followup_share_preview(self):
+        html = self.client.get(f"/i/{self.inv.slug}/client/{self.inv.client_token}/").content.decode()
+        self.assertIn("<title>متابعة تأكيدات الحضور ورسائل التهنئة</title>", html)
+        self.assertIn("followup-share.jpg", html)
+        self.assertIn('property="og:image:width" content="1600"', html)
 
     def test_pass_locked_from_the_editor_hides_qr(self):
         self.inv.document = {"version": 1, "blocks": [

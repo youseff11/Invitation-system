@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>{{ SITE_NAME }} — {{ SITE_TAGLINE }}</title>
-<meta name="description" content="{{ SEO_DESC }}">
+<title>{% if share_title %}{{ share_title }}{% else %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endif %}</title>
+<meta name="description" content="{% firstof share_description SEO_DESC %}">
 <meta name="robots" content="{% if noindex %}noindex, nofollow{% else %}index, follow, max-image-preview:large, max-snippet:-1{% endif %}">
 {% if GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ GOOGLE_SITE_VERIFICATION }}">
 {% endif %}<link rel="canonical" href="{{ SEO_CANONICAL }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{{ SITE_NAME }}">
 <meta property="og:locale" content="{{ SEO_LOCALE }}">
-<meta property="og:title" content="{{ SITE_NAME }} — {{ SITE_TAGLINE }}">
-<meta property="og:description" content="{{ SEO_DESC }}">
+<meta property="og:title" content="{% if share_title %}{{ share_title }}{% else %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endif %}">
+<meta property="og:description" content="{% firstof share_description SEO_DESC %}">
 <meta property="og:url" content="{{ SEO_CANONICAL }}">
-<meta property="og:image" content="{{ SEO_IMAGE }}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image" content="{% firstof share_image SEO_IMAGE %}">
+<meta property="og:image:width" content="{{ share_image_width|default:1200 }}">
+<meta property="og:image:height" content="{{ share_image_height|default:630 }}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ SITE_NAME }} — {{ SITE_TAGLINE }}">
-<meta name="twitter:description" content="{{ SEO_DESC }}">
-<meta name="twitter:image" content="{{ SEO_IMAGE }}">
+<meta name="twitter:title" content="{% if share_title %}{{ share_title }}{% else %}{{ SITE_NAME }} — {{ SITE_TAGLINE }}{% endif %}">
+<meta name="twitter:description" content="{% firstof share_description SEO_DESC %}">
+<meta name="twitter:image" content="{% firstof share_image SEO_IMAGE %}">
 <script>
 /* يضبط المظهر قبل رسم الصفحة — نفس مفتاح الموقع القديم (leila-theme)،
    فاختيار الزائر بيمشي بين النسختين. من غير متغيّرات Django عمداً. */

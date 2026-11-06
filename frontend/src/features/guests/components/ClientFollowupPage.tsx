@@ -40,7 +40,7 @@ export function ClientFollowupPage() {
   const siteName = site?.displayName ?? ''
 
   useNoIndex()
-  useDocumentTitle(t('guests.client.docTitle', { site: siteName }))
+  useDocumentTitle(t('guests.client.docTitle'))
 
   if (isPending) return <div className="gw client-followup-page" aria-busy="true" />
   if (error || !data) {
@@ -81,6 +81,11 @@ export function ClientFollowupPage() {
                 <span className="client-followup-stat-icon client-followup-stat-icon--ok">♥</span>
                 <span className="client-followup-stat-label">{t('guests.client.attending')}</span>
                 <strong>{stats.attending}</strong>
+              </article>
+              <article className="client-followup-stat">
+                <span className="client-followup-stat-icon client-followup-stat-icon--ok">👥</span>
+                <span className="client-followup-stat-label">{t('guests.client.attendingTotal')}</span>
+                <strong>{stats.attendingTotal}</strong>
               </article>
             </>
           )}
