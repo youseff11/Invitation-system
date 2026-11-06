@@ -37,7 +37,7 @@ from .. import tildacss
 from ..templatetags import invite as tags
 
 # يتزوّد مع أي تغيير في شكل الحمولة أو في طريقة العرض (كاش معاينة القالب)
-PAYLOAD_REVISION = "2026-10-23-react-v1"
+PAYLOAD_REVISION = "2026-11-06-video-range"
 
 # ما يوصل للواجهة من خصائص كل بلوك. أي حاجة برّه القوائم دي (النص الخام،
 # الستايل الحر، الكود) بتتعامل لوحدها تحت.
@@ -178,7 +178,9 @@ def _intro_payload(s: dict, intro_style: str, item_styles: dict, guest) -> dict 
         code = {"css": css, "html": html, "js": str(parts["js"])}
 
     return {
-        "video": s.get("intro_video") or "",
+        # ‎/media-video/‎ مش ‎/media/‎: الاستضافة بتقدّم ‎/media/‎ من غير Range
+        # (بترجّع ٢٠٠ بالملف كله)، فالموبايل كان بيستنى الفيديو كله قبل أول فريم
+        "video": tags.video_url(s.get("intro_video") or ""),
         "poster": s.get("intro_poster") or "",
         "playMode": s.get("intro_play_mode") or "autoplay",
         "audio": s.get("intro_video_audio") or "silent",
@@ -270,6 +272,9 @@ def _block_payload(block: dict, ctx: dict, extras: dict, *, invitation, guest,
         )
         out_props["bgColor"] = style.get("bg_color") or ""
     elif btype == "video":
+        # نفس فلتر القالب القديم: ‎/media-video/‎ بيدعم Range فالتشغيل يبدأ فوراً
+        if out_props.get("url"):
+            out_props["url"] = tags.video_url(out_props["url"])
         out_props["overlays"] = [
             render_to_string("blocks/_overlay_item.html", {
                 "overlay": overlay, "index": index,

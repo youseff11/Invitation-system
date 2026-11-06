@@ -32,26 +32,6 @@ function ownsVideo(intro: IntroData): boolean {
   return Boolean(intro.video && js && /video/i.test(js) && /\.play\s*\(/.test(js))
 }
 
-/** أقصى انتظار لأول فيديو في الدعوة بعد ما فيديو الافتتاحية يخلص. */
-const FIRST_VIDEO_WAIT_MS = 8000
-
-/**
- * أول فيديو ظاهر في الدعوة من غير صورة غلاف، لسه ماجهّزش يتشغّل؟
- * الفيديو الكبير على موبايل بيفضل ثواني قدام مربّع بني (لون الحاوية) لحد ما
- * أول فريم ينزل — فبنمسك الافتتاحية على آخر فريم لحد ما يجهز.
- */
-function pendingFirstVideo(): HTMLVideoElement | null {
-  const vids = Array.from(document.querySelectorAll<HTMLVideoElement>('.lb-video video'))
-  const v = vids.find((el) => {
-    const r = el.getBoundingClientRect()
-    return r.bottom > 0 && r.top < window.innerHeight
-  })
-  if (!v || v.readyState >= 3 || v.error) return null
-  if (v.closest('[data-poster]')) return null // الغلاف ظاهر بدل البني
-  if (!v.autoplay && v.preload !== 'auto') return null // مابيحمّلش لوحده: الانتظار مالوش لازمة
-  return v
-}
-
 interface MusicHandle {
   play: () => void
 }
@@ -95,8 +75,6 @@ export function Intro({ data }: { data: IntroData }) {
     // الفيديو خلص (أو ماينفعش يتشغّل خالص): ساعتها بس الدعوة تتفتح
     let finished = !locked || !vid
     let forcePlay: (() => void) | null = null
-    let holding = false // الفيديو خلص ومستنيين فيديو الدعوة يجهز
-    let holdTimer: number | undefined
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -127,37 +105,11 @@ export function Intro({ data }: { data: IntroData }) {
     // مابتفتحش. لو الفيديو واقف (المتصفح رفض التشغيل التلقائي أو الكود ماشغّلوش)
     // اللمسة بتشغّله، وإلا الضيف هيفضل قدام صورة ثابتة.
     const guestOpen = () => {
-      if (holding) return
       if (finished) {
         doOpen()
         return
       }
       forcePlay?.()
-    }
-    // فيديو الافتتاحية خلص: نفتح، بس لو فيديو الدعوة لسه بيحمّل نستناه (بحد أقصى)
-    const openWhenReady = () => {
-      const next = pendingFirstVideo()
-      if (!next) {
-        doOpen()
-        return
-      }
-      holding = true
-      const release = () => {
-        next.removeEventListener('canplay', release)
-        next.removeEventListener('error', release)
-        if (holdTimer) clearTimeout(holdTimer)
-        holdTimer = undefined
-        holding = false
-        doOpen()
-      }
-      next.addEventListener('canplay', release)
-      next.addEventListener('error', release)
-      holdTimer = window.setTimeout(release, FIRST_VIDEO_WAIT_MS)
-      cleanup.push(() => {
-        next.removeEventListener('canplay', release)
-        next.removeEventListener('error', release)
-        if (holdTimer) clearTimeout(holdTimer)
-      })
     }
     // ‎window.__lbIntro.open‎ بيفضل يفتح فوراً: المحرر بيستخدمه لتخطّي المعاينة
     window.__lbIntro = { open: doOpen, reopen: () => {} }
@@ -281,7 +233,7 @@ export function Intro({ data }: { data: IntroData }) {
       }
       const onEnded = () => {
         finished = true
-        openWhenReady()
+        doOpen()
       }
       // ملف فيديو بايظ أو مش بيتحمّل: ماينفعش نستنى نهايته
       const onError = () => {

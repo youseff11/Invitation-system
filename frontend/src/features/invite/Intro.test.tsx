@@ -200,69 +200,6 @@ describe('Intro', () => {
   })
 
   describe('first invitation video', () => {
-    const media = () => {
-      HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
-      HTMLMediaElement.prototype.pause = vi.fn()
-      HTMLMediaElement.prototype.load = vi.fn()
-    }
-    // فيديو الدعوة اللي ورا الافتتاحية: autoplay من غير غلاف وظاهر في أول الشاشة
-    const pageVideo = () => {
-      const wrap = document.createElement('div')
-      wrap.className = 'lb-video'
-      const v = document.createElement('video')
-      v.autoplay = true
-      v.getBoundingClientRect = () => ({ top: 0, bottom: 600 }) as DOMRect
-      wrap.appendChild(v)
-      document.body.appendChild(wrap)
-      return { v, wrap }
-    }
-
-    it('holds the intro on its last frame until the invitation video can play', () => {
-      media()
-      const { v, wrap } = pageVideo()
-      const { container } = renderIntro(intro({ video: '/v.mp4' }))
-      const root = container.querySelector('.lb-intro')!
-      act(() => {
-        fireEvent(container.querySelector('video')!, new Event('ended'))
-      })
-      expect(root.classList.contains('is-open')).toBe(false)
-      fireEvent.click(root) // اللمس أثناء الانتظار مايفتحش
-      expect(root.classList.contains('is-open')).toBe(false)
-      act(() => {
-        fireEvent(v, new Event('canplay'))
-      })
-      expect(root.classList.contains('is-open')).toBe(true)
-      wrap.remove()
-    })
-
-    it('does not wait forever for a slow video', () => {
-      media()
-      const { wrap } = pageVideo()
-      const { container } = renderIntro(intro({ video: '/v.mp4' }))
-      act(() => {
-        fireEvent(container.querySelector('video')!, new Event('ended'))
-      })
-      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(false)
-      act(() => {
-        vi.advanceTimersByTime(8100)
-      })
-      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(true)
-      wrap.remove()
-    })
-
-    it('does not wait when the video already shows a cover image', () => {
-      media()
-      const { v, wrap } = pageVideo()
-      wrap.setAttribute('data-poster', '/p.jpg')
-      void v
-      const { container } = renderIntro(intro({ video: '/v.mp4' }))
-      act(() => {
-        fireEvent(container.querySelector('video')!, new Event('ended'))
-      })
-      expect(container.querySelector('.lb-intro')!.classList.contains('is-open')).toBe(true)
-      wrap.remove()
-    })
-
     it('keeps an autoplay video paused behind the intro and starts it on open', () => {
       const play = vi.fn().mockResolvedValue(undefined)
       HTMLMediaElement.prototype.play = play

@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-C3cWAN_r.js";import{o as t}from"./preload-helper-RmSEHuqO.js";import{t as n}from"./InviteApp-COAFMv4D.js";import"./invite-BiiwICZ-.js";var r=t(),i=e(),a=document.getElementById(`invite-data`),o=JSON.parse(a?.textContent||`{}`);(0,r.createRoot)(document.getElementById(`root`)).render((0,i.jsx)(n,{boot:o}));

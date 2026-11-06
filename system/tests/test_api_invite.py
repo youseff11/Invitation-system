@@ -328,6 +328,26 @@ class RenderApiTests(InviteBase):
         self.inv.refresh_from_db()
         self.assertEqual(self.inv.public_views, 0)
 
+    def test_local_videos_use_the_range_endpoint(self):
+        # ‎/media/‎ على الاستضافة مابيدعمش Range: الموبايل كان بيستنى الملف كله
+        doc = self.inv.get_document()
+        doc["blocks"].insert(0, {
+            "id": "video-x", "type": "video", "visible": True,
+            "props": {"url": "/media/assets/v/big.mp4", "autoplay": True},
+            "style": {},
+        })
+        doc["blocks"].insert(1, {
+            "id": "video-y", "type": "video", "visible": True,
+            "props": {"url": "https://youtu.be/abcdefgh"}, "style": {},
+        })
+        self.inv.document = doc
+        self.inv.save()
+        blocks = self.client.get(
+            f"/api/v1/invitations/{self.inv.slug}/render/").json()["blocks"]
+        urls = {b["id"]: b["props"].get("url") for b in blocks if b["type"] == "video"}
+        self.assertEqual(urls["video-x"], "/media-video/assets/v/big.mp4")
+        self.assertEqual(urls["video-y"], "https://youtu.be/abcdefgh")
+
     def test_render_404_for_unpublished(self):
         self.inv.status = "draft"
         self.inv.save()
