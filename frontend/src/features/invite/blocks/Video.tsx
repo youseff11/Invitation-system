@@ -60,7 +60,7 @@ function FileVideo({
   loop: boolean
   sound: boolean
 }) {
-  const { hasIntro } = useInvite()
+  const { hasIntro, demo } = useInvite()
   const ref = useRef<HTMLVideoElement>(null)
   const ducking = useDuck()
   // لمسة الضيف على «افتح الدعوة» هي إذن التشغيل الوحيد اللي بيسمح بصوت،
@@ -168,7 +168,16 @@ function FileVideo({
       document.addEventListener('lb:intro-open', onOpen, { once: true })
       cleanup.push(() => document.removeEventListener('lb:intro-open', onOpen))
     } else if (autoplay) {
-      watch()
+      // لو فيه افتتاحية لسه قدّام الضيف، الفيديو بيتحمّل ورا الشاشة بس مابيشتغلش
+      // إلا لما تتفتح: وإلا كان بيخلّص أول ثواني منه والضيف بيتفرّج على الافتتاحية.
+      // المعاينة (‎demo‎) مالهاش افتتاحية تقفل، فبتشتغل زي الأول.
+      const introUp = hasIntro && !demo && document.querySelector('.lb-intro:not(.is-open)')
+      if (introUp) {
+        document.addEventListener('lb:intro-open', watch, { once: true })
+        cleanup.push(() => document.removeEventListener('lb:intro-open', watch))
+      } else {
+        watch()
+      }
     }
 
     // الفيديو من غير شريط تحكم دايماً: اللمسة عليه بتشغّله لو واقف (الفيديو غير التلقائي

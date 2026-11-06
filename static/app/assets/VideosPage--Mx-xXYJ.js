@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-C3cWAN_r.js";import{t}from"./ClipLibraryPage-BCNz_898.js";var n=e();function r(){return(0,n.jsx)(t,{kind:`videos`})}export{r as VideosPage};
