@@ -195,7 +195,8 @@ class SharePreviewTests(BaseAppTest):
         body = self.client.get("/robots.txt").content.decode()
         self.assertEqual(body.count("User-agent:"), 1)
         self.assertNotIn("Disallow: /i/\n", body)
-        self.assertIn("Disallow: /i/*/client/", body)
+        # رابط المتابعة بيتشارك بمعاينة على ميتا كمان، فمش مقفول هنا
+        self.assertNotIn("/client/", body)
         self.assertIn("Disallow: /i/*/venue/", body)
 
     def test_invitation_page_is_noindex_for_search_engines(self):

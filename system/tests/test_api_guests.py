@@ -596,6 +596,13 @@ class ClientFollowupApiTests(GuestsApiCase):
         self.assertIn("followup-share.jpg", html)
         self.assertIn('property="og:image:width" content="1600"', html)
 
+    @override_settings(SPA_BASENAME="")
+    def test_followup_is_noindex_after_cutover(self):
+        """مش مقفولة في robots.txt (عشان ميتا) فلازم noindex حتى بعد الترحيل."""
+        res = self.client.get(f"/i/{self.inv.slug}/client/{self.inv.client_token}/")
+        self.assertIn('name="robots" content="noindex, nofollow"', res.content.decode())
+        self.assertEqual(res["X-Robots-Tag"], "noindex, nofollow")
+
     def test_pass_locked_from_the_editor_hides_qr(self):
         self.inv.document = {"version": 1, "blocks": [
             {"id": "r", "type": "rsvp", "visible": True, "props": {"show_pass": False}}]}

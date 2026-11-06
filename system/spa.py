@@ -67,7 +67,9 @@ def boot_payload(request) -> dict:
 def spa_shell(request, *args, **kwargs):
     # أثناء الترحيل التطبيق على /app/ جنب الموقع القديم — noindex عشان جوجل
     # مايفهرسش نسختين من نفس الصفحات. بيتفتح لما SPA_BASENAME يتفضّى.
-    noindex = bool(settings.SPA_BASENAME)
+    # صفحة المتابعة دايماً noindex: مش مقفولة في robots.txt عشان زاحف ميتا
+    # يقرا معاينتها، فده اللي مخلّيها برّه جوجل.
+    noindex = bool(settings.SPA_BASENAME) or bool(_FOLLOWUP_PATH.match(request.path))
     response = render(request, "spa/shell.html", {
         "boot": boot_payload(request),
         "noindex": noindex,
