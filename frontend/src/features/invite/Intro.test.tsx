@@ -199,6 +199,41 @@ describe('Intro', () => {
     })
   })
 
+  it('reveals the video once it is really playing even without frame callbacks (iOS)', () => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
+    HTMLMediaElement.prototype.pause = vi.fn()
+    HTMLMediaElement.prototype.load = vi.fn()
+    const { container } = renderIntro(intro({ video: '/v.mp4', poster: '/p.png', playMode: 'button' }))
+    const video = container.querySelector('video')!
+    ;(video as unknown as { requestVideoFrameCallback: () => void }).requestVideoFrameCallback = vi.fn()
+    fireEvent.click(container.querySelector('[data-intro-play]')!)
+    act(() => {
+      fireEvent(video, new Event('playing'))
+    })
+    expect(video.getAttribute('data-live')).toBe('0')
+    Object.defineProperty(video, 'currentTime', { configurable: true, value: 0.4 })
+    act(() => {
+      fireEvent(video, new Event('timeupdate'))
+    })
+    expect(video.getAttribute('data-live')).toBe('1')
+  })
+
+  it('a video that never moves after the tap stops blocking the guest', () => {
+    HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
+    HTMLMediaElement.prototype.pause = vi.fn()
+    HTMLMediaElement.prototype.load = vi.fn()
+    const { container } = renderIntro(intro({ video: '/v.mp4', playMode: 'button' }))
+    const root = container.querySelector('.lb-intro')!
+    fireEvent.click(container.querySelector('[data-intro-play]')!)
+    fireEvent.click(root)
+    expect(root.classList.contains('is-open')).toBe(false)
+    act(() => {
+      vi.advanceTimersByTime(12100)
+    })
+    fireEvent.click(root)
+    expect(root.classList.contains('is-open')).toBe(true)
+  })
+
   describe('first invitation video', () => {
     it('keeps an autoplay video paused behind the intro and starts it on open', () => {
       const play = vi.fn().mockResolvedValue(undefined)

@@ -32,6 +32,9 @@ function ownsVideo(intro: IntroData): boolean {
   return Boolean(intro.video && js && /video/i.test(js) && /\.play\s*\(/.test(js))
 }
 
+/** مهلة الفيديو اللي ماتحرّكش بعد طلب التشغيل قبل ما نسمح بالفتح باللمس. */
+const STALL_MS = 12000
+
 interface MusicHandle {
   play: () => void
 }
@@ -75,6 +78,18 @@ export function Intro({ data }: { data: IntroData }) {
     // الفيديو خلص (أو ماينفعش يتشغّل خالص): ساعتها بس الدعوة تتفتح
     let finished = !locked || !vid
     let forcePlay: (() => void) | null = null
+    let stallTimer: number | undefined
+    // طلبنا التشغيل والفيديو ماتحرّكش خالص (شبكة واقعة أو جهاز رافض)؟ مانحبسش
+    // الضيف: اللمسة بعدها بتفتح الدعوة عادي.
+    const armStallGuard = () => {
+      if (finished || !vid || stallTimer) return
+      stallTimer = window.setTimeout(() => {
+        if (vid.currentTime < 0.05) {
+          finished = true
+          intro.style.cursor = 'pointer'
+        }
+      }, STALL_MS)
+    }
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -125,14 +140,29 @@ export function Intro({ data }: { data: IntroData }) {
     let startManual: (() => void) | null = null
     if (vid) {
       if (data.poster) {
-        const show = () => setLive(true)
+        let shown = false
+        const show = () => {
+          if (shown) return
+          shown = true
+          setLive(true)
+        }
         const onPlaying = () => {
           // ‎playing‎ بيجي قبل ما أول فريم يترسم؛ نستنى الفريم عشان الغلاف مايتشالش على فراغ
           if ('requestVideoFrameCallback' in vid) vid.requestVideoFrameCallback(show)
           else window.setTimeout(show, 120)
         }
+        // سفاري على الآيفون مابينادييش ‎requestVideoFrameCallback‎ لفيديو شفّاف
+        // (‎opacity:0‎ لحد ما يظهر) — فالفيديو كان بيشتغل مستخبّي ورا الغلاف والضيف
+        // شايف صورة ثابتة. الوقت لما يتحرّك فعلاً = فيه فريمات بتترسم.
+        const onTime = () => {
+          if (vid.currentTime > 0.05) show()
+        }
         vid.addEventListener('playing', onPlaying, { once: true })
-        cleanup.push(() => vid.removeEventListener('playing', onPlaying))
+        vid.addEventListener('timeupdate', onTime)
+        cleanup.push(() => {
+          vid.removeEventListener('playing', onPlaying)
+          vid.removeEventListener('timeupdate', onTime)
+        })
         if (!vid.paused) onPlaying()
       } else {
         // مفيش صورة غلاف: نلتقط أول فريم من الفيديو ونستخدمه كغلاف
@@ -174,6 +204,7 @@ export function Intro({ data }: { data: IntroData }) {
       const wantsSound = data.audio === 'sound'
       forcePlay = () => {
         if (!vid.paused || vid.ended) return
+        armStallGuard()
         vid.muted = !wantsSound
         const attempt = vid.play()
         if (attempt && attempt.catch) {
@@ -213,6 +244,7 @@ export function Intro({ data }: { data: IntroData }) {
               if (again && again.catch) again.catch(() => setBlocked(true))
             })
           }
+          armStallGuard()
           startAuto() // العدّاد يبدأ من دلوقتي
         }
         const onPlay = (e: Event) => {
@@ -289,6 +321,7 @@ export function Intro({ data }: { data: IntroData }) {
     return () => {
       cleanup.forEach((fn) => fn())
       if (timer) clearTimeout(timer)
+      if (stallTimer) clearTimeout(stallTimer)
       document.body.style.overflow = prevOverflow
       delete window.__lbIntro
     }
