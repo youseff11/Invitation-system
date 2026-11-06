@@ -16,7 +16,7 @@ const mount = () => createRoot(document.getElementById('root')!).render(<InviteA
 
 // ‎?lbdebug=1‎: لوحة تشخيص الفيديو على الشاشة (للآيفون من غير Web Inspector).
 // بتتحمّل قبل الرسم عشان تلحق أول ‎play()‎، ومش بتدخل الحزمة العادية.
-if (/[?&]lbdebug=1/.test(window.location.search)) {
+if (/[?&]lbdebug=1(?:&|$)/.test(window.location.search)) {
   import('@/features/invite/runtime/debug').then((m) => m.startDebug()).catch(() => {}).finally(mount)
 } else {
   mount()
