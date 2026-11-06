@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +27,7 @@ MAX_HEIGHT = 720          # الدعوة بتتشاف على تليفون
 CRF = 30                  # ٢٨-٣٢ نطاق كويس للمقاطع القصيرة
 AUDIO_KBPS = 64           # مونو ٦٤k — كفاية لسماعة تليفون
 TIMEOUT = 180
+THUMB_SHORT_SIDE = 1080   # غلاف ملء الشاشة على تليفون
 
 # حد الرفع للفيديو **قبل** الضغط. الصور حدها ٨ ميجا وده كفاية جداً، لكن
 # مقطع ٢٠ ثانية متصوّر بالموبايل بيطلع ٢٥-٣٥ ميجا — فالـ٨ ميجا كانت
@@ -34,8 +36,26 @@ TIMEOUT = 180
 MAX_UPLOAD_BYTES = 40 * 1024 * 1024
 
 
+def ffmpeg_bin() -> str:
+    """مسار ffmpeg: المتثبّت على السيستم، وإلا النسخة اللي جاية مع ``imageio-ffmpeg``.
+
+    الاستضافة (PythonAnywhere) مافيهاش ffmpeg في الـPATH، فكل الضغط وصور
+    الغلاف كانوا بيتخطّوا من غير ما حد ياخد باله — وفيديو 4K بـ14Mbps كان
+    بيتخزّن زي ما هو ويقف على الموبايل. ``pip install imageio-ffmpeg``
+    بيجيب ffmpeg ثابت جاهز من غير صلاحيات سيستم.
+    """
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return ""
+
+
 def available() -> bool:
-    return bool(shutil.which("ffmpeg"))
+    return bool(ffmpeg_bin())
 
 
 # --------------------------------------------------------------------------
@@ -236,12 +256,16 @@ def make_thumbnail(upload, *, max_width: int = 1920):
                 src.write(chunk)
             src_path = src.name
 
-        thumb_path = src_path + ".thumb.png"
+        thumb_path = src_path + ".thumb.jpg"
+        # أصغر ضلع لحد ‎THUMB_SHORT_SIDE‎ وJPEG بأعلى جودة تقريباً: الغلاف بيتعرض
+        # ملء الشاشة فلازم يفضل حاد، بس PNG بمقاس فيديو 4K كان هيطلع ١٠ ميجا
+        # ويتحمّل قبل الفيديو نفسه.
+        side = THUMB_SHORT_SIDE
         subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path,
-             # PNG بمقاس الفيديو الأصلي من غير تصغير ولا ضغط بفقد: الغلاف بيتعرض
-             # ملء الشاشة قبل الفيديو، وصاحب الدعوة طلب الجودة الأصلية.
-             "-frames:v", "1", thumb_path],
+            [ffmpeg_bin(), "-y", "-loglevel", "error", "-i", src_path,
+             "-vf", (f"scale='if(gte(iw,ih),-2,min({side},iw))':"
+                     f"'if(gte(iw,ih),min({side},ih),-2)'"),
+             "-frames:v", "1", "-q:v", "2", thumb_path],
             check=True, timeout=TIMEOUT, stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
         )
@@ -251,7 +275,7 @@ def make_thumbnail(upload, *, max_width: int = 1920):
             return None
         stem = (getattr(upload, "name", "video") or "video").rsplit(".", 1)[0][:60]
         return InMemoryUploadedFile(
-            io.BytesIO(data), "ImageField", f"{stem}-thumb.png", "image/png",
+            io.BytesIO(data), "ImageField", f"{stem}-thumb.jpg", "image/jpeg",
             len(data), None,
         )
     except Exception:
@@ -294,7 +318,7 @@ def prepare_for_stream(upload):
             src_path = src.name
         dst_path = src_path + ".faststart.mp4"
         subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path,
+            [ffmpeg_bin(), "-y", "-loglevel", "error", "-i", src_path,
              "-map", "0", "-c", "copy", "-movflags", "+faststart", dst_path],
             check=True, timeout=TIMEOUT, stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -342,11 +366,13 @@ def compress(upload, *, max_seconds: int = 0, keep_audio: bool = True):
             src_path = src.name
 
         dst_path = src_path + ".out.mp4"
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", src_path]
+        cmd = [ffmpeg_bin(), "-y", "-loglevel", "error", "-i", src_path]
         if max_seconds:
             cmd += ["-t", str(max_seconds)]
         cmd += [
-            "-vf", f"scale=-2:'min({MAX_HEIGHT},ih)'",   # -2 يخلي العرض زوجي
+            # أصغر ضلع مش الارتفاع: الرأسي كان بيطلع ‎405×720‎ ويتمطّ على الشاشة
+            "-vf", (f"scale='if(gte(iw,ih),-2,min({MAX_HEIGHT},iw))':"
+                    f"'if(gte(iw,ih),min({MAX_HEIGHT},ih),-2)'"),
             "-c:v", "libx264", "-preset", "veryfast", "-crf", str(CRF),
             "-pix_fmt", "yuv420p",                       # يشتغل على كل الأجهزة
             "-movflags", "+faststart",                   # يبدأ العرض قبل ما يكمّل تحميل
@@ -389,12 +415,127 @@ def compress(upload, *, max_seconds: int = 0, keep_audio: bool = True):
 
 
 def _duration(path: str) -> float:
+    info = probe(path)
+    return round(info.get("duration", 0.0), 2)
+
+
+_DUR_RE = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
+_VID_RE = re.compile(r"Stream #[^\n]*Video:[^\n]*?\b(\d{2,5})x(\d{2,5})\b[^\n]*")
+_FPS_RE = re.compile(r"(\d+(?:\.\d+)?)\s*fps")
+_ROT_RE = re.compile(r"(?:rotate\s*:\s*|rotation of\s*)(-?\d+)")
+
+
+def probe(path: str) -> dict:
+    """مدة/مقاس/fps الفيديو من ‎ffmpeg -i‎ (مفيش ffprobe مع ‎imageio-ffmpeg‎).
+
+    المقاس بعد الدوران: فيديو الموبايل بيتخزّن أفقي ومعاه ‎rotate=90‎.
+    """
+    binary = ffmpeg_bin()
+    if not binary:
+        return {}
     try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=nw=1:nk=1", path],
-            capture_output=True, text=True, timeout=20, check=True,
-        )
-        return round(float(out.stdout.strip() or 0), 2)
+        out = subprocess.run([binary, "-hide_banner", "-i", path],
+                             capture_output=True, text=True, timeout=30,
+                             encoding="utf-8", errors="replace")
     except Exception:
-        return 0.0
+        return {}
+    text = out.stderr or ""
+    info: dict = {}
+    m = _DUR_RE.search(text)
+    if m:
+        h, mnt, sec = m.groups()
+        info["duration"] = int(h) * 3600 + int(mnt) * 60 + float(sec)
+    v = _VID_RE.search(text)
+    if v:
+        w, h = int(v.group(1)), int(v.group(2))
+        rot = _ROT_RE.search(text)
+        if rot and abs(int(rot.group(1))) % 180 == 90:
+            w, h = h, w
+        info["width"], info["height"] = w, h
+        f = _FPS_RE.search(v.group(0))
+        if f:
+            info["fps"] = float(f.group(1))
+    return info
+
+
+# --------------------------------------------------------------------------
+# نسخة الموبايل (‎.web.mp4‎)
+# --------------------------------------------------------------------------
+# الأصل بيفضل زي ما هو (صاحب الدعوة عايز جودته)، وجنبه نسخة خفيفة هي اللي
+# بتتعرض في الدعوة. مقيس على دعوة حقيقية: فيديو ‎2160×3840‎ بـ60fps و14.5Mbps
+# (17 ميجا لـ9 ثواني) — على 4G الموبايل كان بيستنى ثواني قدام مربّع بني،
+# والآيفون كان بيوقف الافتتاحية نفسها لأنها بتتحمّل بالتوازي معاه.
+WEB_SUFFIX = ".web.mp4"
+WEB_SHORT_SIDE = 720       # أصغر ضلع: ‎720×1280‎ للرأسي — شاشة التليفون
+WEB_FPS = 30
+WEB_CRF = 26
+WEB_MAXRATE_K = 1500       # سقف المعدل: البث يفضل ماشي على 4G ضعيف
+WEB_AUDIO_K = 96
+WEB_TIMEOUT = 300
+VIDEO_EXTS = {".mp4", ".m4v", ".mov", ".webm"}
+
+
+def web_path(path: str) -> str:
+    return os.path.splitext(path)[0] + WEB_SUFFIX
+
+
+def is_web_rendition(path: str) -> bool:
+    return str(path).lower().endswith(WEB_SUFFIX)
+
+
+def needs_web_rendition(path: str, info: dict | None = None) -> bool:
+    """الأصل تقيل على الموبايل؟ (مقاس أكبر من 720، fps فوق 30، أو معدل عالي)."""
+    info = probe(path) if info is None else info
+    if not info.get("width") or not info.get("duration"):
+        return False
+    short = min(info["width"], info["height"])
+    kbps = os.path.getsize(path) * 8 / 1000 / max(info["duration"], 0.1)
+    return (short > WEB_SHORT_SIDE + 8
+            or info.get("fps", 0) > WEB_FPS + 1
+            or kbps > WEB_MAXRATE_K * 1.6)
+
+
+def make_web_rendition(path: str, *, force: bool = False) -> str:
+    """يعمل ‎<اسم>.web.mp4‎ جنب الأصل ويرجّع مساره، أو "" لو مش محتاج/فشل.
+
+    ‎scale‎ على **أصغر ضلع** مش الارتفاع: الرأسي ‎2160×3840‎ يبقى ‎720×1280‎
+    (مش ‎405×720‎). ‎-fpsmax‎ بينزّل الـ60 لـ30 ومابيرفعش الـ24.
+    """
+    if is_web_rendition(path) or os.path.splitext(path)[1].lower() not in VIDEO_EXTS:
+        return ""
+    binary = ffmpeg_bin()
+    if not binary or not os.path.exists(path):
+        return ""
+    target = web_path(path)
+    if not force and os.path.exists(target) and os.path.getmtime(target) >= os.path.getmtime(path):
+        return target
+    if not needs_web_rendition(path):
+        return ""
+    tmp = target + ".part.mp4"
+    side = WEB_SHORT_SIDE
+    scale = (f"scale='if(gte(iw,ih),-2,min({side},iw))':"
+             f"'if(gte(iw,ih),min({side},ih),-2)'")
+    try:
+        subprocess.run(
+            [binary, "-y", "-loglevel", "error", "-i", path,
+             "-vf", scale, "-fpsmax", str(WEB_FPS),
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", str(WEB_CRF),
+             "-maxrate", f"{WEB_MAXRATE_K}k", "-bufsize", f"{WEB_MAXRATE_K * 2}k",
+             "-profile:v", "main", "-pix_fmt", "yuv420p",
+             "-c:a", "aac", "-b:a", f"{WEB_AUDIO_K}k",
+             "-movflags", "+faststart", tmp],
+            check=True, timeout=WEB_TIMEOUT,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        )
+        if not os.path.getsize(tmp) or os.path.getsize(tmp) >= os.path.getsize(path):
+            os.unlink(tmp)
+            return ""
+        os.replace(tmp, target)
+        return target
+    except Exception:
+        if os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        return ""

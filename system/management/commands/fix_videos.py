@@ -129,7 +129,7 @@ class Command(BaseCommand):
             with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as fh:
                 out = fh.name
             subprocess.run(
-                ["ffmpeg", "-y", "-loglevel", "error", "-i", path,
+                [video.ffmpeg_bin(), "-y", "-loglevel", "error", "-i", path,
                  "-vf", f"scale=-2:'min({max_height},ih)'",
                  "-c:v", "libx264", "-preset", "slow", "-crf", str(crf),
                  "-pix_fmt", "yuv420p", "-profile:v", "main",

@@ -550,6 +550,12 @@ def _upload_asset_for_editor(request, *, invitation=None, template=None):
             width=width, height=height, size_bytes=getattr(stored, "size", upload.size),
             invitation=invitation, template=template, uploaded_by=request.user,
         )
+        if kind == "video":
+            # نسخة الموبايل جنب الأصل — الدعوة بتعرضها هي (‎templatetags.video_url‎)
+            try:
+                video.make_web_rendition(asset.file.path)
+            except Exception:
+                logger.exception("web rendition failed for asset %s", asset.pk)
     except Exception:
         owner_type = "invitation" if invitation is not None else "template"
         owner_id = getattr(invitation or template, "pk", None)

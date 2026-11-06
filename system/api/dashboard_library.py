@@ -175,9 +175,10 @@ def _clip_list(request, library: str):
         clip.library = library
         upload = form.cleaned_data.get("file")
         if upload:
-            # نفس ضغط فيديو الافتتاحية بتاع الرفع من المحرر
+            # الأصل بيتخزّن زي ما هو (من غير فقد جودة) والدعوة بتعرض نسخة
+            # الموبايل اللي بتتعمل جنبه تحت (‎make_web_rendition‎)
             try:
-                stored, secs = video.compress(upload)
+                stored, secs = video.prepare_for_stream(upload)
                 clip.file = stored
                 clip.seconds = secs or 0
                 # Poster ثابت للموبايل؛ لو ffmpeg غير متاح يظل fallback المتصفح يعمل.
@@ -191,6 +192,11 @@ def _clip_list(request, library: str):
             except Exception:
                 pass
         clip.save()
+        if clip.file:
+            try:
+                video.make_web_rendition(clip.file.path)
+            except Exception:
+                pass
         return _clip_row(clip)
     return {"results": [_clip_row(clip) for clip in IntroVideo.objects.filter(library=library)]}
 

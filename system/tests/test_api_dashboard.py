@@ -619,15 +619,17 @@ class IntroTests(DashboardApiCase):
         self.assertEqual((row["name"], row["posterUrl"]), ("افتتاحية", ""))
         self.assertRegex(row["secondsLabel"], r"^3[.,]5$")
 
-    def test_upload_video_goes_through_the_compressor(self):
+    def test_upload_video_keeps_original_and_makes_mobile_copy(self):
         from unittest import mock
 
         upload = SimpleUploadedFile("i.mp4", b"0" * 128, content_type="video/mp4")
-        with mock.patch("system.video.compress", return_value=(upload, 4.0)) as compress, \
+        with mock.patch("system.video.prepare_for_stream", return_value=(upload, 4.0)) as prep, \
+                mock.patch("system.video.make_web_rendition", return_value="") as web, \
                 mock.patch("system.video.make_thumbnail", return_value=None):
             response = self.upload(f"{BASE}/intros/", self.valid(), {"file": upload})
         self.assertEqual(response.status_code, 200, response.content)
-        compress.assert_called_once()
+        prep.assert_called_once()
+        web.assert_called_once()
         clip = IntroVideo.objects.get(pk=response.json()["id"])
         self.assertEqual(clip.seconds, 4.0)
         self.assertTrue(clip.file.name.startswith("intro_videos/"))
@@ -636,7 +638,7 @@ class IntroTests(DashboardApiCase):
         from unittest import mock
 
         upload = SimpleUploadedFile("i.mp4", b"0" * 128, content_type="video/mp4")
-        with mock.patch("system.video.compress", side_effect=RuntimeError("no ffmpeg")):
+        with mock.patch("system.video.prepare_for_stream", side_effect=RuntimeError("no ffmpeg")):
             response = self.upload(f"{BASE}/intros/", self.valid(), {"file": upload})
         self.assertEqual(response.status_code, 200, response.content)
         self.assertTrue(IntroVideo.objects.get(pk=response.json()["id"]).file)
