@@ -87,6 +87,36 @@ export function queueMedia(v: HTMLVideoElement, keepPlaying = false) {
  */
 const bound$ = new WeakSet<HTMLVideoElement>()
 
+function play(video: HTMLVideoElement) {
+  const p = video.play()
+  if (p && p.catch) p.catch(() => {})
+}
+
+/**
+ * فيديو جوّه قسم (مش جوّه الافتتاحية نفسها) بيستنّى الافتتاحية — زي فيديو
+ * قسم «فيديو» (‎Video.tsx‎). ‎pause()‎ بيلغي ‎autoplay‎ المكتوب في الـHTML،
+ * ومانحطّوش في طابور فكّ القفل دلوقتي — وإلا لمسة الضيف على الافتتاحية
+ * بتشغّله على طول (‎keepPlaying‎). ‎start(true)‎ = اتأجّل فلازم نشغّله احنا.
+ */
+function holdForIntro(video: HTMLVideoElement, start: (held: boolean) => void) {
+  if (video.closest('.lb-intro') || !document.querySelector('.lb-intro:not(.is-open)')) {
+    start(false)
+    return
+  }
+  try {
+    video.pause()
+  } catch {
+    /* مش حرج */
+  }
+  document.addEventListener(
+    'lb:intro-open',
+    () => {
+      if (video.isConnected) start(true)
+    },
+    { once: true },
+  )
+}
+
 export function initImportedMedia(scope: ParentNode = document) {
   scope.querySelectorAll<HTMLVideoElement>('.lb-custom video').forEach((video) => {
     if (bound$.has(video)) return
@@ -95,9 +125,10 @@ export function initImportedMedia(scope: ParentNode = document) {
     video.playsInline = true
     video.preload = 'auto'
     video.style.visibility = 'visible'
-    const p = video.play()
-    if (p && p.catch) p.catch(() => {})
-    queueMedia(video, true)
+    holdForIntro(video, () => {
+      play(video)
+      queueMedia(video, true)
+    })
   })
   scope
     .querySelectorAll<HTMLVideoElement>('.lb-extra-html video[autoplay], .lb-intro-extra video[autoplay]')
@@ -105,6 +136,9 @@ export function initImportedMedia(scope: ParentNode = document) {
       if (bound$.has(video)) return
       bound$.add(video)
       video.playsInline = true
-      queueMedia(video, true)
+      holdForIntro(video, (held) => {
+        if (held) play(video)
+        queueMedia(video, true)
+      })
     })
 }

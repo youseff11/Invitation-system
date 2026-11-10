@@ -76,9 +76,15 @@ function FileVideo({
     v.setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback')
     v.disablePictureInPicture = true
     v.preload = poster ? 'none' : 'metadata'
+    // لو فيه افتتاحية لسه قدّام الضيف، الفيديو بيتحمّل ورا الشاشة بس مابيشتغلش
+    // إلا لما تتفتح: وإلا كان بيخلّص أول ثواني منه والضيف بيتفرّج على الافتتاحية.
+    // المعاينة (‎demo‎) مالهاش افتتاحية تقفل، فبتشتغل زي الأول.
+    const introUp = Boolean(hasIntro && !demo && document.querySelector('.lb-intro:not(.is-open)'))
     if (autoplay && !withSound) {
       v.muted = true
-      v.autoplay = true
+      // خاصية ‎autoplay‎ كانت بتشغّله أول ما يحمّل — ورا الافتتاحية، من غير ما
+      // يستنّى المراقب. وهي مستنّية بنسيبها للمراقب بعد ‎lb:intro-open‎.
+      v.autoplay = !introUp
       v.preload = 'auto'
       // وضع التوفير في iOS بيرفض حتى ده: نحجزه في طابور فكّ القفل
       queueMedia(v)
@@ -168,10 +174,6 @@ function FileVideo({
       document.addEventListener('lb:intro-open', onOpen, { once: true })
       cleanup.push(() => document.removeEventListener('lb:intro-open', onOpen))
     } else if (autoplay) {
-      // لو فيه افتتاحية لسه قدّام الضيف، الفيديو بيتحمّل ورا الشاشة بس مابيشتغلش
-      // إلا لما تتفتح: وإلا كان بيخلّص أول ثواني منه والضيف بيتفرّج على الافتتاحية.
-      // المعاينة (‎demo‎) مالهاش افتتاحية تقفل، فبتشتغل زي الأول.
-      const introUp = hasIntro && !demo && document.querySelector('.lb-intro:not(.is-open)')
       if (introUp) {
         document.addEventListener('lb:intro-open', watch, { once: true })
         cleanup.push(() => document.removeEventListener('lb:intro-open', watch))
