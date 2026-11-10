@@ -305,11 +305,41 @@
     doc.addEventListener("lb:intro-open", flushMedia);
   }
 
+  // ---------------------------------------------------------- استنّى فيديو الافتتاحية
+  /* لو الافتتاحية فيها فيديو، فيديو أول قسم كان بيشتغل ورا الطبقة من
+     أول لحظة (‎autoplay‎ + المراقب شايفه ظاهر) — فالضيف يفتح الدعوة
+     يلاقيه في نصّه، وصوتين فوق بعض لو الاتنين بصوت. دلوقتي أي فيديو
+     في الأقسام بيستنّى ‎lb:intro-open‎: الإشارة دي بتتبعت لما فيديو
+     الافتتاحية يخلص، أو الضيف يتخطّاه، أو العدّاد يخلص. */
+  function introVideoPending() {
+    var intro = doc.querySelector(".lb-intro");
+    return !!(intro && !intro.classList.contains("is-open") &&
+              intro.querySelector("[data-intro-video]"));
+  }
+
+  /** ينفّذ ‎fn‎ دلوقتي، أو بعد ما الافتتاحية تخلص لو فيديوها لسه شغال. */
+  function afterIntroVideo(fn) {
+    if (!introVideoPending()) { fn(); return; }
+    doc.addEventListener("lb:intro-open", function () { fn(); }, { once: true });
+  }
+
   // ---------------------------------------------------------- فيديوهات القوالب المستوردة
   // القالب المستورد قد يحتوي <video> خاماً بدون data-video؛ بعض القوالب
   // تعتمد على JavaScript الأصلي لاستدعاء play(). نفعّل الفيديو الصامت
   // بأمان من Runtime المنصة، بدون تشغيل أي JavaScript مستورد.
   function initImportedMedia() {
+    /* فيديو جوّه قسم (مش جوّه الافتتاحية نفسها) بيستنّى فيديو
+       الافتتاحية. ‎pause()‎ بيلغي ‎autoplay‎ المكتوب في الـHTML، ومانحطّوش
+       في طابور فكّ القفل دلوقتي — وإلا لمسة الضيف على الافتتاحية
+       بتشغّله على طول (‎keepPlaying‎). */
+    var hold = function (video, start) {
+      if (video.closest(".lb-intro") || !introVideoPending()) { start(); return; }
+      try { video.pause(); } catch (ignore) {}
+      afterIntroVideo(function () {
+        if (video.isConnected) start(true);
+      });
+    };
+
     $$(".lb-custom video").forEach(function (video) {
       if (video.dataset.lbMediaBound === "1") return;
       video.dataset.lbMediaBound = "1";
@@ -317,9 +347,11 @@
       video.playsInline = true;
       video.preload = "auto";
       video.style.visibility = "visible";
-      var p = video.play();
-      if (p && p.catch) p.catch(function () {});
-      queueMedia(video, true);
+      hold(video, function () {
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+        queueMedia(video, true);
+      });
     });
 
     /* فيديو مكتوب بإيد المصمّم في «كود متقدّم» (قسم أو افتتاحية):
@@ -329,7 +361,14 @@
       if (video.dataset.lbMediaBound === "1") return;
       video.dataset.lbMediaBound = "1";
       video.playsInline = true;
-      queueMedia(video, true);
+      hold(video, function (held) {
+        // ‎autoplay‎ اتلغى بالـ‎pause()‎ فوق — فلازم نشغّله احنا
+        if (held) {
+          var p = video.play();
+          if (p && p.catch) p.catch(function () {});
+        }
+        queueMedia(video, true);
+      });
     });
   }
 
@@ -467,8 +506,12 @@
         v.disablePictureInPicture = true;
         v.preload = poster ? "none" : "metadata";
         if (poster) v.poster = poster;
+        /* فيديو الافتتاحية لسه شغال: من غير خاصية ‎autoplay‎ — المتصفح
+           كان بيشغّله أول ما يحمّل ورا الطبقة. المراقب هو اللي بيشغّله
+           بعد ‎lb:intro-open‎ (شوف ‎afterIntroVideo‎). */
+        var holdForIntro = introVideoPending();
         if (autoplay && !withSound) {
-          v.muted = true; v.autoplay = true; v.preload = "auto";
+          v.muted = true; v.autoplay = !holdForIntro; v.preload = "auto";
           /* التوفير في iOS بيرفض حتى ده. بنحجزه في طابور فكّ القفل عشان
              لمسة فتح الدعوة تدّيه الإذن قبل ما يوصل للشاشة أصلاً. */
           queueMedia(v);
@@ -551,7 +594,7 @@
               .then(arm, arm);
           }, { once: true });
         } else if (autoplay) {
-          watch();
+          afterIntroVideo(watch);
         }
         /* الفيديو من غير شريط تحكم دايماً، فاللمسة على الفيديو نفسه هي
            زر التشغيل/الإيقاف — للتشغيل التلقائي كمان: لو المتصفح رفضه
