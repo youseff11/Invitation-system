@@ -115,9 +115,22 @@ function FileVideo({
     // بتبدّل التشغيل/الإيقاف بلمسة على أي فيديو — لو وقف وهو على الشاشة نكمّله فوراً.
     // الإيقاف الوحيد المقصود هو لما القسم يعدّي من الشاشة (visible=false قبل pause)
     let visible = false
+    // الفيديو اللي من غير تكرار خلص مرة = خلص. قبل كده كان بيعيد نفسه لأن:
+    // ١. ‎pause‎ بييجي قبل ‎ended‎، وفي متصفحات موبايل ‎v.ended‎ لسه ‎false‎ (أو
+    //    الوقت أقل من المدة بكسر) — فـ‎resume‎ كان بيفتكره وقف بلمسة ويشغّله تاني.
+    // ٢. المراقب كان بيشغّله من الأول كل ما القسم يرجع للشاشة.
+    // اللمسة المقصودة على الفيديو بس هي اللي بتعيده (‎onClick‎ تحت).
+    let finished = false
+    const atEnd = () =>
+      v.ended || (Number.isFinite(v.duration) && v.duration > 0 && v.duration - v.currentTime < 0.35)
+    const onEnded = () => {
+      if (!v.loop) finished = true
+    }
+    v.addEventListener('ended', onEnded)
+    cleanup.push(() => v.removeEventListener('ended', onEnded))
     const resume = () => {
       window.setTimeout(() => {
-        if (visible && v.paused && !v.ended) tryPlay()
+        if (visible && v.paused && !finished && !atEnd()) tryPlay()
       }, 0)
     }
 
@@ -136,6 +149,7 @@ function FileVideo({
           entries.forEach((en) => {
             visible = en.isIntersecting
             if (en.isIntersecting) {
+              if (finished) return
               setWanted(v, true)
               tryPlay()
             } else {
@@ -190,6 +204,7 @@ function FileVideo({
     // مانوصلش للفيديو أصلاً فمتصفح التطبيق ماتبدّلش تشغيله.
     const onClick = () => {
       if (!v.paused) return
+      finished = false
       setWanted(v, true)
       tryPlay()
     }
