@@ -60,7 +60,7 @@ function FileVideo({
   loop: boolean
   sound: boolean
 }) {
-  const { hasIntro, demo } = useInvite()
+  const { hasIntro } = useInvite()
   const ref = useRef<HTMLVideoElement>(null)
   const ducking = useDuck()
   // لمسة الضيف على «افتح الدعوة» هي إذن التشغيل الوحيد اللي بيسمح بصوت،
@@ -78,8 +78,10 @@ function FileVideo({
     v.preload = poster ? 'none' : 'metadata'
     // لو فيه افتتاحية لسه قدّام الضيف، الفيديو بيتحمّل ورا الشاشة بس مابيشتغلش
     // إلا لما تتفتح: وإلا كان بيخلّص أول ثواني منه والضيف بيتفرّج على الافتتاحية.
-    // المعاينة (‎demo‎) مالهاش افتتاحية تقفل، فبتشتغل زي الأول.
-    const introUp = Boolean(hasIntro && !demo && document.querySelector('.lb-intro:not(.is-open)'))
+    // ده يشمل معاينة القالب (‎demo‎): كان مستثنى على أساس إن المعاينة مالهاش
+    // افتتاحية — بس ‎/templates/<slug>/preview/‎ بتعرضها، فالفيديو كان بيشتغل وراها.
+    // الحكم بالـDOM: لو مفيش ‎.lb-intro‎ مقفولة قدّام الضيف، يشتغل على طول.
+    const introUp = Boolean(hasIntro && document.querySelector('.lb-intro:not(.is-open)'))
     if (autoplay && !withSound) {
       v.muted = true
       // خاصية ‎autoplay‎ كانت بتشغّله أول ما يحمّل — ورا الافتتاحية، من غير ما
