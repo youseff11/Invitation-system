@@ -30,6 +30,16 @@
 <meta name="twitter:title" content="{{ page_title }}">
 <meta name="twitter:description" content="{{ page_description }}">
 
+{% comment %}
+  ‎--lb-fit‎ = عرض التليفون ÷ عرض إطار الموبايل في المحرر (٣٩٠).
+  مربعات «كود متقدّم» خطوطها وإزاحاتها بالبكسل، والفيديو والصور حواليها
+  بيتقاسوا مع الشاشة — فعلى تليفون ٤١٢ الفيديو بيكبر ٥٪ والكلام لأ،
+  والكلام المتسحوب فوق الفيديو كان بينزل ٣٨px عن مكانه في المحرر.
+  ‎.lb-extra-html.lb-fit‎ بتاخد ‎zoom‎ بالنسبة دي (‎invite.css‎) فتبقى
+  نسخة من المحرر بالظبط. بيتحسب هنا في الرأس قبل React عشان أول رسمة
+  تطلع صح من غير نطّة. فوق ٤٨٠px (تابلت/ديسكتوب) مفيش تكبير.
+{% endcomment %}
+<script>(function(){var d=document.documentElement;function fit(){var w=d.clientWidth||window.innerWidth||0;d.style.setProperty("--lb-fit",w>0&&w<=480?String(Math.round(w/390*10000)/10000):"1");}fit();window.addEventListener("resize",fit);})();</script>
 <style data-loading-critical>
 html, body { margin: 0; min-height: 100%; }
 /* التكبير التلقائي للخط في أندرويد ومتصفحات التطبيقات بيزوّد

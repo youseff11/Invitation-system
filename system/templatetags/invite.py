@@ -363,7 +363,34 @@ def split_code(value):
     html = _SCRIPT_BLOCK_RE.sub(take_script, strip_style(raw))
 
     return {"css": css, "html": html, "js": wrap_js("\n".join(scripts)),
-            "fluid": fills_width(css, html)}
+            "fluid": fills_width(css, html),
+            "fit": scales_with_frame(css, html)}
+
+
+# وحدات بتتقاس من الشاشة أو المسرح نفسه — الكود اللي بيستخدمها متظبط
+# على أي عرض لوحده، و‎zoom‎ بيضربها في النسبة تاني (قياس على كروم:
+# ‎50vw‎ جوّه ‎zoom:1.2‎ طلعت ٦٠٪ من الشاشة مش ٥٠٪).
+_RELATIVE_UNIT_RE = re.compile(
+    r"\d\s*(?:s|l|d)?(?:vw|vh|vi|vb|vmin|vmax)\b|\dcq(?:w|h|i|b|min|max)\b",
+    re.I)
+_CANVAS_RE = re.compile(r"<canvas\b", re.I)
+
+
+def scales_with_frame(css: str, html: str) -> bool:
+    """الكود ينفع يتكبّر بنسبة عرض الموبايل لإطار المحرر (٣٩٠px)؟
+
+    الخطوط والإزاحات في كود المصمّم بالبكسل، والصور والفيديو اللي حواليه
+    بيتقاسوا مع عرض الشاشة. فعلى تليفون أعرض من المحرر (٤١٢px مثلاً)
+    الفيديو بيكبر والكلام لأ، والكلام المتسحوب فوق الفيديو بإزاحة ثابتة
+    بينزل عن مكانه (قياس حي: ٣٨px على ٤١٢). التكبير بالنسبة بيرجّع كل
+    حاجة زي المحرر بالظبط. بنستثني:
+      • كود بوحدات الشاشة/المسرح — متظبط لوحده و‎zoom‎ بيكبّره مرتين.
+      • الكانفس — الرسم بالإصبع بيقيس بالبكسل وأي ‎zoom‎ بيبوّظ مكان اللمسة.
+    """
+    text = _CSS_COMMENT_RE.sub("", css or "") + "\n" + (html or "")
+    if _CANVAS_RE.search(html or ""):
+        return False
+    return not _RELATIVE_UNIT_RE.search(text)
 
 
 @register.filter(name="wrap_js")

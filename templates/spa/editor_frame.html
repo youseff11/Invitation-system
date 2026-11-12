@@ -13,6 +13,12 @@
 <style data-loading-critical>
 html, body { margin: 0; min-height: 100%; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* إطار الموبايل في المحرر ٣٩٠px، وسكرول بار ويندوز كان بياكل منه ١٧px —
+   فالمحرر بيرسم الدعوة على ٣٧٣ والتليفون على ٣٩٠، وكل حاجة متقاسة
+   بالنسبة بتطلع مختلفة (عنوان مقصوص في المحرر وظاهر على الآيفون).
+   السكرول بالعجلة/التاتش باد لسه شغال عادي. */
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
 .lb-doc > .lb-stage { width: 100% !important; max-width: none !important; margin-inline: 0 !important; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">

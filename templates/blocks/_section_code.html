@@ -17,4 +17,8 @@
   ‎lb-full‎ (عرض كامل) لما الدعوة فيها ترجمة والعنصر الأساسي في الكود بيعلن
   ‎width:100%‎: من غيرها عرض المربع بيمشي مع أطول نص، فالأعمدة والأسماء
   بتغيّر مكانها بين العربي والإنجليزي. الدعوة اللي من غير ترجمة مابتتغيّرش.
-{% endcomment %}{% with parts=props.code|split_code %}{% if parts.css %}<style>{{ parts.css|safe_css:block.id }}</style>{% endif %}{% if parts.html.strip %}<div class="lb-extra-html{% if has_alt and parts.fluid %} lb-full{% endif %}" data-move="code">{{ parts.html|safe_html:0 }}</div>{% endif %}{% if parts.js %}<script data-lb-section-script="1">{{ parts.js }}</script>{% endif %}{% endwith %}
+
+  ‎lb-fit‎: الكود بالبكسل فبيتكبّر بنسبة عرض التليفون لإطار المحرر (٣٩٠)،
+  عشان يفضل في نفس مكانه من الصور والفيديو اللي بيتقاسوا مع الشاشة.
+  شوف ‎scales_with_frame‎ و‎--lb-fit‎ في ‎spa/invite.html‎.
+{% endcomment %}{% with parts=props.code|split_code %}{% if parts.css %}<style>{{ parts.css|safe_css:block.id }}</style>{% endif %}{% if parts.html.strip %}<div class="lb-extra-html{% if has_alt and parts.fluid %} lb-full{% endif %}{% if parts.fit %} lb-fit{% endif %}" data-move="code">{{ parts.html|safe_html:0 }}</div>{% endif %}{% if parts.js %}<script data-lb-section-script="1">{{ parts.js }}</script>{% endif %}{% endwith %}

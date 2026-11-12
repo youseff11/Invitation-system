@@ -2263,19 +2263,56 @@ class CodeBoxFullWidthTests(TestCase):
     # ---- العرض
     def test_a_translated_invitation_gets_a_full_width_box(self):
         html = self._html("<style>.card{width:100%}</style>" + self.CARD, True)
-        self.assertRegex(html, r'class="lb-extra-html lb-full"')
+        self.assertRegex(html, r'class="lb-extra-html lb-full[ "]')
 
     def test_an_invitation_without_a_translation_is_untouched(self):
         html = self._html("<style>.card{width:100%}</style>" + self.CARD, False)
-        self.assertIn('class="lb-extra-html"', html)
+        self.assertIn('class="lb-extra-html lb-fit"', html)
         self.assertNotIn("lb-full", html)
 
     def test_a_fixed_width_card_keeps_hugging_its_content(self):
         html = self._html("<style>.card{width:260px}</style>" + self.CARD, True)
-        self.assertIn('class="lb-extra-html"', html)
+        self.assertIn('class="lb-extra-html lb-fit"', html)
 
 
 # ==========================================================================
+class CodeBoxFitsPhoneWidthTests(TestCase):
+    """مربع الكود بالبكسل بيتكبّر بنسبة عرض التليفون لإطار المحرر.
+
+    الفيديو والصور بيتقاسوا مع الشاشة والكلام بالبكسل لأ، فالكلام
+    المتسحوب فوق فيديو كان بينزل ٣٨px عن مكانه على تليفون ٤١٢.
+    """
+
+    def test_pixel_code_scales(self):
+        self.assertTrue(invite_tags.scales_with_frame(
+            ".t{font-size:36px}", '<span class="t">x</span>'))
+
+    def test_viewport_or_container_units_are_left_alone(self):
+        for css in (".t{font-size:5vw}", ".t{height:100svh}",
+                    ".t{width:50cqw}", ".t{margin:2vmin}"):
+            self.assertFalse(invite_tags.scales_with_frame(css, "<p>x</p>"), css)
+        self.assertFalse(invite_tags.scales_with_frame(
+            "", '<p style="font-size:4vw">x</p>'))
+
+    def test_canvas_is_left_alone(self):
+        self.assertFalse(invite_tags.scales_with_frame("", "<canvas></canvas>"))
+
+    def test_words_that_look_like_units_do_not_count(self):
+        self.assertTrue(invite_tags.scales_with_frame(
+            "/* 5vw */ .t{color:red}", "<p>2video 17.10.2026</p>"))
+
+    def test_the_zoom_rule_and_ratio_script_exist(self):
+        css = (Path(settings.BASE_DIR) / "frontend/src/features/invite/invite.css").read_text("utf-8")
+        self.assertIn(".lb-extra-html.lb-fit { zoom: var(--lb-fit, 1); }", css)
+        page = (Path(settings.BASE_DIR) /
+                "templates/spa/invite.html").read_text("utf-8")
+        self.assertIn('"--lb-fit"', page)
+        self.assertIn("w/390", page)
+        frame = (Path(settings.BASE_DIR) /
+                 "templates/spa/editor_frame.html").read_text("utf-8")
+        self.assertIn("scrollbar-width: none", frame)
+
+
 class CustomSectionTextTests(TestCase):
     """نصوص القسم المستورد — استخراجها من الكود واستبدالها فيه."""
 
