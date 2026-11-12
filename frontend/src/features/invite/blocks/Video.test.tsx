@@ -35,6 +35,8 @@ async function finish(v: HTMLVideoElement) {
   Object.defineProperty(v, 'paused', { configurable: true, get: () => true })
   Object.defineProperty(v, 'duration', { configurable: true, get: () => 6 })
   Object.defineProperty(v, 'currentTime', { configurable: true, get: () => 5.9, set: () => {} })
+  // المتصفح بيسجّل اللي اتعرض في ‎played‎
+  Object.defineProperty(v, 'played', { configurable: true, get: () => ({ length: 1 }) })
   fireEvent(v, new Event('pause'))
   fireEvent(v, new Event('ended'))
   await act(() => new Promise((r) => setTimeout(r, 5)))
@@ -66,14 +68,23 @@ describe('Video block', () => {
     expect(play).toHaveBeenCalledTimes(1)
   })
 
-  it('replays a finished video when the guest taps it', async () => {
+  it('does not replay a finished non-looping video when the guest taps it', async () => {
+    // «تكرار» مقفول من المحرر = مرة واحدة بس، حتى بالضغط
     const { container } = renderVideo({ loop: false })
     const v = container.querySelector('video')!
     see(v, true)
     await finish(v)
     const before = play.mock.calls.length
     fireEvent.click(container.querySelector('[data-video]')!)
-    expect(play.mock.calls.length).toBeGreaterThan(before)
+    expect(play.mock.calls.length).toBe(before)
+  })
+
+  it('a tap still starts a video that has not played yet', () => {
+    // من غير تشغيل تلقائي الضغطة هي الطريقة الوحيدة (مفيش شريط تحكم)
+    const { container } = renderVideo({ loop: false, autoplay: false })
+    const before = play.mock.calls.length
+    fireEvent.click(container.querySelector('[data-video]')!)
+    expect(play.mock.calls.length).toBe(before + 1)
   })
 
   it('holds the autoplay video behind an open intro, also on template previews (demo)', () => {

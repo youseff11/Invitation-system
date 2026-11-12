@@ -27,6 +27,12 @@ export function resetPrimed(v: HTMLVideoElement) {
 /** يشغّل العنصر ويوقفه فوراً — الهدف الإذن مش المشاهدة. */
 function primeVideo(v: HTMLVideoElement) {
   if (primed.has(v)) return
+  // اشتغل قبل كده = واخد الإذن خلاص. من غير الشرط ده لمسة على فيديو خلص
+  // (والتكرار مقفول) كانت بتشغّله تاني من الأول، لأنه لسه ‎wanted‎.
+  if (v.played && v.played.length > 0) {
+    primed.add(v)
+    return
+  }
   try {
     v.muted = true
     v.playsInline = true

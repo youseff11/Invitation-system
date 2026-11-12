@@ -267,6 +267,13 @@ describe('Intro', () => {
       expect(container.querySelector('video')!.getAttribute('src')).toBe('blob:intro-1')
     })
 
+    it('does not let the video element download the file a second time', () => {
+      setup()
+      const { container } = renderIntro(intro({ video: '/media-video/a.mp4', playMode: 'button' }))
+      // ‎auto‎ = كروم بيحمّل نفس الملف من الشبكة مع التحميل للذاكرة → نص السرعة
+      expect(container.querySelector('video')!.preload).toBe('metadata')
+    })
+
     it('does not swap the source once the guest already tapped play', async () => {
       setup()
       const { container } = renderIntro(intro({ video: '/media-video/a.mp4', playMode: 'button' }))

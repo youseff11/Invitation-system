@@ -177,8 +177,12 @@ export function Intro({ data }: { data: IntroData }) {
         })
         if (!vid.paused) onPlaying()
       } else {
-        // مفيش صورة غلاف: نلتقط أول فريم من الفيديو ونستخدمه كغلاف
-        vid.preload = 'auto'
+        // مفيش صورة غلاف: نلتقط أول فريم من الفيديو ونستخدمه كغلاف.
+        // ‎metadata‎ مش ‎auto‎: الملف كله بيتحمّل في الذاكرة تحت (‎prefetchVideo‎)،
+        // و‎auto‎ كان بيخلّي كروم/أندرويد يحمّل نفس الملف من الشبكة **مع** التحميل
+        // ده — مرتين في نفس الوقت = نص السرعة. أول فريم بييجي من الفهرس + الـseek
+        // تحت، ولو ماجاش بييجي من نسخة الذاكرة لما تتركّب.
+        vid.preload = 'metadata'
         const capture = () => {
           if (vid.poster || vid.readyState < 2) return
           try {
@@ -407,7 +411,8 @@ export function Intro({ data }: { data: IntroData }) {
             src={data.video}
             muted={data.audio !== 'sound'}
             playsInline
-            preload="auto"
+            // الملف كله بيتحمّل في الذاكرة (‎prefetchVideo‎) — ‎auto‎ كان بيحمّله مرة تانية مع بعض
+            preload="metadata"
           />
         ) : (
           <video
@@ -420,7 +425,8 @@ export function Intro({ data }: { data: IntroData }) {
             autoPlay={!selfPlay}
             muted={data.audio !== 'sound'}
             playsInline
-            preload="auto"
+            // التلقائي بيبدأ يحمّل مع التشغيل أصلاً؛ واللي الكود بيشغّله بعدين بياخد نسخة الذاكرة
+            preload="metadata"
           />
         ))}
       {manual &&
