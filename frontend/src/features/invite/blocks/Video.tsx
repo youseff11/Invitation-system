@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { useInvite } from '../context'
 import { queueMedia, resetPrimed, setWanted } from '../runtime/media'
+import { PREFETCH_MAX_BYTES, prefetchVideo } from '../runtime/prefetch'
 import type { BlockData } from '../types'
 import { Frame } from './Frame'
 
@@ -52,6 +53,7 @@ function FileVideo({
   autoplay,
   loop,
   sound,
+  prefetch = false,
 }: {
   holder: React.RefObject<HTMLDivElement | null>
   url: string
@@ -59,6 +61,8 @@ function FileVideo({
   autoplay: boolean
   loop: boolean
   sound: boolean
+  /** يتحمّل كله في الذاكرة ورا الافتتاحية (الفيديو اللي بيكمّلها) */
+  prefetch?: boolean
 }) {
   const { hasIntro } = useInvite()
   const ref = useRef<HTMLVideoElement>(null)
@@ -76,6 +80,39 @@ function FileVideo({
     v.setAttribute('controlsList', 'nodownload noplaybackrate noremoteplayback')
     v.disablePictureInPicture = true
     v.preload = poster ? 'none' : 'metadata'
+
+    // الفيديو اللي بيكمّل الافتتاحية بيتحمّل كله في الذاكرة وهي شغّالة، ويشتغل
+    // من هناك: من الشبكة كان بيقطّع على الاستضافة (‎runtime/prefetch.ts‎). الدور
+    // بعد الافتتاحية نفسها، فمابيقاسمهاش السرعة.
+    const fromMemory = prefetch && autoplay
+    if (fromMemory) {
+      const ctl = new AbortController()
+      let blobUrl = ''
+      void prefetchVideo(url, ctl.signal, PREFETCH_MAX_BYTES).then((mem) => {
+        if (!mem) {
+          // أكبر من الحد أو فشل: يرجع يحمّل من الشبكة زي أي فيديو تلقائي
+          if (!ctl.signal.aborted) v.preload = 'auto'
+          return
+        }
+        // اشتغل خلاص من الشبكة (التحميل اتأخر عن نهاية الافتتاحية)؟ مانقطعوش
+        if (ctl.signal.aborted || !v.paused || v.currentTime > 0.05) {
+          URL.revokeObjectURL(mem)
+          return
+        }
+        blobUrl = mem
+        v.src = mem
+        v.preload = 'auto'
+        try {
+          v.load()
+        } catch {
+          /* مش حرج */
+        }
+      })
+      cleanup.push(() => {
+        ctl.abort()
+        if (blobUrl) URL.revokeObjectURL(blobUrl)
+      })
+    }
     // لو فيه افتتاحية لسه قدّام الضيف، الفيديو بيتحمّل ورا الشاشة بس مابيشتغلش
     // إلا لما تتفتح: وإلا كان بيخلّص أول ثواني منه والضيف بيتفرّج على الافتتاحية.
     // ده يشمل معاينة القالب (‎demo‎): كان مستثنى على أساس إن المعاينة مالهاش
@@ -87,7 +124,8 @@ function FileVideo({
       // خاصية ‎autoplay‎ كانت بتشغّله أول ما يحمّل — ورا الافتتاحية، من غير ما
       // يستنّى المراقب. وهي مستنّية بنسيبها للمراقب بعد ‎lb:intro-open‎.
       v.autoplay = !introUp
-      v.preload = 'auto'
+      // اللي بيتحمّل في الذاكرة مايحمّلش نفس الملف من الشبكة كمان (مرتين = نص السرعة)
+      v.preload = fromMemory ? 'metadata' : 'auto'
       // وضع التوفير في iOS بيرفض حتى ده: نحجزه في طابور فكّ القفل
       queueMedia(v)
     }
@@ -343,7 +381,8 @@ export function Video({ block }: { block: BlockData }) {
   const yt = url.match(YT)?.[1] ?? ''
   const vimeo = url.match(VIMEO)?.[1] ?? ''
   const aspect = p.aspect || '16x9'
-  const contCss = introContId && introContId === block.id && !yt && !vimeo ? introContCss(block.attrs.id || '') : ''
+  const isCont = Boolean(introContId) && introContId === block.id && !yt && !vimeo
+  const contCss = isCont ? introContCss(block.attrs.id || '') : ''
   return (
     <Frame block={block}>
       {contCss && <style data-intro-cont="">{contCss}</style>}
@@ -374,6 +413,7 @@ export function Video({ block }: { block: BlockData }) {
                 autoplay={Boolean(p.autoplay)}
                 loop={Boolean(p.loop)}
                 sound={Boolean(p.sound)}
+                prefetch={isCont}
               />
             )}
           </div>

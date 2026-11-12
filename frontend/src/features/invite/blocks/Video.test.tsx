@@ -171,6 +171,45 @@ describe('Video block', () => {
     expect(css).toContain('object-fit:cover')
   })
 
+  it('loads the intro-continuing video into memory and plays it from there', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        headers: { get: () => '1000' },
+        blob: () => Promise.resolve(new Blob(['x'], { type: 'video/mp4' })),
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:v2'), revokeObjectURL: vi.fn() })
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
+    const b = block('video', { url: '/media-video/v2.mp4', autoplay: true })
+    const { container } = render(
+      <InviteContext.Provider
+        value={{ lang: 'ar', t: (k) => k, maxWidth: 0, demo: true, hasIntro: true, introContId: b.id }}
+      >
+        <Video block={b} />
+      </InviteContext.Provider>,
+    )
+    const v = container.querySelector('video')!
+    // مابيحمّلش نفس الملف من الشبكة كمان وهو بيتحمّل في الذاكرة
+    expect(v.preload).toBe('metadata')
+    await act(async () => {
+      for (let i = 0; i < 12; i++) await Promise.resolve()
+    })
+    expect(fetchMock).toHaveBeenCalledWith('/media/v2.mp4', expect.anything())
+    expect(v.getAttribute('src')).toBe('blob:v2')
+  })
+
+  it('does not load ordinary videos into memory', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    renderVideo({ loop: false }, true)
+    await act(async () => {
+      for (let i = 0; i < 12; i++) await Promise.resolve()
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('keeps its normal size when it does not continue the intro', () => {
     const { container } = renderVideo({ loop: false }, true)
     expect(container.querySelector('style[data-intro-cont]')).toBeNull()

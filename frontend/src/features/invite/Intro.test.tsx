@@ -253,28 +253,26 @@ describe('Intro', () => {
     }
     afterEach(() => vi.unstubAllGlobals())
 
+    const settle = () =>
+      act(async () => {
+        for (let i = 0; i < 12; i++) await Promise.resolve()
+      })
+
     it('loads the whole intro before the tap and plays it from memory', async () => {
       const { fetchMock } = setup()
-      const { container } = renderIntro(intro({ video: '/media-video/a.web.mp4', playMode: 'button' }))
-      expect(fetchMock).toHaveBeenCalledWith('/media-video/a.web.mp4', expect.anything())
-      await act(async () => {
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-      })
+      const { container } = renderIntro(intro({ video: '/media-video/a.mp4', playMode: 'button' }))
+      await settle()
+      // التحميل الكامل من ‎/media/‎ (الاستضافة مباشرة) مش من Django
+      expect(fetchMock).toHaveBeenCalledWith('/media/a.mp4', expect.anything())
       expect(container.querySelector('video')!.getAttribute('src')).toBe('blob:intro-1')
     })
 
     it('does not swap the source once the guest already tapped play', async () => {
       setup()
-      const { container } = renderIntro(intro({ video: '/media-video/a.web.mp4', playMode: 'button' }))
+      const { container } = renderIntro(intro({ video: '/media-video/a.mp4', playMode: 'button' }))
       fireEvent.click(container.querySelector('[data-intro-play]')!)
-      await act(async () => {
-        await Promise.resolve()
-        await Promise.resolve()
-        await Promise.resolve()
-      })
-      expect(container.querySelector('video')!.getAttribute('src')).toBe('/media-video/a.web.mp4')
+      await settle()
+      expect(container.querySelector('video')!.getAttribute('src')).toBe('/media-video/a.mp4')
     })
   })
 

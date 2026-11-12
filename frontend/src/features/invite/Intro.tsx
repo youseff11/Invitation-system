@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useInvite } from './context'
 import { Raw } from './Raw'
+import { PREFETCH_MAX_BYTES, prefetchVideo } from './runtime/prefetch'
 import { parseStyle } from './style'
 import type { IntroData } from './types'
 
@@ -35,8 +36,6 @@ function ownsVideo(intro: IntroData): boolean {
 /** مهلة الفيديو اللي ماتحرّكش بعد طلب التشغيل قبل ما نسمح بالفتح باللمس. */
 const STALL_MS = 12000
 
-/** أقصى حجم لفيديو الافتتاحية اللي بنحمّله كله في الذاكرة قبل الضغطة. */
-const PREFETCH_MAX_BYTES = 8 * 1024 * 1024
 
 interface MusicHandle {
   play: () => void
@@ -216,35 +215,31 @@ export function Intro({ data }: { data: IntroData }) {
 
       /* سفاري على الآيفون بيتجاهل ‎preload="auto"‎: مابيحمّلش غير الفهرس لحد الضغطة،
          وبعدها بيعمل كذا طلب Range ورا بعض (كل واحد ~0.6ث على الاستضافة) — فالضيف
-         كان بيستنى ~3 ثواني بعد «اضغط لفتح الدعوة». بنحمّل الملف كله (نسخة
-         الموبايل ~0.7 ميجا) من أول ما الصفحة تفتح ونبدّل المصدر لنسخة في الذاكرة،
+         كان بيستنى ~3 ثواني بعد «اضغط لفتح الدعوة». بنحمّل الملف كله من أول ما
+         الصفحة تفتح ونبدّل المصدر لنسخة في الذاكرة،
          فالضغطة بتشغّل على طول. لو الضيف ضغط قبل ما التحميل يخلص، الفيديو بيكمّل
-         من الشبكة عادي ومش بنلمسه. */
+         من الشبكة عادي ومش بنلمسه، وبنلغي التحميل عشان مايقاسمهوش السرعة. */
       const prefetch = new AbortController()
       let blobUrl = ''
-      if (typeof fetch === 'function' && typeof URL.createObjectURL === 'function') {
-        fetch(data.video, { signal: prefetch.signal, credentials: 'same-origin' })
-          .then((res) => {
-            const size = Number(res.headers.get('Content-Length') || 0)
-            if (!res.ok || size > PREFETCH_MAX_BYTES) {
-              prefetch.abort()
-              return null
-            }
-            return res.blob()
-          })
-          .then((blob) => {
-            if (!blob || !blob.size || prefetch.signal.aborted) return
-            // اتشغّل خلاص من الشبكة؟ مانقطعوش
-            if (isOpen || !vid.paused || vid.currentTime > 0 || (manual && !isAwaiting)) return
-            const typed = blob.type.startsWith('video/') ? blob : new Blob([blob], { type: 'video/mp4' })
-            blobUrl = URL.createObjectURL(typed)
-            vid.src = blobUrl
-          })
-          .catch(() => {
-            /* التحميل المسبق تحسين بس — الفيديو بيشتغل من الشبكة */
-          })
+      // التحميل المسبق تحسين بس — لو فشل الفيديو بيشتغل من الشبكة (‎runtime/prefetch.ts‎)
+      void prefetchVideo(data.video, prefetch.signal, PREFETCH_MAX_BYTES).then((url) => {
+        if (!url) return
+        // اتشغّل خلاص من الشبكة؟ مانقطعوش
+        if (prefetch.signal.aborted || isOpen || !vid.paused || vid.currentTime > 0 || (manual && !isAwaiting)) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        blobUrl = url
+        vid.src = url
+      })
+      // اشتغل من الشبكة قبل ما التحميل يخلص: التحميل بقى مالوش لازمة وبيقاسم
+      // التشغيل نفس السرعة البطيئة. إلغاؤه بيعدّي الدور للفيديو اللي بعده.
+      const dropPrefetch = () => {
+        if (!blobUrl) prefetch.abort()
       }
+      vid.addEventListener('playing', dropPrefetch, { once: true })
       cleanup.push(() => {
+        vid.removeEventListener('playing', dropPrefetch)
         prefetch.abort()
         if (blobUrl) URL.revokeObjectURL(blobUrl)
       })
