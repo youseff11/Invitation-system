@@ -134,6 +134,25 @@ function FileVideo({
       }, 0)
     }
 
+    // «ظاهر» = ‎35%‎ من الفيديو في الشاشة، **أو** نص الشاشة فيديو. الشرط التاني
+    // عشان الفيديو الطولي على ديسكتوب: ‎9:16‎ بعرض الشاشة طوله أضعاف الشاشة،
+    // فنسبته عمرها ما توصل ‎35%‎ وكان بيفضل واقف للأبد وهو مالي الشاشة.
+    const SHOWN = 0.35
+    const seenEnough = (seen: number, height: number, viewH: number) =>
+      height > 0 && seen > 0 && (seen >= height * SHOWN || (viewH > 0 && seen >= viewH * 0.5))
+    const onScreen = () => {
+      const r = v.getBoundingClientRect()
+      const viewH = window.innerHeight || document.documentElement.clientHeight || 0
+      return seenEnough(Math.min(r.bottom, viewH) - Math.max(r.top, 0), r.height, viewH)
+    }
+    const shown = (en: IntersectionObserverEntry) => {
+      if (!en.isIntersecting) return false
+      // متصفح (أو اختبار) مابيبعتش النسب: نصدّق ‎isIntersecting‎ زي الأول
+      if (typeof en.intersectionRatio !== 'number' || !en.intersectionRect) return true
+      const viewH = en.rootBounds?.height || window.innerHeight || 0
+      return seenEnough(en.intersectionRect.height, en.boundingClientRect.height, viewH)
+    }
+
     // مانشغّلش كل فيديوهات الدعوة مع بعض: بيبدأ لما القسم يوصل للشاشة ويقف لما يعدّي
     const watch = () => {
       v.addEventListener('pause', resume)
@@ -144,11 +163,21 @@ function FileVideo({
         tryPlay()
         return
       }
+      // الفيديو اللي في الشاشة لحظة ما الافتتاحية تخلص بيبدأ **دلوقتي** مش مع
+      // أول نداء للمراقب: المراقب بيستنى الرسمة الجاية، والرسمة دي هي اللي فيها
+      // اختفاء الافتتاحية — اتقاس ‎300-500ms‎ على التليفون، والصورة واقفة طولها.
+      // لو الفيديو ده تكملة الافتتاحية (آخر فريم = أول فريم) الوقفة دي بتبان كقطع.
+      if (onScreen() && !finished) {
+        visible = true
+        setWanted(v, true)
+        tryPlay()
+      }
       const io = new IntersectionObserver(
         (entries) => {
           entries.forEach((en) => {
-            visible = en.isIntersecting
-            if (en.isIntersecting) {
+            const on = shown(en)
+            visible = on
+            if (on) {
               if (finished) return
               setWanted(v, true)
               tryPlay()
@@ -158,7 +187,8 @@ function FileVideo({
             }
           })
         },
-        { threshold: 0.35 },
+        // أكتر من حد عشان نعرف نقيس «نص الشاشة» للفيديو الطويل
+        { threshold: [0, 0.1, 0.2, SHOWN, 0.5] },
       )
       io.observe(v)
       cleanup.push(() => io.disconnect())
@@ -169,16 +199,21 @@ function FileVideo({
         v.addEventListener('play', ducking.duck)
         v.addEventListener('pause', ducking.unduck)
         v.addEventListener('ended', ducking.unduck)
+        // اشتغل قبل ما نسمع ‎play‎ (الفيديو اللي في الشاشة بيكمّل من التجهيز)
+        if (!v.paused) ducking.duck()
         watch()
       }
       const onOpen = () => {
         const p = v.play()
         if (!p || !p.then) {
-          v.pause()
+          if (!onScreen()) v.pause()
           arm()
           return
         }
         p.then(() => {
+          // في الشاشة = ده العرض نفسه مش تجهيز: إيقاف ورجوع للصفر كان بيعمل
+          // تقطيعة في أول الفيديو اللي بيكمّل الافتتاحية
+          if (onScreen()) return
           v.pause()
           v.currentTime = 0
         })
@@ -280,16 +315,38 @@ function EmbedVideo({
   )
 }
 
+/**
+ * الفيديو اللي بيكمّل الافتتاحية بياخد مكانها بالظبط: القسم بطول الشاشة
+ * (‎100dvh‎ = نفس ‎position:fixed;inset:0‎ بتاع الافتتاحية) والفيديو ‎cover‎.
+ *
+ * بالمُعرّف ومع ‎html‎ قبله عشان يكسب ارتفاع القسم اللي المحرر بيكتبه
+ * (‎tildacss.section_surface_css‎ = ‎#id{height:…!important}‎): نفس ‎!important‎
+ * بخصوصية أعلى. الارتفاع المتخزّن ماينفعش هنا — أي رقم غير طول الشاشة
+ * بيرجّع القفزة بين الافتتاحية والفيديو.
+ */
+function introContCss(id: string): string {
+  if (!/^[A-Za-z][\w-]*$/.test(id)) return ''
+  const s = `html #${id}`
+  const fill = 'height:100vh!important;height:100dvh!important;min-height:100vh!important;min-height:100dvh!important'
+  return (
+    `${s},${s}>.lb-inner{${fill};padding:0!important;overflow:hidden!important}` +
+    `${s} .lb-video-wrap,${s} .lb-video{width:100%;max-width:none;height:100%;aspect-ratio:auto;border-radius:0;margin:0}` +
+    `${s} .lb-video video{object-fit:cover}`
+  )
+}
+
 export function Video({ block }: { block: BlockData }) {
-  const { t } = useInvite()
+  const { t, introContId } = useInvite()
   const p = block.props as VideoProps
   const holder = useRef<HTMLDivElement>(null)
   const url = p.url || ''
   const yt = url.match(YT)?.[1] ?? ''
   const vimeo = url.match(VIMEO)?.[1] ?? ''
   const aspect = p.aspect || '16x9'
+  const contCss = introContId && introContId === block.id && !yt && !vimeo ? introContCss(block.attrs.id || '') : ''
   return (
     <Frame block={block}>
+      {contCss && <style data-intro-cont="">{contCss}</style>}
       {p.heading && (
         <h2 className="lb-heading" data-ts="heading">
           {p.heading}

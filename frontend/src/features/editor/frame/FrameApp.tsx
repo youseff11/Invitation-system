@@ -5,6 +5,7 @@ import { prefetchBlocks } from '@/features/invite/blocks/lazy'
 import { InviteContext } from '@/features/invite/context'
 import { syncHeadStyles } from '@/features/invite/head'
 import { Intro } from '@/features/invite/Intro'
+import { introContinuationId } from '@/features/invite/introCont'
 import { makeT } from '@/features/invite/strings'
 
 import { INTRO_ID } from '../doc'
@@ -267,7 +268,15 @@ export function FrameApp() {
   const ctx = useMemo(
     () =>
       payload
-        ? { lang: payload.lang, t: makeT(payload.lang), maxWidth: payload.maxWidth, demo: true, hasIntro: Boolean(payload.intro) }
+        ? {
+            lang: payload.lang,
+            t: makeT(payload.lang),
+            maxWidth: payload.maxWidth,
+            demo: true,
+            hasIntro: Boolean(payload.intro),
+            // نفس شكل الدعوة: أول فيديو بعد افتتاحية فيديو مالي الإطار
+            introContId: introContinuationId(payload.intro, payload.blocks),
+          }
         : null,
     [payload],
   )

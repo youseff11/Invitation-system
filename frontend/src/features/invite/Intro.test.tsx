@@ -295,4 +295,38 @@ describe('Intro', () => {
       expect(play).toHaveBeenCalled()
     })
   })
+
+  describe('video that continues the intro', () => {
+    function renderPair(introContId?: string) {
+      HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
+      HTMLMediaElement.prototype.pause = vi.fn()
+      HTMLMediaElement.prototype.load = vi.fn()
+      const next = block('video', { url: '/v2.mp4', autoplay: true })
+      return render(
+        <InviteContext.Provider
+          value={{ lang: 'ar', t: makeT('ar'), maxWidth: 760, demo: false, hasIntro: true, introContId }}
+        >
+          <Intro data={intro({ video: '/v1.mp4' })} />
+          <Video block={next} />
+        </InviteContext.Provider>,
+      )
+    }
+
+    it('cuts straight to the next video instead of fading over it', () => {
+      const { container } = renderPair('video-1')
+      const root = container.querySelector<HTMLElement>('.lb-intro')!
+      fireEvent(container.querySelector('.lb-intro-video')!, new Event('ended'))
+      // في نفس اللحظة — من غير ما نستنى رسمة React
+      expect(root.style.transition).toBe('none')
+      expect(root.style.opacity).toBe('0')
+    })
+
+    it('keeps the usual fade when nothing continues the intro', () => {
+      const { container } = renderPair()
+      const root = container.querySelector<HTMLElement>('.lb-intro')!
+      fireEvent(container.querySelector('.lb-intro-video')!, new Event('ended'))
+      expect(root.style.transition).toBe('')
+      expect(root.style.opacity).toBe('')
+    })
+  })
 })

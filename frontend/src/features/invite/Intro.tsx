@@ -52,7 +52,7 @@ interface MusicHandle {
  * على الزرار) هو اللي بيحدد مين يفتح الدعوة.
  */
 export function Intro({ data }: { data: IntroData }) {
-  const { t } = useInvite()
+  const { t, introContId } = useInvite()
   const root = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const playBtn = useRef<HTMLButtonElement>(null)
@@ -106,6 +106,16 @@ export function Intro({ data }: { data: IntroData }) {
         timer = undefined
       }
       setOpen(true)
+      // الفيديو اللي تحت بيكمّل الافتتاحية بنفس المكان والمقاس (‎introCont.ts‎)،
+      // وأول فريم فيه = آخر فريم هنا: التلاشي (‎.6s‎) كان بيطلّع صورتين فوق بعض
+      // واحدة واقفة وواحدة شغّالة. قطع مباشر = فيديو واحد. بالـDOM مش بالـstate
+      // عشان يحصل في نفس الرسمة اللي الفيديو التاني بيبدأ فيها (‎lb:intro-open‎ تحت).
+      const contSel = introContId ? `[data-block="${introContId.replace(/["\\]/g, '\\$&')}"]` : ''
+      if (contSel && document.querySelector(contSel)) {
+        intro.style.transition = 'none'
+        intro.style.opacity = '0'
+        intro.style.visibility = 'hidden'
+      }
       document.body.style.overflow = ''
       ;(window as unknown as { __lbMusic?: MusicHandle | null }).__lbMusic?.play()
       if (vid) {

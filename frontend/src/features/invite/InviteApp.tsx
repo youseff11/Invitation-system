@@ -7,6 +7,7 @@ import { LangToggle, PreviewBack, PreviewCtaBar, PreviewShare } from './Chrome'
 import { InviteContext } from './context'
 import { applyPageMeta, readHeadStyles, syncHeadStyles } from './head'
 import { Intro } from './Intro'
+import { introContinuationId } from './introCont'
 import { Music } from './Music'
 import { initFarhaState, guardCodeRoots } from './runtime/code-roots'
 import { initImportedMedia } from './runtime/media'
@@ -71,6 +72,7 @@ function Viewer({ initial }: { initial: RenderPayload }) {
   const cache = useRef(new Map<InviteLang, RenderPayload>([[initial.lang, initial]]))
   const baseCss = useRef<HeadCss | null>(null)
   const [hasIntro] = useState(() => Boolean(initial.intro))
+  const [introContId] = useState(() => introContinuationId(initial.intro, initial.blocks))
 
   const t = useMemo(() => makeT(payload.lang), [payload.lang])
   const ctx = useMemo(
@@ -80,8 +82,9 @@ function Viewer({ initial }: { initial: RenderPayload }) {
       maxWidth: payload.maxWidth,
       demo: payload.demo,
       hasIntro,
+      introContId,
     }),
-    [payload.lang, payload.maxWidth, payload.demo, hasIntro, t],
+    [payload.lang, payload.maxWidth, payload.demo, hasIntro, introContId, t],
   )
 
   // لو الحمولة جت من الـAPI (بعد كلمة السر) الستايل لسه مااتطبعش في الـhead

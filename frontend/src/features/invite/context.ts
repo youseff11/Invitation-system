@@ -12,6 +12,8 @@ export interface InviteContextValue {
   demo: boolean
   /** فيه شاشة افتتاحية مستنية فتح الدعوة (بتتحكم في الصوت والموسيقى) */
   hasIntro: boolean
+  /** القسم اللي بيكمّل فيديو الافتتاحية (مالي الشاشة زيها) — ‎introCont.ts‎ */
+  introContId?: string
 }
 
 export const InviteContext = createContext<InviteContextValue>({
