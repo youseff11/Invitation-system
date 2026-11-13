@@ -180,6 +180,13 @@ describe('Video block', () => {
     expect(css).toContain(`html #${b.attrs.id}`)
     expect(css).toContain('height:100dvh!important')
     expect(css).toContain('object-fit:cover')
+    // نفس مكان الافتتاحية: إزاحة الفيديو المتخزّنة مالهاش مكان هنا
+    expect(css).toContain('[data-move="video"]{transform:none!important}')
+    // كود القسم بيتكبّر ويتزاح مع صورة الفيديو
+    expect(css).toContain('zoom:var(--lb-cont-fit,1)!important')
+    expect(css).toContain('top:var(--lb-cont-shift,0px)')
+    const sec = container.querySelector<HTMLElement>('[data-block]')!
+    expect(sec.style.getPropertyValue('--lb-cont-fit')).not.toBe('')
   })
 
   it('loads the intro-continuing video into memory and plays it from there', async () => {

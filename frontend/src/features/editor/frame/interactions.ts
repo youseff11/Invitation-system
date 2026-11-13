@@ -26,6 +26,18 @@ export const MAX_OFFSET = 1000
 const PX_SLOT = /^(?:el|ce)-\d{1,4}$/
 export const isPxSlot = (slot: string | null | undefined) => slot === 'code' || PX_SLOT.test(slot ?? '')
 
+/** التكبير الفعلي للعنصر (‎zoom‎ بتاعه × بتاع آبائه). ‎currentCSSZoom‎ في المتصفحات الحديثة، وإلا بنضرب بإيدنا. */
+export function cssZoom(node: Element): number {
+  const native = (node as Element & { currentCSSZoom?: number }).currentCSSZoom
+  if (typeof native === 'number' && native > 0) return native
+  let z = 1
+  for (let el: Element | null = node; el; el = el.parentElement) {
+    const v = parseFloat(getComputedStyle(el).zoom || '1')
+    if (v > 0) z *= v
+  }
+  return z || 1
+}
+
 const NON_TEXT = /^(img|video|audio|iframe|input|textarea|select|canvas|svg|picture|source)$/i
 
 // ---------------------------------------------------------------- رياضيات السحب (نقية)
@@ -308,7 +320,9 @@ export function installInteractions({ payload, send }: Options): () => void {
       node, id, slot,
       x0: e.clientX, y0: e.clientY,
       dx0: pos?.dx ?? 0, dy0: pos?.dy ?? 0,
-      unit: isPxSlot(slot) ? 1 : stageWidth() / 100,
+      // عنصر بالبكسل جوّه كود متكبّر (‎zoom‎ — الكود فوق الفيديو اللي بيكمّل الافتتاحية):
+      // ‎1px‎ إزاحة = ‎zoom px‎ على الشاشة، فبنقسم حركة الماوس عليه عشان العنصر يمشي معاها بالظبط
+      unit: isPxSlot(slot) ? cssZoom(node) : stageWidth() / 100,
       unit_: slotUnit(slot),
       swap: null,
       moved: false, pointerId: e.pointerId,

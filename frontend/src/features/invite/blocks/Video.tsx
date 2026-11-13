@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 
 import { useInvite } from '../context'
+import { contFit } from '../introCont'
 import { queueMedia, resetPrimed, setWanted } from '../runtime/media'
 import { PREFETCH_MAX_BYTES, prefetchVideo } from '../runtime/prefetch'
 import type { BlockData } from '../types'
@@ -373,8 +374,55 @@ function introContCss(id: string): string {
   return (
     `${s},${s}>.lb-inner{${fill};padding:0!important;overflow:hidden!important}` +
     `${s} .lb-video-wrap,${s} .lb-video{width:100%;max-width:none;height:100%;aspect-ratio:auto;border-radius:0;margin:0}` +
-    `${s} .lb-video video{object-fit:cover}`
+    `${s} .lb-video video{object-fit:cover}` +
+    // إزاحة الفيديو المتخزّنة من المحرر (‎-14.8cqw‎ مثلاً) كانت بتطلّع الصورة ‎~60px‎
+    // عن مكانها في الافتتاحية وتسيب شريط بلون القسم تحت — والقسم ده لازم يطابقها
+    `${s} [data-move="video"]{transform:none!important}` +
+    // كود القسم بيتكبّر ويتزاح مع صورة الفيديو (‎contFit‎) بدل ‎--lb-fit‎ اللي بالعرض بس
+    `${s} .lb-extra-html{zoom:var(--lb-cont-fit,1)!important;top:var(--lb-cont-shift,0px)}`
   )
+}
+
+/** مقاس الفيديو الأصلي: من الملف لو حمّل، وإلا من ‎--vid-ratio‎ اللي السيرفر كتبها، وإلا ‎9:16‎. */
+function videoSize(holder: HTMLElement): [number, number] {
+  const v = holder.querySelector('video')
+  if (v && v.videoWidth > 0 && v.videoHeight > 0) return [v.videoWidth, v.videoHeight]
+  const m = (holder.style.getPropertyValue('--vid-ratio') || '').match(/([\d.]+)\s*\/\s*([\d.]+)/)
+  if (m && Number(m[1]) > 0 && Number(m[2]) > 0) return [Number(m[1]), Number(m[2])]
+  return [9, 16]
+}
+
+/**
+ * بيحسب ‎--lb-cont-fit‎ و‎--lb-cont-shift‎ للقسم اللي بيكمّل الافتتاحية مع أي تغيير
+ * في مقاسه (شريط سفاري بيختفي مع التمرير فـ‎100dvh‎ بيتغيّر). على القسم نفسه
+ * لأن كود القسم مش جوّه حاوية الفيديو.
+ */
+function useContFit(active: boolean, holder: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const box = holder.current
+    const sec = box?.closest<HTMLElement>('[data-block]')
+    if (!active || !box || !sec) return
+    const apply = () => {
+      const r = sec.getBoundingClientRect()
+      const [vw, vh] = videoSize(box)
+      const { k, shift } = contFit(r.width, r.height, vw, vh)
+      sec.style.setProperty('--lb-cont-fit', String(k))
+      sec.style.setProperty('--lb-cont-shift', `${shift}px`)
+    }
+    apply()
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(apply) : null
+    ro?.observe(sec)
+    window.addEventListener('resize', apply)
+    // المقاس الحقيقي بييجي مع بيانات الملف
+    box.addEventListener('loadedmetadata', apply, true)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', apply)
+      box.removeEventListener('loadedmetadata', apply, true)
+      sec.style.removeProperty('--lb-cont-fit')
+      sec.style.removeProperty('--lb-cont-shift')
+    }
+  }, [active, holder])
 }
 
 export function Video({ block }: { block: BlockData }) {
@@ -387,6 +435,7 @@ export function Video({ block }: { block: BlockData }) {
   const aspect = p.aspect || '16x9'
   const isCont = Boolean(introContId) && introContId === block.id && !yt && !vimeo
   const contCss = isCont ? introContCss(block.attrs.id || '') : ''
+  useContFit(isCont, holder)
   return (
     <Frame block={block}>
       {contCss && <style data-intro-cont="">{contCss}</style>}
