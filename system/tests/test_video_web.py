@@ -25,15 +25,17 @@ class WebRenditionUrlTests(SimpleTestCase):
             self.assertEqual(tags.video_url("/media/assets/v/big.mp4"),
                              "/media-video/assets/v/big.mp4")
 
-    def test_rendition_is_preferred_when_present(self):
+    def test_original_is_served_even_when_old_rendition_exists(self):
+        # المطلوب أوريجنال كواليتي: نسخة ‎.web.mp4‎ قديمة مابتتعرضش
         with open(os.path.join(self.root, "assets", "v", "big.web.mp4"), "wb") as fh:
             fh.write(b"y")
         with override_settings(MEDIA_ROOT=self.root, MEDIA_URL="/media/"):
             self.assertEqual(tags.video_url("/media/assets/v/big.mp4"),
-                             "/media-video/assets/v/big.web.mp4")
-            # الروابط جوّه HTML (كود مخصّص) بتتوجّه برضه
+                             "/media-video/assets/v/big.mp4")
+            # الروابط جوّه HTML (كود مخصّص) بتتوجّه برضه للأصل
             html = str(tags.safe_html('<video src="/media/assets/v/big.mp4"></video>', 0))
-            self.assertIn("/media-video/assets/v/big.web.mp4", html)
+            self.assertIn("/media-video/assets/v/big.mp4", html)
+            self.assertNotIn("big.web.mp4", html)
 
     def test_external_urls_untouched(self):
         with override_settings(MEDIA_ROOT=self.root, MEDIA_URL="/media/"):

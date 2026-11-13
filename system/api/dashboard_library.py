@@ -175,8 +175,8 @@ def _clip_list(request, library: str):
         clip.library = library
         upload = form.cleaned_data.get("file")
         if upload:
-            # الأصل بيتخزّن زي ما هو (من غير فقد جودة) والدعوة بتعرض نسخة
-            # الموبايل اللي بتتعمل جنبه تحت (‎make_web_rendition‎)
+            # الأصل بيتخزّن ويتعرض زي ما هو (أوريجنال كواليتي) — مافيش
+            # ضغط ولا نسخة موبايل. ‎prepare_for_stream‎ بتنقل الفهرس بس.
             try:
                 stored, secs = video.prepare_for_stream(upload)
                 clip.file = stored
@@ -192,11 +192,6 @@ def _clip_list(request, library: str):
             except Exception:
                 pass
         clip.save()
-        if clip.file:
-            try:
-                video.make_web_rendition(clip.file.path)
-            except Exception:
-                pass
         return _clip_row(clip)
     return {"results": [_clip_row(clip) for clip in IntroVideo.objects.filter(library=library)]}
 
