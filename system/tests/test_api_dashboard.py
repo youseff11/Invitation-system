@@ -619,20 +619,17 @@ class IntroTests(DashboardApiCase):
         self.assertEqual((row["name"], row["posterUrl"]), ("افتتاحية", ""))
         self.assertRegex(row["secondsLabel"], r"^3[.,]5$")
 
-    def test_upload_video_keeps_original_without_compression(self):
+    def test_upload_video_keeps_original_and_makes_mobile_copy(self):
         from unittest import mock
 
         upload = SimpleUploadedFile("i.mp4", b"0" * 128, content_type="video/mp4")
         with mock.patch("system.video.prepare_for_stream", return_value=(upload, 4.0)) as prep, \
-                mock.patch("system.video.compress") as compress, \
                 mock.patch("system.video.make_web_rendition", return_value="") as web, \
                 mock.patch("system.video.make_thumbnail", return_value=None):
             response = self.upload(f"{BASE}/intros/", self.valid(), {"file": upload})
         self.assertEqual(response.status_code, 200, response.content)
         prep.assert_called_once()
-        # أوريجنال كواليتي: لا ضغط ولا نسخة موبايل
-        compress.assert_not_called()
-        web.assert_not_called()
+        web.assert_called_once()
         clip = IntroVideo.objects.get(pk=response.json()["id"])
         self.assertEqual(clip.seconds, 4.0)
         self.assertTrue(clip.file.name.startswith("intro_videos/"))

@@ -212,8 +212,27 @@ def social_link(name, url, color, size=34, label=""):
 
 
 # --------------------------------------------------------------------------
-# الفيديو بيتعرض دايماً بالملف الأصلي (أوريجنال كواليتي). نسخ ‎.web.mp4‎
-# القديمة لو لسه موجودة على السيرفر مابقتش بتتعرض.
+def _web_rendition(rel: str) -> str:
+    """نسخة الموبايل (‎<اسم>.web.mp4‎) لو اتعملت جنب الأصل، وإلا الأصل نفسه.
+
+    الأصل ممكن يكون 4K بـ14Mbps؛ النسخة ‎720p/30fps‎ أخف ٢٠ مرة وبتبدأ فوراً
+    على 4G. بتتعمل وقت الرفع أو بـ‎manage.py web_videos‎ (‎video.make_web_rendition‎).
+    """
+    from ..video import WEB_SUFFIX
+    stem, ext = os.path.splitext(rel)
+    if not ext or rel.lower().endswith(WEB_SUFFIX):
+        return rel
+    candidate = stem + WEB_SUFFIX
+    try:
+        root = os.path.realpath(str(settings.MEDIA_ROOT))
+        full = os.path.realpath(os.path.join(root, candidate))
+        if full.startswith(root + os.sep) and os.path.isfile(full):
+            return candidate
+    except (OSError, ValueError):
+        pass
+    return rel
+
+
 def _route_video_url(value):
     value = str(value or "")
     base = str(getattr(settings, "MEDIA_URL", "/media/") or "/media/")
@@ -221,7 +240,7 @@ def _route_video_url(value):
         base += "/"
     path, sep, query = value.partition("?")
     if path.startswith(base) and os.path.splitext(path)[1].lower() in {".mp4", ".m4v", ".webm", ".ogv", ".mov"}:
-        value = "/media-video/" + path[len(base):].lstrip("/")
+        value = "/media-video/" + _web_rendition(path[len(base):].lstrip("/"))
         if sep:
             value += "?" + query
     return value
