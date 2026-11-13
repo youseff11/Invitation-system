@@ -360,7 +360,11 @@ function EmbedVideo({
 
 /**
  * الفيديو اللي بيكمّل الافتتاحية بياخد مكانها بالظبط: القسم بطول الشاشة
- * (‎100dvh‎ = نفس ‎position:fixed;inset:0‎ بتاع الافتتاحية) والفيديو ‎cover‎.
+ * (‎100svh‎ = نفس ‎position:fixed;inset:0‎ بتاع الافتتاحية) والفيديو ‎cover‎.
+ *
+ * ‎svh‎ مش ‎dvh‎: شريط سفاري بيختفي ويرجع مع التمرير، و‎dvh‎ كان بيغيّر طول
+ * القسم كل مرة فالفيديو (‎cover‎) والكلام اللي فوقه بيتكبّروا ويصغروا ويتهزّوا.
+ * ‎svh‎ ثابت = الشاشة والشريط ظاهر، ودي نفس مساحة الافتتاحية لحظة ما بتخلص.
  *
  * بالمُعرّف ومع ‎html‎ قبله عشان يكسب ارتفاع القسم اللي المحرر بيكتبه
  * (‎tildacss.section_surface_css‎ = ‎#id{height:…!important}‎): نفس ‎!important‎
@@ -370,7 +374,7 @@ function EmbedVideo({
 function introContCss(id: string): string {
   if (!/^[A-Za-z][\w-]*$/.test(id)) return ''
   const s = `html #${id}`
-  const fill = 'height:100vh!important;height:100dvh!important;min-height:100vh!important;min-height:100dvh!important'
+  const fill = 'height:100vh!important;height:100svh!important;min-height:100vh!important;min-height:100svh!important'
   return (
     `${s},${s}>.lb-inner{${fill};padding:0!important;overflow:hidden!important}` +
     `${s} .lb-video-wrap,${s} .lb-video{width:100%;max-width:none;height:100%;aspect-ratio:auto;border-radius:0;margin:0}` +
@@ -394,7 +398,7 @@ function videoSize(holder: HTMLElement): [number, number] {
 
 /**
  * بيحسب ‎--lb-cont-fit‎ و‎--lb-cont-shift‎ للقسم اللي بيكمّل الافتتاحية مع أي تغيير
- * في مقاسه (شريط سفاري بيختفي مع التمرير فـ‎100dvh‎ بيتغيّر). على القسم نفسه
+ * في مقاسه (لف الشاشة أو تغيير حجم النافذة). على القسم نفسه
  * لأن كود القسم مش جوّه حاوية الفيديو.
  */
 function useContFit(active: boolean, holder: React.RefObject<HTMLDivElement | null>) {

@@ -178,7 +178,9 @@ describe('Video block', () => {
     const css = container.querySelector('style[data-intro-cont]')?.textContent ?? ''
     // بيكسب ارتفاع القسم المتخزّن (‎#id{…!important}‎) بخصوصية أعلى
     expect(css).toContain(`html #${b.attrs.id}`)
-    expect(css).toContain('height:100dvh!important')
+    expect(css).toContain('height:100svh!important')
+    // ‎dvh‎ بيتغيّر مع شريط سفاري وانت بتمرّر فالفيديو بيتهزّ
+    expect(css).not.toContain('dvh')
     expect(css).toContain('object-fit:cover')
     // نفس مكان الافتتاحية: إزاحة الفيديو المتخزّنة مالهاش مكان هنا
     expect(css).toContain('[data-move="video"]{transform:none!important}')
