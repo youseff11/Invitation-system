@@ -11,8 +11,8 @@ export interface HeroView {
 }
 
 const DEFAULT_BG: Record<Theme, Record<Lang, string>> = {
-  light: { ar: '/static/images/home-arabic-light.webp', en: '/static/images/home-english-light.webp' },
-  dark: { ar: '/static/images/home-arabic-dark.webp', en: '/static/images/home-english-dark.webp' },
+  light: { ar: '/static/images/home-luxe-light.webp', en: '/static/images/home-luxe-light.webp' },
+  dark: { ar: '/static/images/home-luxe-dark.webp', en: '/static/images/home-luxe-dark.webp' },
 }
 
 /** الحقل اللي المستخدم واقف عليه → أنهي عنصر في المعاينة يتلوّن */

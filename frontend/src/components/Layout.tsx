@@ -5,6 +5,7 @@ import '@/styles/tokens.css'
 import '@/styles/base.css'
 import '@/styles/app.css'
 import '@/features/public/public.css'
+import '@/features/public/luxe.css'
 
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'

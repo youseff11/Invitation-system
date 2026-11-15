@@ -174,7 +174,7 @@
 }
 
 .hero-art {
-  --hero-img: url("/static/images/home-arabic-light.webp");
+  --hero-img: url("/static/images/home-luxe-light.webp");
   position: relative;
   aspect-ratio: 1672 / 941;
   background-image: var(--hero-img);
@@ -186,14 +186,14 @@
   container-type: inline-size;     /* مرجع وحدات cqw لكتابة الكارت */
 }
 html[lang="en"] .hero-art {
-  --hero-img: url("/static/images/home-english-light.webp");
+  --hero-img: url("/static/images/home-luxe-light.webp");
 }
 [data-theme="dark"] .hero-art {
-  --hero-img: url("/static/images/home-arabic-dark.webp");
+  --hero-img: url("/static/images/home-luxe-dark.webp");
   --card-x: 69.3%; --card-y: 50.8%; --card-w: 20.5%; --card-rot: 7.2deg;
 }
 html[lang="en"][data-theme="dark"] .hero-art {
-  --hero-img: url("/static/images/home-english-dark.webp");
+  --hero-img: url("/static/images/home-luxe-dark.webp");
 }
 
 /* شبكة أمان للتباين: تدرّج من حافة الصورة الشمال (مكان النص) ناحية النص.
@@ -369,10 +369,10 @@ html[lang="en"] .plan-badge { letter-spacing: .1em; }
 
 /* شاشات متوسطة: نسخة أخف من صورة الهيرو */
 @media (min-width: 781px) and (max-width: 1200px) {
-  .hero-art { --hero-img: url("/static/images/home-arabic-light.webp"); }
-  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-english-light.webp"); }
-  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-arabic-dark.webp"); }
-  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-english-dark.webp"); }
+  .hero-art { --hero-img: url("/static/images/home-luxe-light.webp"); }
+  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-luxe-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-dark.webp"); }
   .hero-copy-in { width: min(48%, 460px); }
 }
 
@@ -414,11 +414,11 @@ html[lang="en"] .plan-badge { letter-spacing: .1em; }
     width: 100%;
     background-size: cover;           /* الخلفية الجديدة مع الهاتف داخلها */
     background-position: center top;
-    --hero-img: url("/static/images/home-arabic-light.webp");
+    --hero-img: url("/static/images/home-luxe-light.webp");
   }
-  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-english-light.webp"); }
-  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-arabic-dark.webp"); }
-  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-english-dark.webp"); }
+  html[lang="en"] .hero-art { --hero-img: url("/static/images/home-luxe-light.webp"); }
+  [data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-dark.webp"); }
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-dark.webp"); }
   .hero-art::before { display: none; }          /* مفيش نص فوق الصورة هنا */
   .hero-art::after  { height: 26%; }
 

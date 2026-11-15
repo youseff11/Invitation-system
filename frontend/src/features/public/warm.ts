@@ -5,8 +5,8 @@
  */
 const BRAND = { light: '/site-logo/light.png', dark: '/site-logo/dark.png' }
 const HERO = {
-  ar: { light: '/static/images/home-arabic-light.webp', dark: '/static/images/home-arabic-dark.webp' },
-  en: { light: '/static/images/home-english-light.webp', dark: '/static/images/home-english-dark.webp' },
+  ar: { light: '/static/images/home-luxe-light.webp', dark: '/static/images/home-luxe-dark.webp' },
+  en: { light: '/static/images/home-luxe-light.webp', dark: '/static/images/home-luxe-dark.webp' },
 }
 
 const warmed = new Set<string>()

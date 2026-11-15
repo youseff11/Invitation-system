@@ -1,0 +1,244 @@
+/* ================================================================
+   الطبقة الفاخرة — تطوير شكل أقسام الرئيسية (نوفمبر ٢٠٢٦)
+   بتتحمّل بعد public.css وبتغلبه بالترتيب. الفكرة: كروت شبه دعوة مطبوعة —
+   إطار مزدوج، أركان ذهبية، خطوط شعرية متدرّجة، وظلال أعمق.
+   شيل الـimport من Layout.tsx يرجع الشكل القديم زي ما هو.
+   ================================================================ */
+:root {
+  /* أركان زخرفية — صورة لكل ركن عشان الـmask مابيقلبش الصورة لوحده */
+  --orn-corner-tl: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"><path d="M2 26V2h24"/><path d="M7 17V7h10"/></g><circle cx="2" cy="2" r="2"/><path d="M7 7l2.2 2.2L7 11.4 4.8 9.2z"/></svg>');
+  --orn-corner-tr: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"><path d="M38 26V2H14"/><path d="M33 17V7H23"/></g><circle cx="38" cy="2" r="2"/><path d="M33 7l2.2 2.2L33 11.4l-2.2-2.2z"/></svg>');
+  --orn-corner-bl: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"><path d="M2 14v24h24"/><path d="M7 23v10h10"/></g><circle cx="2" cy="38" r="2"/><path d="M7 28.6l2.2 2.2L7 33l-2.2-2.2z"/></svg>');
+  --orn-corner-br: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"><path d="M38 14v24H14"/><path d="M33 23v10H23"/></g><circle cx="38" cy="38" r="2"/><path d="M33 28.6l2.2 2.2L33 33l-2.2-2.2z"/></svg>');
+
+  --gold-line: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, transparent) 28%,
+               var(--accent) 50%, color-mix(in srgb, var(--accent) 70%, transparent) 72%, transparent);
+  --gold-fill: linear-gradient(135deg, color-mix(in srgb, var(--accent) 82%, #fff) 0%, var(--accent) 50%,
+               color-mix(in srgb, var(--accent) 74%, #000) 100%);
+  --lux-surface: linear-gradient(165deg,
+               color-mix(in srgb, var(--surface) 95%, var(--accent)) 0%,
+               var(--surface) 55%,
+               color-mix(in srgb, var(--surface) 93%, var(--accent)) 100%);
+  --lux-shadow: inset 0 1px 0 rgba(255, 255, 255, .7),
+                0 30px 60px -42px rgba(60, 42, 14, .55);
+}
+[data-theme="dark"] {
+  --lux-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 22%, transparent),
+                0 30px 60px -36px #000;
+}
+
+/* ---------------------------------------------------------- رأس القسم */
+.section { padding-block: clamp(70px, 9vw, 116px); }
+.section-head { margin-bottom: clamp(38px, 5vw, 58px); }
+
+/* العنوان الصغير بين خطين ذهبيين متلاشيين */
+.section-head .eyebrow,
+.home-cta .eyebrow {
+  display: inline-flex; align-items: center; gap: 14px; margin-bottom: 12px;
+}
+.section-head .eyebrow::before, .section-head .eyebrow::after,
+.home-cta .eyebrow::before, .home-cta .eyebrow::after {
+  content: ""; width: 40px; height: 1px; flex: none;
+  background: linear-gradient(to left, var(--accent), transparent);
+}
+.section-head .eyebrow::after,
+.home-cta .eyebrow::after { background: linear-gradient(to right, var(--accent), transparent); }
+
+.section-head h2 {
+  font-size: clamp(30px, 4.4vw, 50px); line-height: 1.25; text-wrap: balance;
+}
+.section-head p:not(.eyebrow) {
+  margin-top: 12px; font-size: clamp(14.5px, 1.15vw, 17px); line-height: 1.9;
+}
+
+/* الأقسام البديلة: وهج ذهبي من فوق + خط شعري ذهبي فوق وتحت */
+.section--alt, .section--faq, .home-cta { isolation: isolate; }
+.section--alt::before, .section--faq::before, .home-cta::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent) top / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent) bottom / 100% 1px no-repeat,
+    radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+}
+
+/* ---------------------------------------------------------- الإطار المزدوج والأركان
+   نفس اللغة على المميزات والباقات: خط داخلي رفيع + ٤ أركان ذهبية بتنوّر بالمرور */
+.feature-card, .plan {
+  background: var(--lux-surface);
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+  box-shadow: var(--lux-shadow);
+  isolation: isolate;
+}
+.feature-card::before, .plan::before {
+  content: ""; position: absolute; inset: 7px; z-index: -1; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
+  border-radius: calc(var(--r, 22px) - 6px);
+  transition: border-color .3s ease;
+}
+.feature-card::after, .plan::after {
+  content: ""; position: absolute; inset: 11px; z-index: -1; pointer-events: none;
+  background-color: var(--accent); opacity: .5;
+  -webkit-mask: var(--orn-corner-tl) top left / var(--corner, 22px) no-repeat,
+                var(--orn-corner-tr) top right / var(--corner, 22px) no-repeat,
+                var(--orn-corner-bl) bottom left / var(--corner, 22px) no-repeat,
+                var(--orn-corner-br) bottom right / var(--corner, 22px) no-repeat;
+          mask: var(--orn-corner-tl) top left / var(--corner, 22px) no-repeat,
+                var(--orn-corner-tr) top right / var(--corner, 22px) no-repeat,
+                var(--orn-corner-bl) bottom left / var(--corner, 22px) no-repeat,
+                var(--orn-corner-br) bottom right / var(--corner, 22px) no-repeat;
+  transition: opacity .3s ease;
+}
+.feature-card:hover::before, .plan:hover::before { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.feature-card:hover::after, .plan:hover::after { opacity: 1; }
+
+/* ---------------------------------------------------------- المميزات */
+.feature-grid { gap: 20px; }
+.feature-card { --r: 22px; border-radius: 22px; min-height: 230px; padding: 36px 26px 30px; }
+.feature-icon {
+  width: 62px; height: 62px; margin-bottom: 18px;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 24%, transparent), var(--accent-soft) 70%);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 7%, transparent),
+              0 12px 24px -16px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.feature-icon svg { width: 26px; height: 26px; stroke-width: 1.35; }
+.feature-card h3 { font-size: 22px; margin-bottom: 8px; }
+.feature-card:hover .feature-icon { background: var(--gold-fill); }
+
+/* ---------------------------------------------------------- كروت القوالب
+   إطار جوّاني زي ورق الدعوة؛ الغلاف بحافة شعرية ذهبية */
+.tpl-card {
+  padding: 9px; border-radius: 20px;
+  background: var(--lux-surface);
+  border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+  box-shadow: var(--lux-shadow);
+}
+.tpl-cover {
+  border-radius: 13px; overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.tpl-body { padding: 16px 10px 10px; }
+.tpl-body h3 { font-size: 19px; }
+.tpl-meta { color: var(--accent); opacity: .9; }
+.tpl-card:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+
+/* ---------------------------------------------------------- الباقات */
+#plans .grid--3 { gap: 26px; align-items: start; }
+.plan { --r: 24px; border-radius: 24px; padding: 40px 28px 28px; gap: 12px; }
+.plan h3 { font-size: 24px; margin: 0; }
+.plan-price {
+  font-family: "Cormorant Garamond", "Amiri", Georgia, serif;
+  font-size: clamp(46px, 4.4vw, 58px); font-weight: 600;
+  background: var(--gold-fill);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  padding-bottom: 16px; margin-bottom: 4px;
+  border-bottom: 1px solid; border-image: var(--gold-line) 1;
+}
+.plan-price small {
+  -webkit-text-fill-color: var(--muted); color: var(--muted);
+  font-family: inherit; font-size: 15px; font-weight: 400;
+}
+/* علامة الصح بقت معيّن ذهبي صغير */
+.plan li::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; flex: none;
+  transform: translateY(-2px) rotate(45deg);
+  background: var(--accent); margin-inline-end: 12px;
+}
+/* الباقة المميزة: إطار ذهبي متدرّج (border-box) وطالعة لفوق شوية */
+.plan--featured {
+  border: 1px solid transparent;
+  background:
+    var(--lux-surface) padding-box,
+    linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 25%, transparent) 40%,
+                    color-mix(in srgb, var(--accent) 25%, transparent) 60%, var(--accent)) border-box;
+  box-shadow: var(--lux-shadow), 0 34px 70px -40px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+@media (min-width: 901px) {
+  .plan--featured { transform: translateY(-14px); }
+  .plan--featured:hover { transform: translateY(-19px); }
+}
+.plan-badge {
+  top: -13px; inset-inline-start: 50%; transform: translateX(50%);
+  padding: 5px 18px; font-size: 11.5px; white-space: nowrap;
+  background: var(--gold-fill);
+  box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+[dir="ltr"] .plan-badge { transform: translateX(-50%); }
+
+/* ---------------------------------------------------------- الخطوات */
+.step-number {
+  font-family: "Cormorant Garamond", "Amiri", Georgia, serif; font-size: 22px; font-weight: 600;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 14%, var(--step-punch)), var(--step-punch) 70%);
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent),
+              0 14px 28px -16px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+.step:hover .step-number {
+  background: var(--gold-fill);
+  box-shadow: 0 0 0 5px var(--step-punch),
+              0 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent),
+              0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.step h3 { font-size: 21px; }
+
+/* ---------------------------------------------------------- الأسئلة */
+.faq-list { gap: 12px; }
+.faq-item {
+  position: relative; border-radius: 18px;
+  background: var(--lux-surface);
+  border-color: color-mix(in srgb, var(--accent) 16%, var(--line));
+}
+/* خط ذهبي على جنب السؤال المفتوح */
+.faq-item::before {
+  content: ""; position: absolute; inset-block: 16px; inset-inline-start: 0; width: 2px;
+  border-radius: 2px; background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+  opacity: 0; transition: opacity .25s ease;
+}
+.faq-item[open]::before { opacity: 1; }
+.faq-item summary { padding: 20px 24px; }
+.faq-item summary::after {
+  flex: none; width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 50%;
+  font-size: 19px; line-height: 1;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.faq-item[open] summary::after { background: var(--accent); color: #fff; border-color: var(--accent); }
+.faq-answer { padding: 0 24px 22px; }
+
+/* ---------------------------------------------------------- قسم التواصل */
+.home-cta { padding-block: clamp(84px, 10vw, 130px); }
+.home-cta-in {
+  max-width: 780px; padding: clamp(40px, 5vw, 64px) clamp(20px, 5vw, 64px);
+  background: var(--lux-surface);
+  box-shadow: var(--lux-shadow), 0 40px 90px -50px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.home-cta h2 { font-size: clamp(30px, 4.4vw, 52px); }
+.home-cta .btn--gold { padding: 14px 34px; min-height: 52px; font-size: 15.5px; }
+
+/* ---------------------------------------------------------- الموبايل */
+@media (max-width: 900px) {
+  .plan--featured { transform: none; }
+}
+@media (max-width: 700px) {
+  .feature-card { --r: 16px; --corner: 14px; border-radius: 16px; min-height: 168px; padding: 22px 10px 18px; }
+  .feature-card::before { inset: 5px; }
+  .feature-card::after { inset: 8px; }
+  .feature-icon {
+    width: 46px; height: 46px; margin-bottom: 11px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 7%, transparent);
+  }
+  .feature-icon svg { width: 21px; height: 21px; }
+  .feature-card h3 { font-size: 16px; }
+  .plan { padding: 36px 22px 24px; }
+  .section-head .eyebrow::before, .section-head .eyebrow::after,
+  .home-cta .eyebrow::before, .home-cta .eyebrow::after { width: 24px; }
+  .faq-item summary { padding: 17px 18px; }
+  .faq-answer { padding: 0 18px 17px; }
+}
+@media (max-width: 600px) {
+  #templates .tpl-card { padding: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan--featured, .plan--featured:hover { transform: none; }
+}

@@ -390,10 +390,10 @@ describe('hero live preview', () => {
   it('lets the viewer switch language and theme by hand, falling back to the default image', async () => {
     mount('/dashboard/data/system.homehero/1')
     const preview = (await screen.findByTestId('hero-bg')).closest('.hp') as HTMLElement
-    expect(screen.getByTestId('hero-bg').style.backgroundImage).toContain('/static/images/home-arabic-light.webp')
+    expect(screen.getByTestId('hero-bg').style.backgroundImage).toContain('/static/images/home-luxe-light.webp')
     fireEvent.click(within(preview).getByRole('button', { name: 'English' }))
     fireEvent.click(within(preview).getByRole('button', { name: 'داكن' }))
-    expect(screen.getByTestId('hero-bg').style.backgroundImage).toContain('/static/images/home-english-dark.webp')
+    expect(screen.getByTestId('hero-bg').style.backgroundImage).toContain('/static/images/home-luxe-dark.webp')
   })
 
   it('is not shown for other tables', async () => {
