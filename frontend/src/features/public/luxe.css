@@ -267,3 +267,198 @@ html[lang="en"] .hero-eyebrow { letter-spacing: .14em; text-transform: uppercase
   .hero-highlights { margin: 16px auto 14px; }
   .hero-highlights li + li::before { margin-inline: 10px; }
 }
+
+/* ================================================================
+   كروت القوالب — عرض فخم
+   الغلاف بيتكبّر جوّه إطاره بالمرور (طبقة ‎::before‎ وارثة نفس الصورة)،
+   لمعة دهبي بتعدّي، والجسم في النص بزرار بعرض الكارت.
+   ================================================================ */
+#templates .grid--4 { gap: 26px; }
+.tpl-card {
+  position: relative; padding: 10px; border-radius: 22px;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), box-shadow .45s ease, border-color .45s ease;
+}
+/* إطار دهبي متدرّج بيظهر بالمرور */
+.tpl-card::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
+  padding: 1px; background: linear-gradient(150deg, var(--accent), transparent 35%, transparent 65%, var(--accent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .45s ease;
+}
+.tpl-card:hover {
+  transform: translateY(-10px);
+  box-shadow: var(--lux-shadow), 0 40px 70px -40px color-mix(in srgb, var(--accent) 75%, rgba(23, 19, 15, .6));
+}
+.tpl-card:hover::after { opacity: 1; }
+
+.tpl-cover { isolation: isolate; border-radius: 15px; }
+.tpl-cover::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: inherit; background-size: cover; background-position: center;
+  transition: transform 1.1s cubic-bezier(.2, .8, .2, 1);
+}
+.tpl-card:hover .tpl-cover::before { transform: scale(1.07); }
+/* لمعة مايلة بتعدّي على الغلاف مرة + تغميق خفيف من تحت */
+.tpl-cover::after {
+  opacity: 1;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .38) 50%, transparent 65%) no-repeat,
+              linear-gradient(to top, rgba(0, 0, 0, .22), transparent 40%);
+  background-size: 250% 100%, 100% 100%;
+  background-position: 160% 0, 0 0;
+  transition: background-position 1s ease;
+}
+.tpl-card:hover .tpl-cover::after { background-position: -60% 0, 0 0; }
+
+.tpl-body { align-items: center; text-align: center; padding: 18px 8px 8px; gap: 4px; }
+.tpl-body h3 { font-family: "Amiri", Georgia, serif; font-size: 21px; font-weight: 700; }
+.tpl-meta {
+  display: inline-block; padding: 2px 12px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  font-size: 11.5px; color: var(--accent);
+}
+.tpl-actions { width: 100%; justify-content: center; padding-top: 14px; }
+#templates .tpl-actions .btn { width: 100%; min-height: 42px; }
+
+@media (max-width: 600px) {
+  #templates .tpl-card { padding: 9px; }
+  #templates .tpl-body { min-height: 0; align-items: center; text-align: center; }
+  .tpl-card:hover { transform: translateY(-4px); }
+}
+
+/* ================================================================
+   الخطوات — تايم لاين متحرّك
+   الخط الدهبي بيترسم أول ما القسم يظهر، الخطوات بتطلع ورا بعض، ونقطة
+   منوّرة بتمشي على الخط وكل دايرة بتنوّر لما النقطة توصلها. حلقة منقّطة
+   بتلف حوالين كل أيقونة.
+   ================================================================ */
+.steps { --step-dot: 68px; --spark-dur: 5.2s; }
+html.js .steps[data-reveal] { opacity: 1; transform: none; }
+.step:not(:last-child)::after { content: none; }
+
+/* الخط الأساسي باهت، وفوقه نسخة دهبي بتترسم */
+.steps::before { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.steps::after {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  top: calc(var(--step-dot) / 2); inset-inline: 12%; height: 1.5px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent),
+              color-mix(in srgb, var(--accent) 50%, transparent));
+  transform: scaleX(0); transform-origin: right;
+  transition: transform 1.8s cubic-bezier(.65, 0, .35, 1) .2s;
+}
+[dir="ltr"] .steps::after { transform-origin: left; }
+.steps.is-in::after { transform: scaleX(1); }
+
+/* النقطة المنوّرة */
+.steps-spark {
+  position: absolute; z-index: 2; pointer-events: none;
+  top: calc(var(--step-dot) / 2 - 5px); inset-inline-start: 12%;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--accent) 45%, transparent 72%);
+  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--accent) 55%, transparent);
+  opacity: 0;
+}
+.steps.is-in .steps-spark { animation: spark-run var(--spark-dur) cubic-bezier(.45, 0, .55, 1) 2s infinite; }
+@keyframes spark-run {
+  0%   { inset-inline-start: 12%; opacity: 0; }
+  6%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { inset-inline-start: calc(88% - 10px); opacity: 0; }
+}
+
+/* الخطوات بتطلع ورا بعض */
+html.js .steps .step {
+  opacity: 0; transform: translateY(26px);
+  transition: opacity .7s ease, transform .8s cubic-bezier(.2, .8, .2, 1), background-color .3s ease;
+  transition-delay: calc(.35s + var(--i) * .28s), calc(.35s + var(--i) * .28s), 0s;
+}
+html.js .steps.is-in .step { opacity: 1; transform: none; }
+
+.step { padding: 6px 10px 18px; border-radius: 22px; }
+.step-number { width: var(--step-dot); height: var(--step-dot); margin-bottom: 20px; }
+.step-number svg {
+  width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.4;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+/* حلقة منقّطة بتلف */
+.step-number::before {
+  content: ""; position: absolute; inset: -11px; border-radius: 50%; pointer-events: none;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: step-ring 22s linear infinite;
+}
+.step:nth-child(odd) .step-number::before { animation-direction: reverse; }
+@keyframes step-ring { to { transform: rotate(360deg); } }
+
+/* الدايرة بتنوّر لما النقطة توصلها — التأخير محسوب على مكان كل خطوة على الخط */
+.steps.is-in .step-number {
+  animation: step-glow var(--spark-dur) ease-out infinite;
+  animation-delay: calc(2s + var(--i) * var(--spark-dur) * .29);
+}
+@keyframes step-glow {
+  0% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 5px var(--step-punch), 0 0 0 7px var(--accent),
+                0 0 36px 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  25%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px var(--step-punch), 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent),
+                0 14px 28px -16px color-mix(in srgb, var(--accent) 85%, transparent);
+  }
+}
+
+.step-index {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: 15px; font-weight: 700;
+  color: var(--accent); letter-spacing: .12em;
+}
+.step-index::before, .step-index::after {
+  content: ""; width: 16px; height: 1px; background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.step h3 { font-size: 22px; margin-bottom: 8px; }
+.step:hover { background: color-mix(in srgb, var(--surface) 65%, transparent); }
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .steps { --step-dot: 56px; }
+}
+@media (max-width: 760px) {
+  .steps { --step-dot: 54px; }
+  .steps::after {
+    top: 14px; bottom: 22px; height: auto; width: 1.5px;
+    inset-inline: auto; inset-inline-start: calc(var(--step-dot) / 2);
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent),
+                color-mix(in srgb, var(--accent) 50%, transparent));
+    transform: scaleY(0); transform-origin: top;
+  }
+  [dir="ltr"] .steps::after { transform-origin: top; }
+  .steps.is-in::after { transform: scaleY(1); }
+  .steps-spark { top: 14px; inset-inline-start: calc(var(--step-dot) / 2 - 4.25px); }
+  .steps.is-in .steps-spark { animation-name: spark-run-v; }
+  .step {
+    padding-block: 22px; border-radius: 16px;
+    padding-inline-start: calc(var(--step-dot) + 26px); padding-inline-end: 6px;
+  }
+  .step-number { top: 18px; }
+  .step-number::before { inset: -7px; }
+  .step-number svg { width: 22px; height: 22px; }
+  .step-index { margin-bottom: 2px; }
+  .step h3 { font-size: 19px; }
+}
+@keyframes spark-run-v {
+  0%   { top: 14px; opacity: 0; }
+  6%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { top: calc(100% - 32px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .steps .step { opacity: 1; transform: none; transition: none; }
+  .steps::after { transform: none; transition: none; }
+  .steps-spark, .step-number::before { animation: none; display: none; }
+  .steps.is-in .step-number { animation: none; }
+  .tpl-cover::before, .tpl-cover::after { transition: none; }
+}
+
+/* ---------------------------------------------------------- أيقونة واتساب في الفوتر
+   كانت بتورث ‎fill: none‎ من قاعدة أيقونات الفوتر فتطلع باهتة/فاضية */
+.foot-socials a[aria-label="WhatsApp"] svg { fill: currentColor; stroke: none; width: 21px; height: 21px; }

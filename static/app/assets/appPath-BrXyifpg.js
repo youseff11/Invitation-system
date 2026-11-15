@@ -1,0 +1,1 @@
+import{a as e}from"./hooks-CaNu2pFU.js";function t(t){let n=e.basename;return n&&t.startsWith(`${n}/`)?t.slice(n.length):t}export{t};

@@ -4,9 +4,8 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { useLogout, useMe, useSetLanguage, useSite } from '@/api/hooks'
+import { useLogout, useMe, useSite } from '@/api/hooks'
 import type { Lang } from '@/api/types'
-import { applyDocumentLanguage } from '@/i18n'
 import { useTheme } from '@/lib/theme'
 
 import { prefetchAllChunks, prefetchDashboard } from './prefetch'
@@ -132,15 +131,12 @@ export function DashboardHeader() {
     if (href?.startsWith('/dashboard')) prefetchDashboard(queryClient, href)
   }
   useEffect(() => prefetchAllChunks(queryClient), [queryClient])
-  const setLanguage = useSetLanguage()
   const toggleTheme = useTheme((state) => state.toggle)
   const [menuOpen, setMenuOpen] = useState(false)
   const [stuck, setStuck] = useState(false)
 
   const lang = (i18n.language as Lang) ?? 'ar'
-  const next: Lang = lang === 'ar' ? 'en' : 'ar'
   const siteName = site?.name[lang] ?? ''
-  const switchTitle = lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'
 
   // الترويسة بتتقلّص وتاخد ظل لما المستخدم ينزل بالصفحة
   useEffect(() => {
@@ -175,16 +171,6 @@ export function DashboardHeader() {
       window.removeEventListener('resize', onResize)
     }
   }, [menuOpen])
-
-  function switchLanguage(event: FormEvent) {
-    event.preventDefault()
-    setLanguage.mutate(next, {
-      onSuccess: () => {
-        void i18n.changeLanguage(next)
-        applyDocumentLanguage(next)
-      },
-    })
-  }
 
   function signOut(event: FormEvent) {
     event.preventDefault()
@@ -235,29 +221,6 @@ export function DashboardHeader() {
           </nav>
 
           <div className="nav-tools">
-            <form className="lang-form" onSubmit={switchLanguage}>
-              <button
-                className={setLanguage.isPending ? 'lang-btn is-busy' : 'lang-btn'}
-                type="submit"
-                title={switchTitle}
-                aria-label={switchTitle}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M3.5 9.2h17M3.5 14.8h17" />
-                  <path d="M12 3c2.6 2.5 4 5.5 4 9s-1.4 6.5-4 9c-2.6-2.5-4-5.5-4-9s1.4-6.5 4-9Z" />
-                </svg>
-                <span>{lang === 'ar' ? 'EN' : 'ع'}</span>
-              </button>
-            </form>
 
             <button
               className="icon-btn"

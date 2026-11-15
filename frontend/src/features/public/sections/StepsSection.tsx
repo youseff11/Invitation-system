@@ -1,22 +1,71 @@
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const STEPS = ['pick', 'send', 'design', 'link'] as const
+/** كل خطوة ليها أيقونة جوّه الدايرة، والرقم بقى علامة صغيرة فوق العنوان. */
+const STEPS: { key: 'pick' | 'send' | 'design' | 'link'; icon: ReactNode }[] = [
+  {
+    key: 'pick',
+    icon: (
+      <>
+        <rect x="4" y="4" width="7" height="9" rx="1.5" />
+        <rect x="13" y="4" width="7" height="5" rx="1.5" />
+        <rect x="13" y="11" width="7" height="9" rx="1.5" />
+        <rect x="4" y="15" width="7" height="5" rx="1.5" />
+      </>
+    ),
+  },
+  {
+    key: 'send',
+    icon: (
+      <>
+        <path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-8l-4.5 3.5V16H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5Z" />
+        <path d="M8 9.5h8M8 12.5h5" />
+      </>
+    ),
+  },
+  {
+    key: 'design',
+    icon: (
+      <>
+        <path d="m14.5 5.5 4 4L9 19H5v-4l9.5-9.5Z" />
+        <path d="m12.5 7.5 4 4" />
+      </>
+    ),
+  },
+  {
+    key: 'link',
+    icon: (
+      <>
+        <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1" />
+        <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" />
+      </>
+    ),
+  },
+]
 
 export function StepsSection() {
   const { t } = useTranslation()
   return (
-    <section className="section section--alt" id="how">
+    <section className="section section--alt section--steps" id="how">
       <div className="wrap">
         <div className="section-head" data-reveal>
           <p className="eyebrow">{t('public.steps.eyebrow')}</p>
           <h2>{t('public.steps.title')}</h2>
         </div>
-        <div className="grid grid--4 steps">
-          {STEPS.map((step, i) => (
-            <div className="step" key={step} data-reveal data-reveal-stagger>
-              <span className="step-number">{String(i + 1).padStart(2, '0')}</span>
-              <h3>{t(`public.steps.${step}.title`)}</h3>
-              <p className="muted">{t(`public.steps.${step}.text`)}</p>
+        {/* ‎data-reveal‎ على الحاوية: لما تظهر، الخط الذهبي بيترسم والخطوات بتطلع ورا بعض
+            والنقطة المنوّرة بتفضل تمشي على الخط. */}
+        <div className="grid grid--4 steps" data-reveal>
+          <span className="steps-spark" aria-hidden="true" />
+          {STEPS.map(({ key, icon }, i) => (
+            <div className="step" key={key} style={{ '--i': i } as CSSProperties}>
+              <span className="step-number">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  {icon}
+                </svg>
+              </span>
+              <span className="step-index">{String(i + 1).padStart(2, '0')}</span>
+              <h3>{t(`public.steps.${key}.title`)}</h3>
+              <p className="muted">{t(`public.steps.${key}.text`)}</p>
             </div>
           ))}
         </div>

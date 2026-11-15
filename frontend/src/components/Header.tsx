@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { useMe, useSite } from '@/api/hooks'
 import { pick, useLang } from '@/features/public/text'
-import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeToggle } from './ThemeToggle'
 
 /** النزول (بالبكسل) اللي بعده الترويسة بتتقلّص، والرجوع اللي تحته بتكبر تاني. */
@@ -185,7 +184,6 @@ export function Header() {
           </nav>
 
           <div className="nav-tools">
-            <LanguageSwitch />
             <ThemeToggle />
             {orderCta('btn btn--gold btn--sm nav-cta')}
             <button
