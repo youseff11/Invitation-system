@@ -31,8 +31,8 @@ afterEach(async () => {
 describe('HeroSection settings', () => {
   it('falls back to the translated defaults when nothing is set', () => {
     show(EMPTY)
-    expect(screen.getByText('تعكس قصة حبك')).toBeInTheDocument()
-    expect(screen.getByText('ابدأ تصميم دعوتك')).toBeInTheDocument()
+    expect(screen.getByText('شيك وفي لينك واحد')).toBeInTheDocument()
+    expect(screen.getByText('ابدأ دعوتك دلوقتي')).toBeInTheDocument()
     expect(document.querySelector('style')).toBeNull()
   })
 
@@ -43,8 +43,8 @@ describe('HeroSection settings', () => {
     }
     show(hero)
     expect(screen.getByText('عنوان مخصص')).toBeInTheDocument()
-    expect(screen.queryByText('تعكس قصة حبك')).toBeNull()
-    expect(screen.getByText('تصميم دعوات زفاف')).toBeInTheDocument() // السطر الصغير لسه الافتراضي
+    expect(screen.queryByText('شيك وفي لينك واحد')).toBeNull()
+    expect(screen.getByText('دعوة فرحك')).toBeInTheDocument() // السطر الصغير لسه الافتراضي
     expect(screen.getByText('+٨٠')).toBeInTheDocument()
     expect(screen.getByText('قالب جاهز')).toBeInTheDocument() // التسمية فاضية → الافتراضي
   })

@@ -23,18 +23,20 @@
   },
   "hero": {
     "alt": "An elegant digital invitation on a phone surrounded by flowers",
-    "top": "Wedding invitations",
-    "main": "that tell your love story",
-    "sub": "Refined, made-to-order designs for a day worth remembering",
-    "start": "Start designing",
-    "plans": "View plans",
+    "eyebrow": "Online wedding invitations",
+    "top": "Your wedding invite,",
+    "main": "chic and in one link",
+    "highlights": { "location": "Location", "countdown": "Countdown", "rsvp": "RSVP" },
+    "sub": "Pick a design you love — we tailor it with your names and details, ready to share on WhatsApp.",
+    "start": "Start your invite",
+    "plans": "See prices",
     "trust": {
       "templatesValue": "50+",
       "templatesLabel": "ready-made templates",
       "deliveryValue": "24 hours",
-      "deliveryLabel": "average delivery",
+      "deliveryLabel": "and it's ready",
       "editableValue": "100%",
-      "editableLabel": "editable"
+      "editableLabel": "yours to edit"
     }
   },
   "templates": {

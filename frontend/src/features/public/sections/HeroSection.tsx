@@ -47,34 +47,18 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
       </div>
       <div className="hero-copy">
         <div className="hero-copy-in" data-reveal>
-          <span className="orn orn--crown" aria-hidden="true">
-            <svg viewBox="0 0 180 34" focusable="false">
-              <path d="M14 26c22 0 40-6 55-16" />
-              <path d="M166 26c-22 0-40-6-55-16" />
-              <path d="M42 26c14 0 26-4 36-10" />
-              <path d="M138 26c-14 0-26-4-36-10" />
-              <path
-                className="orn-fill"
-                d="M90 2c1.7 5.4 4.6 8.3 10 10-5.4 1.7-8.3 4.6-10 10-1.7-5.4-4.6-8.3-10-10 5.4-1.7 8.3-4.6 10-10Z"
-              />
-              <circle className="orn-fill" cx="11" cy="26" r="1.7" />
-              <circle className="orn-fill" cx="169" cy="26" r="1.7" />
-            </svg>
-          </span>
+          {/* سطر صغير شيك بدل التاج الزخرفي */}
+          <p className="hero-eyebrow">{t('public.hero.eyebrow')}</p>
           <h1>
             <span className="h1-top">{text(custom?.top, 'top')}</span>
             <span className="h1-main">{text(custom?.main, 'main')}</span>
           </h1>
-          <div className="hero-rule" aria-hidden="true">
-            <i />
-            <svg className="orn-diamond" viewBox="0 0 34 18" focusable="false">
-              <path
-                d="M17 1c1.6 5.2 5 8 11 8-6 0-9.4 2.8-11 8-1.6-5.2-5-8-11-8 6 0 9.4-2.8 11-8Z"
-                className="orn-fill"
-              />
-            </svg>
-            <i />
-          </div>
+          {/* أهم مميزات الدعوة في سطر واحد بدل الفاصل الزخرفي */}
+          <ul className="hero-highlights">
+            {(['location', 'countdown', 'rsvp'] as const).map((key) => (
+              <li key={key}>{t(`public.hero.highlights.${key}`)}</li>
+            ))}
+          </ul>
           <p className="hero-sub">{text(custom?.sub, 'sub')}</p>
           <div className="hero-actions">
             <Link className="btn btn--gold btn--lg btn--shine" to="/templates">
