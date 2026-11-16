@@ -85,7 +85,7 @@ export function HeroPreview({
   const text = useMemo(() => {
     const word = (name: string, defaultKey: string) => {
       const custom = values[`${name}_${lang}`]
-      return (typeof custom === 'string' && custom.trim()) || String(i18n.t(`public.hero.${defaultKey}`, { lng: lang }))
+      return (typeof custom === 'string' && custom.trim()) || String(i18n.t(`public.hero.${defaultKey}`, { lng: lang, defaultValue: '' }))
     }
     const trust = ['templates', 'delivery', 'editable'].map((name, index) => ({
       value: word(`trust${index + 1}_value`, `trust.${name}Value`),

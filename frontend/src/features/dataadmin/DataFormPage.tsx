@@ -287,7 +287,7 @@ function FormBody({ model, id, meta }: { model: string; id: string; meta: Schema
                   readonly={object?.readonly[name]}
                   onChange={(value) => change(name, value)}
                   onFile={(file) => pickFile(name, file)}
-                  placeholder={hasPreview && !name.startsWith('bg_') ? String(i18n.t(`public.hero.${heroDefaultKey(name)}`, { lng: heroView.lang })) : undefined}
+                  placeholder={hasPreview && !name.startsWith('bg_') ? String(i18n.t(`public.hero.${heroDefaultKey(name)}`, { lng: heroView.lang, defaultValue: '' })) : undefined}
                 />
               )
             })}

@@ -1252,3 +1252,26 @@
   .cta-btn { padding: 14px 26px; font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) { .cta-spark { animation: none; opacity: .6; } }
+
+/* ---------------------------------------------------------- 6) نص الهيرو الجديد
+   «فرحة | دعوات رقمية» دهبي صغير ← عنوان كبير ← سطر دهبي ← وصف ← زرار ← سطر بنقط. */
+.hero-kicker {
+  margin: 0 0 12px; color: var(--accent); font-weight: 700;
+  font-size: clamp(13px, 1.1vw, 16px); letter-spacing: normal;
+}
+.hero-copy--v2 .h1-top {
+  color: var(--text); font-size: clamp(28px, 3.2vw, 52px); line-height: 1.3; margin-bottom: 10px; text-wrap: balance;
+}
+.hero-copy--v2 .h1-main { font-size: clamp(19px, 2vw, 30px); line-height: 1.45; }
+.hero-copy--v2 .hero-sub { max-width: 36ch; margin-top: 14px; }
+/* سطر الثقة بنقط بدل الأرقام */
+.hero-trust--line { gap: 0; margin-top: 22px; }
+.hero-trust--line li { flex-direction: row; padding-inline: 0; border: 0; }
+.hero-trust--line li + li::before { content: "•"; margin-inline: 10px; color: var(--accent); }
+.hero-trust--line span { font-size: clamp(11.5px, 1vw, 13.5px); }
+@media (max-width: 780px) {
+  .hero-kicker { margin-bottom: 8px; }
+  .hero-copy--v2 .h1-top { font-size: clamp(26px, 7.4vw, 38px); }
+  .hero-copy--v2 .h1-main { font-size: clamp(18px, 5vw, 24px); }
+  .hero-trust--line li + li::before { margin-inline: 7px; }
+}

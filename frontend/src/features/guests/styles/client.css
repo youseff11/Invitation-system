@@ -225,23 +225,28 @@
   font-size: 11.5px; letter-spacing: .04em;
 }
 
-/* تحميل رسائل التهنئة PDF: بنطبع قسمها لوحده */
+/* تحميل الردود PDF: بنطبع كشف الردود ورسائل التهنئة بس */
 @media print {
-  body.print-wishes { background: #fff; }
-  body.print-wishes .client-followup-page { background: #fff; min-height: 0; }
-  body.print-wishes .client-followup > :not(.client-followup-wishes) { display: none !important; }
-  body.print-wishes .no-print { display: none !important; }
-  body.print-wishes .client-followup { width: 100%; padding: 0; }
-  body.print-wishes .client-followup-wishes {
-    margin: 0; border: 0; box-shadow: none; background: #fff; color: #000; overflow: visible;
+  body.print-replies { background: #fff; }
+  body.print-replies .client-followup-page { background: #fff; min-height: 0; }
+  body.print-replies .client-followup > :not(.client-followup-rsvp):not(.client-followup-wishes) { display: none !important; }
+  body.print-replies .no-print { display: none !important; }
+  body.print-replies .client-followup { width: 100%; padding: 0; }
+  body.print-replies .client-followup-section {
+    margin: 0 0 18px; border: 0; box-shadow: none; background: #fff; color: #000; overflow: visible; animation: none;
   }
-  body.print-wishes .client-followup-print-names { display: block; margin: 4px 0 0; color: #333; }
-  body.print-wishes .client-followup-messages { display: block; padding: 14px 0 0; }
-  body.print-wishes .client-followup-message-card {
+  body.print-replies .client-followup-section-head { background: none; padding: 0 0 10px; }
+  body.print-replies .client-followup-print-names { display: block; margin: 4px 0 0; color: #333; }
+  body.print-replies .client-followup-table-wrap { overflow: visible; }
+  body.print-replies .client-followup-table { min-width: 0; }
+  body.print-replies .client-followup td, body.print-replies .client-followup th { color: #000; }
+  body.print-replies .client-followup tr { break-inside: avoid; }
+  body.print-replies .client-followup-messages { display: block; padding: 14px 0 0; }
+  body.print-replies .client-followup-message-card {
     break-inside: avoid; margin-bottom: 10px; background: #fff; border-color: #bbb; color: #000;
   }
-  body.print-wishes .client-followup-message-card p,
-  body.print-wishes .client-followup-message-card time { color: #333; }
+  body.print-replies .client-followup-message-card p,
+  body.print-replies .client-followup-message-card time { color: #333; }
 }
 
 /* ================================================================
@@ -439,6 +444,14 @@
   .client-followup-bar i, .client-followup-stat--hero::after { animation: none; }
 }
 
-/* رسائل التهنئة: زرار «تحميل PDF» فوق وعدد الرسائل تحته (بدل ما يبقوا جنب بعض) */
-.client-followup-wishes .client-followup-section-tools { flex-direction: column; align-items: flex-end; gap: 8px; }
-.client-followup-wishes .client-followup-section-tools .btn { order: -1; }
+/* زرار «تحميل الردود PDF» فوق، تحت الترحيب وقبل كارت «كل الردود» */
+.client-followup-toolbar {
+  display: flex; justify-content: center; margin: -8px 0 18px;
+  animation: cf-rise .7s cubic-bezier(.2, .8, .2, 1) .1s both;
+}
+.client-followup-pdf { gap: 8px; min-height: 46px; padding: 11px 26px; font-size: 14.5px; font-weight: 700; }
+.client-followup-pdf svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+@media (max-width: 680px) { .client-followup-pdf { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .client-followup-toolbar { animation: none; } }

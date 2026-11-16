@@ -13,18 +13,18 @@ import '../styles/base.css'
 import '../styles/client.css'
 
 /**
- * تحميل رسائل التهنئة PDF: بنطبع القسم ده لوحده (الـCSS بيخفي الباقي لما ‎body.print-wishes‎ موجود)
- * والمتصفح بيحفظه PDF بالخط العربي الصح من غير مكتبات. عنوان الصفحة هو اسم الملف الافتراضي.
+ * تحميل الردود PDF: بنطبع كشف الردود + رسائل التهنئة بس (الـCSS بيخفي الباقي لما ‎body.print-replies‎
+ * موجود)، والمتصفح بيحفظه PDF بالخط العربي الصح من غير مكتبات. عنوان الصفحة هو اسم الملف الافتراضي.
  */
-function printWishes(fileTitle: string) {
+function printReplies(fileTitle: string) {
   const previousTitle = document.title
   const done = () => {
-    document.body.classList.remove('print-wishes')
+    document.body.classList.remove('print-replies')
     document.title = previousTitle
     window.removeEventListener('afterprint', done)
   }
   document.title = fileTitle
-  document.body.classList.add('print-wishes')
+  document.body.classList.add('print-replies')
   window.addEventListener('afterprint', done)
   window.print()
 }
@@ -123,6 +123,21 @@ export function ClientFollowupPage() {
           <p className="client-followup-subtitle">{t('guests.client.subtitle')}</p>
         </header>
 
+        {(hasRsvp || messageRows.length > 0) && (
+          <div className="client-followup-toolbar no-print">
+            <button
+              type="button"
+              className="btn btn--gold client-followup-pdf"
+              onClick={() => printReplies(`${t('guests.client.repliesPdf')} — ${names || invitation.slug}`)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" />
+              </svg>
+              {t('guests.client.repliesPdf')}
+            </button>
+          </div>
+        )}
+
         <section className="client-followup-stats" aria-label={t('guests.client.summary')}>
           {hasRsvp && (
             <>
@@ -171,11 +186,12 @@ export function ClientFollowupPage() {
         </section>
 
         {hasRsvp && (
-          <section className="client-followup-section" aria-labelledby="rsvp-title">
+          <section className="client-followup-section client-followup-rsvp" aria-labelledby="rsvp-title">
             <div className="client-followup-section-head">
               <div>
                 <p className="client-followup-kicker">RSVP</p>
                 <h2 id="rsvp-title">{t('guests.client.rsvpTitle')}</h2>
+                {invitation.nameOne && <p className="client-followup-print-names">{names}</p>}
               </div>
               <span className="client-followup-count">{t('guests.client.repliesCount', { n: stats.rsvpTotal })}</span>
             </div>
@@ -305,15 +321,6 @@ export function ClientFollowupPage() {
               </div>
               <span className="client-followup-section-tools">
                 <span className="client-followup-count">{t('guests.client.wishesCount', { n: stats.messages })}</span>
-                {messageRows.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn--gold btn--sm no-print"
-                    onClick={() => printWishes(`${t('guests.client.wishesTitle')} — ${names || invitation.slug}`)}
-                  >
-                    {t('guests.client.wishesPdf')}
-                  </button>
-                )}
               </span>
             </div>
             <div className="client-followup-messages">

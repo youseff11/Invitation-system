@@ -342,14 +342,14 @@ describe('hero live preview', () => {
     mount('/dashboard/data/system.homehero/1')
     const stage = await screen.findByTestId('hero-bg')
     const preview = stage.closest('.hp') as HTMLElement
-    expect(within(preview).getByText('شيك وفي لينك واحد')).toBeInTheDocument() // الافتراضي المترجم
+    expect(within(preview).getByText('تفاصيلكم الجميلة... في رابط واحد')).toBeInTheDocument() // الافتراضي المترجم
 
     const input = screen.getByLabelText('العنوان الرئيسي — عربي')
     fireEvent.focus(input)
     fireEvent.change(input, { target: { value: 'قصة حبكم تبدأ هنا' } })
     const typed = within(preview).getByText('قصة حبكم تبدأ هنا')
     expect(typed).toHaveClass('is-active')
-    expect(within(preview).queryByText('شيك وفي لينك واحد')).toBeNull()
+    expect(within(preview).queryByText('تفاصيلكم الجميلة... في رابط واحد')).toBeNull()
     expect(within(preview).getByText(/بتعدّل: العنوان الرئيسي — عربي/)).toBeInTheDocument()
   })
 
@@ -377,8 +377,8 @@ describe('hero live preview', () => {
     const preview = (await screen.findByTestId('hero-bg')).closest('.hp') as HTMLElement
     const title = screen.getByLabelText('العنوان الرئيسي — عربي') as HTMLInputElement
     expect(title.value).toBe('')
-    expect(title.placeholder).toBe('شيك وفي لينك واحد')
-    expect((screen.getByLabelText('خانة ١ — القيمة (عربي)') as HTMLInputElement).placeholder).toBe('+٥٠')
+    expect(title.placeholder).toBe('تفاصيلكم الجميلة... في رابط واحد')
+    expect((screen.getByLabelText('خانة ١ — القيمة (عربي)') as HTMLInputElement).placeholder).toBe('')
 
     fireEvent.change(title, { target: { value: 'عنواني' } })
     fireEvent.click(within(preview).getByRole('button', { name: 'English' }))

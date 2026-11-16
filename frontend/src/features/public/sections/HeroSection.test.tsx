@@ -31,8 +31,8 @@ afterEach(async () => {
 describe('HeroSection settings', () => {
   it('falls back to the translated defaults when nothing is set', () => {
     show(EMPTY)
-    expect(screen.getByText('شيك وفي لينك واحد')).toBeInTheDocument()
-    expect(screen.getByText('ابدأ دعوتك دلوقتي')).toBeInTheDocument()
+    expect(screen.getByText('تفاصيلكم الجميلة... في رابط واحد')).toBeInTheDocument()
+    expect(screen.getByText('اكتشفوا قوالب الدعوات')).toBeInTheDocument()
     expect(document.querySelector('style')).toBeNull()
   })
 
@@ -43,10 +43,10 @@ describe('HeroSection settings', () => {
     }
     show(hero)
     expect(screen.getByText('عنوان مخصص')).toBeInTheDocument()
-    expect(screen.queryByText('شيك وفي لينك واحد')).toBeNull()
-    expect(screen.getByText('دعوة فرحك')).toBeInTheDocument() // السطر الصغير لسه الافتراضي
+    expect(screen.queryByText('تفاصيلكم الجميلة... في رابط واحد')).toBeNull()
+    expect(screen.getByText('لأن فرحتكم تستحق دعوة استثنائية')).toBeInTheDocument() // السطر الصغير لسه الافتراضي
     expect(screen.getByText('+٨٠')).toBeInTheDocument()
-    expect(screen.getByText('قالب جاهز')).toBeInTheDocument() // التسمية فاضية → الافتراضي
+    expect(screen.getByText('تصاميم مميزة')).toBeInTheDocument() // التسمية فاضية → الافتراضي
   })
 
   it('shows the text of the current language', async () => {

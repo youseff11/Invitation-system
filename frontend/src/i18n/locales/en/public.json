@@ -24,18 +24,16 @@
   "hero": {
     "alt": "An elegant digital invitation on a phone surrounded by flowers",
     "eyebrow": "Online wedding invitations",
-    "top": "Your wedding invite,",
-    "main": "chic and in one link",
-    "sub": "Pick a design — we make it yours.",
-    "start": "Start your invite",
+    "kicker": "Farha | Digital Invitations",
+    "top": "Because your celebration deserves an exceptional invitation",
+    "main": "All your beautiful details… in one link",
+    "sub": "Pick your favourite design and make the first moments of your invitation unforgettable.",
+    "start": "Explore invitation templates",
     "plans": "See prices",
     "trust": {
-      "templatesValue": "50+",
-      "templatesLabel": "ready-made templates",
-      "deliveryValue": "24 hours",
-      "deliveryLabel": "and it's ready",
-      "editableValue": "100%",
-      "editableLabel": "yours to edit"
+      "templatesLabel": "Distinctive designs",
+      "deliveryLabel": "Personalised with your names",
+      "editableLabel": "Interactive experience"
     }
   },
   "templates": {

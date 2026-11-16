@@ -27,7 +27,8 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
   const custom = hero?.text[lang]
   const text = (value: string | undefined, key: string) => value?.trim() || t(`public.hero.${key}`)
   const trust = ['templates', 'delivery', 'editable'].map((name, index) => ({
-    value: custom?.trust[index]?.value?.trim() || t(`public.hero.trust.${name}Value`),
+    // الرقم اختياري: من غير ترجمة له بيرجع فاضي (والسطر بيبقى «كلام بنقط»)
+    value: custom?.trust[index]?.value?.trim() || t(`public.hero.trust.${name}Value`, { defaultValue: '' }),
     label: custom?.trust[index]?.label?.trim() || t(`public.hero.trust.${name}Label`),
   }))
   const imagesCss = heroImagesCss(hero?.images)
@@ -46,7 +47,8 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
         <ShootingStars idle={idle} />
       </div>
       <div className="hero-copy">
-        <div className="hero-copy-in">
+        <div className="hero-copy-in hero-copy--v2">
+          <p className="hero-kicker">{t('public.hero.kicker')}</p>
           <h1>
             <span className="h1-top">{text(custom?.top, 'top')}</span>
             <span className="h1-main">{text(custom?.main, 'main')}</span>
@@ -67,12 +69,15 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
           </div>
           {/* القيمة جوّه ‎<span>‎ جوّه ‎<b>‎ زي الموقع القديم (وسم ‎bi‎ بيطبع span) — قاعدة
               ‎.hero-trust span‎ بتصغّرها وتخليها رمادي، ودي الصورة الفعلية في القديم. */}
-          <ul className="hero-trust" aria-hidden="true">
+          {/* من غير أرقام (الافتراضي دلوقتي) بيبقى سطر واحد بنقط: «تصاميم مميزة • تخصيص بأسمائكم • …» */}
+          <ul className={'hero-trust' + (trust.some((item) => item.value) ? '' : ' hero-trust--line')} aria-hidden="true">
             {trust.map((item, index) => (
               <li key={index}>
-                <b>
-                  <span>{item.value}</span>
-                </b>
+                {item.value && (
+                  <b>
+                    <span>{item.value}</span>
+                  </b>
+                )}
                 <span>{item.label}</span>
               </li>
             ))}
