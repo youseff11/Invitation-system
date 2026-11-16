@@ -30,7 +30,7 @@ export function LangToggle({
         if (!busy) onSwitch(altLang)
       }}
     >
-      {lang === 'en' ? 'ع' : 'EN'}
+      {lang === 'en' ? 'عربي' : 'English'}
     </a>
   )
 }

@@ -502,6 +502,9 @@ function FeaturesScene() {
       <div className="fx-track" ref={track}>
         <div className="fx-sticky">
           <div className="fx-scene">
+            {/* ‎.fx-fit‎ بيصغّر المشهد كله بـ‎transform: scale‎ (مش ‎zoom‎ — سفاري بيقيس ‎zoom‎ غلط
+                فالكروت والأسهم كانت بتقع في أماكن غلط على آيفون) */}
+            <div className="fx-fit">
             <div className="fx-rig">
               <span className="fx-halo" aria-hidden="true" />
               <PhoneMock active={ORDER[idx]} running={visible} spotlight />
@@ -518,6 +521,7 @@ function FeaturesScene() {
                   />
                 ))}
               </div>
+            </div>
             </div>
           </div>
         </div>

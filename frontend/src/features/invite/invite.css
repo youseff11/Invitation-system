@@ -2279,3 +2279,6 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
 @media (prefers-reduced-motion: reduce) {
   .lb-music.is-playing .lb-music-disc, .lb-music-badge i, .lb-autoscroll::after, .lb-music::after { animation: none !important; }
 }
+
+/* زرار اللغة بالكلمة كاملة («عربي» / «English») بدل حرف — من غير تباعد حروف عشان العربي يفضل متوصّل */
+.lb-lang { letter-spacing: normal; padding-inline: 16px; font-size: 13.5px; }

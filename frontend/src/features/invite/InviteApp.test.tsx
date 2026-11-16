@@ -109,7 +109,7 @@ describe('InviteApp', () => {
     render(<InviteApp boot={{ mode: 'view', ...payload({ hasAlt: true, blocks: [hero('ليلى')] }) }} />)
 
     const toggle = screen.getByRole('link', { name: 'View in English' })
-    expect(toggle.textContent).toBe('EN')
+    expect(toggle.textContent).toBe('English')
     fireEvent.click(toggle)
 
     await waitFor(() => expect(document.querySelector('[data-ts="name_one"]')!.textContent).toBe('Layla'))
@@ -119,7 +119,7 @@ describe('InviteApp', () => {
     expect(location.search).toBe('?lang=en')
     expect(document.head.querySelector('style[data-lb-layout-css]')!.textContent).toContain('font-family:A')
     // زرار اللغة بقى بيشاور على العربي
-    expect(screen.getByRole('link', { name: 'اعرض بالعربية' }).textContent).toBe('ع')
+    expect(screen.getByRole('link', { name: 'اعرض بالعربية' }).textContent).toBe('عربي')
     const urls = fetchMock.mock.calls.map((c) => String(c[0]))
     expect(urls.filter((u) => u.includes('lang=en')).length).toBeGreaterThanOrEqual(1)
   })
