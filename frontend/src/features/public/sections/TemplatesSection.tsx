@@ -5,14 +5,17 @@ import { ApiError } from '@/api/client'
 import { firstChar, pick, truncateChars, useLang } from '../text'
 import type { PublicTemplate } from '../types'
 
-/** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط. */
-function Cover({ template, name }: { template: PublicTemplate; name: string }) {
+/** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط.
+ *  ‎ornate‎ (الرئيسية بس): أركان دهبي جوّه الغلاف — زخرفة بحتة
+ *  ومتموضعة ‎absolute‎ فمش بتغيّر مقاس الكارت. */
+function Cover({ template, name, ornate = false }: { template: PublicTemplate; name: string; ornate?: boolean }) {
   return (
     <div
       className="tpl-cover"
       style={template.cover ? { backgroundImage: `url(${JSON.stringify(template.cover)})` } : undefined}
     >
       {!template.cover && firstChar(name)}
+      {ornate && <span className="tpl-frame" aria-hidden="true" />}
     </div>
   )
 }
@@ -42,14 +45,14 @@ export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
   const name = pick(lang, template.name, template.nameEn)
   const hasDescription = !!(template.description || template.descriptionEn)
   return (
-    <article className="tpl-card" data-reveal data-reveal-stagger>
-      <Cover template={template} name={name} />
+    <article className="tpl-card tpl-card--luxe" data-reveal data-reveal-stagger>
+      <Cover template={template} name={name} ornate />
       <div className="tpl-body">
         <h3>{name}</h3>
         <Meta template={template} />
         {hasDescription && <p className="tpl-desc">{pick(lang, template.description, template.descriptionEn)}</p>}
         <div className="tpl-actions">
-          <Link className="btn btn--gold btn--sm" to={previewPath(template)}>
+          <Link className="btn btn--gold btn--sm btn--shine" to={previewPath(template)}>
             {t('public.templates.preview')}
           </Link>
         </div>
