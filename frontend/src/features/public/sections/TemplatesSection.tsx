@@ -5,18 +5,25 @@ import { ApiError } from '@/api/client'
 import { firstChar, pick, truncateChars, useLang } from '../text'
 import type { PublicTemplate } from '../types'
 
+const previewPath = (template: PublicTemplate) => `/templates/${template.slug}/preview/`
+
 /** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط.
+ *  الضغط على الصورة بيفتح معاينة القالب زي الزرار بالظبط. اللينك برّه ترتيب التاب وقارئ
+ *  الشاشة عن قصد: الزرار اللي تحت هو نفس الوجهة، فمايتكررش مرتين.
  *  ‎ornate‎ (الرئيسية بس): أركان دهبي جوّه الغلاف — زخرفة بحتة
  *  ومتموضعة ‎absolute‎ فمش بتغيّر مقاس الكارت. */
 function Cover({ template, name, ornate = false }: { template: PublicTemplate; name: string; ornate?: boolean }) {
   return (
-    <div
+    <Link
+      to={previewPath(template)}
       className="tpl-cover"
+      tabIndex={-1}
+      aria-hidden="true"
       style={template.cover ? { backgroundImage: `url(${JSON.stringify(template.cover)})` } : undefined}
     >
       {!template.cover && firstChar(name)}
       {ornate && <span className="tpl-frame" aria-hidden="true" />}
-    </div>
+    </Link>
   )
 }
 
@@ -35,8 +42,6 @@ function Meta({ template }: { template: PublicTemplate }) {
     </span>
   )
 }
-
-const previewPath = (template: PublicTemplate) => `/templates/${template.slug}/preview/`
 
 /** كارت القالب في الرئيسية: زرار واحد بيفتح معاينة القالب. */
 export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
