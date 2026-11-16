@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-/** كل خطوة ليها أيقونة جوّه الدايرة، والرقم بقى علامة صغيرة فوق العنوان. */
+/** أيقونة صغيرة لكل خطوة جنب الرقم الكبير. */
 const STEPS: { key: 'pick' | 'send' | 'design' | 'link'; icon: ReactNode }[] = [
   {
     key: 'pick',
@@ -43,13 +43,6 @@ const STEPS: { key: 'pick' | 'send' | 'design' | 'link'; icon: ReactNode }[] = [
   },
 ]
 
-/**
- * المنحنى بيعدّي على ميداليات الكروت الأربعة (من اليمين لتحت لحد الشمال لفوق).
- * الـviewBox ‏1000×150 بيتمطّ على عرض الحاوية، والنقط مقاسة على إن كل كارت
- * أعلى من اللي قبله بـ40px (شوف ‎--rise‎ في showcase.css).
- */
-const JOURNEY_PATH = 'M875,135 C780,135 720,95 625,95 S470,55 375,55 S220,15 125,15'
-
 export function StepsSection() {
   const { t } = useTranslation()
   return (
@@ -59,32 +52,25 @@ export function StepsSection() {
           <p className="eyebrow">{t('public.steps.eyebrow')}</p>
           <h2>{t('public.steps.title')}</h2>
         </div>
-        {/* «سلّم لحد يوم الفرح»: الكروت طالعة لفوق خطوة ورا خطوة، ومتوصّلة بمنحنى
-            دهبي بيترسم لما القسم يظهر ونقطة منوّرة بتمشي عليه. ‎data-reveal‎ على
-            الحاوية هو اللي بيشغّل الرسم وطلوع الكروت ورا بعض. */}
-        <div className="journey" data-reveal>
-          <svg className="journey-path" viewBox="0 0 1000 150" preserveAspectRatio="none" aria-hidden="true">
-            <path className="journey-path-base" d={JOURNEY_PATH} />
-            <path className="journey-path-gold" d={JOURNEY_PATH} pathLength={1} />
-            <circle className="journey-dot" r="5">
-              <animateMotion dur="6s" repeatCount="indefinite" path={JOURNEY_PATH} />
-            </circle>
-          </svg>
+        {/* مسار أفقي: خط رفيع بيتملي دهب من خطوة للتانية لما القسم يظهر،
+            وكل خطوة رقم كبير بخط سيريف رفيع + علامة على الخط بتنوّر لما الخط يوصلها */}
+        <ol className="process" data-reveal>
           {STEPS.map(({ key, icon }, i) => (
-            <div className="journey-card" key={key} style={{ '--i': i } as CSSProperties}>
-              <span className="journey-medal">
+            <li className="process-step" key={key} style={{ '--i': i } as CSSProperties}>
+              <span className="process-marker" aria-hidden="true" />
+              <span className="process-num" aria-hidden="true">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span className="process-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   {icon}
                 </svg>
               </span>
-              <span className="journey-num" aria-hidden="true">
-                {String(i + 1).padStart(2, '0')}
-              </span>
               <h3>{t(`public.steps.${key}.title`)}</h3>
               <p>{t(`public.steps.${key}.text`)}</p>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   )

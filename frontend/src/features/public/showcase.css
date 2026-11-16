@@ -1,302 +1,365 @@
 /* ================================================================
-   الأقسام الفاخرة (الجيل التاني) — القوالب والمميزات والخطوات
-   بيتحمّل بعد luxe.css. كل قسم بأسماء كلاسات جديدة فمفيش تعارض مع القديم.
+   الأقسام الفاخرة — القوالب، المميزات، الخطوات
+   الاتجاه: فخامة هادية زي مواقع المجوهرات — مساحات واسعة، خطوط رفيعة،
+   خط سيريف كبير، ولون دهبي واحد. الحركة قليلة وناعمة (ظهور تدريجي،
+   خط بيترسم) من غير زخارف كتير. بيتحمّل بعد public.css و luxe.css.
    ================================================================ */
 
-/* ---------------------------------------------------------- 1) إطار لكل قالب
-   كل كارت متبروز لوحده زي كارت دعوة: حافة دهبي متدرّجة دايماً ظاهرة، خط
-   رفيع جوّاها، أركان زخرفية، وزخرفة صغيرة في نص الحافة اللي فوق. */
-.tpl-card {
-  border: 1.5px solid transparent;
-  background:
-    var(--lux-surface) padding-box,
-    linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 35%, transparent) 30%,
-                    color-mix(in srgb, var(--accent) 35%, transparent) 70%, var(--accent)) border-box;
-  outline: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
-  outline-offset: -8px;
+/* ---------------------------------------------------------- 1) القوالب — معرض «متبروز»
+   الكارت مابقاش صندوق: الغلاف جوّه برواز عاجي بخط دهبي رفيع (لكل قالب
+   برواز لوحده)، وتحته التصنيف والاسم ولينك نصّي بدل زرار دهبي مكرر. */
+#templates .grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 52px clamp(18px, 2.4vw, 32px);
+  max-width: 1180px; margin-inline: auto;
 }
-.tpl-card::before {
-  inset: 4px; opacity: .95;
-  -webkit-mask-size: 22px; mask-size: 22px;
-}
-/* الزخرفة اللي في نص الحافة اللي فوق (بدل إطار الهوفر القديم) */
-.tpl-card::after {
-  inset: auto; top: 1px; left: 50%; translate: -50% 0;
-  width: 64px; height: 11px; padding: 0; border-radius: 0;
-  background: var(--accent);
-  -webkit-mask: var(--orn-rule) no-repeat center / contain; -webkit-mask-composite: source-over;
-          mask: var(--orn-rule) no-repeat center / contain; mask-composite: add;
-  opacity: .9;
-}
-.tpl-card:hover::after { opacity: 1; }
-.tpl-card:hover { outline-color: var(--accent); }
-.tpl-showcase-foot { display: flex; justify-content: center; margin-top: clamp(32px, 4vw, 48px); }
-@media (max-width: 600px) {
-  #templates .grid--4[data-per-row="2"] .tpl-card::after { width: 44px; height: 8px; }
-}
+@media (max-width: 1100px) { #templates .grid--4 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 820px)  { #templates .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 18px; } }
 
-/* ---------------------------------------------------------- 2) المميزات — أشكال وأنيميشن
-   أشكال دهبي (حلقات، معيّنات، نجوم، نقط) طايرة بهدوء ورا القسم، والكروت
-   على شكل موجة. كل كارت فيه ميدالية بحلقة منقّطة بتلف ونقطة بتدور حواليها،
-   والأيقونة نفسها بتتحرك حسب الميزة. */
-.section--features { overflow: clip; }
-.fx-shapes { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-.section--features > .wrap { position: relative; z-index: 1; }
-.fx-shape {
-  position: absolute; left: var(--x); top: var(--y);
-  width: var(--s); height: var(--s);
-  animation: shape-float var(--d) ease-in-out infinite alternate;
-  animation-delay: calc(var(--i) * -1.3s);
+/* تصفير شكل الكارت القديم (صندوق بخلفية وحدود وظل) */
+.tpl-card,
+.tpl-card:hover {
+  background: none; border: 0; border-radius: 0; box-shadow: none; outline: 0;
+  padding: 0; overflow: visible; transform: none;
 }
-.fx-shape--ring {
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  box-shadow: inset 0 0 0 8px color-mix(in srgb, var(--accent) 4%, transparent);
-}
-.fx-shape--ring::after {
-  content: ""; position: absolute; inset: 14%; border-radius: 50%;
-  border: 1px dashed color-mix(in srgb, var(--accent) 30%, transparent);
-  animation: shape-spin 30s linear infinite;
-}
-.fx-shape--diamond {
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  transform: rotate(45deg); border-radius: 4px;
-  animation-name: shape-float-rot;
-}
-.fx-shape--spark {
-  background: var(--accent); opacity: .55;
-  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
-  animation-name: shape-twinkle;
-}
-.fx-shape--dot { border-radius: 50%; background: var(--accent); opacity: .4; }
-@keyframes shape-float { from { translate: 0 0; } to { translate: 14px -26px; } }
-@keyframes shape-float-rot { from { translate: 0 0; rotate: 0deg; } to { translate: -12px -22px; rotate: 90deg; } }
-@keyframes shape-twinkle {
-  0%, 100% { scale: .6; opacity: .25; rotate: 0deg; }
-  50% { scale: 1.15; opacity: .8; rotate: 45deg; }
-}
-@keyframes shape-spin { to { rotate: 360deg; } }
+.tpl-card { display: flex; flex-direction: column; }
+.tpl-card::before, .tpl-card::after { content: none; }
 
-.fx-features {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px;
-  max-width: 1080px; margin-inline: auto; padding-bottom: 40px;
+/* البرواز: حافة عاجي + حد دهبي + خط شعري جوّاه */
+.tpl-frame {
+  position: relative; isolation: isolate; display: block;
+  padding: 10px; border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 24px 46px -32px rgba(60, 42, 14, .5);
+  transition: transform .7s cubic-bezier(.2, .8, .2, 1), box-shadow .7s ease, border-color .4s ease;
 }
-html.js .fx-features[data-reveal] { opacity: 1; transform: none; }
-.fx-feature {
+.tpl-frame::before {
+  content: ""; position: absolute; inset: 5px; z-index: 3; pointer-events: none;
+  border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: border-color .4s ease;
+}
+.tpl-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.tpl-cover {
   position: relative; isolation: isolate; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  padding: 38px 26px 34px; border-radius: 28px;
-  background: var(--lux-surface);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
-  outline: 1px solid color-mix(in srgb, var(--accent) 16%, transparent); outline-offset: -8px;
-  box-shadow: var(--lux-shadow);
-  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, outline-color .4s ease;
+  aspect-ratio: 3 / 4; border-radius: 14px; outline: 0; box-shadow: none;
+  display: grid; place-items: center;
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface-2));
+  color: var(--accent); font-family: "Amiri", Georgia, serif; font-size: 42px;
 }
-/* الموجة: العمود الأوسط نازل */
-.fx-feature:nth-child(3n + 2) { translate: 0 40px; }
-/* وهج دهبي في الخلفية بيكبر بالمرور */
-.fx-feature::before {
-  content: ""; position: absolute; z-index: -1; width: 220px; height: 220px; border-radius: 50%;
-  top: -110px; left: 50%; translate: -50% 0;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
-  transition: scale .6s ease, opacity .6s ease; opacity: .6;
+/* الصورة على طبقة لوحدها عشان تقرّب جوّه البرواز من غير ما البرواز يكبر */
+.tpl-cover::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: inherit; background-size: cover; background-position: center;
+  transition: transform 1.6s cubic-bezier(.2, .8, .2, 1);
 }
-.fx-feature:hover { transform: translateY(-10px); outline-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow: var(--lux-shadow), 0 36px 60px -36px color-mix(in srgb, var(--accent) 75%, transparent); }
-.fx-feature:hover::before { scale: 1.5; opacity: 1; }
-
-/* الميدالية: حلقة منقّطة بتلف + نقطة بتدور حواليها */
-.fx-medal {
-  position: relative; width: 84px; height: 84px; margin-bottom: 22px;
-  display: grid; place-items: center; border-radius: 50%; color: var(--accent);
-  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 20%, var(--surface)), var(--surface) 70%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
-              0 14px 30px -18px color-mix(in srgb, var(--accent) 90%, transparent);
-  transition: background .5s ease, color .5s ease;
+.tpl-cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(14, 10, 5, .62), rgba(14, 10, 5, .08) 55%, transparent);
+  opacity: 0; transition: opacity .6s ease;
 }
-.fx-medal::before {
-  content: ""; position: absolute; inset: -9px; border-radius: 50%;
-  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-  animation: shape-spin 24s linear infinite;
+.tpl-card:hover .tpl-cover::after { opacity: 0; }
+.tpl-frame-cta {
+  position: absolute; z-index: 4; left: 50%; bottom: 30px; translate: -50% 12px;
+  padding: 9px 22px; border-radius: 999px; white-space: nowrap;
+  background: rgba(255, 250, 240, .14); border: 1px solid rgba(255, 240, 210, .6);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: #fff; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity .5s ease, translate .6s cubic-bezier(.2, .8, .2, 1);
 }
-.fx-feature:nth-child(even) .fx-medal::before { animation-direction: reverse; }
-.fx-medal::after {
-  content: ""; position: absolute; inset: -9px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 0, var(--accent) 0 3.5px, transparent 4.5px);
-  animation: shape-spin 6s linear infinite; animation-delay: calc(var(--i) * -.7s);
-}
-.fx-feature:hover .fx-medal { background: var(--gold-fill); color: #fff; }
-.fx-medal svg {
-  width: 32px; height: 32px; overflow: visible;
-  fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round;
-}
-.fx-feature h3 { margin: 0 0 8px; font-size: 22px; transition: color .3s ease; }
-.fx-feature:hover h3 { color: var(--accent); }
-.fx-feature p { margin: 0; max-width: 26ch; color: var(--muted); font-size: 14.5px; line-height: 1.8; }
-
-/* حركة كل أيقونة */
-.fa-hand { transform-origin: 12px 12px; animation: shape-spin 4s linear infinite; }
-.fa-hand-slow { transform-origin: 12px 12px; animation: shape-spin 48s linear infinite; }
-.fa-sun { transform-origin: 8.5px 9px; animation: fa-pulse 2.4s ease-in-out infinite; }
-.fa-hills { animation: fa-bob 3s ease-in-out infinite; }
-.fa-check { stroke-dasharray: 1; animation: fa-draw 2.8s ease-in-out infinite; }
-.fa-plane { animation: fa-fly 3.2s ease-in-out infinite; }
-.fa-note { animation: fa-bounce 1.4s ease-in-out infinite; }
-.fa-note--b { animation-delay: -.7s; }
-.fa-pin { animation: fa-bounce 1.6s ease-in-out infinite; }
-.fa-shadow { transform-origin: 12px 21px; animation: fa-shadow 1.6s ease-in-out infinite; }
-.fa-scan { stroke-width: 1.8; animation: fa-scan 2.4s ease-in-out infinite; }
-.fa-scan--b { animation-delay: -1.2s; }
-.fa-line { stroke-dasharray: 1; animation: fa-draw 3s ease-in-out infinite; }
-.fa-line--b { animation-delay: .25s; }
-.fa-line--c { animation-delay: .5s; }
-@keyframes fa-pulse { 0%, 100% { scale: 1; } 50% { scale: 1.45; } }
-@keyframes fa-bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -1.2px; } }
-@keyframes fa-draw {
-  0% { stroke-dashoffset: 1; } 40%, 75% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; }
-}
-@keyframes fa-fly {
-  0% { translate: 0 0; opacity: 1; }
-  45% { translate: 7px -7px; opacity: 0; }
-  50% { translate: -7px 7px; opacity: 0; }
-  100% { translate: 0 0; opacity: 1; }
-}
-@keyframes fa-bounce { 0%, 100% { translate: 0 0; } 50% { translate: 0 -2.4px; } }
-@keyframes fa-shadow { 0%, 100% { scale: 1; opacity: .9; } 50% { scale: .6; opacity: .4; } }
-@keyframes fa-scan { 0%, 100% { translate: 0 -7px; opacity: .3; } 50% { translate: 0 7px; opacity: 1; } }
-
-/* الكروت بتظهر ورا بعض */
-html.js .fx-features .fx-feature { opacity: 0; }
-/* ‎backwards‎ مش ‎both‎: بعد ما الدخول يخلص الكارت يرجع لستايله العادي فالهوفر يشتغل */
-html.js .fx-features.is-in .fx-feature {
-  opacity: 1;
-  animation: fx-in .8s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(var(--i) * .09s);
-}
-@keyframes fx-in { from { opacity: 0; transform: translateY(30px) scale(.96); } to { opacity: 1; transform: none; } }
-
-@media (max-width: 760px) {
-  .fx-features { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding-bottom: 0; }
-  .fx-feature:nth-child(3n + 2) { translate: none; }
-  .fx-feature:nth-child(even) { translate: 0 22px; }
-  .fx-features { padding-bottom: 22px; }
-  .fx-feature:last-child:nth-child(odd) { grid-column: 1 / -1; translate: none; }
-  .fx-feature { padding: 26px 10px 22px; border-radius: 20px; outline-offset: -6px; }
-  .fx-medal { width: 62px; height: 62px; margin-bottom: 14px; }
-  .fx-medal::before, .fx-medal::after { inset: -7px; }
-  .fx-medal svg { width: 25px; height: 25px; }
-  .fx-feature h3 { font-size: 16.5px; }
-  .fx-feature p { font-size: 12px; line-height: 1.6; }
-  .fx-shape--ring { scale: .6; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fx-shape, .fx-shape::after, .fx-medal::before, .fx-medal::after,
-  .fx-medal svg * { animation: none !important; }
+@media (hover: hover) {
+  .tpl-frame:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55),
+                0 36px 64px -36px color-mix(in srgb, var(--accent) 55%, rgba(60, 42, 14, .7));
+  }
+  .tpl-frame:hover::before { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  .tpl-frame:hover .tpl-cover::before { transform: scale(1.06); }
+  .tpl-frame:hover .tpl-cover::after { opacity: 1; }
+  .tpl-frame:hover .tpl-frame-cta { opacity: 1; translate: -50% 0; }
 }
 
-/* ---------------------------------------------------------- 3) الخطوات — «سلّم لحد يوم الفرح»
-   أربع كروت كل واحد أعلى من اللي قبله، متوصّلة بمنحنى دهبي بيترسم لما القسم
-   يظهر ونقطة منوّرة بتمشي عليه. ميدالية بأيقونة فوق كل كارت ورقم كبير مفرّغ. */
-.journey {
-  --rise: 40px; --medal: 66px;
-  position: relative;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px;
-  align-items: start; max-width: 1120px; margin-inline: auto;
-  padding-top: calc(var(--medal) / 2 + 6px);
+.tpl-body {
+  flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 20px 4px 0; min-height: 0;
 }
-html.js .journey[data-reveal] { opacity: 1; transform: none; }
-.journey-path {
-  position: absolute; z-index: 0; pointer-events: none; overflow: visible;
-  left: 0; right: 0; width: 100%; height: 150px;
-  top: calc(var(--medal) / 2 + 6px - 15px);
+/* التصنيف: سطر صغير دهبي بين شرطتين */
+.tpl-meta {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 0; border: 0; border-radius: 0;
+  color: var(--accent); font-size: 11.5px; letter-spacing: .06em; opacity: 1;
 }
-[dir="ltr"] .journey-path { transform: scaleX(-1); }
-.journey-path path { fill: none; vector-effect: non-scaling-stroke; }
-.journey-path-base { stroke: color-mix(in srgb, var(--accent) 22%, transparent); stroke-width: 1.5; stroke-dasharray: 4 6; }
-.journey-path-gold {
-  stroke: var(--accent); stroke-width: 2;
-  stroke-dasharray: 1; stroke-dashoffset: 1;
-  transition: stroke-dashoffset 2.4s cubic-bezier(.65, 0, .35, 1) .3s;
+.tpl-meta::before, .tpl-meta::after {
+  content: ""; width: 18px; height: 1px; background: color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.journey.is-in .journey-path-gold { stroke-dashoffset: 0; }
-.journey-dot {
-  fill: #fff; stroke: var(--accent); stroke-width: 2.5;
-  filter: drop-shadow(0 0 6px var(--accent));
-  opacity: 0; transition: opacity .6s ease 2.6s;
+.tpl-body h3 {
+  margin: 0; color: var(--text);
+  font-family: "Amiri", Georgia, serif; font-size: 22px; font-weight: 700; line-height: 1.35;
 }
-.journey.is-in .journey-dot { opacity: 1; }
+.tpl-desc {
+  margin: 0; max-width: 30ch; color: var(--muted); font-size: 13.5px; line-height: 1.7;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.tpl-actions { width: auto; margin-top: auto; padding-top: 10px; justify-content: center; gap: 8px; }
+/* لينك نصّي بخط تحته بيكمل بالمرور */
+.tpl-link {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 2px; color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none;
+}
+.tpl-link::after {
+  content: ""; position: absolute; inset-inline: 2px; bottom: 2px; height: 1px;
+  background: currentColor; transform: scaleX(.3); transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+}
+.tpl-link:hover::after, .tpl-link:focus-visible::after { transform: scaleX(1); }
+.tpl-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.tpl-link-arrow {
+  width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; transition: translate .35s ease;
+}
+[dir="rtl"] .tpl-link-arrow { scale: -1 1; }
+.tpl-link:hover .tpl-link-arrow { translate: 4px 0; }
+[dir="rtl"] .tpl-link:hover .tpl-link-arrow { translate: -4px 0; }
 
-.journey-card {
+.tpl-section-foot { display: flex; justify-content: center; margin-top: clamp(44px, 5vw, 64px); }
+
+/* التليفون: نفس الشكل؛ القواعد القديمة في public.css كانت مقاسة على الكارت-الصندوق */
+@media (max-width: 600px) {
+  #templates .grid--4 {
+    grid-template-columns: minmax(0, 300px); justify-content: center;
+    gap: 44px; padding-inline: 0;
+  }
+  #templates .tpl-card { padding: 0; border-radius: 0; }
+  #templates .tpl-cover { aspect-ratio: 3 / 4; border-radius: 14px; }
+  #templates .tpl-body { padding: 16px 4px 0; min-height: 0; gap: 6px; }
+  #templates .tpl-body h3 { font-size: 21px; white-space: normal; }
+  #templates .tpl-desc { font-size: 13px; }
+  #templates .tpl-actions { padding-top: 6px; }
+
+  #templates .grid--4[data-per-row="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 12px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card { padding: 0; }
+  #templates .grid--4[data-per-row="2"] .tpl-frame { padding: 6px; border-radius: 16px; }
+  #templates .grid--4[data-per-row="2"] .tpl-frame::before { inset: 3px; border-radius: 13px; }
+  #templates .grid--4[data-per-row="2"] .tpl-cover { border-radius: 11px; }
+  #templates .grid--4[data-per-row="2"] .tpl-body { padding: 12px 2px 0; gap: 4px; }
+  #templates .grid--4[data-per-row="2"] .tpl-body h3 { font-size: 16px; }
+  #templates .grid--4[data-per-row="2"] .tpl-desc { display: none; }
+  #templates .grid--4[data-per-row="2"] .tpl-meta { font-size: 10px; gap: 6px; }
+  #templates .grid--4[data-per-row="2"] .tpl-meta::before,
+  #templates .grid--4[data-per-row="2"] .tpl-meta::after { width: 10px; }
+  #templates .grid--4[data-per-row="2"] .tpl-link { font-size: 12.5px; }
+}
+
+/* ---------------------------------------------------------- 2) المميزات — شريط غامق تحريري
+   شريط عرض الصفحة كلها بلون حبر غامق ووهج دهبي خفيف (نفس الشكل في
+   الفاتح والغامق) — بيدّي الصفحة إيقاع فاتح/غامق زي مواقع الماركات.
+   المقدمة ثابتة على الجنب، والمميزات شبكة مقسومة بخطوط دهبي رفيعة. */
+.feat-band {
+  --ivory: #f4ead8;
+  --ivory-2: rgba(244, 234, 216, .64);
+  --gold: #cfa75f;
+  --gold-line: rgba(207, 167, 95, .24);
   position: relative; z-index: 1;
-  margin-top: calc((3 - var(--i)) * var(--rise));
-  padding: calc(var(--medal) / 2 + 22px) 22px 28px;
-  text-align: center; border-radius: 24px;
-  background: var(--lux-surface);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
-  outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); outline-offset: -7px;
-  box-shadow: var(--lux-shadow);
-  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, outline-color .4s ease;
+  padding-block: clamp(84px, 10vw, 140px);
+  color: var(--ivory);
+  background:
+    radial-gradient(55% 75% at 100% 0%, rgba(207, 167, 95, .16), transparent 62%),
+    radial-gradient(50% 70% at 0% 100%, rgba(207, 167, 95, .1), transparent 62%),
+    linear-gradient(180deg, #15110c 0%, #0d0b08 100%);
+  border-block: 1px solid rgba(207, 167, 95, .32);
 }
-.journey-card:hover {
-  transform: translateY(-8px); outline-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow: var(--lux-shadow), 0 34px 60px -36px color-mix(in srgb, var(--accent) 80%, transparent);
+.feat-layout {
+  display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 2fr);
+  gap: clamp(36px, 5vw, 84px); align-items: start;
 }
-/* الكروت بتطلع ورا بعض بعد ما المنحنى يبدأ يترسم */
-html.js .journey .journey-card { opacity: 0; translate: 0 34px; transition: opacity .8s ease, translate .9s cubic-bezier(.2, .8, .2, 1), transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, outline-color .4s ease; transition-delay: calc(.4s + var(--i) * .45s), calc(.4s + var(--i) * .45s), 0s, 0s, 0s; }
-html.js .journey.is-in .journey-card { opacity: 1; translate: 0 0; }
+.feat-intro { position: sticky; top: 120px; }
+html.js .feat-intro[data-reveal]:not(.is-in) { transform: translateY(16px); }
+.feat-eyebrow {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 20px;
+  color: var(--gold); font-size: 13.5px; font-weight: 600; letter-spacing: .04em;
+}
+.feat-eyebrow::before { content: ""; width: 42px; height: 1px; background: var(--gold); }
+.feat-intro h2 {
+  margin: 0 0 18px; color: var(--ivory);
+  font-size: clamp(34px, 3.6vw, 54px); line-height: 1.25; text-wrap: balance;
+}
+.feat-sub { margin: 0 0 32px; max-width: 34ch; color: var(--ivory-2); font-size: 16px; line-height: 1.9; }
 
-.journey-medal {
-  position: absolute; top: 0; left: 50%; translate: -50% -50%;
-  width: var(--medal); height: var(--medal); border-radius: 50%;
-  display: grid; place-items: center; color: #fff;
-  background: var(--gold-fill);
-  box-shadow: 0 0 0 6px var(--surface), 0 0 0 7px color-mix(in srgb, var(--accent) 45%, transparent),
-              0 16px 30px -12px color-mix(in srgb, var(--accent) 90%, transparent);
+/* الشبكة: خط فوق وجنب للحاوية + خط تحت وجنب لكل خانة = خطوط رفيعة منتظمة */
+.feat-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--gold-line);
+  border-inline-start: 1px solid var(--gold-line);
 }
-/* لمعة بتلف حوالين الميدالية */
-.journey-medal::after {
-  content: ""; position: absolute; inset: -12px; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--accent) 80%, transparent) 90%, transparent 100%);
-  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 70%, transparent 71%);
-          mask: radial-gradient(circle, transparent 62%, #000 63%, #000 70%, transparent 71%);
-  animation: medal-orbit 4s linear infinite; animation-delay: calc(var(--i) * -1s);
+html.js .feat-grid[data-reveal] { opacity: 1; transform: none; }
+.feat-item {
+  position: relative; isolation: isolate;
+  padding: 34px 26px 32px;
+  border-bottom: 1px solid var(--gold-line);
+  border-inline-end: 1px solid var(--gold-line);
 }
-@keyframes medal-orbit { to { transform: rotate(360deg); } }
-.journey-medal svg {
-  width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.5;
+/* وهج خفيف بالمرور + خط دهبي بيتمد فوق الخانة */
+.feat-item::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(207, 167, 95, .13), transparent 62%);
+  opacity: 0; transition: opacity .5s ease;
+}
+.feat-item::after {
+  content: ""; position: absolute; top: -1px; inset-inline: 0; height: 1px;
+  background: var(--gold); transform: scaleX(0); transform-origin: right;
+  transition: transform .6s cubic-bezier(.2, .8, .2, 1);
+}
+[dir="ltr"] .feat-item::after { transform-origin: left; }
+.feat-item:hover::before { opacity: 1; }
+.feat-item:hover::after { transform: scaleX(1); }
+
+.feat-icon {
+  width: 50px; height: 50px; margin-bottom: 24px;
+  display: grid; place-items: center; border-radius: 50%;
+  color: var(--gold); border: 1px solid rgba(207, 167, 95, .45);
+  transition: background-color .45s ease, color .45s ease, border-color .45s ease;
+}
+.feat-icon svg {
+  width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.35;
   stroke-linecap: round; stroke-linejoin: round;
 }
-.journey-num {
-  position: absolute; top: 12px; inset-inline-end: 18px;
-  font-family: "Cormorant Garamond", Georgia, serif; font-size: 46px; font-weight: 600; line-height: 1;
-  color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--accent) 45%, transparent);
+.feat-item:hover .feat-icon { background: var(--gold); border-color: var(--gold); color: #15110c; }
+.feat-item h3 { margin: 0 0 8px; color: var(--ivory); font-size: 21px; line-height: 1.35; }
+.feat-item p { margin: 0; color: var(--ivory-2); font-size: 14px; line-height: 1.8; }
+
+/* الظهور: الخانات ورا بعض، وخطوط الأيقونات بتترسم */
+html.js .feat-grid .feat-item {
+  opacity: 0; translate: 0 18px;
+  transition: opacity .8s ease, translate .9s cubic-bezier(.2, .8, .2, 1);
+  transition-delay: calc(var(--i) * .07s);
 }
-.journey-card h3 { margin: 6px 0 8px; font-size: 22px; }
-.journey-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.8; }
+html.js .feat-grid.is-in .feat-item { opacity: 1; translate: 0 0; }
+html.js .feat-grid .feat-icon svg * {
+  stroke-dasharray: 200; stroke-dashoffset: 200;
+  transition: stroke-dashoffset 2.2s cubic-bezier(.45, 0, .2, 1);
+  transition-delay: calc(.25s + var(--i) * .07s);
+}
+html.js .feat-grid.is-in .feat-icon svg * { stroke-dashoffset: 0; }
+
+@media (max-width: 980px) {
+  .feat-layout { grid-template-columns: 1fr; }
+  .feat-intro { position: static; text-align: center; }
+  .feat-eyebrow { justify-content: center; }
+  .feat-eyebrow::after { content: ""; width: 42px; height: 1px; background: var(--gold); }
+  .feat-sub { margin-inline: auto; }
+}
+@media (max-width: 700px) {
+  .feat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feat-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .feat-item { padding: 26px 14px 24px; }
+  .feat-icon { width: 42px; height: 42px; margin-bottom: 16px; }
+  .feat-icon svg { width: 19px; height: 19px; }
+  .feat-item h3 { font-size: 17px; }
+  .feat-item p { font-size: 12.5px; line-height: 1.65; }
+}
+
+/* ---------------------------------------------------------- 3) الخطوات — مسار بأرقام كبيرة
+   خط أفقي رفيع بيتملي دهب من البداية للنهاية لما القسم يظهر، وعلامة على
+   الخط عند كل خطوة بتنوّر لما الخط يوصلها. كل خطوة رقم كبير بخط سيريف
+   (زي ترقيم الكتالوجات)، وأيقونة صغيرة، والعنوان والوصف. */
+.process {
+  --track-dur: 2.4s;
+  position: relative; list-style: none; margin: 0 auto; padding: 0;
+  max-width: 1140px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 clamp(22px, 3vw, 48px);
+}
+html.js .process[data-reveal] { opacity: 1; transform: none; }
+.process::before, .process::after {
+  content: ""; position: absolute; top: 6px; inset-inline: 0; height: 1px; pointer-events: none;
+}
+.process::before { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.process::after {
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: right;
+  transition: transform var(--track-dur) linear .3s;
+}
+[dir="ltr"] .process::after { transform-origin: left; }
+.process.is-in::after { transform: scaleX(1); }
+
+.process-step { position: relative; padding-top: 44px; text-align: start; }
+/* العلامة على الخط: معيّن فاضي بيتملي لما الخط يوصله */
+.process-marker {
+  position: absolute; top: 2px; inset-inline-start: 0; z-index: 1;
+  width: 9px; height: 9px; rotate: 45deg;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-2) 90%, var(--bg));
+  transition: background-color .4s ease, box-shadow .4s ease;
+  transition-delay: calc(.3s + var(--i) * var(--track-dur) / 4);
+}
+.process.is-in .process-marker {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.process-num {
+  display: block; margin-bottom: 18px;
+  font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500;
+  font-size: clamp(66px, 7vw, 104px); line-height: .9; letter-spacing: -.02em;
+  font-variant-numeric: lining-nums;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 70%, #fff) 0%, var(--accent) 55%,
+              color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  transition: translate .5s cubic-bezier(.2, .8, .2, 1);
+}
+.process-icon {
+  position: absolute; top: 56px; inset-inline-end: 0;
+  width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background-color .4s ease, color .4s ease;
+}
+.process-icon svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.process-step h3 { margin: 0 0 10px; font-size: 23px; }
+.process-step p { margin: 0; max-width: 28ch; color: var(--muted); font-size: 14.5px; line-height: 1.85; }
+.process-step:hover .process-num { translate: 0 -4px; }
+.process-step:hover .process-icon { background: var(--accent); color: #fff; }
+
+/* الظهور: كل خطوة بتطلع لما الخط يوصل لعلامتها */
+html.js .process .process-step > :not(.process-marker) {
+  opacity: 0; translate: 0 16px;
+  transition: opacity .8s ease, translate .9s cubic-bezier(.2, .8, .2, 1), background-color .4s ease, color .4s ease;
+  transition-delay: calc(.3s + var(--i) * var(--track-dur) / 4), calc(.3s + var(--i) * var(--track-dur) / 4), 0s, 0s;
+}
+html.js .process.is-in .process-step > :not(.process-marker) { opacity: 1; translate: 0 0; }
+html.js .process.is-in .process-step:hover .process-num { translate: 0 -4px; }
 
 @media (max-width: 980px) and (min-width: 761px) {
-  .journey { --rise: 28px; --medal: 56px; gap: 16px; }
-  .journey-card { padding-inline: 14px; }
-  .journey-card h3 { font-size: 18px; }
-  .journey-card p { font-size: 13px; }
-  .journey-num { font-size: 34px; }
+  .process-step h3 { font-size: 19px; }
+  .process-step p { font-size: 13.5px; }
+  .process-icon { top: 50px; width: 34px; height: 34px; }
 }
-/* الموبايل: الكروت تحت بعض، والمنحنى بيتبدل بخط دهبي منقّط بين كل كارتين */
+/* الموبايل: نفس المسار بس رأسي والخط على جنب */
 @media (max-width: 760px) {
-  .journey { grid-template-columns: 1fr; gap: 54px; --medal: 56px; max-width: 460px; }
-  .journey-path { display: none; }
-  .journey-card { margin-top: 0; padding-inline: 20px; }
-  .journey-card:not(:last-child)::after {
-    content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 54px;
-    translate: -50% 0; pointer-events: none;
-    background: repeating-linear-gradient(to bottom, var(--accent) 0 4px, transparent 4px 9px);
-    opacity: .7;
+  .process { grid-template-columns: 1fr; max-width: 480px; }
+  .process::before, .process::after {
+    top: 6px; bottom: 30px; height: auto; width: 1px;
+    inset-inline: auto; inset-inline-start: 4px;
   }
-  .journey-card h3 { font-size: 20px; }
+  .process::after { transform: scaleY(0); transform-origin: top; }
+  [dir="ltr"] .process::after { transform-origin: top; }
+  .process.is-in::after { transform: scaleY(1); }
+  .process-step { padding: 0 0 40px; padding-inline-start: 34px; }
+  .process-marker { top: 2px; }
+  .process-num { font-size: 58px; margin-bottom: 10px; }
+  .process-icon { top: 8px; width: 36px; height: 36px; }
+  .process-step h3 { font-size: 21px; }
+  .process-step p { max-width: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.js .fx-features .fx-feature, html.js .journey .journey-card { opacity: 1; transform: none; translate: none; transition: none; }
-  .journey-path-gold { stroke-dashoffset: 0; transition: none; }
-  .journey-dot { display: none; }
-  .journey-medal::after { animation: none; display: none; }
+  html.js .feat-grid .feat-item,
+  html.js .process .process-step > :not(.process-marker) { opacity: 1; translate: none; transition: none; }
+  html.js .feat-grid .feat-icon svg * { stroke-dashoffset: 0; transition: none; }
+  .process::after { transform: none; transition: none; }
+  .process-marker { transition: none; }
+  .tpl-frame, .tpl-cover::before { transition: none; }
 }

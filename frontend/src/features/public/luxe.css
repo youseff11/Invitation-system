@@ -91,37 +91,6 @@
 .feature-card:hover::before, .plan:hover::before { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .feature-card:hover::after, .plan:hover::after { opacity: 1; }
 
-/* ---------------------------------------------------------- المميزات */
-.feature-grid { gap: 20px; }
-.feature-card { --r: 22px; border-radius: 22px; min-height: 230px; padding: 36px 26px 30px; }
-.feature-icon {
-  width: 62px; height: 62px; margin-bottom: 18px;
-  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 24%, transparent), var(--accent-soft) 70%);
-  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 7%, transparent),
-              0 12px 24px -16px color-mix(in srgb, var(--accent) 80%, transparent);
-}
-.feature-icon svg { width: 26px; height: 26px; stroke-width: 1.35; }
-.feature-card h3 { font-size: 22px; margin-bottom: 8px; }
-.feature-card:hover .feature-icon { background: var(--gold-fill); }
-
-/* ---------------------------------------------------------- كروت القوالب
-   إطار جوّاني زي ورق الدعوة؛ الغلاف بحافة شعرية ذهبية */
-.tpl-card {
-  padding: 9px; border-radius: 20px;
-  background: var(--lux-surface);
-  border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
-  box-shadow: var(--lux-shadow);
-}
-.tpl-cover {
-  border-radius: 13px; overflow: hidden;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
-}
-.tpl-body { padding: 16px 10px 10px; }
-.tpl-body h3 { font-size: 19px; }
-.tpl-meta { color: var(--accent); opacity: .9; }
-.tpl-card:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
-
 /* ---------------------------------------------------------- الباقات */
 #plans .grid--3 { gap: 26px; align-items: start; }
 .plan { --r: 24px; border-radius: 24px; padding: 40px 28px 28px; gap: 12px; }
@@ -166,22 +135,6 @@
 }
 [dir="ltr"] .plan-badge { transform: translateX(-50%); }
 
-/* ---------------------------------------------------------- الخطوات */
-.step-number {
-  font-family: "Cormorant Garamond", "Amiri", Georgia, serif; font-size: 22px; font-weight: 600;
-  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 14%, var(--step-punch)), var(--step-punch) 70%);
-  box-shadow: 0 0 0 5px var(--step-punch),
-              0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent),
-              0 14px 28px -16px color-mix(in srgb, var(--accent) 85%, transparent);
-}
-.step:hover .step-number {
-  background: var(--gold-fill);
-  box-shadow: 0 0 0 5px var(--step-punch),
-              0 0 0 6px color-mix(in srgb, var(--accent) 55%, transparent),
-              0 16px 30px -14px color-mix(in srgb, var(--accent) 90%, transparent);
-}
-.step h3 { font-size: 21px; }
-
 /* ---------------------------------------------------------- الأسئلة */
 .faq-list { gap: 12px; }
 .faq-item {
@@ -221,23 +174,11 @@
   .plan--featured { transform: none; }
 }
 @media (max-width: 700px) {
-  .feature-card { --r: 16px; --corner: 14px; border-radius: 16px; min-height: 168px; padding: 22px 10px 18px; }
-  .feature-card::before { inset: 5px; }
-  .feature-card::after { inset: 8px; }
-  .feature-icon {
-    width: 46px; height: 46px; margin-bottom: 11px;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 7%, transparent);
-  }
-  .feature-icon svg { width: 21px; height: 21px; }
-  .feature-card h3 { font-size: 16px; }
   .plan { padding: 36px 22px 24px; }
   .section-head .eyebrow::before, .section-head .eyebrow::after,
   .home-cta .eyebrow::before, .home-cta .eyebrow::after { width: 24px; }
   .faq-item summary { padding: 17px 18px; }
   .faq-answer { padding: 0 18px 17px; }
-}
-@media (max-width: 600px) {
-  #templates .tpl-card { padding: 9px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .plan--featured, .plan--featured:hover { transform: none; }
@@ -256,106 +197,6 @@ html[lang="en"] .hero-eyebrow { letter-spacing: .14em; text-transform: uppercase
   .hero-eyebrow { margin-bottom: 12px; }
 }
 
-/* ================================================================
-   كروت القوالب — عرض فخم
-   الغلاف بيتكبّر جوّه إطاره بالمرور (طبقة ‎::before‎ وارثة نفس الصورة)،
-   لمعة دهبي بتعدّي، والجسم في النص بزرار بعرض الكارت.
-   ================================================================ */
-#templates .grid--4 { gap: 26px; }
-.tpl-card {
-  position: relative; padding: 10px; border-radius: 22px;
-  transition: transform .45s cubic-bezier(.2, .8, .2, 1), box-shadow .45s ease, border-color .45s ease;
-}
-/* إطار دهبي متدرّج بيظهر بالمرور */
-.tpl-card::after {
-  content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
-  padding: 1px; background: linear-gradient(150deg, var(--accent), transparent 35%, transparent 65%, var(--accent));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0; transition: opacity .45s ease;
-}
-.tpl-card:hover {
-  transform: translateY(-10px);
-  box-shadow: var(--lux-shadow), 0 40px 70px -40px color-mix(in srgb, var(--accent) 75%, rgba(23, 19, 15, .6));
-}
-.tpl-card:hover::after { opacity: 1; }
-
-.tpl-cover { isolation: isolate; border-radius: 15px; }
-.tpl-cover::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: inherit; background-size: cover; background-position: center;
-  transition: transform 1.1s cubic-bezier(.2, .8, .2, 1);
-}
-.tpl-card:hover .tpl-cover::before { transform: scale(1.07); }
-/* لمعة مايلة بتعدّي على الغلاف مرة + تغميق خفيف من تحت */
-.tpl-cover::after {
-  opacity: 1;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .38) 50%, transparent 65%) no-repeat,
-              linear-gradient(to top, rgba(0, 0, 0, .22), transparent 40%);
-  background-size: 250% 100%, 100% 100%;
-  background-position: 160% 0, 0 0;
-  transition: background-position 1s ease;
-}
-.tpl-card:hover .tpl-cover::after { background-position: -60% 0, 0 0; }
-
-.tpl-body { align-items: center; text-align: center; padding: 18px 8px 8px; gap: 4px; }
-.tpl-body h3 { font-family: "Amiri", Georgia, serif; font-size: 21px; font-weight: 700; }
-.tpl-meta {
-  display: inline-block; padding: 2px 12px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  font-size: 11.5px; color: var(--accent);
-}
-.tpl-actions { width: 100%; justify-content: center; padding-top: 14px; }
-#templates .tpl-actions .btn { width: 100%; min-height: 42px; }
-
-@media (max-width: 600px) {
-  #templates .tpl-card { padding: 9px; }
-  #templates .tpl-body { min-height: 0; align-items: center; text-align: center; }
-  .tpl-card:hover { transform: translateY(-4px); }
-}
-
 /* ---------------------------------------------------------- أيقونة واتساب في الفوتر
    كانت بتورث ‎fill: none‎ من قاعدة أيقونات الفوتر فتطلع باهتة/فاضية */
 .foot-socials a[aria-label="WhatsApp"] svg { fill: currentColor; stroke: none; width: 21px; height: 21px; }
-
-/* ================================================================
-   إطار شيك لكروت القوالب — زي كارت دعوة مطبوع
-   خط دهبي رفيع جوّه حافة الكارت (outline بإزاحة سالبة بيمشي مع الاستدارة)،
-   أربع أركان زخرفية في الزوايا، وإطار أبيض رفيع جوّه الصورة نفسها.
-   ================================================================ */
-.tpl-card {
-  padding: 15px;
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
-  outline: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  outline-offset: -7px;
-  transition: transform .45s cubic-bezier(.2, .8, .2, 1), box-shadow .45s ease,
-              border-color .45s ease, outline-color .45s ease;
-}
-.tpl-card:hover { outline-color: color-mix(in srgb, var(--accent) 70%, transparent); }
-/* الأركان الأربعة */
-.tpl-card::before {
-  content: ""; position: absolute; inset: 3px; pointer-events: none; z-index: 1;
-  background-color: var(--accent); opacity: .75;
-  -webkit-mask: var(--orn-corner-tl) top left / 17px no-repeat,
-                var(--orn-corner-tr) top right / 17px no-repeat,
-                var(--orn-corner-bl) bottom left / 17px no-repeat,
-                var(--orn-corner-br) bottom right / 17px no-repeat;
-          mask: var(--orn-corner-tl) top left / 17px no-repeat,
-                var(--orn-corner-tr) top right / 17px no-repeat,
-                var(--orn-corner-bl) bottom left / 17px no-repeat,
-                var(--orn-corner-br) bottom right / 17px no-repeat;
-  transition: opacity .45s ease;
-}
-.tpl-card:hover::before { opacity: 1; }
-/* إطار جوّه الصورة زي برواز */
-.tpl-cover {
-  border-radius: 12px;
-  outline: 1px solid rgba(255, 255, 255, .6);
-  outline-offset: -8px;
-}
-@media (max-width: 600px) {
-  #templates .tpl-card { padding: 13px; }
-  #templates .grid--4[data-per-row="2"] .tpl-card { padding: 9px; outline-offset: -5px; }
-  #templates .grid--4[data-per-row="2"] .tpl-card::before { inset: 2px; -webkit-mask-size: 12px; mask-size: 12px; }
-  #templates .grid--4[data-per-row="2"] .tpl-cover { outline-offset: -5px; }
-}

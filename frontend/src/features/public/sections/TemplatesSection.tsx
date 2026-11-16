@@ -5,6 +5,8 @@ import { ApiError } from '@/api/client'
 import { firstChar, pick, truncateChars, useLang } from '../text'
 import type { PublicTemplate } from '../types'
 
+const previewPath = (template: PublicTemplate) => `/templates/${template.slug}/preview/`
+
 /** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط. */
 function Cover({ template, name }: { template: PublicTemplate; name: string }) {
   return (
@@ -14,6 +16,30 @@ function Cover({ template, name }: { template: PublicTemplate; name: string }) {
     >
       {!template.cover && firstChar(name)}
     </div>
+  )
+}
+
+/**
+ * الغلاف جوّه «برواز»: حافة عاجي رفيعة بخط دهبي زي لوحة متبروزة. البرواز كله
+ * لينك للمعاينة، وبالمرور الصورة بتقرّب بالراحة ويظهر عليها «معاينة القالب».
+ */
+function Frame({ template, name, label }: { template: PublicTemplate; name: string; label: string }) {
+  return (
+    <Link className="tpl-frame" to={previewPath(template)} aria-label={`${label} — ${name}`}>
+      <Cover template={template} name={name} />
+      <span className="tpl-frame-cta" aria-hidden="true">
+        {label}
+      </span>
+    </Link>
+  )
+}
+
+/** سهم صغير بيلف مع اتجاه القراية (الـCSS بيقلبه في العربي) */
+function Arrow() {
+  return (
+    <svg className="tpl-link-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 12h13m0 0-5-5m5 5-5 5" />
+    </svg>
   )
 }
 
@@ -33,24 +59,24 @@ function Meta({ template }: { template: PublicTemplate }) {
   )
 }
 
-const previewPath = (template: PublicTemplate) => `/templates/${template.slug}/preview/`
-
-/** كارت القالب في الرئيسية: زرار واحد بيفتح معاينة القالب. */
+/** كارت القالب في الرئيسية: برواز الغلاف، الاسم والتصنيف، ولينك «تجربة القالب». */
 export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(lang, template.name, template.nameEn)
   const hasDescription = !!(template.description || template.descriptionEn)
+  const label = t('public.templates.preview')
   return (
     <article className="tpl-card" data-reveal data-reveal-stagger>
-      <Cover template={template} name={name} />
+      <Frame template={template} name={name} label={label} />
       <div className="tpl-body">
-        <h3>{name}</h3>
         <Meta template={template} />
+        <h3>{name}</h3>
         {hasDescription && <p className="tpl-desc">{pick(lang, template.description, template.descriptionEn)}</p>}
         <div className="tpl-actions">
-          <Link className="btn btn--gold btn--sm" to={previewPath(template)}>
-            {t('public.templates.preview')}
+          <Link className="tpl-link" to={previewPath(template)}>
+            <span>{label}</span>
+            <Arrow />
           </Link>
         </div>
       </div>
@@ -66,10 +92,10 @@ export function GalleryTemplateCard({ template }: { template: PublicTemplate }) 
   const hasDescription = !!(template.description || template.descriptionEn)
   return (
     <article className="tpl-card">
-      <Cover template={template} name={name} />
+      <Frame template={template} name={name} label={t('public.gallery.live')} />
       <div className="tpl-body">
-        <h3>{name}</h3>
         <Meta template={template} />
+        <h3>{name}</h3>
         {hasDescription && (
           <p className="muted tpl-desc--sm">
             {pick(lang, truncateChars(template.description, 80), truncateChars(template.descriptionEn, 80))}
@@ -115,7 +141,7 @@ export function TemplatesSection({ templates, error, perRow = 1 }: Props) {
           )}
         </div>
         {!!templates?.length && (
-          <div className="tpl-showcase-foot" data-reveal>
+          <div className="tpl-section-foot" data-reveal>
             <Link className="btn btn--outline btn--lg" to="/templates">
               <span>{t('public.templates.all')}</span>
             </Link>

@@ -1,9 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 /**
- * كل ميزة ليها أيقونة متحركة: الأجزاء اللي بتتحرك عليها كلاسات ‎fa-*‎
- * والحركة نفسها في showcase.css (عقرب بيلف، صح بيترسم، دبوس بينط…).
+ * أيقونات المميزات. لما القسم يظهر خطوطها بتترسم (showcase.css)، وبعض
+ * الأجزاء عليها كلاسات ‎fa-*‎ لحركة خفيفة جداً بالمرور بس.
  */
 const FEATURES: { key: string; icon: ReactNode }[] = [
   {
@@ -101,44 +102,25 @@ const FEATURES: { key: string; icon: ReactNode }[] = [
   },
 ]
 
-/** أشكال دهبي طايرة ورا القسم: مكانها وحجمها ومدة حركتها لكل واحد. */
-const SHAPES: { kind: 'ring' | 'diamond' | 'spark' | 'dot'; x: string; y: string; s: number; d: number }[] = [
-  { kind: 'ring', x: '6%', y: '14%', s: 90, d: 16 },
-  { kind: 'diamond', x: '88%', y: '10%', s: 34, d: 12 },
-  { kind: 'spark', x: '18%', y: '46%', s: 22, d: 9 },
-  { kind: 'ring', x: '92%', y: '58%', s: 130, d: 20 },
-  { kind: 'dot', x: '50%', y: '6%', s: 10, d: 7 },
-  { kind: 'diamond', x: '4%', y: '80%', s: 26, d: 14 },
-  { kind: 'spark', x: '78%', y: '88%', s: 26, d: 10 },
-  { kind: 'dot', x: '30%', y: '92%', s: 8, d: 8 },
-  { kind: 'spark', x: '62%', y: '30%', s: 16, d: 11 },
-]
-
 export function FeaturesSection() {
   const { t } = useTranslation()
   return (
-    <section className="section section--features" id="features">
-      <div className="fx-shapes" aria-hidden="true">
-        {SHAPES.map(({ kind, x, y, s, d }, i) => (
-          <span
-            key={i}
-            className={`fx-shape fx-shape--${kind}`}
-            style={{ '--x': x, '--y': y, '--s': `${s}px`, '--d': `${d}s`, '--i': i } as CSSProperties}
-          />
-        ))}
-      </div>
-      <div className="wrap">
-        <div className="section-head" data-reveal>
-          <p className="eyebrow">{t('public.features.eyebrow')}</p>
+    <section className="section feat-band" id="features">
+      <div className="wrap feat-layout">
+        {/* المقدمة ثابتة على الجنب وإنت بتنزل في القايمة (sticky) */}
+        <div className="feat-intro" data-reveal>
+          <p className="feat-eyebrow">{t('public.features.eyebrow')}</p>
           <h2>{t('public.features.title')}</h2>
-          <p>{t('public.features.sub')}</p>
+          <p className="feat-sub">{t('public.features.sub')}</p>
+          <Link className="btn btn--gold btn--lg btn--shine feat-cta" to="/templates">
+            <span>{t('public.features.cta')}</span>
+          </Link>
         </div>
-        {/* كروت على شكل موجة (العمود الأوسط نازل شوية)، وكل كارت فيه ميدالية
-            بحلقة بتلف ونقطة بتدور حواليها وأيقونة متحركة */}
-        <div className="fx-features" data-reveal>
+        {/* شبكة مقسومة بخطوط دهبي رفيعة — الأيقونات بتترسم لما القسم يظهر */}
+        <div className="feat-grid" data-reveal>
           {FEATURES.map(({ key, icon }, i) => (
-            <article key={key} className={`fx-feature fx-feature--${key}`} style={{ '--i': i } as CSSProperties}>
-              <span className="fx-medal">
+            <article key={key} className="feat-item" style={{ '--i': i } as CSSProperties}>
+              <span className="feat-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   {icon}
                 </svg>
