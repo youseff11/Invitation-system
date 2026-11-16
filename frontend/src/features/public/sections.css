@@ -357,11 +357,11 @@ a.tpl-cover { text-decoration: none; cursor: pointer; }
 }
 
 /* ---------------------------------------------------------- 2ب) المميزات على التليفون: مشهد 3D بالسكرول
-   ‎.fx-track‎ طويل (شاشة تقريباً لكل ميزة) و‎.fx-sticky‎ ثابت جوّاه. الموبايل واقف بزاوية
+   ‎.fx-track‎ بطول الشاشة بالظبط؛ التنقّل بين المميزات خطوة لكل إيماءة (الجافاسكربت بيثبّت الصفحة). الموبايل واقف بزاوية
    مجسّمة وبيطفو بهدوء؛ اللي بيتحرك هو الكروت: كل كارت بيطلع من مكان جزءه في الموبايل
    (‎--from-y‎ بيتقاس بالجافاسكربت) لقدّام الكاميرا، واللي قبله بيعدّي الكاميرا ويختفي.
    ممنوع ‎filter / backdrop-filter / overflow‎ على السلسلة دي: بيبطّلوا الـ3D (‎preserve-3d‎). */
-.fx-track { position: relative; height: calc(var(--fx-n) * 72svh + 100svh); }
+.fx-track { position: relative; height: calc(100svh - var(--nav-space, 78px)); }
 .fx-sticky {
   position: sticky; top: var(--nav-space, 78px);
   height: calc(100svh - var(--nav-space, 78px));

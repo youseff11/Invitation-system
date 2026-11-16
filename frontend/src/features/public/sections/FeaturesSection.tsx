@@ -202,11 +202,7 @@ function FeatureItem({ k, active, onPick }: { k: FeatureKey; active: boolean; on
   const { t } = useTranslation()
   return (
     // النشاط في ‎data-on‎ مش في الكلاس عشان React مايمسحش أي كلاس تاني على العنصر
-    <li
-      className="fx-item"
-      data-on={active || undefined}
-      onMouseEnter={() => onPick(k)}
-    >
+    <li className="fx-item" data-on={active || undefined} onMouseEnter={() => onPick(k)}>
       <span className="fx-gem">
         <Icon k={k} />
       </span>
@@ -385,7 +381,6 @@ function FeatureArt({ k, running }: { k: FeatureKey; running: boolean }) {
   }
 }
 
-const HYST = 0.06
 const LINK_GAP = 44 // طول السهم — نفس ‎--gap‎ في sections.css
 
 /** كارت ميزة في المشهد. ‎memo‎: لما الميزة تتغيّر بيترسم بس الكارتين اللي حالتهم اتغيّرت. */
@@ -429,20 +424,26 @@ const ShowCard = memo(function ShowCard({
  * وبيطفو بهدوء — اللي بيتحرك هو العناصر: مع كل ميزة جزءها في الدعوة بينوّر، وبيطلع منه
  * كارت مجسّم فيه مشهد صغير خاص بيها (عدّاد بيقلب، صور بتتفرد، أسطوانة بتلف، دبوس بينزل
  * على خريطة...)، والكارت اللي قبله بيطير ناحية الكاميرا ويختفي.
- * الحركة بالوقت مش بالسكرول، فسرعة السكرول مابتأثرش على نعومتها. السكرول بيحدد بس
- * أنهي ميزة (‎idx‎)، والـstate بيتغيّر بس لما الميزة نفسها تتغيّر.
+ * الحركة بالوقت مش بالسكرول، فسرعة السكرول مابتأثرش على نعومتها.
+ *
+ * التنقّل خطوة بخطوة: أول ما القسم يملا الشاشة الصفحة بتثبت، وكل إيماءة (سحبة صباع مهما كانت
+ * طويلة، دفعة عجلة ماوس، أو زرار كيبورد) = ميزة واحدة بالظبط. عند أول/آخر ميزة الإيماءة
+ * بتطلّعنا من القسم بسكرول ناعم. ولو حد داخل بسحبة قوية من فوق أو تحت، الصفحة بتقف عند القسم
+ * بدل ما تعدّيه. السكرول البرمجي (لينكات القايمة زي ‎#plans‎) مابيتمسكش — بنفرّق بإن مفيش
+ * سحب/عجلة من المستخدم قريب.
  */
 function FeaturesScene() {
   const { t } = useTranslation()
   const track = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(0)
   const [visible, setVisible] = useState(false)
+  const idxRef = useRef(0)
 
   useEffect(() => {
     const el = track.current
     const sticky = el?.firstElementChild as HTMLElement | null
     if (!el || !sticky) return
-    let raf = 0
+    const N = ORDER.length
     const fit = () => {
       // الموبايل ياخد ~٧٤٪ من ارتفاع المساحة الثابتة ومايعدّيش عرض الشاشة
       const z = Math.max(0.55, Math.min(0.92, (sticky.offsetHeight * 0.74) / PHONE_H, (window.innerWidth - 110) / 268))
@@ -471,36 +472,141 @@ function FeaturesScene() {
       })
       el.classList.remove('fx-measuring')
     }
-    const update = () => {
-      raf = 0
-      const r = el.getBoundingClientRect()
-      const span = r.height - sticky.offsetHeight
-      const p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0
-      // هامش ٦٪ حوالين كل حد: الوقوف على الحد بالظبط (أو رعشة صباع) مايقلّبش بين ميزتين
-      const pos = p * ORDER.length
-      setIdx((cur) => {
-        if (pos > cur + 1 + HYST || pos < cur - HYST) return Math.min(ORDER.length - 1, Math.max(0, Math.floor(pos)))
-        return cur
-      })
-      setVisible(r.top < window.innerHeight && r.bottom > 0)
+    let locked = false
+    let lastInput = -1e9 // آخر سحب/عجلة/كيبورد من المستخدم
+    let lastWheel = -1e9
+    let lastStep = -1e9
+    let prevY = window.scrollY
+    let touchY: number | null = null
+    let touchDone = false
+    let raf = 0
+
+    const stickyTop = () => parseFloat(getComputedStyle(sticky).top) || 0
+    // مكان التثبيت: القسم مالي الشاشة تحت الترويسة
+    const lockY = () => Math.round(el.getBoundingClientRect().top + window.scrollY - stickyTop())
+    const jump = (top: number, smooth = false) =>
+      window.scrollTo({ top, behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
+    const setLock = (on: boolean) => {
+      locked = on
+      document.documentElement.classList.toggle('fx-lock', on)
     }
+    const userScrolling = () => performance.now() - lastInput < 1200
+
+    // خطوة واحدة لكل إيماءة؛ عند الطرفين بنطلع من القسم
+    const act = (dir: 1 | -1) => {
+      const next = idxRef.current + dir
+      lastStep = performance.now()
+      if (next >= 0 && next < N) {
+        idxRef.current = next
+        setIdx(next)
+        return
+      }
+      setLock(false)
+      if (dir > 0) jump(lockY() + el.offsetHeight, true)
+      else {
+        const sec = el.closest('section')
+        jump(
+          sec ? sec.getBoundingClientRect().top + window.scrollY - stickyTop() : lockY() - window.innerHeight / 2,
+          true,
+        )
+      }
+    }
+
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update)
+      const y = window.scrollY
+      const L = lockY()
+      if (!locked && userScrolling() && ((prevY < L && y >= L) || (prevY > L && y <= L))) {
+        // داخل بسحبة (حتى لو قوية): نقف عند القسم. باقي السحبة دي مابتحسبش خطوة
+        jump(L)
+        setLock(true)
+        touchDone = true
+        lastStep = performance.now()
+      } else if (locked && Math.abs(y - L) > 2) {
+        if (userScrolling())
+          jump(L) // بقايا اندفاع السحبة: نفضل ثابتين
+        else setLock(false) // سكرول برمجي (لينك في القايمة): نسيبه يعدّي
+      }
+      prevY = window.scrollY
+      if (!raf)
+        raf = requestAnimationFrame(() => {
+          raf = 0
+          const r = el.getBoundingClientRect()
+          setVisible(r.top < window.innerHeight && r.bottom > 0)
+        })
+    }
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches[0]?.clientY ?? null
+      touchDone = false
+    }
+    const onTouchMove = (e: TouchEvent) => {
+      lastInput = performance.now()
+      if (!locked) return
+      if (e.cancelable) e.preventDefault()
+      if (touchDone || touchY === null) return
+      const dy = touchY - (e.touches[0]?.clientY ?? touchY)
+      if (Math.abs(dy) < 24) return
+      touchDone = true // السحبة دي خلاص اتحسبت — مهما طوّلت
+      act(dy > 0 ? 1 : -1)
+    }
+    // من غير ‎lastInput‎ هنا: الضغطة (تاب) على لينك في القايمة فيها ‎touchend‎ من غير سحب، ولو
+    // اتحسبت «سكرول من المستخدم» كنا هنشد السكرول البرمجي بتاع اللينك ونرجّعه للقسم
+    const onTouchEnd = () => {
+      touchY = null
+    }
+    const onWheel = (e: WheelEvent) => {
+      const now = performance.now()
+      lastInput = now
+      // دفعة عجلة = سلسلة أحداث ورا بعض؛ دفعة جديدة لو فيه سكوت ‎220ms‎
+      const fresh = now - lastWheel > 220
+      lastWheel = now
+      if (!locked) return
+      if (e.cancelable) e.preventDefault()
+      if (!fresh || now - lastStep < 450 || Math.abs(e.deltaY) < 3) return
+      act(e.deltaY > 0 ? 1 : -1)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (e.defaultPrevented || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      const down = e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)
+      const up = e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)
+      if (!down && !up) return
+      lastInput = performance.now()
+      if (!locked) return
+      e.preventDefault()
+      act(down ? 1 : -1)
     }
     const onResize = () => {
       fit()
-      onScroll()
+      if (locked) jump(lockY())
     }
+
     fit()
-    update()
+    if (Math.abs(window.scrollY - lockY()) < 3) setLock(true)
+    onScroll()
     // الخطوط (Amiri) لو وصلت بعد أول قياس بتغيّر ارتفاع الكارت — نقيس تاني
     document.fonts?.ready.then(fit)
-    window.addEventListener('scroll', onScroll, { passive: true })
+    const passive = { passive: true }
+    const active = { passive: false }
+    window.addEventListener('scroll', onScroll, passive)
     window.addEventListener('resize', onResize)
+    window.addEventListener('touchstart', onTouchStart, passive)
+    window.addEventListener('touchmove', onTouchMove, active)
+    window.addEventListener('touchend', onTouchEnd, passive)
+    window.addEventListener('touchcancel', onTouchEnd, passive)
+    window.addEventListener('wheel', onWheel, active)
+    window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onResize)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('keydown', onKey)
       cancelAnimationFrame(raf)
+      setLock(false)
     }
   }, [])
 
