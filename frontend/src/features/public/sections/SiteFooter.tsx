@@ -13,8 +13,9 @@ export function HomeFooter({ site }: { site: SiteInfo }) {
   return (
     <footer className="foot">
       <div className="wrap foot-inner">
+        {/* اللوجو المرصوص الشفاف (فاتح/غامق) بدل المربع اللي بخلفية — صورة خلفية عشان المتصفح ينزّل نسخة واحدة */}
         <Link className="foot-brand" to="/" aria-label={name}>
-          <img src="/static/images/logo.jpeg" alt={name} />
+          <span className="foot-logo" aria-hidden="true" />
         </Link>
         <p>
           {name} — {pick(lang, site.tagline.ar, site.tagline.en)}

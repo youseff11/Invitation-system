@@ -1285,3 +1285,22 @@
   [data-theme="dark"] .hero-art,
   html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-mobile-dark.webp"); }
 }
+
+/* ---------------------------------------------------------- 8) اللوجو: أكبر شوية في الناف، والفوتر شفاف وأكبر */
+.brand { height: 54px; }
+.nav.is-stuck .brand { height: 46px; }
+@media (max-width: 780px) {
+  .brand { height: 42px; }
+  .nav.is-stuck .brand { height: 38px; }
+}
+@media (max-width: 380px) { .brand { height: 36px; } }
+
+.foot-brand { width: auto; height: auto; }
+.foot-logo {
+  display: block; height: 76px; aspect-ratio: 411 / 260;
+  background: url("/static/images/logo-full-light.png") center / contain no-repeat;
+  transition: transform .3s ease, opacity .2s ease;
+}
+[data-theme="dark"] .foot-logo { background-image: url("/static/images/logo-full-dark.png"); }
+.foot-brand:hover .foot-logo { transform: translateY(-2px); opacity: .9; }
+@media (max-width: 700px) { .foot-logo { height: 70px; } }
