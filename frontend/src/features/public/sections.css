@@ -362,22 +362,61 @@ a.tpl-cover { text-decoration: none; cursor: pointer; }
    (‎--from-y‎ بيتقاس بالجافاسكربت) لقدّام الكاميرا، واللي قبله بيعدّي الكاميرا ويختفي.
    ممنوع ‎filter / backdrop-filter / overflow‎ على السلسلة دي: بيبطّلوا الـ3D (‎preserve-3d‎). */
 .fx-track {
-  position: relative; height: calc(100svh - var(--nav-space, 78px));
-  /* الصفحة بتتظبط على القسم لوحدها لما تقف قريب منه */
-  scroll-snap-align: start; scroll-margin-top: var(--nav-space, 78px);
+  position: relative;
+  height: min(calc(100svh - var(--nav-space, 78px)), 760px); min-height: 520px;
 }
-html:has(.fx-track) { scroll-snap-type: y proximity; }
 .fx-sticky { position: absolute; inset: 0; display: grid; place-items: center; }
-/* مساحة السكرول الشفافة فوق المشهد — ٩ صفحات، والسحبة مابتعدّيش أكتر من صفحة */
-.fx-pager {
-  position: absolute; inset: 0; z-index: 2;
-  overflow-y: hidden; overscroll-behavior-y: auto;
-  scroll-snap-type: y mandatory; scrollbar-width: none;
-  -webkit-tap-highlight-color: transparent;
+/* الحركات اللي بتلف على طول بتقف والقسم برّه الشاشة — مفيش شغل على الفاضي وقت السكرول */
+.fx-track:not(.is-visible) *,
+.fx-track:not(.is-visible) *::before,
+.fx-track:not(.is-visible) *::after { animation-play-state: paused !important; }
+
+/* ---- الضغط: المشهد كله زرار شفاف، وعلامة تحت بتقول للزائر يعمل إيه */
+.fx-tap {
+  position: absolute; inset: 0; z-index: 4; width: 100%;
+  margin: 0; padding: 0 0 14px; border: 0; background: none; cursor: pointer;
+  display: flex; align-items: flex-end; justify-content: center;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  font: inherit; color: inherit;
 }
-.fx-pager::-webkit-scrollbar { display: none; }
-.fx-track.is-active .fx-pager { overflow-y: auto; }
-.fx-page { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+.fx-tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -6px; border-radius: 24px; }
+.fx-hint {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 8px 16px 8px 12px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 14px 28px -16px rgba(40, 28, 10, .55), 0 0 0 5px color-mix(in srgb, var(--accent) 9%, transparent);
+  animation: fx-hint-in .7s cubic-bezier(.16, .9, .25, 1) .6s both;
+  transition: transform .4s cubic-bezier(.22, .8, .3, 1), opacity .4s ease, padding .4s ease;
+}
+@keyframes fx-hint-in { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+.fx-hint-hand { position: relative; width: 26px; height: 26px; flex: none; color: var(--accent); }
+.fx-hint-hand svg {
+  position: relative; width: 100%; height: 100%;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  animation: fx-hand 1.6s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+/* موجة الدوسة عند طرف الصباع */
+.fx-hint-hand i {
+  position: absolute; top: 1px; left: 8px; width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--accent); opacity: 0;
+  animation: fx-tap-ring 1.6s ease-out infinite;
+}
+@keyframes fx-hand {
+  0%, 100% { transform: translate(2px, 3px) rotate(-8deg); }
+  40% { transform: translate(0, 0) rotate(0); }
+  55% { transform: translate(0, 2px) scale(.92); }
+}
+@keyframes fx-tap-ring {
+  0%, 50% { opacity: 0; transform: scale(.4); }
+  56% { opacity: .9; }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+/* بعد أول ضغطة: نفس العلامة أصغر وأهدى */
+.fx-hint.is-quiet { padding: 5px 12px 5px 9px; font-size: 12px; opacity: .85; transform: scale(.94); }
+.fx-hint.is-quiet .fx-hint-hand { width: 20px; height: 20px; }
+.fx-tap:active .fx-hint { transform: scale(.92); }
 /* الطفو على المشهد كله (مش الموبايل لوحده): الموبايل والكارت والسهم بيتحركوا مع بعض
    فطرف السهم مايفارقش العنصر بتاعه أبداً */
 .fx-scene { perspective: 900px; perspective-origin: 50% 30%; animation: fx-float 7s ease-in-out infinite; }
@@ -762,18 +801,23 @@ html:has(.fx-track) { scroll-snap-type: y proximity; }
   to { opacity: 1; transform: translate(42px, 24px) translateZ(50px) rotate(-14deg) scale(1); }
 }
 
-/* نقط التقدّم على جنب الشاشة */
+/* نقط التقدّم على جنب الشاشة — كل نقطة زرار بينقل لميزتها (مساحة الضغط أكبر من النقطة) */
 .fx-dots {
-  position: absolute; inset-inline-end: 2px; top: 50%; transform: translateY(-50%);
-  list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; justify-items: center;
+  position: absolute; z-index: 5; inset-inline-end: 0; top: 50%; transform: translateY(-50%);
+  list-style: none; margin: 0; padding: 0; display: grid; justify-items: center;
 }
-.fx-dots li {
-  width: 5px; height: 5px; border-radius: 99px;
+.fx-dots button {
+  display: grid; place-items: center; width: 24px; height: 17px; padding: 0; border: 0;
+  background: none; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.fx-dots button::before {
+  content: ""; width: 5px; height: 5px; border-radius: 99px;
   background: color-mix(in srgb, var(--accent) 28%, transparent);
   transition: height .4s cubic-bezier(.22, .8, .3, 1), background-color .4s ease;
 }
-.fx-dots li.done { background: color-mix(in srgb, var(--accent) 60%, transparent); }
-.fx-dots li.on { height: 20px; background: var(--accent); }
+.fx-dots button.done::before { background: color-mix(in srgb, var(--accent) 60%, transparent); }
+.fx-dots button.on::before { height: 15px; background: var(--accent); }
+.fx-dots button:focus-visible { outline: 2px solid var(--accent); border-radius: 6px; }
 
 /* ---------------------------------------------------------- 3) الخطوات: أربع أقواس
    كل خطوة جوّه قوس بإطار مزدوج وحجر مفتاح دهبي فوق؛ بينهم نقط دهبي.

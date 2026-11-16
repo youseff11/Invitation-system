@@ -420,32 +420,27 @@ const ShowCard = memo(function ShowCard({
 })
 
 /**
- * التليفون: مشهد سينمائي ثلاثي الأبعاد. الموبايل واقف بزاوية مجسّمة وبيطفو بهدوء — اللي بيتحرك
- * هو العناصر: مع كل ميزة جزءها في الدعوة بينوّر، وبيطلع منه كارت معاينة صغير بسهم، فيه مشهد
- * خاص بيها (عدّاد بيقلب، صور بتتفرد، أسطوانة بتلف، دبوس بينزل على خريطة...).
- *
- * التنقّل بالسكرول الأصلي للمتصفح، مش بجافاسكربت بيشد الصفحة: فوق المشهد فيه مساحة سكرول
- * شفافة (‎.fx-pager‎) فيها ٩ صفحات، كل صفحة ‎scroll-snap-stop: always‎ — فالسحبة الواحدة مهما
- * طالت بتقف عند الصفحة اللي بعدها بس، واندفاع الصباع (خصوصاً على آيفون) المتصفح هو اللي
- * بيمسكه بنعومة. عند أول/آخر صفحة السحبة بتكمّل على الصفحة نفسها (scroll chaining) فتطلع من
- * القسم طبيعي. المساحة دي بتشتغل بس والقسم مالي الشاشة (‎.is-active‎)، والصفحة بتتظبط عليه
- * لوحدها لما تقف قريب منه (‎scroll-snap-type: proximity‎ على الصفحة).
- * (النسخة اللي قبلها كانت بتثبّت الصفحة بـ‎scrollTo‎، وعلى آيفون الاندفاع مابيقفش بيها فكانت
- * الصفحة بتطلع وتنزل.)
+ * التليفون: مشهد سينمائي ثلاثي الأبعاد بالضغط. الموبايل واقف بزاوية مجسّمة وبيطفو بهدوء؛ كل
+ * ضغطة على المشهد بتعرض الميزة اللي بعدها (وبعد آخر ميزة بترجع للأولى): جزءها في الدعوة بينوّر
+ * وبيطلع منه كارت معاينة صغير بسهم فيه مشهد خاص بيها.
+ * السكرول بتاع الصفحة مالوش أي دعوة بالقسم — مفيش تثبيت ولا snap (النسخ اللي فاتت كانت بتهنّج
+ * على آيفون). علامة الضغط (صباع بيدوس + «اضغط للميزة التالية») بتوضّح للزائر يعمل إيه، وبعد
+ * أول ضغطة بتصغر. النقط تحت بتنقل لأي ميزة على طول.
+ * الحركات اللي بتلف على طول (الهالة، الطفو، اللمعة...) بتقف والقسم برّه الشاشة.
  */
 function FeaturesScene() {
   const { t } = useTranslation()
   const track = useRef<HTMLDivElement>(null)
-  const pager = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(0)
   const [visible, setVisible] = useState(false)
+  const [tapped, setTapped] = useState(false)
+  const N = ORDER.length
+  const last = idx === N - 1
 
   useEffect(() => {
     const el = track.current
-    const pg = pager.current
     const sticky = el?.querySelector<HTMLElement>('.fx-sticky')
-    if (!el || !pg || !sticky) return
-    const N = ORDER.length
+    if (!el || !sticky) return
     const fit = () => {
       // الموبايل ياخد ~٧٤٪ من ارتفاع المساحة الثابتة ومايعدّيش عرض الشاشة
       const z = Math.max(0.55, Math.min(0.92, (sticky.offsetHeight * 0.74) / PHONE_H, (window.innerWidth - 110) / 268))
@@ -474,46 +469,33 @@ function FeaturesScene() {
       })
       el.classList.remove('fx-measuring')
     }
-    let raf = 0
-    // الميزة الحالية من مكان السكرول جوّه المساحة (بتتغيّر في نص السحبة، فالحركة بتبدأ بدري)
-    const onPage = () => {
-      const h = pg.clientHeight || 1
-      setIdx(Math.min(N - 1, Math.max(0, Math.round(pg.scrollTop / h))))
+    // ظاهر ولا لأ — من غير أي listener على السكرول
+    const io =
+      'IntersectionObserver' in window
+        ? new IntersectionObserver(([e]) => {
+            setVisible(e.isIntersecting)
+            el.classList.toggle('is-visible', e.isIntersecting)
+          })
+        : null
+    io?.observe(el)
+    if (!io) {
+      setVisible(true)
+      el.classList.add('is-visible')
     }
-    const onScroll = () => {
-      if (raf) return
-      raf = requestAnimationFrame(() => {
-        raf = 0
-        const r = el.getBoundingClientRect()
-        const top = parseFloat(getComputedStyle(el).scrollMarginTop) || 0
-        // المساحة بتاخد السحب بس والقسم مالي الشاشة؛ غير كده السحب بيحرّك الصفحة عادي
-        el.classList.toggle('is-active', Math.abs(r.top - top) < 6)
-        setVisible(r.top < window.innerHeight && r.bottom > 0)
-        // القسم برّه الشاشة خالص: نرجّعه للبداية لو هو تحت، وللآخر لو هو فوق — فاللي داخل من
-        // فوق يبدأ من أول ميزة، واللي راجع من تحت يرجع من آخر ميزة
-        if (r.top > window.innerHeight && pg.scrollTop !== 0) pg.scrollTop = 0
-        else if (r.bottom < 0 && pg.scrollTop < pg.scrollHeight - pg.clientHeight) pg.scrollTop = pg.scrollHeight
-      })
-    }
-    const onResize = () => {
-      fit()
-      onScroll()
-    }
-
     fit()
-    onScroll()
     // الخطوط (Amiri) لو وصلت بعد أول قياس بتغيّر ارتفاع الكارت — نقيس تاني
     document.fonts?.ready.then(fit)
-    pg.addEventListener('scroll', onPage, { passive: true })
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onResize)
+    window.addEventListener('resize', fit)
     return () => {
-      pg.removeEventListener('scroll', onPage)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onResize)
-      cancelAnimationFrame(raf)
+      io?.disconnect()
+      window.removeEventListener('resize', fit)
     }
   }, [])
+
+  const go = (i: number) => {
+    setIdx(i)
+    setTapped(true)
+  }
 
   return (
     <>
@@ -538,18 +520,38 @@ function FeaturesScene() {
               </div>
             </div>
           </div>
-          <ol className="fx-dots" aria-hidden="true">
-            {ORDER.map((f, i) => (
-              <li key={f} className={i === idx ? 'on' : i < idx ? 'done' : undefined} />
-            ))}
-          </ol>
         </div>
-        {/* مساحة السكرول الشفافة فوق المشهد: صفحة لكل ميزة */}
-        <div className="fx-pager" ref={pager} aria-hidden="true">
-          {ORDER.map((f) => (
-            <div key={f} className="fx-page" />
+        {/* المشهد كله زرار واحد: الضغط في أي حتة = الميزة اللي بعدها */}
+        <button
+          type="button"
+          className="fx-tap"
+          onClick={() => go((idx + 1) % N)}
+          aria-label={last ? 'ارجع لأول ميزة' : 'اعرض الميزة التالية'}
+        >
+          <span className={'fx-hint' + (tapped ? ' is-quiet' : '')} aria-hidden="true">
+            <span className="fx-hint-hand">
+              <i />
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M9.5 11.5V5a1.5 1.5 0 0 1 3 0v5.5m0-1.2a1.5 1.5 0 0 1 3 0v1.7m0-1a1.5 1.5 0 0 1 3 0v4.3a6 6 0 0 1-6 6h-.5a6 6 0 0 1-4.9-2.5l-2.6-3.6a1.5 1.5 0 0 1 2.4-1.8l1.6 2.1" />
+              </svg>
+            </span>
+            <span className="fx-hint-text">{last ? 'اضغط للبداية من جديد' : 'اضغط للميزة التالية'}</span>
+          </span>
+        </button>
+        {/* النقط: كل نقطة بتنقل لميزتها */}
+        <ol className="fx-dots">
+          {ORDER.map((f, i) => (
+            <li key={f}>
+              <button
+                type="button"
+                className={i === idx ? 'on' : i < idx ? 'done' : undefined}
+                onClick={() => go(i)}
+                aria-label={t(`public.features.${f}.title`)}
+                aria-current={i === idx || undefined}
+              />
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
       {/* المشهد كله زخرفة؛ قارئ الشاشة بيقرا القايمة دي */}
       <ul className="sr-only">
