@@ -361,12 +361,23 @@ a.tpl-cover { text-decoration: none; cursor: pointer; }
    مجسّمة وبيطفو بهدوء؛ اللي بيتحرك هو الكروت: كل كارت بيطلع من مكان جزءه في الموبايل
    (‎--from-y‎ بيتقاس بالجافاسكربت) لقدّام الكاميرا، واللي قبله بيعدّي الكاميرا ويختفي.
    ممنوع ‎filter / backdrop-filter / overflow‎ على السلسلة دي: بيبطّلوا الـ3D (‎preserve-3d‎). */
-.fx-track { position: relative; height: calc(100svh - var(--nav-space, 78px)); }
-.fx-sticky {
-  position: sticky; top: var(--nav-space, 78px);
-  height: calc(100svh - var(--nav-space, 78px));
-  display: grid; place-items: center;
+.fx-track {
+  position: relative; height: calc(100svh - var(--nav-space, 78px));
+  /* الصفحة بتتظبط على القسم لوحدها لما تقف قريب منه */
+  scroll-snap-align: start; scroll-margin-top: var(--nav-space, 78px);
 }
+html:has(.fx-track) { scroll-snap-type: y proximity; }
+.fx-sticky { position: absolute; inset: 0; display: grid; place-items: center; }
+/* مساحة السكرول الشفافة فوق المشهد — ٩ صفحات، والسحبة مابتعدّيش أكتر من صفحة */
+.fx-pager {
+  position: absolute; inset: 0; z-index: 2;
+  overflow-y: hidden; overscroll-behavior-y: auto;
+  scroll-snap-type: y mandatory; scrollbar-width: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.fx-pager::-webkit-scrollbar { display: none; }
+.fx-track.is-active .fx-pager { overflow-y: auto; }
+.fx-page { height: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
 /* الطفو على المشهد كله (مش الموبايل لوحده): الموبايل والكارت والسهم بيتحركوا مع بعض
    فطرف السهم مايفارقش العنصر بتاعه أبداً */
 .fx-scene { perspective: 900px; perspective-origin: 50% 30%; animation: fx-float 7s ease-in-out infinite; }

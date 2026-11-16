@@ -420,29 +420,31 @@ const ShowCard = memo(function ShowCard({
 })
 
 /**
- * التليفون: مشهد سينمائي ثلاثي الأبعاد بالسكرول. الموبايل ثابت (sticky) بزاوية مجسّمة
- * وبيطفو بهدوء — اللي بيتحرك هو العناصر: مع كل ميزة جزءها في الدعوة بينوّر، وبيطلع منه
- * كارت مجسّم فيه مشهد صغير خاص بيها (عدّاد بيقلب، صور بتتفرد، أسطوانة بتلف، دبوس بينزل
- * على خريطة...)، والكارت اللي قبله بيطير ناحية الكاميرا ويختفي.
- * الحركة بالوقت مش بالسكرول، فسرعة السكرول مابتأثرش على نعومتها.
+ * التليفون: مشهد سينمائي ثلاثي الأبعاد. الموبايل واقف بزاوية مجسّمة وبيطفو بهدوء — اللي بيتحرك
+ * هو العناصر: مع كل ميزة جزءها في الدعوة بينوّر، وبيطلع منه كارت معاينة صغير بسهم، فيه مشهد
+ * خاص بيها (عدّاد بيقلب، صور بتتفرد، أسطوانة بتلف، دبوس بينزل على خريطة...).
  *
- * التنقّل خطوة بخطوة: أول ما القسم يملا الشاشة الصفحة بتثبت، وكل إيماءة (سحبة صباع مهما كانت
- * طويلة، دفعة عجلة ماوس، أو زرار كيبورد) = ميزة واحدة بالظبط. عند أول/آخر ميزة الإيماءة
- * بتطلّعنا من القسم بسكرول ناعم. ولو حد داخل بسحبة قوية من فوق أو تحت، الصفحة بتقف عند القسم
- * بدل ما تعدّيه. السكرول البرمجي (لينكات القايمة زي ‎#plans‎) مابيتمسكش — بنفرّق بإن مفيش
- * سحب/عجلة من المستخدم قريب.
+ * التنقّل بالسكرول الأصلي للمتصفح، مش بجافاسكربت بيشد الصفحة: فوق المشهد فيه مساحة سكرول
+ * شفافة (‎.fx-pager‎) فيها ٩ صفحات، كل صفحة ‎scroll-snap-stop: always‎ — فالسحبة الواحدة مهما
+ * طالت بتقف عند الصفحة اللي بعدها بس، واندفاع الصباع (خصوصاً على آيفون) المتصفح هو اللي
+ * بيمسكه بنعومة. عند أول/آخر صفحة السحبة بتكمّل على الصفحة نفسها (scroll chaining) فتطلع من
+ * القسم طبيعي. المساحة دي بتشتغل بس والقسم مالي الشاشة (‎.is-active‎)، والصفحة بتتظبط عليه
+ * لوحدها لما تقف قريب منه (‎scroll-snap-type: proximity‎ على الصفحة).
+ * (النسخة اللي قبلها كانت بتثبّت الصفحة بـ‎scrollTo‎، وعلى آيفون الاندفاع مابيقفش بيها فكانت
+ * الصفحة بتطلع وتنزل.)
  */
 function FeaturesScene() {
   const { t } = useTranslation()
   const track = useRef<HTMLDivElement>(null)
+  const pager = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(0)
   const [visible, setVisible] = useState(false)
-  const idxRef = useRef(0)
 
   useEffect(() => {
     const el = track.current
-    const sticky = el?.firstElementChild as HTMLElement | null
-    if (!el || !sticky) return
+    const pg = pager.current
+    const sticky = el?.querySelector<HTMLElement>('.fx-sticky')
+    if (!el || !pg || !sticky) return
     const N = ORDER.length
     const fit = () => {
       // الموبايل ياخد ~٧٤٪ من ارتفاع المساحة الثابتة ومايعدّيش عرض الشاشة
@@ -472,147 +474,50 @@ function FeaturesScene() {
       })
       el.classList.remove('fx-measuring')
     }
-    let locked = false
-    let lastInput = -1e9 // آخر سحب/عجلة/كيبورد من المستخدم
-    let lastWheel = -1e9
-    let lastStep = -1e9
-    let prevY = window.scrollY
-    let touchY: number | null = null
-    let touchDone = false
     let raf = 0
-
-    const stickyTop = () => parseFloat(getComputedStyle(sticky).top) || 0
-    // مكان التثبيت: القسم مالي الشاشة تحت الترويسة
-    const lockY = () => Math.round(el.getBoundingClientRect().top + window.scrollY - stickyTop())
-    const jump = (top: number, smooth = false) =>
-      window.scrollTo({ top, behavior: smooth ? 'smooth' : ('instant' as ScrollBehavior) })
-    const setLock = (on: boolean) => {
-      locked = on
-      document.documentElement.classList.toggle('fx-lock', on)
+    // الميزة الحالية من مكان السكرول جوّه المساحة (بتتغيّر في نص السحبة، فالحركة بتبدأ بدري)
+    const onPage = () => {
+      const h = pg.clientHeight || 1
+      setIdx(Math.min(N - 1, Math.max(0, Math.round(pg.scrollTop / h))))
     }
-    const userScrolling = () => performance.now() - lastInput < 1200
-
-    // خطوة واحدة لكل إيماءة؛ عند الطرفين بنطلع من القسم
-    const act = (dir: 1 | -1) => {
-      const next = idxRef.current + dir
-      lastStep = performance.now()
-      if (next >= 0 && next < N) {
-        idxRef.current = next
-        setIdx(next)
-        return
-      }
-      setLock(false)
-      if (dir > 0) jump(lockY() + el.offsetHeight, true)
-      else {
-        const sec = el.closest('section')
-        jump(
-          sec ? sec.getBoundingClientRect().top + window.scrollY - stickyTop() : lockY() - window.innerHeight / 2,
-          true,
-        )
-      }
-    }
-
     const onScroll = () => {
-      const y = window.scrollY
-      const L = lockY()
-      if (!locked && userScrolling() && ((prevY < L && y >= L) || (prevY > L && y <= L))) {
-        // داخل بسحبة (حتى لو قوية): نقف عند القسم. باقي السحبة دي مابتحسبش خطوة
-        jump(L)
-        setLock(true)
-        touchDone = true
-        lastStep = performance.now()
-      } else if (locked && Math.abs(y - L) > 2) {
-        if (userScrolling())
-          jump(L) // بقايا اندفاع السحبة: نفضل ثابتين
-        else setLock(false) // سكرول برمجي (لينك في القايمة): نسيبه يعدّي
-      }
-      prevY = window.scrollY
-      if (!raf)
-        raf = requestAnimationFrame(() => {
-          raf = 0
-          const r = el.getBoundingClientRect()
-          setVisible(r.top < window.innerHeight && r.bottom > 0)
-        })
-    }
-
-    const onTouchStart = (e: TouchEvent) => {
-      touchY = e.touches[0]?.clientY ?? null
-      touchDone = false
-    }
-    const onTouchMove = (e: TouchEvent) => {
-      lastInput = performance.now()
-      if (!locked) return
-      if (e.cancelable) e.preventDefault()
-      if (touchDone || touchY === null) return
-      const dy = touchY - (e.touches[0]?.clientY ?? touchY)
-      if (Math.abs(dy) < 24) return
-      touchDone = true // السحبة دي خلاص اتحسبت — مهما طوّلت
-      act(dy > 0 ? 1 : -1)
-    }
-    // من غير ‎lastInput‎ هنا: الضغطة (تاب) على لينك في القايمة فيها ‎touchend‎ من غير سحب، ولو
-    // اتحسبت «سكرول من المستخدم» كنا هنشد السكرول البرمجي بتاع اللينك ونرجّعه للقسم
-    const onTouchEnd = () => {
-      touchY = null
-    }
-    const onWheel = (e: WheelEvent) => {
-      const now = performance.now()
-      lastInput = now
-      // دفعة عجلة = سلسلة أحداث ورا بعض؛ دفعة جديدة لو فيه سكوت ‎220ms‎
-      const fresh = now - lastWheel > 220
-      lastWheel = now
-      if (!locked) return
-      if (e.cancelable) e.preventDefault()
-      if (!fresh || now - lastStep < 450 || Math.abs(e.deltaY) < 3) return
-      act(e.deltaY > 0 ? 1 : -1)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (e.defaultPrevented || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-      const down = e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)
-      const up = e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)
-      if (!down && !up) return
-      lastInput = performance.now()
-      if (!locked) return
-      e.preventDefault()
-      act(down ? 1 : -1)
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const r = el.getBoundingClientRect()
+        const top = parseFloat(getComputedStyle(el).scrollMarginTop) || 0
+        // المساحة بتاخد السحب بس والقسم مالي الشاشة؛ غير كده السحب بيحرّك الصفحة عادي
+        el.classList.toggle('is-active', Math.abs(r.top - top) < 6)
+        setVisible(r.top < window.innerHeight && r.bottom > 0)
+        // القسم برّه الشاشة خالص: نرجّعه للبداية لو هو تحت، وللآخر لو هو فوق — فاللي داخل من
+        // فوق يبدأ من أول ميزة، واللي راجع من تحت يرجع من آخر ميزة
+        if (r.top > window.innerHeight && pg.scrollTop !== 0) pg.scrollTop = 0
+        else if (r.bottom < 0 && pg.scrollTop < pg.scrollHeight - pg.clientHeight) pg.scrollTop = pg.scrollHeight
+      })
     }
     const onResize = () => {
       fit()
-      if (locked) jump(lockY())
+      onScroll()
     }
 
     fit()
-    if (Math.abs(window.scrollY - lockY()) < 3) setLock(true)
     onScroll()
     // الخطوط (Amiri) لو وصلت بعد أول قياس بتغيّر ارتفاع الكارت — نقيس تاني
     document.fonts?.ready.then(fit)
-    const passive = { passive: true }
-    const active = { passive: false }
-    window.addEventListener('scroll', onScroll, passive)
+    pg.addEventListener('scroll', onPage, { passive: true })
+    window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
-    window.addEventListener('touchstart', onTouchStart, passive)
-    window.addEventListener('touchmove', onTouchMove, active)
-    window.addEventListener('touchend', onTouchEnd, passive)
-    window.addEventListener('touchcancel', onTouchEnd, passive)
-    window.addEventListener('wheel', onWheel, active)
-    window.addEventListener('keydown', onKey)
     return () => {
+      pg.removeEventListener('scroll', onPage)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onResize)
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-      window.removeEventListener('touchcancel', onTouchEnd)
-      window.removeEventListener('wheel', onWheel)
-      window.removeEventListener('keydown', onKey)
       cancelAnimationFrame(raf)
-      setLock(false)
     }
   }, [])
 
   return (
     <>
-      <div className="fx-track" ref={track} style={{ ['--fx-n' as string]: ORDER.length }}>
+      <div className="fx-track" ref={track}>
         <div className="fx-sticky">
           <div className="fx-scene">
             <div className="fx-rig">
@@ -638,6 +543,12 @@ function FeaturesScene() {
               <li key={f} className={i === idx ? 'on' : i < idx ? 'done' : undefined} />
             ))}
           </ol>
+        </div>
+        {/* مساحة السكرول الشفافة فوق المشهد: صفحة لكل ميزة */}
+        <div className="fx-pager" ref={pager} aria-hidden="true">
+          {ORDER.map((f) => (
+            <div key={f} className="fx-page" />
+          ))}
         </div>
       </div>
       {/* المشهد كله زخرفة؛ قارئ الشاشة بيقرا القايمة دي */}
