@@ -593,7 +593,7 @@ class ClientFollowupApiTests(GuestsApiCase):
     def test_shell_has_followup_share_preview(self):
         html = self.client.get(f"/i/{self.inv.slug}/client/{self.inv.client_token}/").content.decode()
         self.assertIn("<title>متابعة تأكيدات الحضور ورسائل التهنئة</title>", html)
-        self.assertIn("followup-share.jpg", html)
+        self.assertIn("followup-share-v2.jpg", html)
         self.assertIn('property="og:image:width" content="1600"', html)
 
     @override_settings(SPA_BASENAME="")

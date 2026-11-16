@@ -41,9 +41,10 @@ def _share_overrides(request) -> dict:
         return {
             "share_title": FOLLOWUP_TITLE,
             "share_description": FOLLOWUP_DESC,
-            "share_image": settings.SITE_URL + static("images/followup-share.jpg"),
+            # اسم جديد (‎-v2‎) عشان واتساب/ميتا بيخزّنوا المعاينة بالرابط — الاسم القديم كان ممكن يفضل يطلع
+            "share_image": settings.SITE_URL + static("images/followup-share-v2.jpg"),
             "share_image_width": 1600,
-            "share_image_height": 900,
+            "share_image_height": 837,
         }
     return {}
 
