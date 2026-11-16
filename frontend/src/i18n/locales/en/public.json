@@ -123,6 +123,7 @@
   },
   "whatsapp": {
     "label": "Message us on WhatsApp",
+    "cta": "Chat with us",
     "close": "Close",
     "status": "Answers within minutes",
     "greeting": "Congratulations ❤️ We'd love to help with all your event needs. How can we help you? 😊",

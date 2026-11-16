@@ -2166,3 +2166,116 @@ a.lb-social:hover { transform: translateY(-2px); opacity: .85; }
   background: rgba(180, 65, 60, .12);
   color: #b4413c;
 }
+
+/* ================================================================
+   أزرار التحكم الفخمة: الموسيقى، التمرير التلقائي، المشاركة، والرجوع
+   عيلة واحدة: سطح القالب بإضاءة خفيفة + حلقة دهبي متدرّجة (‎conic-gradient‎ على الحد) بلون
+   ‎--accent‎ بتاع كل قالب، فبتمشي مع أي قالب. بتتحمّل في الآخر فبتغلب التعريفات القديمة فوق.
+   ================================================================ */
+.lb-music:not(.lb-music--bar),
+.lb-autoscroll,
+.lb-share-fab,
+.lb-back-fab {
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(circle at 30% 22%, color-mix(in srgb, var(--surface) 78%, #fff), var(--surface) 72%) padding-box,
+    conic-gradient(from 210deg, var(--accent), var(--accent-20), var(--accent) 50%, var(--accent-20), var(--accent)) border-box;
+  box-shadow: 0 14px 28px -14px rgba(0, 0, 0, .5), 0 0 0 4px var(--accent-10);
+}
+
+/* ---- الموسيقى: أسطوانة جوّه الحلقة بتلف وهي شغّالة (الزرار نفسه مابقاش بيلف) */
+.lb-music { padding: 0; overflow: visible; }
+.lb-music:not(.lb-music--bar) { width: 54px; height: 54px; }
+.lb-music.is-playing { animation: none; }
+.lb-music-disc {
+  position: relative; width: 38px; height: 38px; border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--accent) 0 21%, #1a1510 22% 25%, transparent 26%),
+    repeating-radial-gradient(circle, #1a1510 0 1.5px, #2b241b 1.5px 3px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 3px 8px -2px rgba(0, 0, 0, .45);
+}
+/* لمعة على الأسطوانة — بتلف معاها فاللفّة تبان */
+.lb-music-disc::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 20deg, transparent 0 14%, rgba(255, 255, 255, .2) 19%, transparent 25% 64%,
+              rgba(255, 255, 255, .13) 69%, transparent 75%);
+}
+.lb-music.is-playing .lb-music-disc { animation: lb-spin 3.2s linear infinite; }
+/* الشارة في الركن: مثلث تشغيل وهي واقفة / ٣ أعمدة صوت بتتحرك وهي شغّالة */
+.lb-music-badge {
+  position: absolute; inset-block-end: -3px; inset-inline-end: -3px;
+  width: 21px; height: 21px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; gap: 1.6px;
+  background: var(--accent); color: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface), 0 4px 8px -3px rgba(0, 0, 0, .4);
+}
+.lb-music-badge::before {
+  content: ""; width: 7px; height: 8px; margin-inline-start: 2px; background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+[dir="rtl"] .lb-music-badge::before { margin-inline-start: 0; margin-inline-end: 2px; }
+.lb-music-badge i { display: none; width: 2.2px; height: 9px; border-radius: 2px; background: currentColor; transform-origin: bottom; }
+.lb-music.is-playing .lb-music-badge::before { display: none; }
+.lb-music.is-playing .lb-music-badge i { display: block; animation: lb-eq .9s ease-in-out infinite alternate; }
+.lb-music.is-playing .lb-music-badge i:nth-child(2) { animation-delay: -.35s; }
+.lb-music.is-playing .lb-music-badge i:nth-child(3) { animation-delay: -.65s; }
+@keyframes lb-eq { from { transform: scaleY(.35); } to { transform: scaleY(1); } }
+/* موجة خفيفة حوالين الزرار وهو شغّال */
+.lb-music:not(.lb-music--bar)::after {
+  content: ""; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid var(--accent); opacity: 0;
+}
+.lb-music.is-playing:not(.lb-music--bar)::after { animation: lb-music-ring 2.6s ease-out infinite; }
+@keyframes lb-music-ring { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(1.5); } }
+.lb-music:hover .lb-music-disc { transform: scale(1.04); }
+.lb-music:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* شكل الشريط (لو المصمّم اختاره): شريط سفلي بخط دهبي فوقه والأسطوانة في النص */
+.lb-music--bar {
+  border: 0; border-block-start: 1px solid var(--accent-40);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: 0 -10px 24px -16px rgba(0, 0, 0, .35);
+}
+.lb-music--bar .lb-music-disc { width: 34px; height: 34px; }
+.lb-music--bar .lb-music-badge { position: static; margin-inline-start: 10px; }
+.lb-music--bar { display: flex; align-items: center; justify-content: center; }
+
+/* ---- التمرير التلقائي: نفس العيلة، وحلقة متقطّعة بتلف بالراحة وهو شغّال */
+.lb-autoscroll { width: 46px; height: 46px; opacity: .9; overflow: visible; }
+.lb-autoscroll svg { width: 17px; height: 17px; position: relative; }
+.lb-autoscroll::after {
+  content: ""; position: absolute; inset: 4px; border-radius: 50%; pointer-events: none;
+  border: 1px dashed var(--accent-40);
+}
+.lb-autoscroll:not(.is-paused)::after { animation: lb-spin 9s linear infinite; }
+.lb-autoscroll:hover, .lb-autoscroll:focus-visible { opacity: 1; transform: translateY(-2px); }
+
+/* ---- المشاركة والرجوع (معاينة القالب): زجاج فوق الافتتاحية بنفس الحلقة */
+.lb-share-fab, .lb-back-fab {
+  background:
+    radial-gradient(circle at 30% 22%, color-mix(in srgb, var(--surface) 70%, transparent), color-mix(in srgb, var(--surface) 82%, transparent) 72%) padding-box,
+    conic-gradient(from 210deg, var(--accent), var(--accent-20), var(--accent) 50%, var(--accent-20), var(--accent)) border-box;
+  color: var(--text);
+}
+.lb-share-fab svg { stroke: var(--accent); }
+.lb-share-fab svg circle { fill: var(--accent); }
+.lb-share-fab:hover {
+  border-color: transparent; color: #fff;
+  background:
+    radial-gradient(circle at 30% 22%, #52ef93, #25d366 50%, #128c4b) padding-box,
+    conic-gradient(from 210deg, var(--accent), var(--accent-20), var(--accent) 50%, var(--accent-20), var(--accent)) border-box;
+}
+.lb-share-fab:hover svg { stroke: #fff; }
+.lb-share-fab:hover svg circle { fill: #fff; }
+.lb-back-fab svg { stroke: var(--accent); }
+.lb-back-fab:hover {
+  transform: translateY(-1px);
+  background:
+    radial-gradient(circle at 30% 22%, var(--accent-10), color-mix(in srgb, var(--surface) 90%, transparent)) padding-box,
+    conic-gradient(from 210deg, var(--accent), var(--accent-20), var(--accent) 50%, var(--accent-20), var(--accent)) border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-music.is-playing .lb-music-disc, .lb-music-badge i, .lb-autoscroll::after, .lb-music::after { animation: none !important; }
+}

@@ -7,23 +7,39 @@ import type { PublicTemplate } from '../types'
 
 const previewPath = (template: PublicTemplate) => `/templates/${template.slug}/preview/`
 
-/** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط.
- *  الضغط على الصورة بيفتح معاينة القالب زي الزرار بالظبط. اللينك برّه ترتيب التاب وقارئ
- *  الشاشة عن قصد: الزرار اللي تحت هو نفس الوجهة، فمايتكررش مرتين.
- *  ‎ornate‎ (الرئيسية بس): أركان دهبي جوّه الغلاف — زخرفة بحتة
- *  ومتموضعة ‎absolute‎ فمش بتغيّر مقاس الكارت. */
-function Cover({ template, name, ornate = false }: { template: PublicTemplate; name: string; ornate?: boolean }) {
+/** الغلاف: صورة لو فيه، وإلا أول حرف من الاسم. ‎JSON.stringify‎ بيهرّب أي علامة اقتباس في الرابط. */
+function Cover({ template, name }: { template: PublicTemplate; name: string }) {
   return (
-    <Link
-      to={previewPath(template)}
+    <div
       className="tpl-cover"
-      tabIndex={-1}
-      aria-hidden="true"
       style={template.cover ? { backgroundImage: `url(${JSON.stringify(template.cover)})` } : undefined}
     >
       {!template.cover && firstChar(name)}
-      {ornate && <span className="tpl-frame" aria-hidden="true" />}
+    </div>
+  )
+}
+
+/**
+ * الغلاف جوّه «برواز»: حافة عاجي رفيعة بخط دهبي زي لوحة متبروزة. البرواز كله لينك للمعاينة
+ * (الضغط على صورة القالب بيفتحه)، وبالمرور الصورة بتقرّب بالراحة ويظهر عليها اسم الفعل.
+ */
+function Frame({ template, name, label }: { template: PublicTemplate; name: string; label: string }) {
+  return (
+    <Link className="tpl-frame" to={previewPath(template)} aria-label={`${label} — ${name}`}>
+      <Cover template={template} name={name} />
+      <span className="tpl-frame-cta" aria-hidden="true">
+        {label}
+      </span>
     </Link>
+  )
+}
+
+/** سهم صغير بيلف مع اتجاه القراية (الـCSS بيقلبه في العربي) */
+function Arrow() {
+  return (
+    <svg className="tpl-link-arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M5 12h13m0 0-5-5m5 5-5 5" />
+    </svg>
   )
 }
 
@@ -43,22 +59,24 @@ function Meta({ template }: { template: PublicTemplate }) {
   )
 }
 
-/** كارت القالب في الرئيسية: زرار واحد بيفتح معاينة القالب. */
+/** كارت القالب في الرئيسية: برواز الغلاف، التصنيف والاسم، ولينك «تجربة قالب». */
 export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(lang, template.name, template.nameEn)
   const hasDescription = !!(template.description || template.descriptionEn)
+  const label = t('public.templates.preview')
   return (
-    <article className="tpl-card tpl-card--luxe">
-      <Cover template={template} name={name} ornate />
+    <article className="tpl-card tpl-card--frame">
+      <Frame template={template} name={name} label={label} />
       <div className="tpl-body">
-        <h3>{name}</h3>
         <Meta template={template} />
+        <h3>{name}</h3>
         {hasDescription && <p className="tpl-desc">{pick(lang, template.description, template.descriptionEn)}</p>}
         <div className="tpl-actions">
-          <Link className="btn btn--gold btn--sm btn--shine" to={previewPath(template)}>
-            {t('public.templates.preview')}
+          <Link className="tpl-link" to={previewPath(template)}>
+            <span>{label}</span>
+            <Arrow />
           </Link>
         </div>
       </div>
@@ -66,18 +84,18 @@ export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
   )
 }
 
-/** كارت القالب في معرض القوالب: معاينة حية + «اطلبه». */
+/** كارت القالب في معرض القوالب: نفس البرواز + معاينة حية و«اطلبه». */
 export function GalleryTemplateCard({ template }: { template: PublicTemplate }) {
   const { t } = useTranslation()
   const lang = useLang()
   const name = pick(lang, template.name, template.nameEn)
   const hasDescription = !!(template.description || template.descriptionEn)
   return (
-    <article className="tpl-card">
-      <Cover template={template} name={name} />
+    <article className="tpl-card tpl-card--frame">
+      <Frame template={template} name={name} label={t('public.gallery.live')} />
       <div className="tpl-body">
-        <h3>{name}</h3>
         <Meta template={template} />
+        <h3>{name}</h3>
         {hasDescription && (
           <p className="muted tpl-desc--sm">
             {pick(lang, truncateChars(template.description, 80), truncateChars(template.descriptionEn, 80))}

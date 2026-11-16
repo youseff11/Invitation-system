@@ -47,8 +47,6 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
       </div>
       <div className="hero-copy">
         <div className="hero-copy-in">
-          {/* سطر صغير شيك بدل التاج الزخرفي */}
-          <p className="hero-eyebrow">{t('public.hero.eyebrow')}</p>
           <h1>
             <span className="h1-top">{text(custom?.top, 'top')}</span>
             <span className="h1-main">{text(custom?.main, 'main')}</span>

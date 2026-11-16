@@ -72,7 +72,7 @@
    (فاتحة أو غامقة) بدل الاتنين، والاسم فاضل موجود كنص لقارئات الشاشة. */
 .brand {
   display: block; flex: none; text-decoration: none;
-  height: 44px; aspect-ratio: 714 / 200;
+  height: 44px; aspect-ratio: 872 / 208;
   margin-inline-start: 10px;
   background-image: var(--site-logo-light, url("/site-logo/light.png"));
   background-size: contain; background-position: center; background-repeat: no-repeat;
@@ -85,7 +85,7 @@
 
 /* النسخة الكاملة المرصوصة — صفحة الدخول */
 .brand--stacked {
-  height: 120px; aspect-ratio: 694 / 658; margin-inline: auto;
+  height: 120px; aspect-ratio: 606 / 560; margin-inline: auto;
   background-image: url("/static/images/logo-full-light.png");
 }
 [data-theme="dark"] .brand--stacked { background-image: url("/static/images/logo-full-dark.png"); }

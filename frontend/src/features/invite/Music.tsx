@@ -131,7 +131,13 @@ export function Music({ config }: { config: MusicConfig }) {
       className={`lb-music${config.player === 'bar' ? ' lb-music--bar' : ''}`}
       aria-label={t('music.play')}
     >
-      ♪
+      {/* أسطوانة بتلف وهي شغّالة + شارة صغيرة: مثلث تشغيل وهي واقفة، وأعمدة صوت وهي شغّالة */}
+      <span className="lb-music-disc" aria-hidden="true" />
+      <span className="lb-music-badge" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
     </button>
   )
 }

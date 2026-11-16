@@ -4,97 +4,121 @@
    (المميزات والخطوات محتاجين كمان رجوع ملفاتهم في sections/).
    ================================================================ */
 
-/* الغلاف بقى لينك للمعاينة (الرئيسية والمعرض) — من غير خط تحت حرف الغلاف الاحتياطي */
-a.tpl-cover { text-decoration: none; cursor: pointer; }
-
-/* ---------------------------------------------------------- 1) كروت القوالب
-   مقاس الكارت زي ما هو بالظبط: نفس الحشو والخطوط والغلاف. كل الزخرفة
-   متموضعة ‎absolute‎ أو خلفيات، فمفيش بيكسل واحد اتغيّر في المقاس. */
-#templates .tpl-card--luxe {
-  /* إطار دهبي متدرّج — لامع في الركنين وهادي في النص — بنفس سُمك الحد القديم */
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(155deg,
-      color-mix(in srgb, var(--accent) 70%, transparent),
-      color-mix(in srgb, var(--accent) 16%, var(--line)) 30%,
-      color-mix(in srgb, var(--accent) 16%, var(--line)) 70%,
-      color-mix(in srgb, var(--accent) 70%, transparent)) border-box;
-  box-shadow: var(--lux-shadow);
+/* ---------------------------------------------------------- 1) كروت القوالب — «متبروزة»
+   رجوع شكل ‎f52608c‎: الغلاف جوّه برواز عاجي بخط دهبي، تحته التصنيف بين شرطتين والاسم بخط
+   سيريف ولينك نصّي بسهم. المقاس زي ما هو: مفيش تغيير في الشبكة (الأعمدة/المسافات) ولا في
+   نسبة الغلاف — دي فاضلة من public.css. */
+.tpl-card--frame,
+.tpl-card--frame:hover,
+#templates .tpl-card.tpl-card--frame,
+#templates .grid--4[data-per-row="2"] .tpl-card.tpl-card--frame {
+  background: none; border: 0; border-radius: 0; box-shadow: none; outline: 0;
+  padding: 0; overflow: visible; transform: none;
 }
-#templates .tpl-card--luxe:hover {
-  border-color: transparent;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 34px 60px -34px color-mix(in srgb, var(--accent) 75%, rgba(23, 19, 15, .7));
-}
+.tpl-card--frame { display: flex; flex-direction: column; }
 
-/* برواز شعري جوّه الغلاف — زي «باسبارتو» حوالين لوحة */
-#templates .tpl-card--luxe .tpl-cover::before {
-  content: ""; position: absolute; inset: 9px; z-index: 1; pointer-events: none;
-  border: 1px solid rgba(255, 244, 220, .5); border-radius: 7px;
-  transition: inset .45s cubic-bezier(.22, .8, .3, 1), border-color .45s ease;
-}
-#templates .tpl-card--luxe:hover .tpl-cover::before { inset: 6px; border-color: rgba(255, 238, 200, .85); }
-
-/* أركان دهبي جوّه البرواز — نفس أركان الباقات (‎--orn-corner-*‎ من luxe.css) */
+/* البرواز: حافة عاجي + حد دهبي + خط شعري جوّاه */
 .tpl-frame {
-  position: absolute; inset: 14px; z-index: 1; pointer-events: none;
-  background-color: #f4dfae; opacity: .85;
-  -webkit-mask: var(--orn-corner-tl) top left / 20px no-repeat,
-                var(--orn-corner-tr) top right / 20px no-repeat,
-                var(--orn-corner-bl) bottom left / 20px no-repeat,
-                var(--orn-corner-br) bottom right / 20px no-repeat;
-          mask: var(--orn-corner-tl) top left / 20px no-repeat,
-                var(--orn-corner-tr) top right / 20px no-repeat,
-                var(--orn-corner-bl) bottom left / 20px no-repeat,
-                var(--orn-corner-br) bottom right / 20px no-repeat;
-  transition: inset .45s cubic-bezier(.22, .8, .3, 1), opacity .45s ease;
+  position: relative; isolation: isolate; display: block;
+  padding: 8px; border-radius: 20px; text-decoration: none;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 24px 46px -32px rgba(60, 42, 14, .5);
+  transition: transform .7s cubic-bezier(.2, .8, .2, 1), box-shadow .7s ease, border-color .4s ease;
 }
-#templates .tpl-card--luxe:hover .tpl-frame { inset: 11px; opacity: 1; }
+.tpl-frame::before {
+  content: ""; position: absolute; inset: 4px; z-index: 3; pointer-events: none;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  transition: border-color .4s ease;
+}
+.tpl-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.tpl-card--frame .tpl-cover,
+#templates .tpl-card--frame .tpl-cover {
+  position: relative; isolation: isolate; overflow: hidden; border-radius: 13px;
+}
+/* الصورة على طبقة لوحدها عشان تقرّب جوّه البرواز من غير ما البرواز يكبر */
+.tpl-card--frame .tpl-cover::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: inherit; background-size: cover; background-position: center;
+  transition: transform 1.6s cubic-bezier(.2, .8, .2, 1);
+}
+.tpl-card--frame .tpl-cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(14, 10, 5, .62), rgba(14, 10, 5, .08) 55%, transparent);
+  opacity: 0; transition: opacity .6s ease;
+}
+.tpl-frame-cta {
+  position: absolute; z-index: 4; left: 50%; bottom: 28px; translate: -50% 12px;
+  padding: 9px 22px; border-radius: 999px; white-space: nowrap;
+  background: rgba(255, 250, 240, .14); border: 1px solid rgba(255, 240, 210, .6);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  color: #fff; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity .5s ease, translate .6s cubic-bezier(.2, .8, .2, 1);
+}
+@media (hover: hover) {
+  .tpl-frame:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55),
+                0 36px 64px -36px color-mix(in srgb, var(--accent) 55%, rgba(60, 42, 14, .7));
+  }
+  .tpl-frame:hover::before { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+  .tpl-frame:hover .tpl-cover::before { transform: scale(1.06); }
+  .tpl-frame:hover .tpl-cover::after { opacity: 1; }
+  .tpl-frame:hover .tpl-frame-cta { opacity: 1; translate: -50% 0; }
+}
 
-/* ظل خفيف تحت الغلاف دايماً + لمعة مايلة بتعدّي مرة لما الماوس ييجي */
-#templates .tpl-card--luxe .tpl-cover::after {
-  opacity: 1;
-  background:
-    linear-gradient(115deg, transparent 42%, rgba(255, 250, 238, .42) 50%, transparent 58%) 150% 0 / 250% 100% no-repeat,
-    linear-gradient(to top, rgba(20, 14, 6, .26), transparent 34%);
-  transition: none;
+.tpl-card--frame .tpl-body,
+#templates .tpl-card--frame .tpl-body,
+#templates .grid--4[data-per-row="2"] .tpl-card--frame .tpl-body {
+  flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 18px 4px 0; min-height: 0; background: none;
 }
-#templates .tpl-card--luxe:hover .tpl-cover::after {
-  background-position: -50% 0, 0 0;
-  transition: background-position 1s cubic-bezier(.22, .8, .3, 1);
+/* التصنيف: سطر صغير دهبي بين شرطتين */
+.tpl-card--frame .tpl-meta {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--accent); font-size: 11.5px; letter-spacing: .06em;
 }
-
-/* جسم الكارت: عاجي دافي من فوق وخط دهبي شعري بيفصله عن الغلاف */
-#templates .tpl-card--luxe .tpl-body {
-  position: relative;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 93%, var(--accent)), var(--surface) 75%);
+.tpl-card--frame .tpl-meta::before, .tpl-card--frame .tpl-meta::after {
+  content: ""; width: 18px; height: 1px; background: color-mix(in srgb, var(--accent) 55%, transparent);
 }
-#templates .tpl-card--luxe .tpl-body::before {
-  content: ""; position: absolute; top: 0; inset-inline: 14px; height: 1px;
-  background: var(--gold-line); opacity: .8;
+.tpl-card--frame .tpl-body h3,
+#templates .tpl-card--frame .tpl-body h3 {
+  margin: 0; color: var(--text); white-space: normal;
+  font-family: "Amiri", Georgia, serif; font-size: 22px; font-weight: 700; line-height: 1.35;
 }
-/* التصنيف (Premium) دهبي وقبله معيّن صغير */
-#templates .tpl-card--luxe .tpl-meta {
-  display: inline-flex; align-items: center; gap: 7px; align-self: flex-start;
-  color: var(--accent);
+.tpl-card--frame .tpl-desc {
+  margin: 0; max-width: 30ch; color: var(--muted); font-size: 13.5px; line-height: 1.7;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
-#templates .tpl-card--luxe .tpl-meta::before {
-  content: ""; width: 5px; height: 5px; flex: none; transform: rotate(45deg);
-  background: var(--accent);
+.tpl-card--frame .tpl-actions,
+#templates .tpl-card--frame .tpl-actions { width: auto; margin-top: auto; padding-top: 8px; justify-content: center; gap: 8px; }
+/* لينك نصّي بخط تحته بيكمل بالمرور */
+.tpl-link {
+  position: relative; display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 2px; color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none;
 }
-/* الزرار: دهب متدرّج بنفس المقاس، ولمعته بتعدّي لما الماوس ييجي على الكارت كله */
-#templates .tpl-card--luxe .btn--gold {
-  background: var(--gold-fill);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35),
-              0 10px 20px -12px color-mix(in srgb, var(--accent) 90%, transparent);
+.tpl-link::after {
+  content: ""; position: absolute; inset-inline: 2px; bottom: 2px; height: 1px;
+  background: currentColor; transform: scaleX(.3); transition: transform .45s cubic-bezier(.2, .8, .2, 1);
 }
-#templates .tpl-card--luxe:hover .btn--shine::after { transform: rotate(22deg) translateX(320%); }
+.tpl-link:hover::after, .tpl-link:focus-visible::after { transform: scaleX(1); }
+.tpl-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.tpl-link-arrow {
+  width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; transition: translate .35s ease;
+}
+[dir="rtl"] .tpl-link-arrow { scale: -1 1; }
+.tpl-link:hover .tpl-link-arrow { translate: 4px 0; }
+[dir="rtl"] .tpl-link:hover .tpl-link-arrow { translate: -4px 0; }
 
 @media (max-width: 600px) {
-  #templates .grid--4[data-per-row="2"] .tpl-frame { inset: 10px; -webkit-mask-size: 14px; mask-size: 14px; }
-  #templates .grid--4[data-per-row="2"] .tpl-cover::before { inset: 6px; }
+  #templates .tpl-card--frame .tpl-body h3 { font-size: 20px; }
+  #templates .grid--4[data-per-row="2"] .tpl-frame { padding: 5px; border-radius: 16px; }
+  #templates .grid--4[data-per-row="2"] .tpl-frame::before { inset: 3px; border-radius: 13px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card--frame .tpl-cover { border-radius: 11px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card--frame .tpl-body { padding-top: 12px; gap: 4px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card--frame .tpl-body h3 { font-size: 17px; }
 }
 
 /* ---------------------------------------------------------- 2) المميزات: موبايل في النص
@@ -941,3 +965,177 @@ a.tpl-cover { text-decoration: none; cursor: pointer; }
   .fx-halo::before, .fx-halo::after, .fx-eq i, .arch--final .arch-key { animation: none; }
   .arch:hover .arch-frame, .fx-part.is-on { transform: none; }
 }
+
+/* ---------------------------------------------------------- 4) زر واتساب العائم والشات
+   الزر: أخضر واتساب متدرّج بحلقة دهبي رفيعة (‎conic-gradient‎ على الحد)، موجتين بيتنفّسوا
+   بهدوء، نقطة «أونلاين»، وكلمة «كلّمنا على واتساب» بتطلع جنبه مرة أول ما الصفحة تفتح
+   (بعد ثانيتين، لمدة ٤ ثواني) وبعدها بالمرور بس. */
+.wa-float {
+  width: 58px; height: 58px;
+  border: 1.5px solid transparent;
+  background:
+    radial-gradient(circle at 32% 26%, #52ef93 0%, #25d366 44%, #128c4b 100%) padding-box,
+    conic-gradient(from 200deg, #f6e3b4, var(--accent) 25%, #8d6a31 50%, var(--accent) 75%, #f6e3b4) border-box;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--surface) 75%, transparent),
+              0 16px 30px -12px rgba(18, 140, 75, .7), 0 6px 14px -6px rgba(0, 0, 0, .35);
+  transition: transform .35s cubic-bezier(.2, .9, .3, 1.3), box-shadow .3s ease;
+}
+.wa-float::before, .wa-float::after {
+  content: ""; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid #25d366; opacity: 0;
+  animation: wa-ring 3.4s ease-out infinite;
+}
+.wa-float::after { animation-delay: 1.7s; }
+@keyframes wa-ring {
+  0% { opacity: .6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+.wa-float:hover { transform: translateY(-3px) scale(1.06); }
+.wa-float .wa-icon { font-size: 30px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25)); }
+.wa-float.is-open::before, .wa-float.is-open::after { animation: none; opacity: 0; }
+
+.wa-dot {
+  position: absolute; top: 2px; inset-inline-end: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: #44f08c; box-shadow: 0 0 0 2.5px #fff;
+}
+.wa-float.is-open .wa-dot { display: none; }
+
+.wa-label {
+  position: absolute; top: 50%; inset-inline-start: calc(100% + 12px);
+  white-space: nowrap; padding: 8px 15px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; color: var(--text);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: 0 12px 26px -14px rgba(40, 28, 10, .55);
+  opacity: 0; transform: translateY(-50%) scale(.9); pointer-events: none;
+  transition: opacity .3s ease, transform .35s cubic-bezier(.2, .9, .3, 1.3);
+  animation: wa-peek 4.6s ease 2s both;
+}
+@keyframes wa-peek {
+  0% { opacity: 0; transform: translateY(-50%) scale(.9); }
+  10%, 86% { opacity: 1; transform: translateY(-50%) scale(1); }
+  100% { opacity: 0; transform: translateY(-50%) scale(.9); }
+}
+@media (hover: hover) {
+  .wa-float:hover .wa-label { animation: none; opacity: 1; transform: translateY(-50%) scale(1); }
+}
+.wa-float.is-open .wa-label { display: none; }
+
+@media (max-width: 600px) {
+  .wa-float { width: 52px; height: 52px; }
+  .wa-float .wa-icon { font-size: 27px; }
+  .wa-label { font-size: 12px; padding: 7px 12px; }
+}
+
+/* الشات: نفس روح الزر — راس أخضر غامق (من لون اللوجو) بخط دهبي، وإطار دهبي خفيف */
+.wa-chat {
+  inset-block-end: 96px; border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  box-shadow: 0 32px 70px -24px rgba(0, 0, 0, .5), 0 0 0 6px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.wa-chat-head {
+  position: relative;
+  background: linear-gradient(135deg, #0d5650, #075e54 55%, #0a403c);
+}
+.wa-chat-head::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, #e7cb8f 30%, #f6e3b4 50%, #e7cb8f 70%, transparent);
+}
+.wa-chat-avatar { border: 2px solid #e9cf95; box-shadow: 0 0 0 3px rgba(233, 207, 149, .25); }
+[data-theme="dark"] .wa-chat-head { background: linear-gradient(135deg, #133f3b, #1f2c34 60%); }
+@media (max-width: 600px) { .wa-chat { inset-block-end: 84px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wa-float::before, .wa-float::after { animation: none; }
+  .wa-label { animation: none; }
+}
+
+/* ---------------------------------------------------------- 5) «هل أنت مستعد…» — لوحة زمردي فخمة
+   أخضر غامق من لون اللوجو + دهبي: إطار مزدوج بأركان، نقشة أرابيسك خفيفة، ولمعات بتنوّر.
+   نفس الشكل في الفاتح والغامق. السلكتور ‎.home-cta .cta-lux‎ أقوى من القواعد القديمة
+   في public.css و luxe.css (من غير !important). */
+.home-cta .cta-lux {
+  --cta-gold: #e7cb8f;
+  position: relative; isolation: isolate; overflow: hidden;
+  max-width: 880px; margin-inline: auto; text-align: center;
+  padding: clamp(50px, 6.4vw, 80px) clamp(24px, 6vw, 76px);
+  border-radius: 30px;
+  border: 1px solid rgba(231, 203, 143, .5);
+  color: #f6efe2;
+  background:
+    radial-gradient(110% 80% at 50% -12%, rgba(231, 203, 143, .24), transparent 56%),
+    radial-gradient(55% 60% at 100% 105%, rgba(31, 160, 138, .32), transparent 70%),
+    radial-gradient(45% 50% at 0% 100%, rgba(231, 203, 143, .1), transparent 70%),
+    linear-gradient(160deg, #105049 0%, #0a3733 52%, #062421 100%);
+  box-shadow: 0 46px 90px -44px rgba(6, 36, 33, .9),
+              0 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+/* الإطار الداخلي */
+.home-cta .cta-lux::before {
+  content: ""; position: absolute; inset: 12px; z-index: -1; pointer-events: none;
+  border: 1px solid rgba(231, 203, 143, .38); border-radius: 21px;
+}
+/* زخرفة الحد العلوي (موجودة من قبل) بقت دهبي فاتح */
+.home-cta .cta-lux::after { top: 4px; background-color: var(--cta-gold); }
+.cta-corners {
+  position: absolute; inset: 20px; z-index: -1; pointer-events: none;
+  background-color: var(--cta-gold); opacity: .85;
+  -webkit-mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
+                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
+          mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
+                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
+}
+/* نقشة أرابيسك (شبكة معيّنات ونجوم) شفافة جداً */
+.cta-pattern {
+  position: absolute; inset: 0; z-index: -2; pointer-events: none; opacity: .09;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23e7cb8f' stroke-width='1'%3E%3Cpath d='M32 2 62 32 32 62 2 32Z'/%3E%3Cpath d='M32 18l4 10 10 4-10 4-4 10-4-10-10-4 10-4z'/%3E%3C/g%3E%3C/svg%3E");
+  -webkit-mask: radial-gradient(70% 80% at 50% 50%, #000, transparent);
+          mask: radial-gradient(70% 80% at 50% 50%, #000, transparent);
+}
+/* لمعات صغيرة بتنوّر وتطفي */
+.cta-spark {
+  position: absolute; width: 14px; height: 14px; z-index: -1; pointer-events: none;
+  background: var(--cta-gold);
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: cta-twinkle 3.6s ease-in-out infinite;
+}
+.cta-spark--a { top: 18%; left: 12%; }
+.cta-spark--b { top: 26%; right: 10%; width: 10px; height: 10px; animation-delay: -1.2s; }
+.cta-spark--c { bottom: 22%; left: 20%; width: 8px; height: 8px; animation-delay: -2.4s; }
+@keyframes cta-twinkle { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
+
+.home-cta .cta-lux .eyebrow { color: var(--cta-gold); }
+.home-cta .cta-lux .eyebrow::before { background: linear-gradient(to left, var(--cta-gold), transparent); }
+.home-cta .cta-lux .eyebrow::after { background: linear-gradient(to right, var(--cta-gold), transparent); }
+.home-cta .cta-lux h2 {
+  color: #fff8ea; font-size: clamp(30px, 4.6vw, 54px); line-height: 1.3; margin-bottom: 10px;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .25);
+}
+.home-cta .cta-lux p:not(.eyebrow) { color: rgba(246, 239, 226, .78); margin-bottom: 28px; font-size: clamp(15px, 1.3vw, 17.5px); }
+
+/* الزرار: دهب متدرّج بكلام غامق وأيقونة واتساب، ولمعته بتعدّي بالمرور */
+.cta-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 10px;
+  min-height: 56px; padding: 15px 36px; border-radius: 999px;
+  font-size: 16px; font-weight: 700; color: #2a1d0a; text-decoration: none;
+  background: linear-gradient(135deg, #f6e3b4 0%, #e1bf7c 38%, #c39a52 70%, #a77d3c 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 18px 34px -16px rgba(231, 203, 143, .65),
+              0 0 0 5px rgba(231, 203, 143, .14);
+  transition: transform .3s cubic-bezier(.2, .9, .3, 1.3), box-shadow .3s ease;
+}
+.cta-btn:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 24px 40px -16px rgba(231, 203, 143, .75), 0 0 0 7px rgba(231, 203, 143, .18); }
+.cta-btn:focus-visible { outline: 2px solid #fff8ea; outline-offset: 4px; }
+.cta-btn-icon { width: 20px; height: 20px; flex: none; }
+.cta-note {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;
+  font-size: 12.5px; color: rgba(246, 239, 226, .62);
+}
+.cta-note i { width: 8px; height: 8px; border-radius: 50%; background: #44f08c; box-shadow: 0 0 0 3px rgba(68, 240, 140, .2); }
+
+@media (max-width: 780px) {
+  .home-cta .cta-lux { padding: 46px 20px 40px; border-radius: 24px; }
+  .home-cta .cta-lux::before { inset: 9px; border-radius: 17px; }
+  .cta-corners { inset: 15px; -webkit-mask-size: 22px; mask-size: 22px; }
+  .cta-btn { padding: 14px 26px; font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) { .cta-spark { animation: none; opacity: .6; } }

@@ -125,6 +125,11 @@ export function WhatsAppFloat() {
         <span className="wa-icon--close">
           <CloseIcon />
         </span>
+        {/* نقطة «أونلاين» + كلمة بتطلع مرة أول ما الصفحة تفتح وبعدها بالمرور بس */}
+        <span className="wa-dot" aria-hidden="true" />
+        <span className="wa-label" aria-hidden="true">
+          {t('public.whatsapp.cta')}
+        </span>
       </a>
 
       <div

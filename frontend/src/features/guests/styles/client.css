@@ -37,7 +37,7 @@
 .client-followup .brand--stacked {
   display: block;
   flex: none;
-  aspect-ratio: 694 / 658;
+  aspect-ratio: 606 / 560;
   margin-inline: auto;
   background: url('/static/images/logo-full-light.png') center / contain no-repeat;
 }
@@ -243,3 +243,161 @@
   body.print-wishes .client-followup-message-card p,
   body.print-wishes .client-followup-message-card time { color: #333; }
 }
+
+/* ================================================================
+   الطبقة الفخمة — ألوان اللوجو: زمردي غامق + دهبي على عاجي
+   ================================================================ */
+.client-followup-page {
+  --cf-emerald: #0d5650;
+  --cf-emerald-2: #0a3733;
+  --cf-gold: #c9a35d;
+  --cf-gold-soft: #e7cb8f;
+  background:
+    radial-gradient(70% 45% at 50% 0%, color-mix(in srgb, var(--cf-gold-soft) 22%, transparent), transparent 70%),
+    radial-gradient(50% 40% at 100% 30%, color-mix(in srgb, var(--cf-emerald) 7%, transparent), transparent 70%),
+    var(--bg);
+}
+
+/* الترويسة: كارت عاجي بإطار دهبي مزدوج حوالين اللوجو والترحيب */
+.client-followup-welcome {
+  position: relative; padding: 30px 22px 28px; border-radius: 26px;
+  background: linear-gradient(170deg, color-mix(in srgb, var(--surface) 94%, var(--cf-gold-soft)), var(--surface) 60%);
+  border: 1px solid color-mix(in srgb, var(--cf-gold) 45%, transparent);
+  box-shadow: 0 30px 60px -40px rgba(60, 42, 14, .5);
+}
+.client-followup-welcome::before {
+  content: ""; position: absolute; inset: 8px; border-radius: 19px; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--cf-gold) 25%, transparent);
+}
+/* معيّن صغير على خط بين العنوان والكلام */
+.client-followup-welcome::after {
+  content: ""; order: 2; width: 120px; height: 9px; margin-block: 2px;
+  background:
+    linear-gradient(45deg, var(--cf-gold) 50%, transparent 50%) center / 7px 7px no-repeat,
+    linear-gradient(90deg, transparent, var(--cf-gold), transparent) center / 100% 1px no-repeat;
+}
+.client-followup-welcome h1 { order: 1; color: var(--cf-emerald); }
+.client-followup-welcome .client-followup-subtitle { order: 3; }
+[data-theme='dark'] .client-followup-welcome h1 { color: var(--cf-gold-soft); }
+
+/* الأرقام */
+.client-followup-stats { gap: 12px; }
+.client-followup-stat {
+  position: relative; overflow: hidden; border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--cf-gold) 30%, var(--line));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface) 95%, var(--cf-gold-soft)), var(--surface) 65%);
+  box-shadow: 0 20px 40px -30px rgba(60, 42, 14, .5);
+}
+/* خط دهبي فوق الكارت */
+.client-followup-stat::before {
+  content: ""; position: absolute; top: 0; inset-inline: 18%; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--cf-gold), transparent);
+}
+.client-followup-stat-icon {
+  width: 38px; height: 38px; border: 0; border-radius: 0; position: relative;
+  color: var(--cf-emerald);
+}
+.client-followup-stat-icon::before {
+  content: ""; position: absolute; inset: 5px; border-radius: 7px; transform: rotate(45deg);
+  border: 1px solid color-mix(in srgb, var(--cf-gold) 60%, transparent);
+  background: color-mix(in srgb, var(--cf-gold-soft) 20%, transparent);
+}
+.client-followup-stat-icon svg {
+  position: relative; width: 18px; height: 18px;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+[data-theme='dark'] .client-followup-stat-icon { color: var(--cf-gold-soft); }
+.client-followup-stat-label { font-size: 12.5px; }
+.client-followup-stat strong {
+  font-size: 38px; font-weight: 600;
+  background: linear-gradient(135deg, var(--cf-emerald), #138a7d);
+  -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+[data-theme='dark'] .client-followup-stat strong { background-image: linear-gradient(135deg, #f6e3b4, var(--cf-gold)); }
+/* الكارت الأول (كل الردود): زمردي بأرقام دهبي */
+.client-followup-stat--hero {
+  border-color: color-mix(in srgb, var(--cf-gold) 55%, transparent);
+  background:
+    radial-gradient(90% 70% at 50% -10%, rgba(231, 203, 143, .22), transparent 60%),
+    linear-gradient(160deg, var(--cf-emerald), var(--cf-emerald-2));
+  box-shadow: 0 24px 46px -26px rgba(6, 36, 33, .8);
+}
+.client-followup-stat--hero .client-followup-stat-label { color: rgba(246, 239, 226, .78); }
+.client-followup-stat--hero .client-followup-stat-icon { color: var(--cf-gold-soft); }
+.client-followup-stat--hero .client-followup-stat-icon::before { background: rgba(231, 203, 143, .12); }
+.client-followup-stat--hero strong { background-image: linear-gradient(135deg, #f6e3b4, var(--cf-gold)); }
+/* شريط نسبة الحضور */
+.client-followup-bar {
+  display: block; width: 100%; height: 5px; border-radius: 99px; overflow: hidden;
+  background: color-mix(in srgb, var(--cf-emerald) 12%, transparent);
+}
+.client-followup-bar i {
+  display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--cf-gold), var(--cf-emerald));
+}
+
+/* الأقسام */
+.client-followup-section {
+  border-radius: 24px;
+  border-color: color-mix(in srgb, var(--cf-gold) 30%, var(--line));
+  box-shadow: 0 26px 54px -40px rgba(60, 42, 14, .55);
+}
+.client-followup-section-head {
+  position: relative; border-bottom: 0;
+  background: linear-gradient(170deg, color-mix(in srgb, var(--surface) 92%, var(--cf-gold-soft)), var(--surface));
+}
+.client-followup-section-head::after {
+  content: ""; position: absolute; bottom: 0; inset-inline: 22px; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cf-gold) 70%, transparent), transparent);
+}
+.client-followup-kicker { color: var(--cf-gold); font-weight: 700; }
+.client-followup-section h2 { color: var(--cf-emerald); }
+[data-theme='dark'] .client-followup-section h2 { color: var(--text); }
+.client-followup-count {
+  border-color: color-mix(in srgb, var(--cf-gold) 50%, transparent);
+  background: color-mix(in srgb, var(--cf-gold-soft) 18%, var(--surface));
+  color: color-mix(in srgb, var(--cf-gold) 75%, #000); font-weight: 700;
+}
+[data-theme='dark'] .client-followup-count { color: var(--cf-gold-soft); }
+
+/* الحالة: كبسولة ملوّنة خفيفة بنقطة */
+.client-followup-pill {
+  display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 5px 11px; font-weight: 700;
+}
+.client-followup-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.client-followup-pill--attending { color: #1f7a4d; background: rgba(46, 160, 98, .12); }
+.client-followup-pill--declined { color: #b4413c; background: rgba(193, 84, 77, .12); }
+.client-followup-pill--maybe { color: #9a7432; background: rgba(201, 163, 93, .16); }
+[data-theme='dark'] .client-followup-pill--attending { color: #6fd39b; }
+[data-theme='dark'] .client-followup-pill--declined { color: #ee8a83; }
+[data-theme='dark'] .client-followup-pill--maybe { color: var(--cf-gold-soft); }
+
+/* رسالة الضيف في الردود: خط سيريف، وعلى الموبايل اقتباس بخط دهبي على الجنب */
+.client-followup-table--rsvp .client-followup-message {
+  color: var(--text); font-family: "Amiri", serif; font-size: 15.5px; line-height: 1.8;
+}
+@media (max-width: 680px) {
+  .client-followup .client-followup-table--rsvp tr { padding: 16px 18px; }
+  .client-followup-table--rsvp .client-followup-message {
+    margin-top: 4px; padding: 10px 14px; border-radius: 12px;
+    background: color-mix(in srgb, var(--cf-gold-soft) 12%, var(--surface));
+    border-inline-start: 2px solid var(--cf-gold);
+  }
+}
+
+/* كروت التهاني: ورقة عاجي بعلامة اقتباس دهبي كبيرة */
+.client-followup-message-card {
+  position: relative; overflow: hidden; border-radius: 18px; padding: 18px 18px 16px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface) 92%, var(--cf-gold-soft)), var(--surface));
+  border-color: color-mix(in srgb, var(--cf-gold) 30%, var(--line));
+}
+.client-followup-message-card::before {
+  content: "\201D"; position: absolute; top: -18px; inset-inline-end: 12px;
+  font: 700 84px/1 "Amiri", serif; color: color-mix(in srgb, var(--cf-gold) 22%, transparent);
+}
+.client-followup-message-card-head strong { color: var(--cf-emerald); }
+[data-theme='dark'] .client-followup-message-card-head strong { color: var(--cf-gold-soft); }
+.client-followup-message-card p { color: var(--text); font-family: "Amiri", serif; font-size: 16px; }
+
+/* أرقام Cormorant الافتراضية «قديمة» (١ شبه I و٠ شبه O) — أرقام عادية واضحة */
+.client-followup-stat strong { font-variant-numeric: lining-nums tabular-nums; }

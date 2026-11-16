@@ -32,6 +32,38 @@ function printWishes(fileTitle: string) {
  * ‎/i/:slug/client/:token‎ — لوحة متابعة خاصة بصاحب الدعوة (للقراءة فقط):
  * الحضور، رموز QR، ورسائل التهنئة. بتعرض الوحدات اللي اتجمّع فيها بيانات فعلاً.
  */
+/** أيقونات الأرقام — خطوط دهبي جوّه معيّن بدل الإيموجي (اللي كان شكله بيختلف من موبايل للتاني) */
+const STAT_ICONS = {
+  all: <path d="m6.5 12.5 3.5 3.5 7.5-8" />,
+  heart: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />,
+  people: (
+    <>
+      <circle cx="9" cy="8.5" r="3" />
+      <path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" />
+      <circle cx="16.5" cy="9.5" r="2.4" />
+      <path d="M15.5 14.2c2.4-.3 4.4 1.3 5 4.3" />
+    </>
+  ),
+  qr: <path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v2h-2z" />,
+  door: <path d="M10 5H6v14h4M14 8l4 4-4 4m4-4H9" />,
+  mail: (
+    <>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <path d="m4.5 7 7.5 6 7.5-6" />
+    </>
+  ),
+}
+
+function StatIcon({ name }: { name: keyof typeof STAT_ICONS }) {
+  return (
+    <span className="client-followup-stat-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        {STAT_ICONS[name]}
+      </svg>
+    </span>
+  )
+}
+
 export function ClientFollowupPage() {
   const { slug = '', token = '' } = useParams()
   const { t } = useTranslation()
@@ -72,18 +104,22 @@ export function ClientFollowupPage() {
         <section className="client-followup-stats" aria-label={t('guests.client.summary')}>
           {hasRsvp && (
             <>
-              <article className="client-followup-stat">
-                <span className="client-followup-stat-icon">✓</span>
+              <article className="client-followup-stat client-followup-stat--hero">
+                <StatIcon name="all" />
                 <span className="client-followup-stat-label">{t('guests.client.allReplies')}</span>
                 <strong>{stats.rsvpTotal}</strong>
               </article>
               <article className="client-followup-stat">
-                <span className="client-followup-stat-icon client-followup-stat-icon--ok">♥</span>
+                <StatIcon name="heart" />
                 <span className="client-followup-stat-label">{t('guests.client.attending')}</span>
                 <strong>{stats.attending}</strong>
+                {/* نسبة الحضور من كل الردود */}
+                <span className="client-followup-bar" aria-hidden="true">
+                  <i style={{ width: `${stats.rsvpTotal ? Math.round((stats.attending / stats.rsvpTotal) * 100) : 0}%` }} />
+                </span>
               </article>
               <article className="client-followup-stat">
-                <span className="client-followup-stat-icon client-followup-stat-icon--ok">👥</span>
+                <StatIcon name="people" />
                 <span className="client-followup-stat-label">{t('guests.client.attendingTotal')}</span>
                 <strong>{stats.attendingTotal}</strong>
               </article>
@@ -92,12 +128,12 @@ export function ClientFollowupPage() {
           {hasQr && (
             <>
               <article className="client-followup-stat">
-                <span className="client-followup-stat-icon">▣</span>
+                <StatIcon name="qr" />
                 <span className="client-followup-stat-label">{t('guests.client.guestsQr')}</span>
                 <strong>{stats.guests}</strong>
               </article>
               <article className="client-followup-stat">
-                <span className="client-followup-stat-icon client-followup-stat-icon--ok">↗</span>
+                <StatIcon name="door" />
                 <span className="client-followup-stat-label">{t('guests.client.checkedIn')}</span>
                 <strong>{stats.checkedIn}</strong>
               </article>
@@ -105,7 +141,7 @@ export function ClientFollowupPage() {
           )}
           {hasGuestbook && (
             <article className="client-followup-stat">
-              <span className="client-followup-stat-icon">✉</span>
+              <StatIcon name="mail" />
               <span className="client-followup-stat-label">{t('guests.client.wishes')}</span>
               <strong>{stats.messages}</strong>
             </article>
