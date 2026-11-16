@@ -43,6 +43,13 @@ const STEPS: { key: 'pick' | 'send' | 'design' | 'link'; icon: ReactNode }[] = [
   },
 ]
 
+/**
+ * المنحنى بيعدّي على ميداليات الكروت الأربعة (من اليمين لتحت لحد الشمال لفوق).
+ * الـviewBox ‏1000×150 بيتمطّ على عرض الحاوية، والنقط مقاسة على إن كل كارت
+ * أعلى من اللي قبله بـ40px (شوف ‎--rise‎ في showcase.css).
+ */
+const JOURNEY_PATH = 'M875,135 C780,135 720,95 625,95 S470,55 375,55 S220,15 125,15'
+
 export function StepsSection() {
   const { t } = useTranslation()
   return (
@@ -52,20 +59,29 @@ export function StepsSection() {
           <p className="eyebrow">{t('public.steps.eyebrow')}</p>
           <h2>{t('public.steps.title')}</h2>
         </div>
-        {/* ‎data-reveal‎ على الحاوية: لما تظهر، الخط الذهبي بيترسم والخطوات بتطلع ورا بعض
-            والنقطة المنوّرة بتفضل تمشي على الخط. */}
-        <div className="grid grid--4 steps" data-reveal>
-          <span className="steps-spark" aria-hidden="true" />
+        {/* «سلّم لحد يوم الفرح»: الكروت طالعة لفوق خطوة ورا خطوة، ومتوصّلة بمنحنى
+            دهبي بيترسم لما القسم يظهر ونقطة منوّرة بتمشي عليه. ‎data-reveal‎ على
+            الحاوية هو اللي بيشغّل الرسم وطلوع الكروت ورا بعض. */}
+        <div className="journey" data-reveal>
+          <svg className="journey-path" viewBox="0 0 1000 150" preserveAspectRatio="none" aria-hidden="true">
+            <path className="journey-path-base" d={JOURNEY_PATH} />
+            <path className="journey-path-gold" d={JOURNEY_PATH} pathLength={1} />
+            <circle className="journey-dot" r="5">
+              <animateMotion dur="6s" repeatCount="indefinite" path={JOURNEY_PATH} />
+            </circle>
+          </svg>
           {STEPS.map(({ key, icon }, i) => (
-            <div className="step" key={key} style={{ '--i': i } as CSSProperties}>
-              <span className="step-number">
+            <div className="journey-card" key={key} style={{ '--i': i } as CSSProperties}>
+              <span className="journey-medal">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   {icon}
                 </svg>
               </span>
-              <span className="step-index">{String(i + 1).padStart(2, '0')}</span>
+              <span className="journey-num" aria-hidden="true">
+                {String(i + 1).padStart(2, '0')}
+              </span>
               <h3>{t(`public.steps.${key}.title`)}</h3>
-              <p className="muted">{t(`public.steps.${key}.text`)}</p>
+              <p>{t(`public.steps.${key}.text`)}</p>
             </div>
           ))}
         </div>

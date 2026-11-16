@@ -1,0 +1,264 @@
+/* ================================================================
+   الأقسام الفاخرة (الجيل التاني) — القوالب والمميزات والخطوات
+   بيتحمّل بعد luxe.css. كل قسم بأسماء كلاسات جديدة فمفيش تعارض مع القديم.
+   ================================================================ */
+
+/* ---------------------------------------------------------- 1) غلاف القوالب
+   لوحة غامقة دايماً (في الفاتح والغامق) بوهج دهبي ونقشة شبكية خفيفة وإطار
+   مزدوج — الكروت جوّاها بتبان زي مجوهرات في فاترينة. */
+#templates { padding-block: clamp(40px, 6vw, 80px); }
+.tpl-showcase {
+  --ivory: #f6efe3;
+  position: relative; isolation: isolate;
+  padding: clamp(56px, 6vw, 88px) clamp(14px, 3vw, 46px) clamp(40px, 5vw, 64px);
+  border-radius: clamp(22px, 3vw, 36px);
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(212, 171, 99, .28), transparent 70%),
+    radial-gradient(45% 50% at 0% 100%, rgba(212, 171, 99, .16), transparent 70%),
+    radial-gradient(45% 50% at 100% 100%, rgba(212, 171, 99, .16), transparent 70%),
+    linear-gradient(160deg, #1d1710 0%, #0f0c08 55%, #19130c 100%);
+  border: 1px solid rgba(212, 171, 99, .45);
+  outline: 1px solid rgba(212, 171, 99, .28);
+  outline-offset: -12px;
+  box-shadow: 0 50px 100px -60px rgba(40, 28, 10, .85), inset 0 1px 0 rgba(255, 230, 180, .12);
+  overflow: hidden;
+}
+/* نقشة معيّنات خفيفة جداً */
+.tpl-showcase::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    repeating-linear-gradient(45deg, rgba(212, 171, 99, .05) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(-45deg, rgba(212, 171, 99, .05) 0 1px, transparent 1px 34px);
+  -webkit-mask: radial-gradient(80% 70% at 50% 40%, #000 30%, transparent 100%);
+          mask: radial-gradient(80% 70% at 50% 40%, #000 30%, transparent 100%);
+}
+/* أركان دهبي للوحة */
+.tpl-showcase::after {
+  content: ""; position: absolute; inset: 20px; pointer-events: none;
+  background-color: #d4ab63; opacity: .8;
+  -webkit-mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
+                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
+          mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
+                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
+}
+/* شعار صغير متعلّق في نص الحافة اللي فوق */
+.tpl-showcase-crest {
+  position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 14px; background-color: #d4ab63; opacity: .9;
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
+}
+.tpl-showcase .section-head h2 {
+  background: linear-gradient(180deg, #fff6e3 0%, #e8cf9b 60%, #c79d55 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.tpl-showcase .section-head p:not(.eyebrow) { color: rgba(246, 239, 227, .68); }
+.tpl-showcase .section-head .eyebrow { color: #d4ab63; }
+.tpl-showcase .section-head::after { background-color: #d4ab63; }
+.tpl-showcase .empty { color: rgba(246, 239, 227, .7); }
+.tpl-showcase .tpl-card { box-shadow: 0 30px 60px -36px rgba(0, 0, 0, .9); }
+.tpl-showcase .tpl-card:hover { box-shadow: 0 40px 80px -36px rgba(0, 0, 0, .95), 0 0 0 1px rgba(212, 171, 99, .5); }
+.tpl-showcase-foot { display: flex; justify-content: center; margin-top: clamp(32px, 4vw, 48px); }
+.tpl-showcase-foot .btn--outline { color: #e8cf9b; border-color: rgba(212, 171, 99, .6); }
+.tpl-showcase-foot .btn--outline:hover { background: rgba(212, 171, 99, .14); border-color: #d4ab63; }
+@media (max-width: 600px) {
+  .tpl-showcase { padding-inline: 12px; outline-offset: -8px; }
+  .tpl-showcase::after { inset: 13px; -webkit-mask-size: 20px; mask-size: 20px; }
+  .tpl-showcase-crest { top: 18px; width: 90px; }
+  #templates .tpl-showcase .grid--4 { padding-inline: 6px; }
+}
+
+/* ---------------------------------------------------------- 2) المميزات
+   لوحة واحدة مقسومة بخطوط دهبي رفيعة (الـgap بيبيّن خلفية دهبي) — زي صفحة
+   كتالوج مجوهرات. رقم كبير مفرّغ في الركن، والأيقونة جوّه معيّن دهبي. */
+.lux-features {
+  position: relative; max-width: 1080px; margin-inline: auto;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px;
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 30px; overflow: hidden;
+  box-shadow: 0 50px 90px -60px color-mix(in srgb, var(--accent) 60%, rgba(23, 19, 15, .7));
+}
+html.js .lux-features[data-reveal] { opacity: 1; transform: none; }
+/* أركان دهبي فوق اللوحة كلها */
+.lux-features::after {
+  content: ""; position: absolute; inset: 12px; pointer-events: none; z-index: 2;
+  background-color: var(--accent); opacity: .7;
+  -webkit-mask: var(--orn-corner-tl) top left / 26px no-repeat, var(--orn-corner-tr) top right / 26px no-repeat,
+                var(--orn-corner-bl) bottom left / 26px no-repeat, var(--orn-corner-br) bottom right / 26px no-repeat;
+          mask: var(--orn-corner-tl) top left / 26px no-repeat, var(--orn-corner-tr) top right / 26px no-repeat,
+                var(--orn-corner-bl) bottom left / 26px no-repeat, var(--orn-corner-br) bottom right / 26px no-repeat;
+}
+.lux-feature {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 52px 30px 44px;
+  background: var(--surface);
+  transition: background-color .4s ease;
+}
+/* وهج دهبي بيطلع من تحت لما الماوس يعدّي */
+.lux-feature::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(70% 60% at 50% 100%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%);
+  opacity: 0; transition: opacity .45s ease;
+}
+.lux-feature:hover::before { opacity: 1; }
+.lux-feature-num {
+  position: absolute; top: 14px; inset-inline-start: 22px;
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: 58px; font-weight: 600; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: -webkit-text-stroke-color .4s ease, transform .5s ease;
+}
+.lux-feature:hover .lux-feature-num { -webkit-text-stroke-color: var(--accent); transform: translateY(-3px); }
+/* معيّن دهبي والأيقونة معدولة جوّاه */
+.lux-feature-icon {
+  position: relative; width: 58px; height: 58px; margin: 8px 0 24px;
+  display: grid; place-items: center; color: var(--accent);
+}
+.lux-feature-icon::before, .lux-feature-icon::after {
+  content: ""; position: absolute; inset: 0; transform: rotate(45deg);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 10px;
+  transition: background .4s ease, transform .6s cubic-bezier(.2, .8, .2, 1), border-color .4s ease;
+}
+.lux-feature-icon::after { inset: -7px; border-color: color-mix(in srgb, var(--accent) 22%, transparent); border-radius: 13px; }
+.lux-feature-icon svg {
+  position: relative; z-index: 1; width: 25px; height: 25px;
+  fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round;
+  transition: color .4s ease;
+}
+.lux-feature:hover .lux-feature-icon { color: #fff; }
+.lux-feature:hover .lux-feature-icon::before { background: var(--gold-fill); border-color: transparent; transform: rotate(135deg); }
+.lux-feature:hover .lux-feature-icon::after { transform: rotate(135deg); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.lux-feature h3 { margin: 0 0 8px; font-size: 22px; color: var(--text); transition: color .3s ease; }
+.lux-feature:hover h3 { color: var(--accent); }
+.lux-feature p { margin: 0; max-width: 26ch; color: var(--muted); font-size: 14.5px; line-height: 1.8; }
+
+/* الخانات بتظهر ورا بعض */
+html.js .lux-features .lux-feature > * {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .6s ease, transform .7s cubic-bezier(.2, .8, .2, 1);
+  transition-delay: calc(var(--i) * .07s + .1s);
+}
+html.js .lux-features.is-in .lux-feature > * { opacity: 1; transform: none; }
+html.js .lux-features.is-in .lux-feature:hover .lux-feature-num { transform: translateY(-3px); }
+
+@media (max-width: 760px) {
+  .lux-features { grid-template-columns: repeat(2, minmax(0, 1fr)); border-radius: 22px; }
+  .lux-features::after { inset: 8px; -webkit-mask-size: 18px; mask-size: 18px; }
+  .lux-feature:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .lux-feature { padding: 34px 12px 26px; }
+  .lux-feature-num { font-size: 36px; top: 10px; inset-inline-start: 12px; }
+  .lux-feature-icon { width: 44px; height: 44px; margin: 6px 0 16px; }
+  .lux-feature-icon::after { inset: -5px; }
+  .lux-feature-icon svg { width: 20px; height: 20px; }
+  .lux-feature h3 { font-size: 16.5px; }
+  .lux-feature p { font-size: 12px; line-height: 1.6; }
+}
+
+/* ---------------------------------------------------------- 3) الخطوات — «سلّم لحد يوم الفرح»
+   أربع كروت كل واحد أعلى من اللي قبله، متوصّلة بمنحنى دهبي بيترسم لما القسم
+   يظهر ونقطة منوّرة بتمشي عليه. ميدالية بأيقونة فوق كل كارت ورقم كبير مفرّغ. */
+.journey {
+  --rise: 40px; --medal: 66px;
+  position: relative;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px;
+  align-items: start; max-width: 1120px; margin-inline: auto;
+  padding-top: calc(var(--medal) / 2 + 6px);
+}
+html.js .journey[data-reveal] { opacity: 1; transform: none; }
+.journey-path {
+  position: absolute; z-index: 0; pointer-events: none; overflow: visible;
+  left: 0; right: 0; width: 100%; height: 150px;
+  top: calc(var(--medal) / 2 + 6px - 15px);
+}
+[dir="ltr"] .journey-path { transform: scaleX(-1); }
+.journey-path path { fill: none; vector-effect: non-scaling-stroke; }
+.journey-path-base { stroke: color-mix(in srgb, var(--accent) 22%, transparent); stroke-width: 1.5; stroke-dasharray: 4 6; }
+.journey-path-gold {
+  stroke: var(--accent); stroke-width: 2;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  transition: stroke-dashoffset 2.4s cubic-bezier(.65, 0, .35, 1) .3s;
+}
+.journey.is-in .journey-path-gold { stroke-dashoffset: 0; }
+.journey-dot {
+  fill: #fff; stroke: var(--accent); stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px var(--accent));
+  opacity: 0; transition: opacity .6s ease 2.6s;
+}
+.journey.is-in .journey-dot { opacity: 1; }
+
+.journey-card {
+  position: relative; z-index: 1;
+  margin-top: calc((3 - var(--i)) * var(--rise));
+  padding: calc(var(--medal) / 2 + 22px) 22px 28px;
+  text-align: center; border-radius: 24px;
+  background: var(--lux-surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  outline: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); outline-offset: -7px;
+  box-shadow: var(--lux-shadow);
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, outline-color .4s ease;
+}
+.journey-card:hover {
+  transform: translateY(-8px); outline-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: var(--lux-shadow), 0 34px 60px -36px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+/* الكروت بتطلع ورا بعض بعد ما المنحنى يبدأ يترسم */
+html.js .journey .journey-card { opacity: 0; translate: 0 34px; transition: opacity .8s ease, translate .9s cubic-bezier(.2, .8, .2, 1), transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s ease, outline-color .4s ease; transition-delay: calc(.4s + var(--i) * .45s), calc(.4s + var(--i) * .45s), 0s, 0s, 0s; }
+html.js .journey.is-in .journey-card { opacity: 1; translate: 0 0; }
+
+.journey-medal {
+  position: absolute; top: 0; left: 50%; translate: -50% -50%;
+  width: var(--medal); height: var(--medal); border-radius: 50%;
+  display: grid; place-items: center; color: #fff;
+  background: var(--gold-fill);
+  box-shadow: 0 0 0 6px var(--surface), 0 0 0 7px color-mix(in srgb, var(--accent) 45%, transparent),
+              0 16px 30px -12px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+/* لمعة بتلف حوالين الميدالية */
+.journey-medal::after {
+  content: ""; position: absolute; inset: -12px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--accent) 80%, transparent) 90%, transparent 100%);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 70%, transparent 71%);
+          mask: radial-gradient(circle, transparent 62%, #000 63%, #000 70%, transparent 71%);
+  animation: medal-orbit 4s linear infinite; animation-delay: calc(var(--i) * -1s);
+}
+@keyframes medal-orbit { to { transform: rotate(360deg); } }
+.journey-medal svg {
+  width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.journey-num {
+  position: absolute; top: 12px; inset-inline-end: 18px;
+  font-family: "Cormorant Garamond", Georgia, serif; font-size: 46px; font-weight: 600; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.journey-card h3 { margin: 6px 0 8px; font-size: 22px; }
+.journey-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.8; }
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .journey { --rise: 28px; --medal: 56px; gap: 16px; }
+  .journey-card { padding-inline: 14px; }
+  .journey-card h3 { font-size: 18px; }
+  .journey-card p { font-size: 13px; }
+  .journey-num { font-size: 34px; }
+}
+/* الموبايل: الكروت تحت بعض، والمنحنى بيتبدل بخط دهبي منقّط بين كل كارتين */
+@media (max-width: 760px) {
+  .journey { grid-template-columns: 1fr; gap: 54px; --medal: 56px; max-width: 460px; }
+  .journey-path { display: none; }
+  .journey-card { margin-top: 0; padding-inline: 20px; }
+  .journey-card:not(:last-child)::after {
+    content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 54px;
+    translate: -50% 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, var(--accent) 0 4px, transparent 4px 9px);
+    opacity: .7;
+  }
+  .journey-card h3 { font-size: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .lux-features .lux-feature > *, html.js .journey .journey-card { opacity: 1; transform: none; translate: none; transition: none; }
+  .journey-path-gold { stroke-dashoffset: 0; transition: none; }
+  .journey-dot { display: none; }
+  .journey-medal::after { animation: none; display: none; }
+}

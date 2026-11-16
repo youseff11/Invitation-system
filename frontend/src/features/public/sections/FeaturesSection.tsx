@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const FEATURES: { key: string; icon: ReactNode; className?: string }[] = [
+const FEATURES: { key: string; icon: ReactNode }[] = [
   {
     key: 'countdown',
     icon: (
@@ -80,7 +80,6 @@ const FEATURES: { key: string; icon: ReactNode; className?: string }[] = [
   },
   {
     key: 'venueQr',
-    className: 'feature-card--qr',
     icon: (
       <>
         <path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4z" />
@@ -100,15 +99,15 @@ export function FeaturesSection() {
           <h2>{t('public.features.title')}</h2>
           <p>{t('public.features.sub')}</p>
         </div>
-        <div className="feature-grid">
-          {FEATURES.map(({ key, icon, className }) => (
-            <article
-              key={key}
-              className={'feature-card' + (className ? ` ${className}` : '')}
-              data-reveal
-              data-reveal-stagger
-            >
-              <span className="feature-icon">
+        {/* لوحة واحدة بإطار مزدوج مقسومة بخطوط دهبي رفيعة زي صفحة كتالوج —
+            كل ميزة رقم كبير شفاف وأيقونة جوّه معيّن دهبي */}
+        <div className="lux-features" data-reveal>
+          {FEATURES.map(({ key, icon }, i) => (
+            <article key={key} className="lux-feature" style={{ '--i': i } as CSSProperties}>
+              <span className="lux-feature-num" aria-hidden="true">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <span className="lux-feature-icon">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   {icon}
                 </svg>

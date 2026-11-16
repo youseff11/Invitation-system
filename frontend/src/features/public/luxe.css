@@ -251,21 +251,9 @@
   color: var(--accent); font-size: clamp(12px, 1vw, 14px); font-weight: 600; letter-spacing: .02em;
 }
 html[lang="en"] .hero-eyebrow { letter-spacing: .14em; text-transform: uppercase; font-size: 11.5px; }
-.hero-highlights {
-  list-style: none; padding: 0; margin: 22px auto 20px;
-  display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 0;
-  color: var(--text); font-size: clamp(13px, 1.05vw, 15.5px); font-weight: 500;
-}
-.hero-highlights li { display: flex; align-items: center; }
-.hero-highlights li + li::before {
-  content: ""; width: 5px; height: 5px; margin-inline: 14px; transform: rotate(45deg);
-  background: var(--accent); opacity: .8;
-}
-.hero-sub { max-width: 34ch; }
+.hero-sub { max-width: 34ch; margin-top: 16px; }
 @media (max-width: 780px) {
   .hero-eyebrow { margin-bottom: 12px; }
-  .hero-highlights { margin: 16px auto 14px; }
-  .hero-highlights li + li::before { margin-inline: 10px; }
 }
 
 /* ================================================================
@@ -326,139 +314,48 @@ html[lang="en"] .hero-eyebrow { letter-spacing: .14em; text-transform: uppercase
   .tpl-card:hover { transform: translateY(-4px); }
 }
 
-/* ================================================================
-   الخطوات — تايم لاين متحرّك
-   الخط الدهبي بيترسم أول ما القسم يظهر، الخطوات بتطلع ورا بعض، ونقطة
-   منوّرة بتمشي على الخط وكل دايرة بتنوّر لما النقطة توصلها. حلقة منقّطة
-   بتلف حوالين كل أيقونة.
-   ================================================================ */
-.steps { --step-dot: 68px; --spark-dur: 5.2s; }
-html.js .steps[data-reveal] { opacity: 1; transform: none; }
-.step:not(:last-child)::after { content: none; }
-
-/* الخط الأساسي باهت، وفوقه نسخة دهبي بتترسم */
-.steps::before { background: color-mix(in srgb, var(--accent) 18%, transparent); }
-.steps::after {
-  content: ""; position: absolute; z-index: 0; pointer-events: none;
-  top: calc(var(--step-dot) / 2); inset-inline: 12%; height: 1.5px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent),
-              color-mix(in srgb, var(--accent) 50%, transparent));
-  transform: scaleX(0); transform-origin: right;
-  transition: transform 1.8s cubic-bezier(.65, 0, .35, 1) .2s;
-}
-[dir="ltr"] .steps::after { transform-origin: left; }
-.steps.is-in::after { transform: scaleX(1); }
-
-/* النقطة المنوّرة */
-.steps-spark {
-  position: absolute; z-index: 2; pointer-events: none;
-  top: calc(var(--step-dot) / 2 - 5px); inset-inline-start: 12%;
-  width: 10px; height: 10px; border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, var(--accent) 45%, transparent 72%);
-  box-shadow: 0 0 14px 4px color-mix(in srgb, var(--accent) 55%, transparent);
-  opacity: 0;
-}
-.steps.is-in .steps-spark { animation: spark-run var(--spark-dur) cubic-bezier(.45, 0, .55, 1) 2s infinite; }
-@keyframes spark-run {
-  0%   { inset-inline-start: 12%; opacity: 0; }
-  6%   { opacity: 1; }
-  88%  { opacity: 1; }
-  100% { inset-inline-start: calc(88% - 10px); opacity: 0; }
-}
-
-/* الخطوات بتطلع ورا بعض */
-html.js .steps .step {
-  opacity: 0; transform: translateY(26px);
-  transition: opacity .7s ease, transform .8s cubic-bezier(.2, .8, .2, 1), background-color .3s ease;
-  transition-delay: calc(.35s + var(--i) * .28s), calc(.35s + var(--i) * .28s), 0s;
-}
-html.js .steps.is-in .step { opacity: 1; transform: none; }
-
-.step { padding: 6px 10px 18px; border-radius: 22px; }
-.step-number { width: var(--step-dot); height: var(--step-dot); margin-bottom: 20px; }
-.step-number svg {
-  width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.4;
-  stroke-linecap: round; stroke-linejoin: round;
-}
-/* حلقة منقّطة بتلف */
-.step-number::before {
-  content: ""; position: absolute; inset: -11px; border-radius: 50%; pointer-events: none;
-  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
-  animation: step-ring 22s linear infinite;
-}
-.step:nth-child(odd) .step-number::before { animation-direction: reverse; }
-@keyframes step-ring { to { transform: rotate(360deg); } }
-
-/* الدايرة بتنوّر لما النقطة توصلها — التأخير محسوب على مكان كل خطوة على الخط */
-.steps.is-in .step-number {
-  animation: step-glow var(--spark-dur) ease-out infinite;
-  animation-delay: calc(2s + var(--i) * var(--spark-dur) * .29);
-}
-@keyframes step-glow {
-  0% {
-    transform: scale(1.12);
-    box-shadow: 0 0 0 5px var(--step-punch), 0 0 0 7px var(--accent),
-                0 0 36px 8px color-mix(in srgb, var(--accent) 60%, transparent);
-  }
-  25%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 5px var(--step-punch), 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent),
-                0 14px 28px -16px color-mix(in srgb, var(--accent) 85%, transparent);
-  }
-}
-
-.step-index {
-  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 6px;
-  font-family: "Cormorant Garamond", Georgia, serif; font-size: 15px; font-weight: 700;
-  color: var(--accent); letter-spacing: .12em;
-}
-.step-index::before, .step-index::after {
-  content: ""; width: 16px; height: 1px; background: color-mix(in srgb, var(--accent) 60%, transparent);
-}
-.step h3 { font-size: 22px; margin-bottom: 8px; }
-.step:hover { background: color-mix(in srgb, var(--surface) 65%, transparent); }
-
-@media (max-width: 980px) and (min-width: 761px) {
-  .steps { --step-dot: 56px; }
-}
-@media (max-width: 760px) {
-  .steps { --step-dot: 54px; }
-  .steps::after {
-    top: 14px; bottom: 22px; height: auto; width: 1.5px;
-    inset-inline: auto; inset-inline-start: calc(var(--step-dot) / 2);
-    background: linear-gradient(to bottom, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent),
-                color-mix(in srgb, var(--accent) 50%, transparent));
-    transform: scaleY(0); transform-origin: top;
-  }
-  [dir="ltr"] .steps::after { transform-origin: top; }
-  .steps.is-in::after { transform: scaleY(1); }
-  .steps-spark { top: 14px; inset-inline-start: calc(var(--step-dot) / 2 - 4.25px); }
-  .steps.is-in .steps-spark { animation-name: spark-run-v; }
-  .step {
-    padding-block: 22px; border-radius: 16px;
-    padding-inline-start: calc(var(--step-dot) + 26px); padding-inline-end: 6px;
-  }
-  .step-number { top: 18px; }
-  .step-number::before { inset: -7px; }
-  .step-number svg { width: 22px; height: 22px; }
-  .step-index { margin-bottom: 2px; }
-  .step h3 { font-size: 19px; }
-}
-@keyframes spark-run-v {
-  0%   { top: 14px; opacity: 0; }
-  6%   { opacity: 1; }
-  88%  { opacity: 1; }
-  100% { top: calc(100% - 32px); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html.js .steps .step { opacity: 1; transform: none; transition: none; }
-  .steps::after { transform: none; transition: none; }
-  .steps-spark, .step-number::before { animation: none; display: none; }
-  .steps.is-in .step-number { animation: none; }
-  .tpl-cover::before, .tpl-cover::after { transition: none; }
-}
-
 /* ---------------------------------------------------------- أيقونة واتساب في الفوتر
    كانت بتورث ‎fill: none‎ من قاعدة أيقونات الفوتر فتطلع باهتة/فاضية */
 .foot-socials a[aria-label="WhatsApp"] svg { fill: currentColor; stroke: none; width: 21px; height: 21px; }
+
+/* ================================================================
+   إطار شيك لكروت القوالب — زي كارت دعوة مطبوع
+   خط دهبي رفيع جوّه حافة الكارت (outline بإزاحة سالبة بيمشي مع الاستدارة)،
+   أربع أركان زخرفية في الزوايا، وإطار أبيض رفيع جوّه الصورة نفسها.
+   ================================================================ */
+.tpl-card {
+  padding: 15px;
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  outline: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: -7px;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), box-shadow .45s ease,
+              border-color .45s ease, outline-color .45s ease;
+}
+.tpl-card:hover { outline-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+/* الأركان الأربعة */
+.tpl-card::before {
+  content: ""; position: absolute; inset: 3px; pointer-events: none; z-index: 1;
+  background-color: var(--accent); opacity: .75;
+  -webkit-mask: var(--orn-corner-tl) top left / 17px no-repeat,
+                var(--orn-corner-tr) top right / 17px no-repeat,
+                var(--orn-corner-bl) bottom left / 17px no-repeat,
+                var(--orn-corner-br) bottom right / 17px no-repeat;
+          mask: var(--orn-corner-tl) top left / 17px no-repeat,
+                var(--orn-corner-tr) top right / 17px no-repeat,
+                var(--orn-corner-bl) bottom left / 17px no-repeat,
+                var(--orn-corner-br) bottom right / 17px no-repeat;
+  transition: opacity .45s ease;
+}
+.tpl-card:hover::before { opacity: 1; }
+/* إطار جوّه الصورة زي برواز */
+.tpl-cover {
+  border-radius: 12px;
+  outline: 1px solid rgba(255, 255, 255, .6);
+  outline-offset: -8px;
+}
+@media (max-width: 600px) {
+  #templates .tpl-card { padding: 13px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card { padding: 9px; outline-offset: -5px; }
+  #templates .grid--4[data-per-row="2"] .tpl-card::before { inset: 2px; -webkit-mask-size: 12px; mask-size: 12px; }
+  #templates .grid--4[data-per-row="2"] .tpl-cover { outline-offset: -5px; }
+}

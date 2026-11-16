@@ -26,8 +26,7 @@
     "eyebrow": "Online wedding invitations",
     "top": "Your wedding invite,",
     "main": "chic and in one link",
-    "highlights": { "location": "Location", "countdown": "Countdown", "rsvp": "RSVP" },
-    "sub": "Pick a design you love — we tailor it with your names and details, ready to share on WhatsApp.",
+    "sub": "Pick a design — we make it yours.",
     "start": "Start your invite",
     "plans": "See prices",
     "trust": {
@@ -44,7 +43,8 @@
     "title": "Carefully curated templates",
     "sub": "Elegant designs to begin the story of your special day.",
     "empty": "No templates published yet.",
-    "preview": "Preview template"
+    "preview": "Preview template",
+    "all": "See all templates"
   },
   "features": {
     "eyebrow": "Features",

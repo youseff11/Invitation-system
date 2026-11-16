@@ -53,12 +53,6 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
             <span className="h1-top">{text(custom?.top, 'top')}</span>
             <span className="h1-main">{text(custom?.main, 'main')}</span>
           </h1>
-          {/* أهم مميزات الدعوة في سطر واحد بدل الفاصل الزخرفي */}
-          <ul className="hero-highlights">
-            {(['location', 'countdown', 'rsvp'] as const).map((key) => (
-              <li key={key}>{t(`public.hero.highlights.${key}`)}</li>
-            ))}
-          </ul>
           <p className="hero-sub">{text(custom?.sub, 'sub')}</p>
           <div className="hero-actions">
             <Link className="btn btn--gold btn--lg btn--shine" to="/templates">

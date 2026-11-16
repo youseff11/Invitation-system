@@ -98,20 +98,32 @@ interface Props {
 export function TemplatesSection({ templates, error, perRow = 1 }: Props) {
   const { t } = useTranslation()
   return (
-    <section className="section" id="templates">
+    <section className="section section--showcase" id="templates">
       <div className="wrap">
-        <div className="section-head" data-reveal>
-          <p className="eyebrow">{t('public.templates.eyebrow')}</p>
-          <h2>{t('public.templates.title')}</h2>
-          <p>{t('public.templates.sub')}</p>
-        </div>
-        <div className="grid grid--4" data-per-row={perRow}>
-          {templates?.map((template) => <HomeTemplateCard key={template.id} template={template} />)}
-          {templates?.length === 0 && <p className="empty">{t('public.templates.empty')}</p>}
-          {!!error && (
-            <p className="empty" role="alert">
-              {error instanceof ApiError && error.message ? error.message : t('public.loadError')}
-            </p>
+        {/* «غلاف» القسم: لوحة غامقة بوهج دهبي ونقشة خفيفة وإطار مزدوج —
+            القوالب بتتعرض جوّاها زي مجوهرات في فاترينة */}
+        <div className="tpl-showcase">
+          <span className="tpl-showcase-crest" aria-hidden="true" />
+          <div className="section-head" data-reveal>
+            <p className="eyebrow">{t('public.templates.eyebrow')}</p>
+            <h2>{t('public.templates.title')}</h2>
+            <p>{t('public.templates.sub')}</p>
+          </div>
+          <div className="grid grid--4" data-per-row={perRow}>
+            {templates?.map((template) => <HomeTemplateCard key={template.id} template={template} />)}
+            {templates?.length === 0 && <p className="empty">{t('public.templates.empty')}</p>}
+            {!!error && (
+              <p className="empty" role="alert">
+                {error instanceof ApiError && error.message ? error.message : t('public.loadError')}
+              </p>
+            )}
+          </div>
+          {!!templates?.length && (
+            <div className="tpl-showcase-foot" data-reveal>
+              <Link className="btn btn--outline btn--lg" to="/templates">
+                <span>{t('public.templates.all')}</span>
+              </Link>
+            </div>
           )}
         </div>
       </div>
