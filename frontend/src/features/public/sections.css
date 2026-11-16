@@ -1050,92 +1050,115 @@
   .wa-label { animation: none; }
 }
 
-/* ---------------------------------------------------------- 5) «هل أنت مستعد…» — لوحة زمردي فخمة
-   أخضر غامق من لون اللوجو + دهبي: إطار مزدوج بأركان، نقشة أرابيسك خفيفة، ولمعات بتنوّر.
-   نفس الشكل في الفاتح والغامق. السلكتور ‎.home-cta .cta-lux‎ أقوى من القواعد القديمة
-   في public.css و luxe.css (من غير !important). */
-.home-cta .cta-lux {
-  --cta-gold: #e7cb8f;
-  position: relative; isolation: isolate; overflow: hidden;
-  max-width: 880px; margin-inline: auto; text-align: center;
-  padding: clamp(50px, 6.4vw, 80px) clamp(24px, 6vw, 76px);
-  border-radius: 30px;
-  border: 1px solid rgba(231, 203, 143, .5);
-  color: #f6efe2;
+/* ---------------------------------------------------------- 5) «هل أنت مستعد…» — لوحة على شكل قوس
+   بألوان الموقع نفسها (عاجي + دهبي ‎--accent‎)؛ اللي اتغيّر الشكل: قوس زي البوابة بخط داخلي،
+   ختم شمع دهبي على القمّة، زخرفة على تاج القوس، أركان تحت، وفاصل دهبي تحت العنوان.
+   السلكتور ‎.home-cta .cta-arch‎ أقوى من قواعد ‎.home-cta-in‎ القديمة (من غير !important). */
+.home-cta .cta-arch {
+  --arch: clamp(120px, 22vw, 230px);
+  position: relative; isolation: isolate;
+  max-width: 820px; margin-inline: auto; text-align: center;
+  padding: calc(var(--arch) * .5 + 44px) clamp(24px, 6vw, 76px) clamp(46px, 5vw, 66px);
+  border-radius: 50% 50% 30px 30px / var(--arch) var(--arch) 30px 30px;
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
   background:
-    radial-gradient(110% 80% at 50% -12%, rgba(231, 203, 143, .24), transparent 56%),
-    radial-gradient(55% 60% at 100% 105%, rgba(31, 160, 138, .32), transparent 70%),
-    radial-gradient(45% 50% at 0% 100%, rgba(231, 203, 143, .1), transparent 70%),
-    linear-gradient(160deg, #105049 0%, #0a3733 52%, #062421 100%);
-  box-shadow: 0 46px 90px -44px rgba(6, 36, 33, .9),
-              0 0 0 8px color-mix(in srgb, var(--accent) 10%, transparent);
+    radial-gradient(70% 50% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 72%),
+    radial-gradient(60% 40% at 50% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    linear-gradient(175deg, color-mix(in srgb, var(--surface) 93%, var(--accent)), var(--surface) 55%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6),
+              0 50px 90px -50px rgba(60, 42, 14, .55),
+              0 0 0 8px color-mix(in srgb, var(--accent) 7%, transparent);
 }
-/* الإطار الداخلي */
-.home-cta .cta-lux::before {
+/* القوس الداخلي الرفيع */
+.home-cta .cta-arch::before {
   content: ""; position: absolute; inset: 12px; z-index: -1; pointer-events: none;
-  border: 1px solid rgba(231, 203, 143, .38); border-radius: 21px;
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-radius: 50% 50% 21px 21px / calc(var(--arch) - 12px) calc(var(--arch) - 12px) 21px 21px;
 }
-/* زخرفة الحد العلوي (موجودة من قبل) بقت دهبي فاتح */
-.home-cta .cta-lux::after { top: 4px; background-color: var(--cta-gold); }
+/* الزخرفة القديمة على الحد العلوي بقت تاج القوس */
+.home-cta .cta-arch::after { top: -8px; }
+
+/* ختم شمع دهبي بحلقتين متشابكتين على قمّة القوس */
+.cta-seal {
+  position: absolute; top: calc(var(--arch) * .2 + 6px); left: 50%; transform: translateX(-50%);
+  width: 70px; height: 70px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff8ea;
+  background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--accent) 45%, #fff) 0%, var(--accent) 52%,
+              color-mix(in srgb, var(--accent) 62%, #000) 100%);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--surface) 92%, transparent),
+              0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent),
+              0 14px 26px -10px rgba(60, 42, 14, .6);
+}
+.cta-seal::before {
+  content: ""; position: absolute; inset: 6px; border-radius: 50%;
+  border: 1px dashed rgba(255, 246, 222, .65);
+}
+.cta-seal svg {
+  position: relative; width: 34px; height: 34px;
+  fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+}
+.cta-seal svg path { fill: currentColor; stroke: none; }
+
+/* أركان تحت بس (فوق القوس نفسه هو الزخرفة) */
 .cta-corners {
-  position: absolute; inset: 20px; z-index: -1; pointer-events: none;
-  background-color: var(--cta-gold); opacity: .85;
-  -webkit-mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
-                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
-          mask: var(--orn-corner-tl) top left / 30px no-repeat, var(--orn-corner-tr) top right / 30px no-repeat,
-                var(--orn-corner-bl) bottom left / 30px no-repeat, var(--orn-corner-br) bottom right / 30px no-repeat;
-}
-/* نقشة أرابيسك (شبكة معيّنات ونجوم) شفافة جداً */
-.cta-pattern {
-  position: absolute; inset: 0; z-index: -2; pointer-events: none; opacity: .09;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23e7cb8f' stroke-width='1'%3E%3Cpath d='M32 2 62 32 32 62 2 32Z'/%3E%3Cpath d='M32 18l4 10 10 4-10 4-4 10-4-10-10-4 10-4z'/%3E%3C/g%3E%3C/svg%3E");
-  -webkit-mask: radial-gradient(70% 80% at 50% 50%, #000, transparent);
-          mask: radial-gradient(70% 80% at 50% 50%, #000, transparent);
+  position: absolute; inset: 22px; z-index: -1; pointer-events: none;
+  background-color: var(--accent); opacity: .75;
+  -webkit-mask: var(--orn-corner-bl) bottom left / 28px no-repeat, var(--orn-corner-br) bottom right / 28px no-repeat;
+          mask: var(--orn-corner-bl) bottom left / 28px no-repeat, var(--orn-corner-br) bottom right / 28px no-repeat;
 }
 /* لمعات صغيرة بتنوّر وتطفي */
 .cta-spark {
   position: absolute; width: 14px; height: 14px; z-index: -1; pointer-events: none;
-  background: var(--cta-gold);
+  background: var(--accent);
   clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
   animation: cta-twinkle 3.6s ease-in-out infinite;
 }
-.cta-spark--a { top: 18%; left: 12%; }
-.cta-spark--b { top: 26%; right: 10%; width: 10px; height: 10px; animation-delay: -1.2s; }
-.cta-spark--c { bottom: 22%; left: 20%; width: 8px; height: 8px; animation-delay: -2.4s; }
-@keyframes cta-twinkle { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
+.cta-spark--a { top: 34%; left: 11%; }
+.cta-spark--b { top: 40%; right: 10%; width: 10px; height: 10px; animation-delay: -1.2s; }
+.cta-spark--c { bottom: 20%; left: 18%; width: 8px; height: 8px; animation-delay: -2.4s; }
+@keyframes cta-twinkle { 0%, 100% { opacity: .2; transform: scale(.6) rotate(0); } 50% { opacity: .9; transform: scale(1) rotate(45deg); } }
 
-.home-cta .cta-lux .eyebrow { color: var(--cta-gold); }
-.home-cta .cta-lux .eyebrow::before { background: linear-gradient(to left, var(--cta-gold), transparent); }
-.home-cta .cta-lux .eyebrow::after { background: linear-gradient(to right, var(--cta-gold), transparent); }
-.home-cta .cta-lux h2 {
-  color: #fff8ea; font-size: clamp(30px, 4.6vw, 54px); line-height: 1.3; margin-bottom: 10px;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .25);
+.home-cta .cta-arch h2 { font-size: clamp(30px, 4.6vw, 54px); line-height: 1.3; margin-bottom: 4px; }
+/* فاصل دهبي تحت العنوان */
+.cta-rule {
+  display: block; width: 132px; height: 15px; margin: 6px auto 14px;
+  background-color: var(--accent);
+  -webkit-mask: var(--orn-rule) no-repeat center / contain;
+          mask: var(--orn-rule) no-repeat center / contain;
 }
-.home-cta .cta-lux p:not(.eyebrow) { color: rgba(246, 239, 226, .78); margin-bottom: 28px; font-size: clamp(15px, 1.3vw, 17.5px); }
+.home-cta .cta-arch p:not(.eyebrow) { margin-bottom: 28px; font-size: clamp(15px, 1.3vw, 17.5px); }
 
-/* الزرار: دهب متدرّج بكلام غامق وأيقونة واتساب، ولمعته بتعدّي بالمرور */
+/* الزرار: دهب الموقع بكلام أبيض وأيقونة واتساب، ولمعته بتعدّي بالمرور */
 .cta-btn {
   position: relative; display: inline-flex; align-items: center; gap: 10px;
   min-height: 56px; padding: 15px 36px; border-radius: 999px;
-  font-size: 16px; font-weight: 700; color: #2a1d0a; text-decoration: none;
-  background: linear-gradient(135deg, #f6e3b4 0%, #e1bf7c 38%, #c39a52 70%, #a77d3c 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 18px 34px -16px rgba(231, 203, 143, .65),
-              0 0 0 5px rgba(231, 203, 143, .14);
+  font-size: 16px; font-weight: 700; color: #fff; text-decoration: none;
+  background: var(--gold-fill);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45),
+              0 18px 34px -16px color-mix(in srgb, var(--accent) 90%, transparent),
+              0 0 0 5px color-mix(in srgb, var(--accent) 12%, transparent);
   transition: transform .3s cubic-bezier(.2, .9, .3, 1.3), box-shadow .3s ease;
 }
-.cta-btn:hover { transform: translateY(-3px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), 0 24px 40px -16px rgba(231, 203, 143, .75), 0 0 0 7px rgba(231, 203, 143, .18); }
-.cta-btn:focus-visible { outline: 2px solid #fff8ea; outline-offset: 4px; }
+.cta-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45),
+              0 24px 40px -16px color-mix(in srgb, var(--accent) 95%, transparent),
+              0 0 0 7px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.cta-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .cta-btn-icon { width: 20px; height: 20px; flex: none; }
 .cta-note {
   display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;
-  font-size: 12.5px; color: rgba(246, 239, 226, .62);
+  font-size: 12.5px; color: var(--muted);
 }
-.cta-note i { width: 8px; height: 8px; border-radius: 50%; background: #44f08c; box-shadow: 0 0 0 3px rgba(68, 240, 140, .2); }
+.cta-note i { width: 8px; height: 8px; border-radius: 50%; background: #2fbf6c; box-shadow: 0 0 0 3px rgba(47, 191, 108, .18); }
 
 @media (max-width: 780px) {
-  .home-cta .cta-lux { padding: 46px 20px 40px; border-radius: 24px; }
-  .home-cta .cta-lux::before { inset: 9px; border-radius: 17px; }
-  .cta-corners { inset: 15px; -webkit-mask-size: 22px; mask-size: 22px; }
+  .home-cta .cta-arch { --arch: 120px; padding: 128px 20px 42px; border-radius: 50% 50% 24px 24px / var(--arch) var(--arch) 24px 24px; }
+  .home-cta .cta-arch::before { inset: 9px; border-radius: 50% 50% 17px 17px / calc(var(--arch) - 9px) calc(var(--arch) - 9px) 17px 17px; }
+  .cta-seal { top: 30px; width: 62px; height: 62px; }
+  .cta-seal svg { width: 30px; height: 30px; }
+  .cta-corners { inset: 16px; -webkit-mask-size: 22px; mask-size: 22px; }
   .cta-btn { padding: 14px 26px; font-size: 15px; }
 }
 @media (prefers-reduced-motion: reduce) { .cta-spark { animation: none; opacity: .6; } }

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 
@@ -54,6 +55,27 @@ const STAT_ICONS = {
   ),
 }
 
+/** الرقم بيعدّ من صفر لقيمته أول ما الصفحة تفتح (ثانية تقريباً)، ومع «تقليل الحركة» بيظهر على طول */
+function CountUp({ value }: { value: number }) {
+  const [shown, setShown] = useState(0)
+  useEffect(() => {
+    if (!value || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setShown(value)
+      return
+    }
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / 1100)
+      setShown(Math.round(value * (1 - Math.pow(1 - p, 3))))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  return <strong>{shown}</strong>
+}
+
 function StatIcon({ name }: { name: keyof typeof STAT_ICONS }) {
   return (
     <span className="client-followup-stat-icon" aria-hidden="true">
@@ -107,12 +129,12 @@ export function ClientFollowupPage() {
               <article className="client-followup-stat client-followup-stat--hero">
                 <StatIcon name="all" />
                 <span className="client-followup-stat-label">{t('guests.client.allReplies')}</span>
-                <strong>{stats.rsvpTotal}</strong>
+                <CountUp value={stats.rsvpTotal} />
               </article>
               <article className="client-followup-stat">
                 <StatIcon name="heart" />
                 <span className="client-followup-stat-label">{t('guests.client.attending')}</span>
-                <strong>{stats.attending}</strong>
+                <CountUp value={stats.attending} />
                 {/* نسبة الحضور من كل الردود */}
                 <span className="client-followup-bar" aria-hidden="true">
                   <i style={{ width: `${stats.rsvpTotal ? Math.round((stats.attending / stats.rsvpTotal) * 100) : 0}%` }} />
@@ -121,7 +143,7 @@ export function ClientFollowupPage() {
               <article className="client-followup-stat">
                 <StatIcon name="people" />
                 <span className="client-followup-stat-label">{t('guests.client.attendingTotal')}</span>
-                <strong>{stats.attendingTotal}</strong>
+                <CountUp value={stats.attendingTotal} />
               </article>
             </>
           )}
@@ -130,12 +152,12 @@ export function ClientFollowupPage() {
               <article className="client-followup-stat">
                 <StatIcon name="qr" />
                 <span className="client-followup-stat-label">{t('guests.client.guestsQr')}</span>
-                <strong>{stats.guests}</strong>
+                <CountUp value={stats.guests} />
               </article>
               <article className="client-followup-stat">
                 <StatIcon name="door" />
                 <span className="client-followup-stat-label">{t('guests.client.checkedIn')}</span>
-                <strong>{stats.checkedIn}</strong>
+                <CountUp value={stats.checkedIn} />
               </article>
             </>
           )}
@@ -143,7 +165,7 @@ export function ClientFollowupPage() {
             <article className="client-followup-stat">
               <StatIcon name="mail" />
               <span className="client-followup-stat-label">{t('guests.client.wishes')}</span>
-              <strong>{stats.messages}</strong>
+              <CountUp value={stats.messages} />
             </article>
           )}
         </section>
