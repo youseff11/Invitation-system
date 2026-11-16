@@ -160,6 +160,12 @@ export function WhatsAppFloat() {
         </header>
 
         <div className="wa-chat-body">
+          {/* «بيكتب…» ثانية صغيرة وبعدها الرسالة بتظهر — الحركة كلها CSS وبتتعاد مع كل فتحة */}
+          <div className="wa-typing" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
           <div className="wa-bubble">
             <p>{t('public.whatsapp.greeting')}</p>
             <span className="wa-bubble-time">

@@ -438,3 +438,7 @@
   .client-followup-welcome, .client-followup-welcome::after, .client-followup-stat, .client-followup-section,
   .client-followup-bar i, .client-followup-stat--hero::after { animation: none; }
 }
+
+/* رسائل التهنئة: زرار «تحميل PDF» فوق وعدد الرسائل تحته (بدل ما يبقوا جنب بعض) */
+.client-followup-wishes .client-followup-section-tools { flex-direction: column; align-items: flex-end; gap: 8px; }
+.client-followup-wishes .client-followup-section-tools .btn { order: -1; }
