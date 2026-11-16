@@ -1275,3 +1275,13 @@
   .hero-copy--v2 .h1-main { font-size: clamp(18px, 5vw, 24px); }
   .hero-trust--line li + li::before { margin-inline: 7px; }
 }
+
+/* ---------------------------------------------------------- 7) صور الهيرو على التليفون
+   نسخة مقصوصة ٤:٣ من نفس الصورة (الموبايل والظرف كاملين) بدل النسخة العريضة اللي فيها
+   مساحة فاضية للكلام على الكمبيوتر. */
+@media (max-width: 780px) {
+  .hero-art,
+  html[lang="en"] .hero-art { aspect-ratio: 4 / 3; --hero-img: url("/static/images/home-luxe-mobile-light.webp"); }
+  [data-theme="dark"] .hero-art,
+  html[lang="en"][data-theme="dark"] .hero-art { --hero-img: url("/static/images/home-luxe-mobile-dark.webp"); }
+}
