@@ -62,20 +62,20 @@
 }
 
 /* ---------------------------------------------------------- الإطار المزدوج والأركان
-   نفس اللغة على المميزات والباقات: خط داخلي رفيع + ٤ أركان ذهبية بتنوّر بالمرور */
-.feature-card, .plan {
+   الباقات: خط داخلي رفيع + ٤ أركان ذهبية بتنوّر بالمرور */
+.plan {
   background: var(--lux-surface);
   border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
   box-shadow: var(--lux-shadow);
   isolation: isolate;
 }
-.feature-card::before, .plan::before {
+.plan::before {
   content: ""; position: absolute; inset: 7px; z-index: -1; pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
   border-radius: calc(var(--r, 22px) - 6px);
   transition: border-color .3s ease;
 }
-.feature-card::after, .plan::after {
+.plan::after {
   content: ""; position: absolute; inset: 11px; z-index: -1; pointer-events: none;
   background-color: var(--accent); opacity: .5;
   -webkit-mask: var(--orn-corner-tl) top left / var(--corner, 22px) no-repeat,
@@ -88,8 +88,8 @@
                 var(--orn-corner-br) bottom right / var(--corner, 22px) no-repeat;
   transition: opacity .3s ease;
 }
-.feature-card:hover::before, .plan:hover::before { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-.feature-card:hover::after, .plan:hover::after { opacity: 1; }
+.plan:hover::before { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.plan:hover::after { opacity: 1; }
 
 /* ---------------------------------------------------------- الباقات */
 #plans .grid--3 { gap: 26px; align-items: start; }
