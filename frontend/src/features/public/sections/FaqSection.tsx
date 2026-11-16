@@ -27,13 +27,13 @@ export function FaqSection({ faqs }: { faqs: PublicFaq[] | undefined }) {
   return (
     <section className="section section--faq" id="faq">
       <div className="wrap wrap--narrow">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.faq.eyebrow')}</p>
           <h2>{t('public.faq.title')}</h2>
         </div>
         <div className="faq-list">
           {faqs.map((faq, i) => (
-            <details className="faq-item" key={faq.id} data-reveal data-reveal-stagger open={i === 0}>
+            <details className="faq-item" key={faq.id} open={i === 0}>
               <summary>{pick(lang, faq.question, faq.questionEn)}</summary>
               <div className="faq-answer">
                 <Lines text={pick(lang, faq.answer, faq.answerEn)} />

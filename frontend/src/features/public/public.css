@@ -1172,16 +1172,6 @@ html[lang="en"] .feature-en { display: inline; }
 [dir="rtl"] .btn-arrow { transform: scaleX(-1); }
 [dir="rtl"] .btn:hover .btn-arrow { transform: scaleX(-1) translateX(4px); }
 
-/* ---------------------------------------------------------- 7) ظهور تدريجي بالسكرول */
-html.js [data-reveal] {
-  opacity: 0; transform: translateY(16px);
-  transition: opacity .5s cubic-bezier(.22, .8, .3, 1),
-              transform .5s cubic-bezier(.22, .8, .3, 1);
-  transition-delay: var(--reveal-delay, 0s);
-}
-html.js [data-reveal].is-in { opacity: 1; transform: none; }
-/* أمان: من غير جافاسكربت الكلاس js مش بيتحط، فالمحتوى بيفضل ظاهر عادي */
-
 /* ---------------------------------------------------------- 8) لمسات على الأقسام
    ملحوظة: مقاس كارت القالب زي ما هو — التعديل على الظل والحدود بس. */
 .tpl-card {
@@ -1280,7 +1270,6 @@ html.js [data-reveal].is-in { opacity: 1; transform: none; }
 /* احترام إعداد «تقليل الحركة» في النظام: كل حاجة بتقف، والمحتوى بيفضل ظاهر */
 @media (prefers-reduced-motion: reduce) {
   .fx-sky, .hero-sparks, .hero-shooting { display: none; }
-  html.js [data-reveal] { opacity: 1; transform: none; transition: none; }
   .btn, .tpl-card, .feature-card, .plan { transition: none; }
   .btn:hover, .tpl-card:hover, .feature-card:hover, .plan:hover { transform: none; }
   .orn-diamond, .fx-glow { animation: none; }

@@ -16,7 +16,6 @@ import { HomeFooter } from './sections/SiteFooter'
 import { StepsSection } from './sections/StepsSection'
 import { TemplatesSection } from './sections/TemplatesSection'
 import { pick, useLang } from './text'
-import { useReveal } from './useReveal'
 
 /**
  * نموذج «اطلب دعوتك» في الرئيسية.
@@ -44,7 +43,6 @@ export function HomePage() {
   const { data: site } = useSite()
   const home = usePublicHome()
 
-  useReveal()
   useHashScroll(!!home.data)
   useDocumentTitle(site ? t('public.title.home', { name: pick(lang, site.name.ar, site.name.en) }) : '')
 

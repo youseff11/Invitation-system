@@ -9,13 +9,13 @@ export function StepsSection() {
   return (
     <section className="section section--alt" id="how">
       <div className="wrap">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.steps.eyebrow')}</p>
           <h2>{t('public.steps.title')}</h2>
         </div>
         <ol className="arches">
           {STEPS.map((step, i) => (
-            <li className={'arch' + (i === STEPS.length - 1 ? ' arch--final' : '')} key={step} data-reveal data-reveal-stagger>
+            <li className={'arch' + (i === STEPS.length - 1 ? ' arch--final' : '')} key={step}>
               <div className="arch-frame">
                 <span className="arch-key" aria-hidden="true" />
                 <span className="arch-num" aria-hidden="true">

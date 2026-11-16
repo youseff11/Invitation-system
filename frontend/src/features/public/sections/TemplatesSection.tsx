@@ -45,7 +45,7 @@ export function HomeTemplateCard({ template }: { template: PublicTemplate }) {
   const name = pick(lang, template.name, template.nameEn)
   const hasDescription = !!(template.description || template.descriptionEn)
   return (
-    <article className="tpl-card tpl-card--luxe" data-reveal data-reveal-stagger>
+    <article className="tpl-card tpl-card--luxe">
       <Cover template={template} name={name} ornate />
       <div className="tpl-body">
         <h3>{name}</h3>
@@ -103,7 +103,7 @@ export function TemplatesSection({ templates, error, perRow = 1 }: Props) {
   return (
     <section className="section" id="templates">
       <div className="wrap">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.templates.eyebrow')}</p>
           <h2>{t('public.templates.title')}</h2>
           <p>{t('public.templates.sub')}</p>

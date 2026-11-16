@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { prefersReducedMotion } from '../motion'
@@ -73,16 +73,27 @@ const ORDER: FeatureKey[] = [...SIDE_A, ...SIDE_B, 'venueQr']
 
 const TICK_MS = 2800
 
-/** عدّاد حقيقي بيعدّ لموعد وهمي بعد ٢٤ يوم — بيشتغل بس والقسم ظاهر. */
+/* موعد وهمي بعد ٢٤ يوم — واحد للصفحة كلها، فأي عدّاد فيها بيقول نفس الرقم */
+const TARGET = Date.now() + ((24 * 24 + 10) * 60 + 35) * 60 * 1000
+
+/**
+ * عدّاد حقيقي بيشتغل بس والقسم ظاهر. التكّة متظبطة على حدود الثانية بالظبط (مش ‎setInterval‎
+ * اللي بيزحف)، فالعدّاد اللي في الموبايل واللي في الكارت بيقلبوا في نفس اللحظة.
+ * كل عدّاد مكوّن لوحده، فالتكّة بترسم الأرقام بس مش المشهد كله.
+ */
 function useCountdown(running: boolean) {
-  const [target] = useState(() => Date.now() + ((24 * 24 + 10) * 60 + 35) * 60 * 1000)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!running) return
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(id)
+    let id = 0
+    const tick = () => {
+      setNow(Date.now())
+      id = window.setTimeout(tick, 1000 - (Date.now() % 1000) + 8)
+    }
+    tick()
+    return () => window.clearTimeout(id)
   }, [running])
-  const s = Math.floor(Math.max(0, target - now) / 1000)
+  const s = Math.floor(Math.max(0, TARGET - now) / 1000)
   return [Math.floor(s / 86400), Math.floor(s / 3600) % 24, Math.floor(s / 60) % 60, s % 60]
 }
 
@@ -99,20 +110,26 @@ function Icon({ k }: { k: FeatureKey }) {
 const COUNT_LABELS = ['يوم', 'ساعة', 'دقيقة', 'ثانية']
 
 /** الموبايل اللي في النص: دعوة مصغّرة كل جزء فيها مربوط بميزة. زخرفة بحتة لقارئ الشاشة. */
-function PhoneMock({
+function CountTiles({ running }: { running: boolean }) {
+  const count = useCountdown(running)
+  return count.map((n, i) => (
+    <span key={COUNT_LABELS[i]}>
+      <b>{ar(n)}</b>
+      <small>{COUNT_LABELS[i]}</small>
+    </span>
+  ))
+}
+
+/** ‎memo‎: بيترسم من جديد بس لما الميزة النشطة أو حالة الظهور تتغيّر */
+const PhoneMock = memo(function PhoneMock({
   active,
   running,
   spotlight = false,
-  count: shared,
 }: {
   active: FeatureKey
   running: boolean
   spotlight?: boolean
-  /** المشهد بيمرّر العدّاد بتاعه عشان الرقم اللي في الموبايل واللي طالع منه يبقوا واحد */
-  count?: number[]
 }) {
-  const own = useCountdown(running && !shared)
-  const count = shared ?? own
   const on = (k: FeatureKey) => (active === k ? ' is-on' : '')
   return (
     <div className={'fx-phone' + (spotlight ? ' fx-phone--spot' : '')} aria-hidden="true">
@@ -125,12 +142,7 @@ function PhoneMock({
         <p className="fx-inv-date">الخميس · ١٢ ديسمبر ٢٠٢٦</p>
 
         <div data-f="countdown" className={'fx-part fx-count' + on('countdown')}>
-          {count.map((n, i) => (
-            <span key={COUNT_LABELS[i]}>
-              <b>{ar(n)}</b>
-              <small>{COUNT_LABELS[i]}</small>
-            </span>
-          ))}
+          <CountTiles running={running} />
         </div>
 
         <div data-f="gallery" className={'fx-part fx-shots' + on('gallery')}>
@@ -184,19 +196,16 @@ function PhoneMock({
       </div>
     </div>
   )
-}
+})
 
 function FeatureItem({ k, active, onPick }: { k: FeatureKey; active: boolean; onPick: (k: FeatureKey) => void }) {
   const { t } = useTranslation()
   return (
-    // النشاط في ‎data-on‎ مش في الكلاس: React بيكتب ‎className‎ من الأول مع كل تغيير، فكان بيمسح
-    // ‎is-in‎ اللي useReveal حاطه والعنصر يختفي.
+    // النشاط في ‎data-on‎ مش في الكلاس عشان React مايمسحش أي كلاس تاني على العنصر
     <li
       className="fx-item"
       data-on={active || undefined}
       onMouseEnter={() => onPick(k)}
-      data-reveal
-      data-reveal-stagger
     >
       <span className="fx-gem">
         <Icon k={k} />
@@ -262,20 +271,25 @@ function QrGlyph() {
 }
 
 /** مشهد صغير مجسّم لكل ميزة — بيشتغل بس وهو الكارت الحالي (CSS على ‎[data-state="cur"]‎). */
-function FeatureArt({ k, count }: { k: FeatureKey; count: number[] }) {
+function ArtCount({ running }: { running: boolean }) {
+  const count = useCountdown(running)
+  return (
+    <div className="art art-count">
+      {count.map((n, i) => (
+        <span key={COUNT_LABELS[i]}>
+          {/* ‎key‎ بالرقم: كل ما الرقم يتغيّر بيتركّب من جديد فيقلب زي ساعة المطار */}
+          <b key={n}>{ar(n)}</b>
+          <small>{COUNT_LABELS[i]}</small>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function FeatureArt({ k, running }: { k: FeatureKey; running: boolean }) {
   switch (k) {
     case 'countdown':
-      return (
-        <div className="art art-count">
-          {count.map((n, i) => (
-            <span key={COUNT_LABELS[i]}>
-              {/* ‎key‎ بالرقم: كل ما الرقم يتغيّر بيتركّب من جديد فيقلب زي ساعة المطار */}
-              <b key={n}>{ar(n)}</b>
-              <small>{COUNT_LABELS[i]}</small>
-            </span>
-          ))}
-        </div>
-      )
+      return <ArtCount running={running} />
     case 'gallery':
       return (
         <div className="art art-gallery">
@@ -371,6 +385,45 @@ function FeatureArt({ k, count }: { k: FeatureKey; count: number[] }) {
   }
 }
 
+const HYST = 0.06
+const LINK_GAP = 44 // طول السهم — نفس ‎--gap‎ في sections.css
+
+/** كارت ميزة في المشهد. ‎memo‎: لما الميزة تتغيّر بيترسم بس الكارتين اللي حالتهم اتغيّرت. */
+const ShowCard = memo(function ShowCard({
+  f,
+  i,
+  state,
+  running,
+  title,
+  text,
+}: {
+  f: FeatureKey
+  i: number
+  state: 'cur' | 'past' | 'next'
+  running: boolean
+  title: string
+  text: string
+}) {
+  return (
+    <div className="fx-show" data-f={f} data-state={state}>
+      {/* السهم من العنصر للكارت؛ مكانه واتجاهه (‎data-place‎) بيتقاسوا في ‎fit()‎ */}
+      <span className="fx-link">
+        <i className="fx-link-dot" />
+        <i className="fx-link-line" />
+        <i className="fx-link-head" />
+      </span>
+      <span className="fx-cap-num">
+        {ar(i + 1)} / {ar(ORDER.length)}
+      </span>
+      <div className="fx-art-box">
+        <FeatureArt k={f} running={running} />
+      </div>
+      <b>{title}</b>
+      <small>{text}</small>
+    </div>
+  )
+})
+
 /**
  * التليفون: مشهد سينمائي ثلاثي الأبعاد بالسكرول. الموبايل ثابت (sticky) بزاوية مجسّمة
  * وبيطفو بهدوء — اللي بيتحرك هو العناصر: مع كل ميزة جزءها في الدعوة بينوّر، وبيطلع منه
@@ -384,7 +437,6 @@ function FeaturesScene() {
   const track = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(0)
   const [visible, setVisible] = useState(false)
-  const count = useCountdown(visible)
 
   useEffect(() => {
     const el = track.current
@@ -395,24 +447,41 @@ function FeaturesScene() {
       // الموبايل ياخد ~٧٤٪ من ارتفاع المساحة الثابتة ومايعدّيش عرض الشاشة
       const z = Math.max(0.55, Math.min(0.92, (sticky.offsetHeight * 0.74) / PHONE_H, (window.innerWidth - 110) / 268))
       el.style.setProperty('--fx-zoom', String(z))
-      // كل كارت بيبدأ من مكان جزءه في الموبايل: بنقيس المسافة من نص الموبايل
+      // مكان كل كارت وسهمه بالنسبة لعنصره في الموبايل. القياس بيتعمل والمشهد من غير زاوية
+      // ولا طفو (‎.fx-measuring‎)، فالأرقام بتطلع في مستوى الموبايل نفسه — هو ده اللي الكارت
+      // والسهم بيتحطوا فيه، فالسهم بيقع على العنصر بالظبط.
       const rig = el.querySelector<HTMLElement>('.fx-rig')
       if (!rig) return
-      const mid = rig.getBoundingClientRect()
-      const center = mid.top + mid.height / 2
+      el.classList.add('fx-measuring')
+      const box = rig.getBoundingClientRect()
+      const cx = box.left + box.width / 2
+      const cy = box.top + box.height / 2
       el.querySelectorAll<HTMLElement>('.fx-show').forEach((card) => {
         const part = rig.querySelector<HTMLElement>(`.fx-phone [data-f="${card.dataset.f}"]`)
         if (!part) return
         const r = part.getBoundingClientRect()
-        card.style.setProperty('--from-y', `${Math.round(r.top + r.height / 2 - center)}px`)
+        const mid = r.top + r.height / 2
+        // العنصر في النص العلوي ← الكارت تحته؛ في النص السفلي ← الكارت فوقه
+        const below = mid - box.top < box.height * 0.45
+        const y = below ? r.bottom - cy + LINK_GAP : r.top - cy - LINK_GAP - card.offsetHeight
+        card.dataset.place = below ? 'below' : 'above'
+        card.style.setProperty('--card-y', `${Math.round(y)}px`)
+        card.style.setProperty('--dx', `${Math.round(r.left + r.width / 2 - cx)}px`)
+        card.style.setProperty('--from-y', `${Math.round(mid - cy)}px`)
       })
+      el.classList.remove('fx-measuring')
     }
     const update = () => {
       raf = 0
       const r = el.getBoundingClientRect()
       const span = r.height - sticky.offsetHeight
       const p = span > 0 ? Math.min(1, Math.max(0, -r.top / span)) : 0
-      setIdx(Math.min(ORDER.length - 1, Math.floor(p * ORDER.length)))
+      // هامش ٦٪ حوالين كل حد: الوقوف على الحد بالظبط (أو رعشة صباع) مايقلّبش بين ميزتين
+      const pos = p * ORDER.length
+      setIdx((cur) => {
+        if (pos > cur + 1 + HYST || pos < cur - HYST) return Math.min(ORDER.length - 1, Math.max(0, Math.floor(pos)))
+        return cur
+      })
       setVisible(r.top < window.innerHeight && r.bottom > 0)
     }
     const onScroll = () => {
@@ -424,6 +493,8 @@ function FeaturesScene() {
     }
     fit()
     update()
+    // الخطوط (Amiri) لو وصلت بعد أول قياس بتغيّر ارتفاع الكارت — نقيس تاني
+    document.fonts?.ready.then(fit)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
     return () => {
@@ -440,24 +511,18 @@ function FeaturesScene() {
           <div className="fx-scene">
             <div className="fx-rig">
               <span className="fx-halo" aria-hidden="true" />
-              <PhoneMock active={ORDER[idx]} running={visible} count={count} spotlight />
+              <PhoneMock active={ORDER[idx]} running={visible} spotlight />
               <div className="fx-shows" aria-hidden="true">
                 {ORDER.map((f, i) => (
-                  <div
+                  <ShowCard
                     key={f}
-                    className="fx-show"
-                    data-f={f}
-                    data-state={i === idx ? 'cur' : i < idx ? 'past' : 'next'}
-                  >
-                    <span className="fx-cap-num">
-                      {ar(i + 1)} / {ar(ORDER.length)}
-                    </span>
-                    <div className="fx-art-box">
-                      <FeatureArt k={f} count={count} />
-                    </div>
-                    <b>{t(`public.features.${f}.title`)}</b>
-                    <small>{t(`public.features.${f}.text`)}</small>
-                  </div>
+                    f={f}
+                    i={i}
+                    state={i === idx ? 'cur' : i < idx ? 'past' : 'next'}
+                    running={visible && i === idx}
+                    title={t(`public.features.${f}.title`)}
+                    text={t(`public.features.${f}.text`)}
+                  />
                 ))}
               </div>
             </div>
@@ -516,7 +581,7 @@ export function FeaturesSection() {
   return (
     <section className="section section--features" id="features">
       <div className="wrap">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.features.eyebrow')}</p>
           <h2>{t('public.features.title')}</h2>
           <p>{t('public.features.sub')}</p>
@@ -531,7 +596,7 @@ export function FeaturesSection() {
             onMouseLeave={() => setPaused(false)}
           >
             <ul className="fx-side fx-side--a">{SIDE_A.map(item)}</ul>
-            <div className="fx-center" data-reveal>
+            <div className="fx-center">
               <span className="fx-halo" aria-hidden="true" />
               <PhoneMock active={active} running={visible} />
             </div>

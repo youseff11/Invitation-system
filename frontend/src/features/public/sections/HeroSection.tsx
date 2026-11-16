@@ -46,7 +46,7 @@ export function HeroSection({ plansPublic, hero }: { plansPublic: boolean; hero?
         <ShootingStars idle={idle} />
       </div>
       <div className="hero-copy">
-        <div className="hero-copy-in" data-reveal>
+        <div className="hero-copy-in">
           {/* سطر صغير شيك بدل التاج الزخرفي */}
           <p className="hero-eyebrow">{t('public.hero.eyebrow')}</p>
           <h1>

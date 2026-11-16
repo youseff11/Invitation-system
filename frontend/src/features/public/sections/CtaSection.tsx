@@ -8,7 +8,7 @@ export function CtaSection({ site }: { site: SiteInfo }) {
   const label = t('public.cta.button')
   return (
     <section className="section home-cta" id="contact">
-      <div className="wrap home-cta-in" data-reveal>
+      <div className="wrap home-cta-in">
         <p className="eyebrow">{t('public.cta.eyebrow')}</p>
         <h2>{t('public.cta.title')}</h2>
         <p>{t('public.cta.sub')}</p>

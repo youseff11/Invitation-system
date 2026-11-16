@@ -23,7 +23,7 @@ export function PlansSection({ site, plans }: Props) {
   return (
     <section className="section" id="plans">
       <div className="wrap">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.plans.eyebrow')}</p>
           <h2>{t('public.plans.title')}</h2>
         </div>

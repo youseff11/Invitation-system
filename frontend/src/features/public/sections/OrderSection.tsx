@@ -126,7 +126,7 @@ export function OrderSection({ site }: { site: SiteInfo }) {
   return (
     <section className="section section--alt" id="order">
       <div className="wrap order-section-wrap">
-        <div className="section-head" data-reveal>
+        <div className="section-head">
           <p className="eyebrow">{t('public.order.eyebrow')}</p>
           <h2>{t('public.order.title')}</h2>
           <p>{t('public.order.sub')}</p>
