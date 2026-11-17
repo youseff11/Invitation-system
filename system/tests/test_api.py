@@ -233,6 +233,12 @@ class ShellTests(TestCase):
         for tag in ("og:title", "og:description", "og:image", "og:url", "twitter:card"):
             self.assertIn(tag, html)
 
+    def test_site_link_preview_uses_site_share_image_with_its_size(self):
+        html = self.client.get("/app/").content.decode()
+        self.assertIn("/static/images/site-share.jpg", html)
+        self.assertIn('property="og:image:width" content="1536"', html)
+        self.assertIn('property="og:image:height" content="1024"', html)
+
     def test_shell_only_allows_safe_methods(self):
         self.assertEqual(self.client.post("/app/").status_code, 405)
 

@@ -78,7 +78,10 @@ def site_settings(request):
         "GOOGLE_SITE_VERIFICATION": settings.GOOGLE_SITE_VERIFICATION,
         # canonical بدون query string — ?category= وغيره مش صفحات مستقلة
         "SEO_CANONICAL": site_url + path,
-        "SEO_IMAGE": site_url + settings.STATIC_URL + "images/logo-share.jpg",
+        # صورة معاينة لينك الموقع — اسم جديد عشان واتساب/ميتا مايفضلوش على القديمة
+        "SEO_IMAGE": site_url + settings.STATIC_URL + "images/site-share.jpg",
+        "SEO_IMAGE_WIDTH": 1536,
+        "SEO_IMAGE_HEIGHT": 1024,
         "SEO_DESC": (settings.SEO_DESCRIPTION_EN if en
                      else settings.SEO_DESCRIPTION_AR),
         "SEO_KEYWORDS": ", ".join([settings.SEO_KEYWORDS_AR if not en
