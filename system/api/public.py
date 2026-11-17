@@ -24,7 +24,6 @@ from .serializers import site_payload, template_card
 
 # نفس الحقول التقيلة اللي صفحات العرض القديمة بتتفاداها (views._TEMPLATE_HEAVY_FIELDS)
 _TEMPLATE_HEAVY_FIELDS = ("document", "preview_render", "runtime_scripts")
-HOME_TEMPLATES = 12              # الرئيسية بتعرض أول ١٢ قالب بس
 
 ORDER_RATE_LIMIT = 20            # طلبات ناجحة لكل عميل
 ORDER_RATE_WINDOW = 60 * 60      # خلال الفترة دي (ثواني)
@@ -106,8 +105,9 @@ def _faq_payload(faq: FAQ) -> dict:
 @api_view("GET")
 def home(request):
     """كل اللي الرئيسية محتاجاه في طلب واحد: القوالب والباقات والأسئلة والإعدادات."""
+    # كل القوالب المفعّلة تظهر في الهوم — من غير حد أقصى
     templates = (Template.objects.filter(is_active=True)
-                 .defer(*_TEMPLATE_HEAVY_FIELDS)[:HOME_TEMPLATES])
+                 .defer(*_TEMPLATE_HEAVY_FIELDS))
     plans = list(Plan.objects.filter(is_active=True))
     addons = list(PlanAddon.objects.filter(is_active=True).prefetch_related("plans"))
     return {
