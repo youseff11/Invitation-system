@@ -422,8 +422,9 @@ def _seo_keywords():
 
 
 def home(request):
+    # كل القوالب المفعّلة تظهر في الهوم — من غير حد أقصى
     templates = (Template.objects.filter(is_active=True)
-                 .defer(*_TEMPLATE_HEAVY_FIELDS)[:12])
+                 .defer(*_TEMPLATE_HEAVY_FIELDS))
     plans = list(Plan.objects.filter(is_active=True))
     addons = list(PlanAddon.objects.filter(is_active=True).prefetch_related("plans"))
     cfg = SiteSetting.load()
